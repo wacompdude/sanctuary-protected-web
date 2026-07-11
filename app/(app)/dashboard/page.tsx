@@ -97,7 +97,7 @@ function DashboardFallback() {
 
 async function DashboardWrapper() {
   try {
-    return <DashboardContent />;
+    return await DashboardContent();
   } catch (error) {
     const message =
       error instanceof ChurchAccessError

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { NewIncidentForm } from "@/components/new-incident-form";
+import { NewIncidentForm } from "@/components/incidents/new-incident-form";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 

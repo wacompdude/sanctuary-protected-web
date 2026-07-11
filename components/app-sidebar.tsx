@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -10,12 +11,16 @@ import {
   Shield,
   Users,
   AlertTriangle,
+  Bell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LogoutButton } from "@/components/logout-button";
+import { createClient } from "@/lib/supabase/client";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/incidents", label: "Incidents", icon: AlertTriangle },
+  { href: "/events", label: "Events", icon: Bell },
   { href: "/certifications", label: "Certifications", icon: Award },
   { href: "/team", label: "Team Members", icon: Users },
   { href: "/cameras", label: "Cameras", icon: Camera },
@@ -24,6 +29,14 @@ const navItems = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      setUserEmail(data.user?.email ?? null);
+    });
+  }, []);
 
   return (
     <aside className="flex w-64 flex-col border-r border-border bg-card">
@@ -56,6 +69,14 @@ export function AppSidebar() {
           );
         })}
       </nav>
+      <div className="border-t border-border p-4">
+        {userEmail && (
+          <p className="mb-3 truncate text-xs text-muted-foreground">
+            {userEmail}
+          </p>
+        )}
+        <LogoutButton className="w-full" variant="outline" size="sm" />
+      </div>
     </aside>
   );
 }

@@ -1,5 +1,12 @@
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
+import { Suspense } from "react";
+import {
+  ChurchAccessError,
+  getAuthenticatedUserWithChurch,
+  listIncidentsForChurch,
+} from "@/lib/incidents/queries";
+import { formatDateTime, formatIncidentId, labelForEnum } from "@/lib/incidents/format";
+import { INCIDENT_TYPES } from "@/lib/incidents/constants";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -8,39 +15,48 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { mockIncidents } from "@/lib/mock-data";
+import {
+  IncidentSeverityText,
+  IncidentStatusBadge,
+} from "@/components/incidents/incident-badges";
 import { Plus } from "lucide-react";
 
-const statusVariant = {
-  open: "destructive" as const,
-  investigating: "secondary" as const,
-  resolved: "outline" as const,
-};
+async function IncidentsList() {
+  const { church } = await getAuthenticatedUserWithChurch();
+  let incidents;
 
-const severityClass = {
-  low: "text-muted-foreground",
-  medium: "text-amber-600 dark:text-amber-400",
-  high: "text-red-600 dark:text-red-400",
-};
+  try {
+    incidents = await listIncidentsForChurch(church.id);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Unable to load incidents.";
+    const hint =
+      message.includes("occurred_at") || message.includes("incidents")
+        ? " Run supabase/migrations/005_fix_incidents_schema.sql in the Supabase SQL Editor."
+        : "";
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
+    return (
+      <>
+        <h1 className="text-3xl font-bold tracking-tight">Incidents</h1>
+        <Card className="mt-8">
+          <CardContent className="py-8">
+            <p className="text-sm text-destructive">
+              {message}
+              {hint}
+            </p>
+          </CardContent>
+        </Card>
+      </>
+    );
+  }
 
-export default function IncidentsPage() {
   return (
-    <div className="space-y-8">
+    <>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Incidents</h1>
           <p className="mt-1 text-muted-foreground">
-            Track and manage security incidents across your site.
+            Incidents for {church.name}.
           </p>
         </div>
         <Button asChild>
@@ -55,67 +71,155 @@ export default function IncidentsPage() {
         <CardHeader>
           <CardTitle>All Incidents</CardTitle>
           <CardDescription>
-            {mockIncidents.length} incidents on record
+            {incidents.length} incident{incidents.length === 1 ? "" : "s"} on
+            record
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left">
-                  <th className="pb-3 pr-4 font-medium text-muted-foreground">
-                    ID
-                  </th>
-                  <th className="pb-3 pr-4 font-medium text-muted-foreground">
-                    Title
-                  </th>
-                  <th className="pb-3 pr-4 font-medium text-muted-foreground">
-                    Location
-                  </th>
-                  <th className="pb-3 pr-4 font-medium text-muted-foreground">
-                    Severity
-                  </th>
-                  <th className="pb-3 pr-4 font-medium text-muted-foreground">
-                    Status
-                  </th>
-                  <th className="pb-3 font-medium text-muted-foreground">
-                    Reported
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {mockIncidents.map((incident) => (
-                  <tr
-                    key={incident.id}
-                    className="border-b border-border last:border-0"
-                  >
-                    <td className="py-3 pr-4 font-mono text-xs">
-                      {incident.id}
-                    </td>
-                    <td className="py-3 pr-4 font-medium">{incident.title}</td>
-                    <td className="py-3 pr-4 text-muted-foreground">
-                      {incident.location}
-                    </td>
-                    <td
-                      className={`py-3 pr-4 capitalize ${severityClass[incident.severity]}`}
-                    >
-                      {incident.severity}
-                    </td>
-                    <td className="py-3 pr-4">
-                      <Badge variant={statusVariant[incident.status]}>
-                        {incident.status}
-                      </Badge>
-                    </td>
-                    <td className="py-3 text-muted-foreground">
-                      {formatDate(incident.reportedAt)}
-                    </td>
+          {incidents.length === 0 ? (
+            <div className="py-8 text-center text-sm text-muted-foreground">
+              <p>No incidents have been reported yet.</p>
+              <Button asChild className="mt-4" variant="outline">
+                <Link href="/incidents/new">Report the first incident</Link>
+              </Button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-left">
+                    <th className="pb-3 pr-4 font-medium text-muted-foreground">
+                      ID
+                    </th>
+                    <th className="pb-3 pr-4 font-medium text-muted-foreground">
+                      Title
+                    </th>
+                    <th className="pb-3 pr-4 font-medium text-muted-foreground">
+                      Type
+                    </th>
+                    <th className="pb-3 pr-4 font-medium text-muted-foreground">
+                      Location
+                    </th>
+                    <th className="pb-3 pr-4 font-medium text-muted-foreground">
+                      Severity
+                    </th>
+                    <th className="pb-3 pr-4 font-medium text-muted-foreground">
+                      Status
+                    </th>
+                    <th className="pb-3 font-medium text-muted-foreground">
+                      Occurred
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {incidents.map((incident) => (
+                    <tr
+                      key={incident.id}
+                      className="border-b border-border last:border-0"
+                    >
+                      <td className="py-3 pr-4 font-mono text-xs">
+                        <Link
+                          href={`/incidents/${incident.id}`}
+                          className="hover:underline"
+                        >
+                          {formatIncidentId(incident.id)}
+                        </Link>
+                      </td>
+                      <td className="py-3 pr-4 font-medium">
+                        <Link
+                          href={`/incidents/${incident.id}`}
+                          className="hover:underline"
+                        >
+                          {incident.title}
+                        </Link>
+                      </td>
+                      <td className="py-3 pr-4 text-muted-foreground">
+                        {labelForEnum(INCIDENT_TYPES, incident.type)}
+                      </td>
+                      <td className="py-3 pr-4 text-muted-foreground">
+                        {incident.location}
+                      </td>
+                      <td className="py-3 pr-4">
+                        <IncidentSeverityText severity={incident.severity} />
+                      </td>
+                      <td className="py-3 pr-4">
+                        <IncidentStatusBadge status={incident.status} />
+                      </td>
+                      <td className="py-3 text-muted-foreground">
+                        {formatDateTime(incident.occurred_at)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </>
+  );
+}
+
+function IncidentsListFallback() {
+  return (
+    <>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Incidents</h1>
+          <p className="mt-1 text-muted-foreground">Loading incidents…</p>
+        </div>
+      </div>
+      <Card>
+        <CardContent className="py-12 text-sm text-muted-foreground">
+          Loading…
+        </CardContent>
+      </Card>
+    </>
+  );
+}
+
+function IncidentsError({ message }: { message: string }) {
+  return (
+    <div className="space-y-4">
+      <h1 className="text-3xl font-bold tracking-tight">Incidents</h1>
+      <Card>
+        <CardContent className="py-8">
+          <p className="text-sm text-destructive">{message}</p>
         </CardContent>
       </Card>
     </div>
   );
+}
+
+export default function IncidentsPage() {
+  return (
+    <div className="space-y-8">
+      <Suspense fallback={<IncidentsListFallback />}>
+        <IncidentsListWrapper />
+      </Suspense>
+    </div>
+  );
+}
+
+async function IncidentsListWrapper() {
+  try {
+    return <IncidentsList />;
+  } catch (error) {
+    const message =
+      error instanceof ChurchAccessError
+        ? error.message
+        : "Unable to load incidents.";
+
+    return (
+      <>
+        <IncidentsError message={message} />
+        {error instanceof ChurchAccessError && (
+          <p className="mt-2 text-sm text-muted-foreground">
+            Run <code>supabase/migrations/004_fix_churches_access.sql</code> in
+            the Supabase SQL Editor, then reload this page.
+          </p>
+        )}
+      </>
+    );
+  }
 }

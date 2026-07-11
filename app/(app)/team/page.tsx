@@ -96,7 +96,13 @@ function TeamFallback() {
   );
 }
 
-async function TeamWrapper({ created }: { created?: string }) {
+async function TeamWrapper({
+  searchParams,
+}: {
+  searchParams: Promise<{ created?: string }>;
+}) {
+  const { created } = await searchParams;
+
   try {
     return <TeamContent created={created} />;
   } catch (error) {
@@ -121,17 +127,15 @@ async function TeamWrapper({ created }: { created?: string }) {
   }
 }
 
-export default async function TeamPage({
+export default function TeamPage({
   searchParams,
 }: {
   searchParams: Promise<{ created?: string }>;
 }) {
-  const params = await searchParams;
-
   return (
     <div className="space-y-8">
       <Suspense fallback={<TeamFallback />}>
-        <TeamWrapper created={params.created} />
+        <TeamWrapper searchParams={searchParams} />
       </Suspense>
     </div>
   );

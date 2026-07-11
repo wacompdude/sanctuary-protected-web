@@ -9,8 +9,12 @@ const defaultUrl = process.env.VERCEL_URL
 
 export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
-  title: "Sanctuary Protected",
-  description: "Security and incident management for your sanctuary",
+  title: {
+    default: "Sanctuary Protected",
+    template: "%s | Sanctuary Protected",
+  },
+  description:
+    "Security and incident management for churches and houses of worship",
 };
 
 const geistSans = Geist({

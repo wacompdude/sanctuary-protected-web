@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { BrandLogo } from "@/components/brand-logo";
 
 export function SignUpForm({
   className,
@@ -59,9 +60,17 @@ export function SignUpForm({
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">Sign up</CardTitle>
-          <CardDescription>Create a new account</CardDescription>
+        <CardHeader className="space-y-4 text-center">
+          <BrandLogo
+            href="/"
+            size={40}
+            className="mx-auto justify-center"
+            wordmarkClassName="text-xl font-semibold"
+          />
+          <div className="space-y-1.5">
+            <CardTitle className="text-2xl">Sign up</CardTitle>
+            <CardDescription>Create a new account</CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSignUp}>

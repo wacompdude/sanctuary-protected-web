@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { BrandLogo } from "@/components/brand-logo";
 
 export default function Error({
   error,
@@ -17,6 +18,12 @@ export default function Error({
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-4 p-8 text-center">
+      <BrandLogo
+        href="/"
+        size={40}
+        className="justify-center"
+        wordmarkClassName="text-xl font-semibold"
+      />
       <h1 className="text-2xl font-semibold">Something went wrong</h1>
       <p className="max-w-md text-sm text-muted-foreground">
         {error.message || "A server error occurred while loading this page."}

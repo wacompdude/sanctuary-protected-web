@@ -5,6 +5,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { BrandLogo } from "@/components/brand-logo";
 
 export default function Page() {
   return (
@@ -12,11 +13,19 @@ export default function Page() {
       <div className="w-full max-w-sm">
         <div className="flex flex-col gap-6">
           <Card>
-            <CardHeader>
-              <CardTitle className="text-2xl">
-                Thank you for signing up!
-              </CardTitle>
-              <CardDescription>Check your email to confirm</CardDescription>
+            <CardHeader className="space-y-4 text-center">
+              <BrandLogo
+                href="/"
+                size={36}
+                className="mx-auto justify-center"
+                wordmarkClassName="text-xl font-semibold"
+              />
+              <div className="space-y-1.5">
+                <CardTitle className="text-2xl">
+                  Thank you for signing up!
+                </CardTitle>
+                <CardDescription>Check your email to confirm</CardDescription>
+              </div>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">

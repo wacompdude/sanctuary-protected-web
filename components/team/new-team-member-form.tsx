@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState } from "react";
 import { createTeamMember } from "@/app/(app)/team/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,32 +21,20 @@ export function NewTeamMemberForm() {
     createTeamMember,
     initialState,
   );
-  const formRef = useRef<HTMLFormElement>(null);
-
-  useEffect(() => {
-    if (state.success) {
-      formRef.current?.reset();
-    }
-  }, [state.success]);
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Add Team Member</CardTitle>
+        <CardTitle>Member details</CardTitle>
         <CardDescription>
           Team members can be linked to certifications.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form ref={formRef} action={formAction} className="space-y-4">
+        <form action={formAction} className="space-y-4">
           {state.error && (
             <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
               {state.error}
-            </p>
-          )}
-          {state.success && (
-            <p className="rounded-md border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm text-green-700 dark:text-green-400">
-              Team member added successfully.
             </p>
           )}
 

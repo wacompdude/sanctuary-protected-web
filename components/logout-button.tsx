@@ -4,7 +4,10 @@ import { createClient } from "@/lib/supabase/client";
 import { Button, type ButtonProps } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 
-export function LogoutButton(props: ButtonProps) {
+export function LogoutButton({
+  children = "Sign out",
+  ...props
+}: ButtonProps) {
   const router = useRouter();
 
   const logout = async () => {
@@ -16,7 +19,7 @@ export function LogoutButton(props: ButtonProps) {
 
   return (
     <Button onClick={logout} {...props}>
-      Sign out
+      {children}
     </Button>
   );
 }

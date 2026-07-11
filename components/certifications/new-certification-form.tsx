@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from "react";
+import Link from "next/link";
 import { createCertification } from "@/app/(app)/certifications/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,7 +41,11 @@ export function NewCertificationForm({
     return (
       <Card>
         <CardContent className="py-8 text-sm text-muted-foreground">
-          Add a team member on the Team page before creating a certification.
+          Add a team member on the{" "}
+          <Link href="/team/new" className="underline underline-offset-4">
+            Team page
+          </Link>{" "}
+          before creating a certification.
         </CardContent>
       </Card>
     );

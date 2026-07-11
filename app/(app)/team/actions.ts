@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { getAuthenticatedUserWithChurch } from "@/lib/church/auth";
 import type { ActionState } from "@/lib/church/types";
 import {
@@ -41,14 +42,14 @@ export async function createTeamMember(
     if (error) {
       return { error: error.message };
     }
-
-    revalidatePath("/team");
-    revalidatePath("/certifications");
-    return { success: true };
   } catch (error) {
     return {
       error:
         error instanceof Error ? error.message : "Failed to create team member.",
     };
   }
+
+  revalidatePath("/team");
+  revalidatePath("/certifications");
+  redirect("/team?created=1");
 }

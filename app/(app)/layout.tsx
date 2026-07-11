@@ -3,7 +3,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 
 function SidebarFallback() {
   return (
-    <aside className="flex w-64 flex-col border-r border-border bg-card">
+    <aside className="flex w-64 shrink-0 flex-col border-r border-border bg-card">
       <div className="flex h-16 items-center border-b border-border px-6" />
     </aside>
   );

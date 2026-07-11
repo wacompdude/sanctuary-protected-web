@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useState } from "react";
+import { BrandLogo } from "@/components/brand-logo";
 
 export function ForgotPasswordForm({
   className,
@@ -48,9 +49,19 @@ export function ForgotPasswordForm({
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       {success ? (
         <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl">Check Your Email</CardTitle>
-            <CardDescription>Password reset instructions sent</CardDescription>
+          <CardHeader className="space-y-4 text-center">
+            <BrandLogo
+              href="/"
+              size={36}
+              className="mx-auto justify-center"
+              wordmarkClassName="text-xl font-semibold"
+            />
+            <div className="space-y-1.5">
+              <CardTitle className="text-2xl">Check Your Email</CardTitle>
+              <CardDescription>
+                Password reset instructions sent
+              </CardDescription>
+            </div>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
@@ -61,12 +72,20 @@ export function ForgotPasswordForm({
         </Card>
       ) : (
         <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl">Reset Your Password</CardTitle>
-            <CardDescription>
-              Type in your email and we&apos;ll send you a link to reset your
-              password
-            </CardDescription>
+          <CardHeader className="space-y-4 text-center">
+            <BrandLogo
+              href="/"
+              size={36}
+              className="mx-auto justify-center"
+              wordmarkClassName="text-xl font-semibold"
+            />
+            <div className="space-y-1.5">
+              <CardTitle className="text-2xl">Reset Your Password</CardTitle>
+              <CardDescription>
+                Type in your email and we&apos;ll send you a link to reset your
+                password
+              </CardDescription>
+            </div>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleForgotPassword}>

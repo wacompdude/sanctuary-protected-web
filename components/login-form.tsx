@@ -8,13 +8,13 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { BrandLogo } from "@/components/brand-logo";
 
 export function LoginForm({
   className,
@@ -50,8 +50,13 @@ export function LoginForm({
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">Sanctuary Protected</CardTitle>
+        <CardHeader className="space-y-3 text-center">
+          <BrandLogo
+            href="/"
+            size={40}
+            className="mx-auto justify-center"
+            wordmarkClassName="text-2xl font-semibold"
+          />
           <CardDescription>
             Sign in with your email and password to continue
           </CardDescription>

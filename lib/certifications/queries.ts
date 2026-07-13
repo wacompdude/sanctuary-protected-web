@@ -52,7 +52,8 @@ export async function listCertificationsForChurch(churchId: string) {
       ? memberData[0]
       : memberData;
 
-    const { team_members: _ignored, ...cert } = row;
+    const { team_members, ...cert } = row;
+    void team_members;
 
     return {
       ...(cert as Certification),

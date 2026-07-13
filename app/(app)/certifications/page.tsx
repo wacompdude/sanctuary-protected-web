@@ -13,6 +13,7 @@ import {
   ChurchAccessError,
   getAuthenticatedUserWithChurch,
 } from "@/lib/church/auth";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
 import { listCertificationsForChurch } from "@/lib/certifications/queries";
 import {
   certificationStatusLabel,
@@ -153,6 +154,8 @@ async function CertificationsWrapper({
   try {
     return <CertificationsContent created={created} />;
   } catch (error) {
+    rethrowOrRedirectForChurchAccess(error);
+
     const message =
       error instanceof ChurchAccessError
         ? error.message

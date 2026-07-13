@@ -13,45 +13,97 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
+import {
+  MIN_PASSWORD_LENGTH,
+  validateEmail,
+  validatePassword,
+  validatePasswordConfirmation,
+} from "@/lib/auth/validation";
 
 export function SignUpForm({
   className,
   ...props
 }: React.ComponentPropsWithoutRef<"div">) {
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [repeatPassword, setRepeatPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    password?: string;
+    confirmPassword?: string;
+  }>({});
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextPath = searchParams.get("next");
+
+  const safeNext =
+    nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//")
+      ? nextPath
+      : "/dashboard";
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    const supabase = createClient();
-    setIsLoading(true);
     setError(null);
 
-    if (password !== repeatPassword) {
-      setError("Passwords do not match");
-      setIsLoading(false);
+    const trimmedFirst = firstName.trim();
+    const trimmedLast = lastName.trim();
+
+    const nextFieldErrors = {
+      firstName: trimmedFirst ? undefined : "First name is required.",
+      lastName: trimmedLast ? undefined : "Last name is required.",
+      email: validateEmail(email) ?? undefined,
+      password: validatePassword(password) ?? undefined,
+      confirmPassword:
+        validatePasswordConfirmation(password, confirmPassword) ?? undefined,
+    };
+    setFieldErrors(nextFieldErrors);
+    if (Object.values(nextFieldErrors).some(Boolean)) {
       return;
     }
 
+    const supabase = createClient();
+    setIsLoading(true);
+
     try {
-      const { error } = await supabase.auth.signUp({
-        email,
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email: email.trim(),
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/confirm?next=/dashboard`,
+          emailRedirectTo: `${window.location.origin}/auth/confirm?next=${encodeURIComponent(safeNext)}`,
+          data: {
+            first_name: trimmedFirst,
+            last_name: trimmedLast,
+            full_name: `${trimmedFirst} ${trimmedLast}`,
+          },
         },
       });
-      if (error) throw error;
-      router.push("/auth/sign-up-success");
-    } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "An error occurred");
+      if (signUpError) throw signUpError;
+
+      // If email confirmation is disabled, session exists — continue to next.
+      if (data.session) {
+        router.push(safeNext);
+        router.refresh();
+        return;
+      }
+
+      router.push(
+        `/auth/sign-up-success?next=${encodeURIComponent(safeNext)}`,
+      );
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to create your account. Please try again.",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -68,51 +120,95 @@ export function SignUpForm({
             wordmarkClassName="text-xl font-semibold"
           />
           <div className="space-y-1.5">
-            <CardTitle className="text-2xl">Sign up</CardTitle>
-            <CardDescription>Create a new account</CardDescription>
+            <CardTitle className="text-2xl">Create an account</CardTitle>
+            <CardDescription>
+              Register with your email to access Sanctuary Protected
+            </CardDescription>
           </div>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSignUp}>
+          <form onSubmit={handleSignUp} noValidate>
             <div className="flex flex-col gap-6">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="first_name">First name</Label>
+                  <Input
+                    id="first_name"
+                    autoComplete="given-name"
+                    value={firstName}
+                    aria-invalid={!!fieldErrors.firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                  />
+                  {fieldErrors.firstName && (
+                    <p className="text-sm text-red-500">{fieldErrors.firstName}</p>
+                  )}
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="last_name">Last name</Label>
+                  <Input
+                    id="last_name"
+                    autoComplete="family-name"
+                    value={lastName}
+                    aria-invalid={!!fieldErrors.lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                  />
+                  {fieldErrors.lastName && (
+                    <p className="text-sm text-red-500">{fieldErrors.lastName}</p>
+                  )}
+                </div>
+              </div>
               <div className="grid gap-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="m@example.com"
-                  required
+                  autoComplete="email"
+                  placeholder="you@church.org"
                   value={email}
+                  aria-invalid={!!fieldErrors.email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
+                {fieldErrors.email && (
+                  <p className="text-sm text-red-500">{fieldErrors.email}</p>
+                )}
               </div>
               <div className="grid gap-2">
-                <div className="flex items-center">
-                  <Label htmlFor="password">Password</Label>
-                </div>
+                <Label htmlFor="password">Password</Label>
                 <Input
                   id="password"
                   type="password"
-                  required
+                  autoComplete="new-password"
                   value={password}
+                  aria-invalid={!!fieldErrors.password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
+                {fieldErrors.password ? (
+                  <p className="text-sm text-red-500">{fieldErrors.password}</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    At least {MIN_PASSWORD_LENGTH} characters.
+                  </p>
+                )}
               </div>
               <div className="grid gap-2">
-                <div className="flex items-center">
-                  <Label htmlFor="repeat-password">Repeat Password</Label>
-                </div>
+                <Label htmlFor="confirm-password">Confirm password</Label>
                 <Input
-                  id="repeat-password"
+                  id="confirm-password"
                   type="password"
-                  required
-                  value={repeatPassword}
-                  onChange={(e) => setRepeatPassword(e.target.value)}
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  aria-invalid={!!fieldErrors.confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
                 />
+                {fieldErrors.confirmPassword && (
+                  <p className="text-sm text-red-500">
+                    {fieldErrors.confirmPassword}
+                  </p>
+                )}
               </div>
               {error && <p className="text-sm text-red-500">{error}</p>}
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Creating an account..." : "Sign up"}
+                {isLoading ? "Creating account..." : "Create account"}
               </Button>
             </div>
             <div className="mt-4 text-center text-sm">

@@ -11,6 +11,7 @@ import {
   ChurchAccessError,
   getAuthenticatedUserWithChurch,
 } from "@/lib/church/auth";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
 import { getCertificationCounts } from "@/lib/certifications/queries";
 import { listIncidentsForChurch } from "@/lib/incidents/queries";
 import { getUnacknowledgedEventCount } from "@/lib/events/queries";
@@ -99,6 +100,8 @@ async function DashboardWrapper() {
   try {
     return await DashboardContent();
   } catch (error) {
+    rethrowOrRedirectForChurchAccess(error);
+
     const message =
       error instanceof ChurchAccessError
         ? error.message

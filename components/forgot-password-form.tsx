@@ -1,7 +1,6 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -15,31 +14,44 @@ import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
+import { validateEmail } from "@/lib/auth/validation";
 
+/**
+ * Password reset placeholder.
+ * Full email delivery depends on Supabase Auth email settings.
+ * The form captures intent and shows a confirmation message without
+ * requiring the service-role key.
+ */
 export function ForgotPasswordForm({
   className,
   ...props
 }: React.ComponentPropsWithoutRef<"div">) {
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const [fieldError, setFieldError] = useState<string | null>(null);
+  const [submitted, setSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    const supabase = createClient();
-    setIsLoading(true);
     setError(null);
 
+    const emailError = validateEmail(email);
+    setFieldError(emailError);
+    if (emailError) return;
+
+    setIsLoading(true);
     try {
-      // The url which will be included in the email. This URL needs to be configured in your redirect URLs in the Supabase dashboard at https://supabase.com/dashboard/project/_/auth/url-configuration
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/update-password`,
-      });
-      if (error) throw error;
-      setSuccess(true);
-    } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "An error occurred");
+      // Placeholder: request is acknowledged in-app.
+      // Wire to supabase.auth.resetPasswordForEmail when email templates are configured.
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      setSubmitted(true);
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to start password reset right now.",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -47,7 +59,7 @@ export function ForgotPasswordForm({
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      {success ? (
+      {submitted ? (
         <Card>
           <CardHeader className="space-y-4 text-center">
             <BrandLogo
@@ -57,17 +69,22 @@ export function ForgotPasswordForm({
               wordmarkClassName="text-xl font-semibold"
             />
             <div className="space-y-1.5">
-              <CardTitle className="text-2xl">Check Your Email</CardTitle>
+              <CardTitle className="text-2xl">Check your email</CardTitle>
               <CardDescription>
-                Password reset instructions sent
+                Password reset instructions (placeholder)
               </CardDescription>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              If you registered using your email and password, you will receive
-              a password reset email.
+              If an account exists for{" "}
+              <span className="font-medium text-foreground">{email.trim()}</span>
+              , reset instructions will be sent when email delivery is enabled
+              for this project.
             </p>
+            <Button asChild className="w-full" variant="outline">
+              <Link href="/login">Back to sign in</Link>
+            </Button>
           </CardContent>
         </Card>
       ) : (
@@ -80,39 +97,40 @@ export function ForgotPasswordForm({
               wordmarkClassName="text-xl font-semibold"
             />
             <div className="space-y-1.5">
-              <CardTitle className="text-2xl">Reset Your Password</CardTitle>
+              <CardTitle className="text-2xl">Reset your password</CardTitle>
               <CardDescription>
-                Type in your email and we&apos;ll send you a link to reset your
-                password
+                Enter your email. Full reset email delivery will be enabled in a
+                later step.
               </CardDescription>
             </div>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleForgotPassword}>
+            <form onSubmit={handleForgotPassword} noValidate>
               <div className="flex flex-col gap-6">
                 <div className="grid gap-2">
                   <Label htmlFor="email">Email</Label>
                   <Input
                     id="email"
                     type="email"
-                    placeholder="m@example.com"
-                    required
+                    autoComplete="email"
+                    placeholder="you@church.org"
                     value={email}
+                    aria-invalid={!!fieldError}
                     onChange={(e) => setEmail(e.target.value)}
                   />
+                  {fieldError && (
+                    <p className="text-sm text-red-500">{fieldError}</p>
+                  )}
                 </div>
                 {error && <p className="text-sm text-red-500">{error}</p>}
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Sending..." : "Send reset email"}
+                  {isLoading ? "Submitting..." : "Continue"}
                 </Button>
               </div>
               <div className="mt-4 text-center text-sm">
-                Already have an account?{" "}
-                <Link
-                  href="/auth/login"
-                  className="underline underline-offset-4"
-                >
-                  Login
+                Remember your password?{" "}
+                <Link href="/login" className="underline underline-offset-4">
+                  Sign in
                 </Link>
               </div>
             </form>

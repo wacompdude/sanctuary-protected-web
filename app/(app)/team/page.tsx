@@ -8,63 +8,167 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { TeamMembersTable } from "@/components/team/team-members-table";
 import {
   ChurchAccessError,
   getAuthenticatedUserWithChurch,
 } from "@/lib/church/auth";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
+import {
+  canInviteMembers,
+  labelForMembershipRole,
+} from "@/lib/church/invitations";
+import { canManageTeamMemberships } from "@/lib/church/team";
+import { listChurchTeamMemberships } from "@/lib/church/team-queries";
 import { listTeamMembersForChurch } from "@/lib/certifications/queries";
-import { Plus } from "lucide-react";
+import { RevokeInvitationButton } from "@/components/team/revoke-invitation-button";
+import { MailPlus, Plus } from "lucide-react";
+
+type PendingInvitation = {
+  id: string;
+  email: string;
+  role: string;
+  expires_at: string;
+  created_at: string;
+};
 
 async function TeamContent({ created }: { created?: string }) {
-  const { church, canManageCertifications } =
+  const { supabase, user, church, canManageCertifications, membership } =
     await getAuthenticatedUserWithChurch();
-  const members = await listTeamMembersForChurch(church.id);
+  const certContacts = await listTeamMembersForChurch(church.id);
+  const canInvite = canInviteMembers(membership.role);
+  const canManage = canManageTeamMemberships(membership.role);
+  const churchMembers = await listChurchTeamMemberships(church.id);
+
+  let pendingInvites: PendingInvitation[] = [];
+  if (canInvite) {
+    const { data: invites } = await supabase
+      .from("church_invitations")
+      .select("id, email, role, expires_at, created_at")
+      .eq("church_id", church.id)
+      .is("accepted_at", null)
+      .is("revoked_at", null)
+      .gt("expires_at", new Date().toISOString())
+      .order("created_at", { ascending: false });
+    pendingInvites = (invites ?? []) as PendingInvitation[];
+  }
 
   return (
     <>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Team Members</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Team</h1>
           <p className="mt-1 text-muted-foreground">
-            People who can hold certifications for {church.name}.
+            Manage memberships and certification contacts for {church.name}.
           </p>
         </div>
-        {canManageCertifications ? (
-          <Button asChild>
-            <Link href="/team/new">
-              <Plus className="h-4 w-4" />
-              Add Team Member
-            </Link>
-          </Button>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            Viewing only. Administrators and security leaders can add team
-            members.
-          </p>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {canInvite && (
+            <Button asChild>
+              <Link href="/team/invite">
+                <MailPlus className="h-4 w-4" />
+                Invite member
+              </Link>
+            </Button>
+          )}
+          {canManageCertifications ? (
+            <Button variant="outline" asChild>
+              <Link href="/team/new">
+                <Plus className="h-4 w-4" />
+                Add certification contact
+              </Link>
+            </Button>
+          ) : null}
+        </div>
       </div>
+
+      {!canManage && (
+        <p className="text-sm text-muted-foreground">
+          Viewing only. Owners, administrators, and security leaders can manage
+          memberships within their permissions.
+        </p>
+      )}
 
       {created === "1" && (
         <p className="rounded-md border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm text-green-700 dark:text-green-400">
-          Team member added successfully.
+          Certification contact added successfully.
         </p>
       )}
 
       <Card>
         <CardHeader>
-          <CardTitle>Active members</CardTitle>
+          <CardTitle>Church members</CardTitle>
           <CardDescription>
-            {members.length} member{members.length === 1 ? "" : "s"}
+            {churchMembers.length} membership
+            {churchMembers.length === 1 ? "" : "s"} (active, suspended, and
+            removed). Memberships are never hard-deleted.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {members.length === 0 ? (
+          <TeamMembersTable
+            members={churchMembers}
+            actorRole={membership.role}
+            actorUserId={user.id}
+          />
+        </CardContent>
+      </Card>
+
+      {canInvite && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Pending invitations</CardTitle>
+            <CardDescription>
+              {pendingInvites.length} open invitation
+              {pendingInvites.length === 1 ? "" : "s"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {pendingInvites.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No pending invitations.
+              </p>
+            ) : (
+              <ul className="divide-y divide-border">
+                {pendingInvites.map((invite) => (
+                  <li
+                    key={invite.id}
+                    className="flex flex-wrap items-center justify-between gap-2 py-3 first:pt-0 last:pb-0"
+                  >
+                    <div>
+                      <p className="font-medium">{invite.email}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {labelForMembershipRole(invite.role)} · expires{" "}
+                        {new Date(invite.expires_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <RevokeInvitationButton
+                      invitationId={invite.id}
+                      email={invite.email}
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Certification contacts</CardTitle>
+          <CardDescription>
+            {certContacts.length} contact
+            {certContacts.length === 1 ? "" : "s"} who can hold certifications
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {certContacts.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No team members yet.
+              No certification contacts yet.
             </p>
           ) : (
             <ul className="divide-y divide-border">
-              {members.map((member) => (
+              {certContacts.map((member) => (
                 <li
                   key={member.id}
                   className="flex flex-wrap items-center justify-between gap-2 py-3 first:pt-0 last:pb-0"
@@ -106,6 +210,8 @@ async function TeamWrapper({
   try {
     return <TeamContent created={created} />;
   } catch (error) {
+    rethrowOrRedirectForChurchAccess(error);
+
     const message =
       error instanceof ChurchAccessError
         ? error.message
@@ -117,10 +223,12 @@ async function TeamWrapper({
       <Card>
         <CardContent className="py-8">
           <p className="text-sm text-destructive">{message}</p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Run <code>supabase/migrations/006_certifications.sql</code> in the
-            Supabase SQL Editor if tables are missing.
-          </p>
+          {message.includes("015_team_management") && (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Run <code>supabase/migrations/015_team_management.sql</code> in
+              the Supabase SQL Editor.
+            </p>
+          )}
         </CardContent>
       </Card>
     );

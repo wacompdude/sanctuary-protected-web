@@ -85,7 +85,7 @@ export function LandingPage() {
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link
-                  href="/auth/sign-up"
+                  href="/register"
                   className="rounded-md bg-white px-5 py-3 text-sm font-semibold text-[var(--lp-forest)] transition hover:bg-[var(--lp-mist)]"
                 >
                   Start protecting your campus
@@ -159,7 +159,7 @@ export function LandingPage() {
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link
-              href="/auth/sign-up"
+              href="/register"
               className="rounded-md bg-[var(--lp-forest)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#163028]"
             >
               Create an account

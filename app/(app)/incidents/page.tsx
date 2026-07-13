@@ -5,6 +5,7 @@ import {
   getAuthenticatedUserWithChurch,
   listIncidentsForChurch,
 } from "@/lib/incidents/queries";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
 import { formatDateTime, formatIncidentId, labelForEnum } from "@/lib/incidents/format";
 import { INCIDENT_TYPES } from "@/lib/incidents/constants";
 import { Button } from "@/components/ui/button";
@@ -205,6 +206,8 @@ async function IncidentsListWrapper() {
   try {
     return <IncidentsList />;
   } catch (error) {
+    rethrowOrRedirectForChurchAccess(error);
+
     const message =
       error instanceof ChurchAccessError
         ? error.message

@@ -6,6 +6,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { BrandLogo } from "@/components/brand-logo";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 export default function Page() {
   return (
@@ -21,17 +23,20 @@ export default function Page() {
                 wordmarkClassName="text-xl font-semibold"
               />
               <div className="space-y-1.5">
-                <CardTitle className="text-2xl">
-                  Thank you for signing up!
-                </CardTitle>
-                <CardDescription>Check your email to confirm</CardDescription>
+                <CardTitle className="text-2xl">Check your email</CardTitle>
+                <CardDescription>
+                  Confirm your account to finish registration
+                </CardDescription>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                You&apos;ve successfully signed up. Please check your email to
-                confirm your account before signing in.
+                We created your account. Open the confirmation link in your
+                email, then sign in to continue to your dashboard.
               </p>
+              <Button asChild className="w-full" variant="outline">
+                <Link href="/login">Go to sign in</Link>
+              </Button>
             </CardContent>
           </Card>
         </div>

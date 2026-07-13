@@ -6,6 +6,7 @@ import {
   getAuthenticatedUserWithChurch,
   getIncidentWithUpdates,
 } from "@/lib/incidents/queries";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
 import {
   formatDateTime,
   formatIncidentId,
@@ -160,6 +161,8 @@ async function IncidentDetailWrapper({
   try {
     return <IncidentDetailContent id={id} created={created} />;
   } catch (error) {
+    rethrowOrRedirectForChurchAccess(error);
+
     if (error instanceof ChurchAccessError) {
       return (
         <Card>

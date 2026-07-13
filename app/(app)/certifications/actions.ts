@@ -8,6 +8,8 @@ import {
   parseCreateCertificationInput,
   validateCreateCertificationInput,
 } from "@/lib/certifications/validation";
+import { AuditAction, AuditEntityType } from "@/lib/audit/actions";
+import { getRequestIpAddress, writeAuditLog } from "@/lib/audit/log";
 
 export async function createCertification(
   _prevState: ActionState,
@@ -42,22 +44,40 @@ export async function createCertification(
       return { error: "Selected team member was not found for your church." };
     }
 
-    const { error: insertError } = await supabase.from("certifications").insert({
-      church_id: profile.church_id,
-      team_member_id: input.team_member_id,
-      certification_type: input.certification_type,
-      issuer: input.issuer,
-      issue_date: input.issue_date,
-      expiration_date: input.expiration_date,
-      certificate_number: input.certificate_number,
-      created_by: user.id,
-      // Legacy column on existing certifications tables
-      user_id: user.id,
-    });
+    const { data: certification, error: insertError } = await supabase
+      .from("certifications")
+      .insert({
+        church_id: profile.church_id,
+        team_member_id: input.team_member_id,
+        certification_type: input.certification_type,
+        issuer: input.issuer,
+        issue_date: input.issue_date,
+        expiration_date: input.expiration_date,
+        certificate_number: input.certificate_number,
+        created_by: user.id,
+        user_id: user.id,
+      })
+      .select("id")
+      .single();
 
     if (insertError) {
       return { error: insertError.message };
     }
+
+    await writeAuditLog(supabase, {
+      churchId: profile.church_id,
+      userId: user.id,
+      action: AuditAction.CERTIFICATION_CREATED,
+      entityType: AuditEntityType.CERTIFICATION,
+      entityId: certification?.id ?? null,
+      metadata: {
+        team_member_id: input.team_member_id,
+        certification_type: input.certification_type,
+        issuer: input.issuer,
+        expiration_date: input.expiration_date,
+      },
+      ipAddress: await getRequestIpAddress(),
+    });
   } catch (error) {
     return {
       error:

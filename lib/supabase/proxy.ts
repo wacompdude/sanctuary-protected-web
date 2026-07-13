@@ -1,6 +1,10 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { isProtectedPath, isPublicPath } from "@/lib/auth/routes";
+import {
+  isAuthEntryPath,
+  isProtectedPath,
+  isPublicPath,
+} from "@/lib/auth/routes";
 import { getSupabaseAnonKey, getSupabaseUrl, hasEnvVars } from "./env";
 
 export async function updateSession(request: NextRequest) {
@@ -32,11 +36,13 @@ export async function updateSession(request: NextRequest) {
       },
     });
 
-    const { data } = await supabase.auth.getClaims();
-    const user = data?.claims;
+    // Refresh the session cookie before reading the user.
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     const { pathname } = request.nextUrl;
 
-    if (user && pathname === "/login") {
+    if (user && isAuthEntryPath(pathname)) {
       const url = request.nextUrl.clone();
       url.pathname = "/dashboard";
       return NextResponse.redirect(url);
@@ -45,6 +51,8 @@ export async function updateSession(request: NextRequest) {
     if (!user && isProtectedPath(pathname)) {
       const url = request.nextUrl.clone();
       url.pathname = "/login";
+      const next = `${pathname}${request.nextUrl.search}`;
+      url.searchParams.set("next", next);
       return NextResponse.redirect(url);
     }
 

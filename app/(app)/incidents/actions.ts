@@ -13,6 +13,8 @@ import {
   validateCreateIncidentInput,
   validateIncidentUpdateInput,
 } from "@/lib/incidents/validation";
+import { AuditAction, AuditEntityType } from "@/lib/audit/actions";
+import { getRequestIpAddress, writeAuditLog } from "@/lib/audit/log";
 
 export async function createIncident(
   _prevState: ActionState,
@@ -63,6 +65,20 @@ export async function createIncident(
     if (updateError) {
       return { error: updateError.message };
     }
+
+    await writeAuditLog(supabase, {
+      churchId: profile.church_id,
+      userId: user.id,
+      action: AuditAction.INCIDENT_CREATED,
+      entityType: AuditEntityType.INCIDENT,
+      entityId: incident.id,
+      metadata: {
+        type: input.type,
+        severity: input.severity,
+        status: "open",
+      },
+      ipAddress: await getRequestIpAddress(),
+    });
   } catch (error) {
     return {
       error:
@@ -129,6 +145,21 @@ export async function addIncidentUpdate(
     if (updateError) {
       return { error: updateError.message };
     }
+
+    await writeAuditLog(supabase, {
+      churchId: profile.church_id,
+      userId: user.id,
+      action: AuditAction.INCIDENT_UPDATED,
+      entityType: AuditEntityType.INCIDENT,
+      entityId: incidentId,
+      metadata: {
+        status_changed: statusChanged,
+        previous_status: statusChanged ? previousStatus : undefined,
+        new_status: statusChanged ? nextStatus : undefined,
+        update_type: statusChanged ? "status_change" : "comment",
+      },
+      ipAddress: await getRequestIpAddress(),
+    });
 
     revalidatePath(`/incidents/${incidentId}`);
     revalidatePath("/incidents");

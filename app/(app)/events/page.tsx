@@ -14,6 +14,7 @@ import {
   ChurchAccessError,
   getAuthenticatedUserWithChurch,
 } from "@/lib/church/auth";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
 import { listEventsForChurch } from "@/lib/events/queries";
 import { EVENT_TYPES } from "@/lib/events/types";
 import { Plus } from "lucide-react";
@@ -177,6 +178,8 @@ async function EventsWrapper() {
   try {
     return <EventsContent />;
   } catch (error) {
+    rethrowOrRedirectForChurchAccess(error);
+
     const message =
       error instanceof ChurchAccessError
         ? error.message

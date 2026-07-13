@@ -1,11 +1,6 @@
-import { SignUpForm } from "@/components/sign-up-form";
+import { redirect } from "next/navigation";
 
+/** Legacy starter path — keep for bookmarks and emails. */
 export default function Page() {
-  return (
-    <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
-      <div className="w-full max-w-sm">
-        <SignUpForm />
-      </div>
-    </div>
-  );
+  redirect("/register");
 }

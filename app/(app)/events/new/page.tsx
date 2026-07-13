@@ -7,6 +7,7 @@ import {
   ChurchAccessError,
   getAuthenticatedUserWithChurch,
 } from "@/lib/church/auth";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
 import { ArrowLeft } from "lucide-react";
 
 async function NewEventContent() {
@@ -46,6 +47,8 @@ async function NewEventWrapper() {
   try {
     return <NewEventContent />;
   } catch (error) {
+    rethrowOrRedirectForChurchAccess(error);
+
     const message =
       error instanceof ChurchAccessError
         ? error.message

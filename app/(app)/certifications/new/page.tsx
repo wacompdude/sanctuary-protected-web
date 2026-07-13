@@ -10,6 +10,7 @@ import {
   ChurchAccessError,
   getAuthenticatedUserWithChurch,
 } from "@/lib/church/auth";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
 import { listTeamMembersForChurch } from "@/lib/certifications/queries";
 import { ArrowLeft } from "lucide-react";
 
@@ -63,6 +64,8 @@ async function NewCertificationWrapper() {
   try {
     return <NewCertificationContent />;
   } catch (error) {
+    rethrowOrRedirectForChurchAccess(error);
+
     const message =
       error instanceof ChurchAccessError
         ? error.message

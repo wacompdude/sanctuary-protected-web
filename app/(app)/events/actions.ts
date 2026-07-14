@@ -1,14 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getAuthenticatedUserWithChurch } from "@/lib/church/auth";
+import { getOperationalChurchContext } from "@/lib/church/auth";
 import type { ActionState } from "@/lib/church/types";
 
 export async function acknowledgeEvent(
   eventId: string,
 ): Promise<ActionState> {
   try {
-    const { supabase, user, profile } = await getAuthenticatedUserWithChurch();
+    const { supabase, user, profile } = await getOperationalChurchContext();
 
     const { data: event, error: fetchError } = await supabase
       .from("events")
@@ -55,7 +55,7 @@ export async function createTestEvent(
 ): Promise<ActionState> {
   try {
     const { supabase, profile, canManageCertifications } =
-      await getAuthenticatedUserWithChurch();
+      await getOperationalChurchContext();
 
     if (!canManageCertifications) {
       return {

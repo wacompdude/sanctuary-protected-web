@@ -23,7 +23,13 @@ import { selectClassName, textareaClassName } from "./incident-badges";
 
 const initialState: ActionState = {};
 
-export function NewIncidentForm() {
+export function NewIncidentForm({
+  requireLocation = true,
+  requireSeverity = true,
+}: {
+  requireLocation?: boolean;
+  requireSeverity?: boolean;
+}) {
   const router = useRouter();
   const [occurredAt, setOccurredAt] = useState("");
   const [state, formAction, pending] = useActionState(
@@ -89,15 +95,18 @@ export function NewIncidentForm() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="severity">Severity</Label>
+              <Label htmlFor="severity">
+                Severity{requireSeverity ? "" : " (optional)"}
+              </Label>
               <select
                 id="severity"
                 name="severity"
                 defaultValue=""
                 className={selectClassName}
                 aria-invalid={!!state.fieldErrors?.severity}
+                required={requireSeverity}
               >
-                <option value="" disabled>
+                <option value="" disabled={requireSeverity}>
                   Select severity
                 </option>
                 {INCIDENT_SEVERITIES.map((option) => (
@@ -115,12 +124,15 @@ export function NewIncidentForm() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="location">Location</Label>
+            <Label htmlFor="location">
+              Location{requireLocation ? "" : " (optional)"}
+            </Label>
             <Input
               id="location"
               name="location"
               placeholder="e.g. North Gate, Building A"
               aria-invalid={!!state.fieldErrors?.location}
+              required={requireLocation}
             />
             {state.fieldErrors?.location && (
               <p className="text-sm text-destructive">

@@ -1,5 +1,11 @@
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { ChurchAccessError } from "@/lib/church/errors";
+import {
+  isChurchOperationallyLocked,
+  isChurchRecoveryPath,
+} from "@/lib/church/operations";
+import type { ChurchStatus } from "@/lib/church/types";
 
 /** True when Next.js redirect()/notFound() threw and must be rethrown. */
 export function isNextControlFlowError(error: unknown): boolean {
@@ -29,5 +35,36 @@ export function rethrowOrRedirectForChurchAccess(error: unknown): void {
     error.code === "NO_ACTIVE_MEMBERSHIP"
   ) {
     redirect("/onboarding/church");
+  }
+
+  if (
+    error instanceof ChurchAccessError &&
+    error.code === "CHURCH_SUSPENDED"
+  ) {
+    redirect("/settings/church/danger");
+  }
+}
+
+/** Redirect owners of locked churches away from operational pages. */
+export async function enforceChurchOperationalAccess(
+  status: ChurchStatus | string | null | undefined,
+): Promise<void> {
+  if (!isChurchOperationallyLocked(status)) return;
+
+  const headerStore = await headers();
+  const pathname =
+    headerStore.get("x-pathname") ||
+    headerStore.get("x-invoke-path") ||
+    headerStore.get("next-url") ||
+    "";
+
+  // When pathname is unavailable, prefer soft banner-only (caller still uses
+  // requireOperationalChurch on write actions). Redirect home-like entries.
+  if (!pathname || pathname === "/home" || pathname === "/dashboard") {
+    redirect("/settings/church/danger");
+  }
+
+  if (!isChurchRecoveryPath(pathname)) {
+    redirect("/settings/church/danger");
   }
 }

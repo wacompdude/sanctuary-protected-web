@@ -86,6 +86,6 @@ export async function createChurchOnboarding(
 
   revalidatePath("/", "layout");
   revalidatePath("/select-church");
-  revalidatePath("/dashboard");
-  redirect("/dashboard");
+  revalidatePath("/home");
+  redirect("/home");
 }

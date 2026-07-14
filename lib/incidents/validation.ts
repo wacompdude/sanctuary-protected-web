@@ -9,7 +9,23 @@ function isNonEmptyString(value: FormDataEntryValue | null): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 
-export function validateCreateIncidentInput(formData: FormData): ActionState {
+export type CreateIncidentValidationOptions = {
+  requireLocation?: boolean;
+  requireSeverity?: boolean;
+};
+
+export type IncidentUpdateValidationOptions = {
+  requireFollowUpNotes?: boolean;
+  nextStatus?: string | null;
+  closingStatuses?: string[];
+};
+
+export function validateCreateIncidentInput(
+  formData: FormData,
+  options: CreateIncidentValidationOptions = {},
+): ActionState {
+  const requireLocation = options.requireLocation !== false;
+  const requireSeverity = options.requireSeverity !== false;
   const fieldErrors: Record<string, string> = {};
 
   const title = formData.get("title");
@@ -29,16 +45,27 @@ export function validateCreateIncidentInput(formData: FormData): ActionState {
     fieldErrors.type = "A valid incident type is required.";
   }
 
-  if (
-    !isNonEmptyString(severity) ||
+  if (requireSeverity) {
+    if (
+      !isNonEmptyString(severity) ||
+      !INCIDENT_SEVERITY_SET.has(severity as never)
+    ) {
+      fieldErrors.severity = "A valid severity is required.";
+    }
+  } else if (
+    isNonEmptyString(severity) &&
     !INCIDENT_SEVERITY_SET.has(severity as never)
   ) {
     fieldErrors.severity = "A valid severity is required.";
   }
 
-  if (!isNonEmptyString(location)) {
-    fieldErrors.location = "Location is required.";
-  } else if (location.trim().length > 200) {
+  if (requireLocation) {
+    if (!isNonEmptyString(location)) {
+      fieldErrors.location = "Location is required.";
+    } else if (location.trim().length > 200) {
+      fieldErrors.location = "Location must be 200 characters or fewer.";
+    }
+  } else if (isNonEmptyString(location) && location.trim().length > 200) {
     fieldErrors.location = "Location must be 200 characters or fewer.";
   }
 
@@ -48,10 +75,7 @@ export function validateCreateIncidentInput(formData: FormData): ActionState {
     fieldErrors.occurred_at = "Occurred date and time is invalid.";
   }
 
-  if (
-    typeof description === "string" &&
-    description.trim().length > 5000
-  ) {
+  if (typeof description === "string" && description.trim().length > 5000) {
     fieldErrors.description = "Description must be 5000 characters or fewer.";
   }
 
@@ -62,7 +86,10 @@ export function validateCreateIncidentInput(formData: FormData): ActionState {
   return {};
 }
 
-export function validateIncidentUpdateInput(formData: FormData): ActionState {
+export function validateIncidentUpdateInput(
+  formData: FormData,
+  options: IncidentUpdateValidationOptions = {},
+): ActionState {
   const fieldErrors: Record<string, string> = {};
   const content = formData.get("content");
   const status = formData.get("status");
@@ -91,6 +118,18 @@ export function validateIncidentUpdateInput(formData: FormData): ActionState {
     fieldErrors.status = "Status is invalid.";
   }
 
+  const closingStatuses = options.closingStatuses ?? ["resolved", "closed"];
+  const nextStatus = options.nextStatus ?? (hasStatus ? String(status) : null);
+  if (
+    options.requireFollowUpNotes &&
+    nextStatus &&
+    closingStatuses.includes(nextStatus) &&
+    !hasContent
+  ) {
+    fieldErrors.content =
+      "Follow-up notes are required when resolving or closing an incident.";
+  }
+
   if (Object.keys(fieldErrors).length > 0) {
     return { fieldErrors, error: "Please fix the highlighted fields." };
   }
@@ -99,11 +138,15 @@ export function validateIncidentUpdateInput(formData: FormData): ActionState {
 }
 
 export function parseCreateIncidentInput(formData: FormData) {
+  const severityRaw = formData.get("severity");
+  const locationRaw = formData.get("location");
   return {
     title: (formData.get("title") as string).trim(),
     type: formData.get("type") as string,
-    severity: formData.get("severity") as string,
-    location: (formData.get("location") as string).trim(),
+    severity: isNonEmptyString(severityRaw)
+      ? severityRaw
+      : "medium",
+    location: isNonEmptyString(locationRaw) ? locationRaw.trim() : "Unspecified",
     description: ((formData.get("description") as string) || "").trim(),
     occurred_at: new Date(formData.get("occurred_at") as string).toISOString(),
   };

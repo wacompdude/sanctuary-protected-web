@@ -21,6 +21,7 @@ import {
 import { canManageTeamMemberships } from "@/lib/church/team";
 import { listChurchTeamMemberships } from "@/lib/church/team-queries";
 import { listTeamMembersForChurch } from "@/lib/certifications/queries";
+import { ResendInvitationButton } from "@/components/team/resend-invitation-button";
 import { RevokeInvitationButton } from "@/components/team/revoke-invitation-button";
 import { MailPlus, Plus } from "lucide-react";
 
@@ -141,10 +142,16 @@ async function TeamContent({ created }: { created?: string }) {
                         {new Date(invite.expires_at).toLocaleDateString()}
                       </p>
                     </div>
-                    <RevokeInvitationButton
-                      invitationId={invite.id}
-                      email={invite.email}
-                    />
+                    <div className="flex flex-wrap items-start justify-end gap-2">
+                      <ResendInvitationButton
+                        invitationId={invite.id}
+                        email={invite.email}
+                      />
+                      <RevokeInvitationButton
+                        invitationId={invite.id}
+                        email={invite.email}
+                      />
+                    </div>
                   </li>
                 ))}
               </ul>

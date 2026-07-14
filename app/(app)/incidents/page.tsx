@@ -6,8 +6,9 @@ import {
   listIncidentsForChurch,
 } from "@/lib/incidents/queries";
 import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
-import { formatDateTime, formatIncidentId, labelForEnum } from "@/lib/incidents/format";
+import { formatDateTime, formatIncidentId, labelForEnum, resolveIncidentListSort } from "@/lib/incidents/format";
 import { INCIDENT_TYPES } from "@/lib/incidents/constants";
+import { parseAppPreferences } from "@/lib/church/settings";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -23,11 +24,18 @@ import {
 import { Plus } from "lucide-react";
 
 async function IncidentsList() {
-  const { church } = await getAuthenticatedUserWithChurch();
+  const { church, supabase } = await getAuthenticatedUserWithChurch();
+  const { data: settingsRow } = await supabase
+    .from("churches")
+    .select("settings")
+    .eq("id", church.id)
+    .maybeSingle();
+  const preferences = parseAppPreferences(settingsRow?.settings);
+  const sort = resolveIncidentListSort(preferences);
   let incidents;
 
   try {
-    incidents = await listIncidentsForChurch(church.id);
+    incidents = await listIncidentsForChurch(church.id, sort);
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Unable to load incidents.";
@@ -147,7 +155,7 @@ async function IncidentsList() {
                         <IncidentStatusBadge status={incident.status} />
                       </td>
                       <td className="py-3 text-muted-foreground">
-                        {formatDateTime(incident.occurred_at)}
+                        {formatDateTime(incident.occurred_at, preferences)}
                       </td>
                     </tr>
                   ))}

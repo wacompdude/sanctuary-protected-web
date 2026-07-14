@@ -26,6 +26,7 @@ CREATE POLICY "Members can insert audit logs"
 
 -- Read access for administrators and owners only (nav is not authorization).
 DROP POLICY IF EXISTS "Members can read audit logs" ON public.audit_logs;
+DROP POLICY IF EXISTS "Admins can read audit logs" ON public.audit_logs;
 CREATE POLICY "Admins can read audit logs"
   ON public.audit_logs
   FOR SELECT
@@ -47,7 +48,7 @@ CREATE OR REPLACE FUNCTION public.accept_church_invitation(p_token text)
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, extensions
 AS $$
 DECLARE
   v_user_id uuid := auth.uid();
@@ -195,3 +196,6 @@ BEGIN
   );
 END;
 $$;
+
+REVOKE ALL ON FUNCTION public.accept_church_invitation(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.accept_church_invitation(text) TO authenticated;

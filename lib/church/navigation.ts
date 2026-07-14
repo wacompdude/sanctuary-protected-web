@@ -114,7 +114,7 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
   {
     id: "church-settings",
     href: "/settings/church",
-    minRole: "administrator",
+    minRole: "security_leader",
     label: "Church settings",
   },
   {

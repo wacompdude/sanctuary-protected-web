@@ -15,7 +15,7 @@ async function ChurchOnboardingContent() {
     const { user } = await getCurrentUser();
     const memberships = await getUserMemberships(user.id);
     if (memberships.length > 0) {
-      redirect("/dashboard");
+      redirect("/home");
     }
   } catch (error) {
     if (isNextControlFlowError(error)) {

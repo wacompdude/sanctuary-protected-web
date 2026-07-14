@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getAuthenticatedUserWithChurch } from "@/lib/church/auth";
+import { getOperationalChurchContext } from "@/lib/church/auth";
 import type { ActionState } from "@/lib/church/types";
 import {
   canChangeRole,
@@ -14,7 +14,7 @@ import { getRequestIpAddress, writeAuditLog } from "@/lib/audit/log";
 
 async function loadTargetMembership(
   supabase: Awaited<
-    ReturnType<typeof getAuthenticatedUserWithChurch>
+    ReturnType<typeof getOperationalChurchContext>
   >["supabase"],
   churchId: string,
   membershipId: string,
@@ -41,7 +41,7 @@ async function loadTargetMembership(
 
 async function countActiveOwners(
   supabase: Awaited<
-    ReturnType<typeof getAuthenticatedUserWithChurch>
+    ReturnType<typeof getOperationalChurchContext>
   >["supabase"],
   churchId: string,
 ): Promise<number> {
@@ -72,7 +72,7 @@ export async function updateTeamMemberRole(
 
   try {
     const { supabase, user, church, membership } =
-      await getAuthenticatedUserWithChurch();
+      await getOperationalChurchContext();
 
     const target = await loadTargetMembership(
       supabase,
@@ -157,7 +157,7 @@ export async function updateTeamMemberStatus(
 
   try {
     const { supabase, user, church, membership } =
-      await getAuthenticatedUserWithChurch();
+      await getOperationalChurchContext();
 
     const target = await loadTargetMembership(
       supabase,

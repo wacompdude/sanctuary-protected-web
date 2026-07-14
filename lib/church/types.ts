@@ -89,3 +89,10 @@ export function isUsableChurchStatus(
 ): boolean {
   return !status || status === "trial" || status === "active";
 }
+
+/** Owner may keep context on suspended/closed churches for recovery only. */
+export function isOwnerRecoveryChurchStatus(
+  status: string | null | undefined,
+): boolean {
+  return status === "suspended" || status === "closed";
+}

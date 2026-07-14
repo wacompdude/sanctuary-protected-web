@@ -12,15 +12,54 @@ export async function auditChurchSettingsUpdated(
     churchId: string;
     userId: string;
     changedFields: string[];
+    action?:
+      | typeof AuditAction.CHURCH_SETTINGS_UPDATED
+      | typeof AuditAction.CHURCH_SETTINGS_GENERAL_UPDATED
+      | typeof AuditAction.CHURCH_SETTINGS_CONTACT_UPDATED
+      | typeof AuditAction.CHURCH_SETTINGS_ADDRESS_UPDATED
+      | typeof AuditAction.CHURCH_SETTINGS_BRANDING_UPDATED
+      | typeof AuditAction.CHURCH_SETTINGS_SECURITY_UPDATED
+      | typeof AuditAction.CHURCH_SETTINGS_PREFERENCES_UPDATED
+      | typeof AuditAction.CHURCH_LOGO_UPDATED;
   },
 ) {
   return writeAuditLog(supabase, {
     churchId: params.churchId,
     userId: params.userId,
-    action: AuditAction.CHURCH_SETTINGS_UPDATED,
+    action: params.action ?? AuditAction.CHURCH_SETTINGS_UPDATED,
     entityType: AuditEntityType.CHURCH,
     entityId: params.churchId,
     metadata: { changed_fields: params.changedFields },
+    ipAddress: await getRequestIpAddress(),
+  });
+}
+
+export async function auditChurchAccountStatusChanged(
+  supabase: SupabaseClient,
+  params: {
+    churchId: string;
+    userId: string;
+    fromStatus: string;
+    toStatus: string;
+  },
+) {
+  const action =
+    params.toStatus === "suspended"
+      ? AuditAction.CHURCH_ACCOUNT_SUSPENDED
+      : params.toStatus === "closed"
+        ? AuditAction.CHURCH_ACCOUNT_CLOSED
+        : AuditAction.CHURCH_ACCOUNT_REACTIVATED;
+
+  return writeAuditLog(supabase, {
+    churchId: params.churchId,
+    userId: params.userId,
+    action,
+    entityType: AuditEntityType.CHURCH,
+    entityId: params.churchId,
+    metadata: {
+      from_status: params.fromStatus,
+      to_status: params.toStatus,
+    },
     ipAddress: await getRequestIpAddress(),
   });
 }

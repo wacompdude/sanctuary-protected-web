@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
-import { getAuthenticatedUserWithChurch } from "@/lib/church/auth";
+import { getOperationalChurchContext } from "@/lib/church/auth";
 import {
   buildInvitationUrl,
   canInviteMembers,
@@ -29,7 +29,7 @@ export async function createChurchInvitation(
 
   try {
     const { supabase, user, church, membership } =
-      await getAuthenticatedUserWithChurch();
+      await getOperationalChurchContext();
 
     if (!canInviteMembers(membership.role)) {
       return { error: "You do not have permission to invite members." };
@@ -142,6 +142,110 @@ export async function createChurchInvitation(
   }
 }
 
+const RESEND_EXPIRATION_DAYS = 14;
+
+export async function resendChurchInvitation(
+  _prev: InviteActionState,
+  formData: FormData,
+): Promise<InviteActionState> {
+  const invitationId = String(formData.get("invitation_id") ?? "").trim();
+  if (!invitationId) {
+    return { error: "Missing invitation." };
+  }
+
+  try {
+    const { supabase, user, church, membership } =
+      await getOperationalChurchContext();
+
+    if (!canInviteMembers(membership.role)) {
+      return { error: "You do not have permission to resend invitations." };
+    }
+
+    const { data: invite, error: loadError } = await supabase
+      .from("church_invitations")
+      .select("id, email, role, accepted_at, revoked_at, expires_at")
+      .eq("id", invitationId)
+      .eq("church_id", church.id)
+      .maybeSingle();
+
+    if (loadError || !invite) {
+      return { error: "Invitation not found." };
+    }
+    if (invite.accepted_at) {
+      return { error: "This invitation was already accepted." };
+    }
+    if (invite.revoked_at) {
+      return { error: "This invitation was already revoked." };
+    }
+    if (new Date(invite.expires_at).getTime() <= Date.now()) {
+      return { error: "This invitation has expired. Create a new one instead." };
+    }
+
+    if (!isAllowedInviteRole(membership.role, invite.role)) {
+      return {
+        error: "You are not allowed to resend an invitation for that role.",
+      };
+    }
+
+    const token = generateInvitationToken();
+    const tokenHash = hashInvitationToken(token);
+    const expiresAt = new Date();
+    expiresAt.setUTCDate(expiresAt.getUTCDate() + RESEND_EXPIRATION_DAYS);
+
+    const { error: updateError } = await supabase
+      .from("church_invitations")
+      .update({
+        token_hash: tokenHash,
+        expires_at: expiresAt.toISOString(),
+      })
+      .eq("id", invitationId)
+      .eq("church_id", church.id)
+      .is("accepted_at", null)
+      .is("revoked_at", null);
+
+    if (updateError) {
+      return { error: updateError.message };
+    }
+
+    await writeAuditLog(supabase, {
+      churchId: church.id,
+      userId: user.id,
+      action: AuditAction.INVITATION_RESENT,
+      entityType: AuditEntityType.CHURCH_INVITATION,
+      entityId: invitationId,
+      metadata: {
+        email: invite.email,
+        role: invite.role,
+        expires_at: expiresAt.toISOString(),
+        expires_in_days: RESEND_EXPIRATION_DAYS,
+      },
+      ipAddress: await getRequestIpAddress(),
+    });
+
+    const headerStore = await headers();
+    const host = headerStore.get("x-forwarded-host") || headerStore.get("host");
+    const proto = headerStore.get("x-forwarded-proto") || "http";
+    const origin = host ? `${proto}://${host}` : getAppOrigin();
+    const invitationUrl = buildInvitationUrl(origin, token);
+
+    revalidatePath("/team");
+    revalidatePath("/team/invite");
+
+    return {
+      success: true,
+      invitationId,
+      invitationUrl,
+    };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unable to resend the invitation.",
+    };
+  }
+}
+
 export async function revokeChurchInvitation(
   _prev: InviteActionState,
   formData: FormData,
@@ -153,7 +257,7 @@ export async function revokeChurchInvitation(
 
   try {
     const { supabase, user, church, membership } =
-      await getAuthenticatedUserWithChurch();
+      await getOperationalChurchContext();
 
     if (!canInviteMembers(membership.role)) {
       return { error: "You do not have permission to revoke invitations." };

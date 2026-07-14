@@ -14,10 +14,12 @@ import type {
 } from "@/lib/church/types";
 import {
   canManageCertifications,
+  isOwnerRecoveryChurchStatus,
   isUsableChurchStatus,
   normalizeMembershipRole,
 } from "@/lib/church/types";
 import { hasMinRole } from "@/lib/church/navigation";
+import { isChurchOperationallyLocked } from "@/lib/church/operations";
 
 type MembershipQueryRow = {
   id: string;
@@ -79,21 +81,68 @@ export async function getCurrentUser(): Promise<CurrentUser> {
     );
   }
 
-  const { data: profile, error: profileError } = await supabase
+  // Prefer first/last when present (migrations 009+). Fall back if prod DB
+  // has not received those columns yet so the app shell still loads.
+  let profile: {
+    id: string;
+    first_name?: string | null;
+    last_name?: string | null;
+    full_name: string | null;
+  } | null = null;
+
+  const fullSelect = await supabase
     .from("profiles")
     .select("id, first_name, last_name, full_name")
     .eq("id", user.id)
     .maybeSingle();
 
-  if (profileError) {
-    const detail =
-      process.env.NODE_ENV === "development"
-        ? ` ${profileError.message}`
-        : "";
-    throw new ChurchAccessError(
-      `Unable to load your profile.${detail}`,
-      "LOAD_FAILED",
-    );
+  if (fullSelect.error) {
+    const missingNameColumns =
+      /first_name|last_name/i.test(fullSelect.error.message) &&
+      /does not exist|column/i.test(fullSelect.error.message);
+
+    if (missingNameColumns) {
+      const legacySelect = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (legacySelect.error) {
+        console.error("[getCurrentUser] profiles select failed", {
+          code: legacySelect.error.code,
+          message: legacySelect.error.message,
+          details: legacySelect.error.details,
+          hint: legacySelect.error.hint,
+        });
+        throw new ChurchAccessError(
+          `Unable to load your profile. (${legacySelect.error.message})`,
+          "LOAD_FAILED",
+        );
+      }
+
+      profile = legacySelect.data
+        ? {
+            id: legacySelect.data.id,
+            first_name: null,
+            last_name: null,
+            full_name: legacySelect.data.full_name,
+          }
+        : null;
+    } else {
+      console.error("[getCurrentUser] profiles select failed", {
+        code: fullSelect.error.code,
+        message: fullSelect.error.message,
+        details: fullSelect.error.details,
+        hint: fullSelect.error.hint,
+      });
+      throw new ChurchAccessError(
+        `Unable to load your profile. (${fullSelect.error.message})`,
+        "LOAD_FAILED",
+      );
+    }
+  } else {
+    profile = fullSelect.data;
   }
 
   if (!profile) {
@@ -113,14 +162,14 @@ export async function getCurrentUser(): Promise<CurrentUser> {
     user,
     profile: {
       id: profile.id,
-      first_name: profile.first_name,
-      last_name: profile.last_name,
+      first_name: profile.first_name ?? null,
+      last_name: profile.last_name ?? null,
       full_name: fullName,
     },
   };
 }
 
-/** All active memberships for usable (trial/active) churches. */
+/** All active memberships for usable churches, plus owner recovery for suspended/closed. */
 export async function getUserMemberships(
   userId?: string,
 ): Promise<ChurchMembershipWithChurch[]> {
@@ -135,12 +184,14 @@ export async function getUserMemberships(
     .eq("status", "active");
 
   if (membershipError) {
-    const detail =
-      process.env.NODE_ENV === "development"
-        ? ` ${membershipError.message}`
-        : "";
+    console.error("[getUserMemberships] church_memberships select failed", {
+      code: membershipError.code,
+      message: membershipError.message,
+      details: membershipError.details,
+      hint: membershipError.hint,
+    });
     throw new ChurchAccessError(
-      `Unable to load your church memberships.${detail}`,
+      `Unable to load your church memberships. (${membershipError.message})`,
       "LOAD_FAILED",
     );
   }
@@ -155,12 +206,14 @@ export async function getUserMemberships(
     .in("id", churchIds);
 
   if (churchError) {
-    const detail =
-      process.env.NODE_ENV === "development"
-        ? ` ${churchError.message}`
-        : "";
+    console.error("[getUserMemberships] churches select failed", {
+      code: churchError.code,
+      message: churchError.message,
+      details: churchError.details,
+      hint: churchError.hint,
+    });
     throw new ChurchAccessError(
-      `Unable to load your churches.${detail}`,
+      `Unable to load your churches. (${churchError.message})`,
       "LOAD_FAILED",
     );
   }
@@ -172,13 +225,20 @@ export async function getUserMemberships(
   const result: ChurchMembershipWithChurch[] = [];
   for (const row of rows) {
     const church = churchById.get(row.church_id);
-    if (!church || !isUsableChurchStatus(church.status)) continue;
+    if (!church) continue;
+
+    const role = normalizeMembershipRole(row.role);
+    const usable = isUsableChurchStatus(church.status);
+    const ownerRecovery =
+      isOwnerRecoveryChurchStatus(church.status) && role === "owner";
+
+    if (!usable && !ownerRecovery) continue;
 
     result.push({
       id: row.id,
       church_id: row.church_id,
       user_id: row.user_id,
-      role: normalizeMembershipRole(row.role),
+      role,
       status: "active",
       joined_at: row.joined_at,
       created_at: row.created_at,
@@ -236,8 +296,10 @@ export async function getActiveChurch(): Promise<{
     return { membership: matched, memberships, cookieSyncChurchId: null };
   }
 
-  // Invalid or missing cookie — use first membership and request cookie replace.
-  const fallback = memberships[0];
+  // Invalid or missing cookie — prefer an operational church, then any recovery church.
+  const fallback =
+    memberships.find((item) => !isChurchOperationallyLocked(item.church.status)) ??
+    memberships[0];
   return {
     membership: fallback,
     memberships,
@@ -265,6 +327,23 @@ export async function requireChurchMembership(): Promise<ActiveChurchContext> {
     canManageCertifications: canManageCertifications(membership.role),
     cookieSyncChurchId,
   };
+}
+
+/**
+ * Require a church that is operationally usable (trial/active).
+ * Owners of suspended/closed churches must use recovery routes instead.
+ */
+export async function requireOperationalChurch(): Promise<ActiveChurchContext> {
+  const context = await requireChurchMembership();
+  if (isChurchOperationallyLocked(context.church.status)) {
+    throw new ChurchAccessError(
+      context.church.status === "closed"
+        ? "This church account is closed. Operational features are unavailable."
+        : "This church account is suspended. Operational features are unavailable until an owner reactivates it.",
+      "CHURCH_SUSPENDED",
+    );
+  }
+  return context;
 }
 
 /** Require membership with at least the given role (rank-based). */

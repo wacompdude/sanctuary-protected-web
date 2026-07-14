@@ -53,7 +53,10 @@ export async function acceptChurchInvitation(
     if (message.includes("UNAUTHENTICATED")) {
       redirect(`/login?next=${encodeURIComponent(nextPath)}`);
     }
-    if (message.includes("function") && message.includes("does not exist")) {
+    if (
+      /function\s+[\w.]+\s*\([^)]*\)\s+does not exist/i.test(message) &&
+      message.includes("accept_church_invitation")
+    ) {
       return {
         error:
           "Invitation acceptance is not configured yet. Run supabase/migrations/014_accept_church_invitation.sql in the Supabase SQL Editor.",
@@ -76,5 +79,5 @@ export async function acceptChurchInvitation(
   }
 
   revalidatePath("/", "layout");
-  redirect("/dashboard");
+  redirect("/home");
 }

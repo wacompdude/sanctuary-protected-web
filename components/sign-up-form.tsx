@@ -48,7 +48,7 @@ export function SignUpForm({
   const safeNext =
     nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//")
       ? nextPath
-      : "/dashboard";
+      : "/home";
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();

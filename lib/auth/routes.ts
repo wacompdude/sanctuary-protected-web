@@ -25,6 +25,7 @@ export const AUTH_ENTRY_PATHS = [
 
 /** App routes that require authentication. */
 export const PROTECTED_PATH_PREFIXES = [
+  "/home",
   "/dashboard",
   "/incidents",
   "/events",

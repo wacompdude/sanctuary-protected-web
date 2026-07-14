@@ -66,7 +66,7 @@ export function SelectChurchList({
                       window.alert(result.error);
                       return;
                     }
-                    router.push("/dashboard");
+                    router.push("/home");
                     router.refresh();
                   });
                 }}

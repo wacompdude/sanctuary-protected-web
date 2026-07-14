@@ -69,7 +69,7 @@ export function LoginForm({
       const destination =
         nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//")
           ? nextPath
-          : "/dashboard";
+          : "/home";
       router.push(destination);
       router.refresh();
     } catch (err: unknown) {

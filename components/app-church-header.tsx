@@ -3,14 +3,26 @@ import { requireChurchMembership } from "@/lib/church/auth";
 import { ChurchAccessError } from "@/lib/church/errors";
 import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
 import { ChurchSwitcher } from "@/components/church-switcher";
+import { ChurchIdentity } from "@/components/church-identity";
 import { SyncActiveChurchCookie } from "@/components/sync-active-church-cookie";
 import { Button } from "@/components/ui/button";
 import { ArrowLeftRight } from "lucide-react";
 
 export async function AppChurchHeader() {
   try {
-    const { church, memberships, cookieSyncChurchId } =
+    const { supabase, church, memberships, cookieSyncChurchId } =
       await requireChurchMembership();
+
+    const { data: branding } = await supabase
+      .from("churches")
+      .select("logo_path")
+      .eq("id", church.id)
+      .maybeSingle();
+
+    const logoPath =
+      branding && typeof branding === "object" && "logo_path" in branding
+        ? ((branding as { logo_path: string | null }).logo_path ?? null)
+        : null;
 
     const churchOptions = memberships.map((membership) => ({
       id: membership.church_id,
@@ -27,9 +39,7 @@ export async function AppChurchHeader() {
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Active church
           </p>
-          <h2 className="truncate text-lg font-semibold tracking-tight">
-            {church.name}
-          </h2>
+          <ChurchIdentity name={church.name} logoPath={logoPath} />
         </div>
         <div className="flex w-full flex-col gap-2 sm:max-w-sm sm:items-end">
           {memberships.length > 1 ? (

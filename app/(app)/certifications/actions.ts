@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getAuthenticatedUserWithChurch } from "@/lib/church/auth";
+import { getOperationalChurchContext } from "@/lib/church/auth";
 import type { ActionState } from "@/lib/church/types";
 import {
   parseCreateCertificationInput,
@@ -22,7 +22,7 @@ export async function createCertification(
 
   try {
     const { supabase, user, profile, canManageCertifications } =
-      await getAuthenticatedUserWithChurch();
+      await getOperationalChurchContext();
 
     if (!canManageCertifications) {
       return {

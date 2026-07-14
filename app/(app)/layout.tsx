@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { AppChurchHeader } from "@/components/app-church-header";
+import { ChurchStatusBanner } from "@/components/church-status-banner";
 
 function SidebarFallback() {
   return (
@@ -30,6 +31,9 @@ export default function AppLayout({
         <div className="mx-auto max-w-6xl p-8">
           <Suspense fallback={<HeaderFallback />}>
             <AppChurchHeader />
+          </Suspense>
+          <Suspense fallback={null}>
+            <ChurchStatusBanner />
           </Suspense>
           {children}
         </div>

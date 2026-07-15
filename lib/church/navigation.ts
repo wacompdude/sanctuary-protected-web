@@ -97,9 +97,10 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
   {
     id: "security-hardware",
     href: "/security-hardware",
-    minRole: "security_member",
+    minRole: "viewer",
     label: "Security Hardware",
     labels: {
+      viewer: "Security Hardware",
       security_member: "Security Hardware",
       security_leader: "Security Hardware",
       administrator: "Hardware inventory",

@@ -1,6 +1,21 @@
 import type { MembershipRole } from "@/lib/church/types";
 import { hasMinRole } from "@/lib/church/navigation";
 
+/** Roles that can create, edit, archive, and manage equipment relationships. */
+export const HARDWARE_MANAGEMENT_ROLES: MembershipRole[] = [
+  "owner",
+  "administrator",
+  "security_leader",
+];
+
+/** Roles that can schedule maintenance, complete inspections, and assign gear. */
+export const HARDWARE_OPERATION_ROLES: MembershipRole[] = [
+  "owner",
+  "administrator",
+  "security_leader",
+  "security_member",
+];
+
 export type EquipmentCategory =
   | "radio"
   | "camera"
@@ -15,6 +30,7 @@ export type EquipmentCategory =
   | "computer"
   | "mobile_device"
   | "other";
+
 
 export type EquipmentStatus =
   | "planned"
@@ -120,11 +136,11 @@ export type EquipmentSummary = {
 };
 
 export function canManageSecurityEquipment(role: MembershipRole): boolean {
-  return hasMinRole(role, "security_leader");
+  return HARDWARE_MANAGEMENT_ROLES.includes(role);
 }
 
 export function canOperateSecurityEquipment(role: MembershipRole): boolean {
-  return hasMinRole(role, "security_member");
+  return HARDWARE_OPERATION_ROLES.includes(role);
 }
 
 export function canViewSecurityEquipment(role: MembershipRole): boolean {

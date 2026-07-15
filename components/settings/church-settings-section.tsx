@@ -92,9 +92,13 @@ function sectionMeta(sectionId: ChurchSettingsSectionId) {
 
 export async function ChurchSettingsSectionPage({
   sectionId,
+  heading,
+  description,
   children,
 }: {
   sectionId: ChurchSettingsSectionId;
+  heading?: string;
+  description?: string;
   children: (data: ChurchSettingsPageData) => ReactNode;
 }) {
   try {
@@ -102,14 +106,16 @@ export async function ChurchSettingsSectionPage({
     if (!result.ok) return result.node;
 
     const section = sectionMeta(sectionId);
+    const pageHeading = heading ?? section.label;
+    const pageDescription =
+      description ??
+      `${section.description} Settings for ${result.data.church.name}.`;
 
     return (
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Church settings</h1>
-          <p className="mt-1 text-muted-foreground">
-            {section.description} Settings for {result.data.church.name}.
-          </p>
+          <p className="mt-1 text-muted-foreground">{pageDescription}</p>
           {!result.data.canEdit && (
             <p className="mt-2 text-sm text-muted-foreground">
               You can view these settings. Only owners and administrators can
@@ -123,7 +129,7 @@ export async function ChurchSettingsSectionPage({
           <div className="min-w-0 space-y-6">
             <div>
               <h2 className="text-xl font-semibold tracking-tight">
-                {section.label}
+                {pageHeading}
               </h2>
             </div>
             {children(result.data)}

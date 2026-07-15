@@ -18,3 +18,13 @@ export type ProfileActionState = {
     phone?: string;
   };
 };
+
+export type ChangePasswordActionState = {
+  error?: string | null;
+  success?: boolean;
+  fieldErrors?: {
+    current_password?: string;
+    new_password?: string;
+    confirm_password?: string;
+  };
+};

@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import { ChangePasswordForm } from "@/components/profile/change-password-form";
 import { ProfileForm } from "@/components/profile/profile-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -94,6 +95,8 @@ async function ProfileContent() {
       </div>
 
       <ProfileForm profile={profile} />
+
+      <ChangePasswordForm />
 
       <Card>
         <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0">

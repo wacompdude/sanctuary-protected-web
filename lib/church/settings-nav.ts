@@ -9,7 +9,8 @@ export const CHURCH_SETTINGS_SECTIONS = [
     id: "contact",
     href: "/settings/church/contact",
     label: "Contact Information",
-    description: "Email, phone, website, emergency contacts, and address.",
+    description:
+      "Organization details and role-based leadership, security, and vendor contacts.",
   },
   {
     id: "branding",

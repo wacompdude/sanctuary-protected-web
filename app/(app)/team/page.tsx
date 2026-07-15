@@ -23,7 +23,8 @@ import { listChurchTeamMemberships } from "@/lib/church/team-queries";
 import { listTeamMembersForChurch } from "@/lib/certifications/queries";
 import { ResendInvitationButton } from "@/components/team/resend-invitation-button";
 import { RevokeInvitationButton } from "@/components/team/revoke-invitation-button";
-import { MailPlus, Plus } from "lucide-react";
+import { MailPlus, Plus, UserPlus } from "lucide-react";
+import { isServiceRoleConfigured } from "@/lib/supabase/admin";
 
 type PendingInvitation = {
   id: string;
@@ -65,12 +66,20 @@ async function TeamContent({ created }: { created?: string }) {
         </div>
         <div className="flex flex-wrap gap-2">
           {canInvite && (
-            <Button asChild>
-              <Link href="/team/invite">
-                <MailPlus className="h-4 w-4" />
-                Invite member
-              </Link>
-            </Button>
+            <>
+              <Button asChild>
+                <Link href="/team/add">
+                  <UserPlus className="h-4 w-4" />
+                  Add member
+                </Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href="/team/invite">
+                  <MailPlus className="h-4 w-4" />
+                  Invite member
+                </Link>
+              </Button>
+            </>
           )}
           {canManageCertifications ? (
             <Button variant="outline" asChild>
@@ -82,6 +91,14 @@ async function TeamContent({ created }: { created?: string }) {
           ) : null}
         </div>
       </div>
+
+      {canInvite && !isServiceRoleConfigured() && (
+        <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
+          Manual member setup needs <code>SUPABASE_SERVICE_ROLE_KEY</code> on the
+          server and migration{" "}
+          <code>020_provision_church_member.sql</code>.
+        </p>
+      )}
 
       {!canManage && (
         <p className="text-sm text-muted-foreground">

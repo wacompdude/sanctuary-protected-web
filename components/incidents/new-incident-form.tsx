@@ -19,6 +19,7 @@ import {
 } from "@/lib/incidents/constants";
 import { formatDateTimeLocalValue } from "@/lib/incidents/format";
 import type { ActionState } from "@/lib/incidents/types";
+import { IncidentPhotoPicker } from "@/components/incidents/incident-photo-picker";
 import { selectClassName, textareaClassName } from "./incident-badges";
 
 const initialState: ActionState = {};
@@ -174,6 +175,8 @@ export function NewIncidentForm({
               </p>
             )}
           </div>
+
+          <IncidentPhotoPicker error={state.fieldErrors?.photos} />
 
           <div className="flex gap-3">
             <Button type="submit" disabled={pending}>

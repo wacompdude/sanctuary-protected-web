@@ -13,9 +13,18 @@ import {
   validateCreateIncidentInput,
   validateIncidentUpdateInput,
 } from "@/lib/incidents/validation";
+import {
+  INCIDENT_MEDIA_BUCKET,
+  INCIDENT_PHOTO_MAX_COUNT,
+  collectPhotoFiles,
+  incidentPhotoObjectPath,
+  isIncidentMediaStoragePath,
+  validateIncidentPhotoFile,
+} from "@/lib/incidents/attachment-storage";
 import { AuditAction, AuditEntityType } from "@/lib/audit/actions";
 import { getRequestIpAddress, writeAuditLog } from "@/lib/audit/log";
 import { hasMinRole } from "@/lib/church/navigation";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 async function loadIncidentPolicy(churchId: string) {
   const { supabase, membership } = await getOperationalChurchContext();
@@ -38,15 +47,145 @@ async function loadIncidentPolicy(churchId: string) {
   };
 }
 
+function canMutateIncidentPhotos(role: string): boolean {
+  return role !== "viewer";
+}
+
+async function countIncidentPhotos(
+  supabase: SupabaseClient,
+  incidentId: string,
+): Promise<number> {
+  const { count, error } = await supabase
+    .from("incident_attachments")
+    .select("id", { count: "exact", head: true })
+    .eq("incident_id", incidentId);
+  if (error) {
+    if (
+      error.message.includes("incident_attachments") ||
+      error.code === "42P01" ||
+      error.code === "PGRST205"
+    ) {
+      throw new Error(
+        "Run supabase/migrations/021_incident_attachments.sql in the Supabase SQL Editor to enable incident photos.",
+      );
+    }
+    throw new Error(error.message);
+  }
+  return count ?? 0;
+}
+
+async function uploadIncidentPhotoFiles(params: {
+  supabase: SupabaseClient;
+  churchId: string;
+  incidentId: string;
+  userId: string;
+  files: File[];
+}): Promise<{ uploaded: number; error?: string }> {
+  const { supabase, churchId, incidentId, userId, files } = params;
+  if (files.length === 0) return { uploaded: 0 };
+
+  const existing = await countIncidentPhotos(supabase, incidentId);
+  if (existing + files.length > INCIDENT_PHOTO_MAX_COUNT) {
+    return {
+      uploaded: 0,
+      error: `Incidents can have at most ${INCIDENT_PHOTO_MAX_COUNT} photos (${existing} already attached).`,
+    };
+  }
+
+  for (const file of files) {
+    const fileError = validateIncidentPhotoFile(file);
+    if (fileError) {
+      return { uploaded: 0, error: fileError };
+    }
+  }
+
+  let uploaded = 0;
+
+  for (const file of files) {
+    const objectPath = incidentPhotoObjectPath({
+      churchId,
+      incidentId,
+      mimeType: file.type,
+    });
+    if (!objectPath) {
+      return { uploaded, error: "Unsupported image type." };
+    }
+
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const { error: uploadError } = await supabase.storage
+      .from(INCIDENT_MEDIA_BUCKET)
+      .upload(objectPath, bytes, {
+        upsert: false,
+        contentType: file.type,
+        cacheControl: "3600",
+      });
+
+    if (uploadError) {
+      return {
+        uploaded,
+        error:
+          uploadError.message.includes("Bucket not found") ||
+          uploadError.message.includes("not found")
+            ? "Run supabase/migrations/021_incident_attachments.sql in the Supabase SQL Editor to enable incident photos."
+            : uploadError.message || "Unable to upload a photo.",
+      };
+    }
+
+    const { data: row, error: insertError } = await supabase
+      .from("incident_attachments")
+      .insert({
+        church_id: churchId,
+        incident_id: incidentId,
+        uploaded_by: userId,
+        storage_path: objectPath,
+        mime_type: file.type,
+        byte_size: file.size,
+        original_filename: file.name?.slice(0, 255) || null,
+      })
+      .select("id")
+      .single();
+
+    if (insertError || !row) {
+      await supabase.storage.from(INCIDENT_MEDIA_BUCKET).remove([objectPath]);
+      return {
+        uploaded,
+        error:
+          insertError?.message ||
+          "Unable to save photo metadata. Confirm migration 021 has been applied.",
+      };
+    }
+
+    uploaded += 1;
+
+    await writeAuditLog(supabase, {
+      churchId,
+      userId,
+      action: AuditAction.INCIDENT_PHOTO_ADDED,
+      entityType: AuditEntityType.INCIDENT_ATTACHMENT,
+      entityId: row.id,
+      metadata: {
+        incident_id: incidentId,
+        storage_path: objectPath,
+        mime_type: file.type,
+        byte_size: file.size,
+      },
+      ipAddress: await getRequestIpAddress(),
+    });
+  }
+
+  return { uploaded };
+}
+
 export async function createIncident(
   _prevState: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
   let incidentId: string;
+  let photoError: string | undefined;
 
   try {
     const context = await getOperationalChurchContext();
-    const policy = await loadIncidentPolicy(context.profile.church_id);
+    const policy = await loadIncidentPolicy(context.church.id);
 
     if (
       context.membership.role === "security_member" &&
@@ -70,13 +209,28 @@ export async function createIncident(
       return validation;
     }
 
-    const { supabase, user, profile } = context;
+    const photoFiles = collectPhotoFiles(formData);
+    if (photoFiles.length > INCIDENT_PHOTO_MAX_COUNT) {
+      return {
+        fieldErrors: {
+          photos: `You can attach at most ${INCIDENT_PHOTO_MAX_COUNT} photos.`,
+        },
+      };
+    }
+    for (const file of photoFiles) {
+      const fileError = validateIncidentPhotoFile(file);
+      if (fileError) {
+        return { fieldErrors: { photos: fileError } };
+      }
+    }
+
+    const { supabase, user, church } = context;
     const input = parseCreateIncidentInput(formData);
 
     const { data: incident, error: incidentError } = await supabase
       .from("incidents")
       .insert({
-        church_id: profile.church_id,
+        church_id: church.id,
         created_by: user.id,
         title: input.title,
         type: input.type,
@@ -99,7 +253,7 @@ export async function createIncident(
       .from("incident_updates")
       .insert({
         incident_id: incident.id,
-        church_id: profile.church_id,
+        church_id: church.id,
         created_by: user.id,
         update_type: "created",
         content: "Incident reported.",
@@ -110,8 +264,23 @@ export async function createIncident(
       return { error: updateError.message };
     }
 
+    let photoCount = 0;
+    if (photoFiles.length > 0) {
+      const photoResult = await uploadIncidentPhotoFiles({
+        supabase,
+        churchId: church.id,
+        incidentId: incident.id,
+        userId: user.id,
+        files: photoFiles,
+      });
+      photoCount = photoResult.uploaded;
+      if (photoResult.error) {
+        photoError = photoResult.error;
+      }
+    }
+
     await writeAuditLog(supabase, {
-      churchId: profile.church_id,
+      churchId: church.id,
       userId: user.id,
       action: AuditAction.INCIDENT_CREATED,
       entityType: AuditEntityType.INCIDENT,
@@ -120,6 +289,8 @@ export async function createIncident(
         type: input.type,
         severity: input.severity,
         status: "open",
+        photo_count: photoCount,
+        photo_error: photoError,
       },
       ipAddress: await getRequestIpAddress(),
     });
@@ -131,6 +302,11 @@ export async function createIncident(
   }
 
   revalidatePath("/incidents");
+  if (photoError) {
+    redirect(
+      `/incidents/${incidentId}?created=1&photo_error=${encodeURIComponent(photoError)}`,
+    );
+  }
   redirect(`/incidents/${incidentId}?created=1`);
 }
 
@@ -141,7 +317,7 @@ export async function addIncidentUpdate(
 ): Promise<ActionState> {
   try {
     const context = await getOperationalChurchContext();
-    const policy = await loadIncidentPolicy(context.profile.church_id);
+    const policy = await loadIncidentPolicy(context.church.id);
     const inputPreview = parseIncidentUpdateInput(formData);
 
     const validation = validateIncidentUpdateInput(formData, {
@@ -152,10 +328,10 @@ export async function addIncidentUpdate(
       return validation;
     }
 
-    const { supabase, user, profile, membership } = context;
+    const { supabase, user, church, membership } = context;
     const incident = await getIncidentWithUpdates(incidentId);
 
-    if (!incident || incident.church_id !== profile.church_id) {
+    if (!incident || incident.church_id !== church.id) {
       return { error: "Incident not found." };
     }
 
@@ -197,7 +373,7 @@ export async function addIncidentUpdate(
         .from("incidents")
         .update({ status: nextStatus })
         .eq("id", incidentId)
-        .eq("church_id", profile.church_id);
+        .eq("church_id", church.id);
 
       if (statusError) {
         return { error: statusError.message };
@@ -214,7 +390,7 @@ export async function addIncidentUpdate(
       .from("incident_updates")
       .insert({
         incident_id: incidentId,
-        church_id: profile.church_id,
+        church_id: church.id,
         created_by: user.id,
         update_type: statusChanged ? "status_change" : "comment",
         content,
@@ -227,7 +403,7 @@ export async function addIncidentUpdate(
     }
 
     await writeAuditLog(supabase, {
-      churchId: profile.church_id,
+      churchId: church.id,
       userId: user.id,
       action: AuditAction.INCIDENT_UPDATED,
       entityType: AuditEntityType.INCIDENT,
@@ -250,6 +426,147 @@ export async function addIncidentUpdate(
         error instanceof Error
           ? error.message
           : "Failed to add incident update.",
+    };
+  }
+}
+
+export async function uploadIncidentPhotos(
+  incidentId: string,
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  try {
+    const context = await getOperationalChurchContext();
+    const { supabase, user, church, membership } = context;
+
+    if (!canMutateIncidentPhotos(membership.role)) {
+      return { error: "Viewers cannot upload incident photos." };
+    }
+
+    const incident = await getIncidentWithUpdates(incidentId);
+    if (!incident || incident.church_id !== church.id) {
+      return { error: "Incident not found." };
+    }
+
+    const files = collectPhotoFiles(formData);
+    if (files.length === 0) {
+      return { fieldErrors: { photos: "Choose at least one photo to upload." } };
+    }
+
+    const result = await uploadIncidentPhotoFiles({
+      supabase,
+      churchId: church.id,
+      incidentId,
+      userId: user.id,
+      files,
+    });
+
+    if (result.error) {
+      return {
+        error: result.error,
+        fieldErrors: { photos: result.error },
+      };
+    }
+
+    if (result.uploaded > 0) {
+      await supabase.from("incident_updates").insert({
+        incident_id: incidentId,
+        church_id: church.id,
+        created_by: user.id,
+        update_type: "comment",
+        content:
+          result.uploaded === 1
+            ? "Added 1 photo."
+            : `Added ${result.uploaded} photos.`,
+      });
+    }
+
+    revalidatePath(`/incidents/${incidentId}`);
+    revalidatePath("/incidents");
+    return { success: true };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to upload incident photos.",
+    };
+  }
+}
+
+export async function deleteIncidentPhoto(
+  attachmentId: string,
+): Promise<ActionState> {
+  try {
+    const context = await getOperationalChurchContext();
+    const { supabase, user, church, membership } = context;
+
+    if (!canMutateIncidentPhotos(membership.role)) {
+      return { error: "Viewers cannot remove incident photos." };
+    }
+
+    const { data: attachment, error } = await supabase
+      .from("incident_attachments")
+      .select("*")
+      .eq("id", attachmentId)
+      .eq("church_id", church.id)
+      .maybeSingle();
+
+    if (error || !attachment) {
+      return { error: error?.message || "Photo not found." };
+    }
+
+    const isLeader = hasMinRole(membership.role, "security_leader");
+    if (attachment.uploaded_by !== user.id && !isLeader) {
+      return { error: "You can only remove photos you uploaded." };
+    }
+
+    if (
+      !isIncidentMediaStoragePath(
+        attachment.storage_path,
+        church.id,
+        attachment.incident_id,
+      )
+    ) {
+      return { error: "Invalid photo storage path." };
+    }
+
+    const { error: deleteRowError } = await supabase
+      .from("incident_attachments")
+      .delete()
+      .eq("id", attachmentId)
+      .eq("church_id", church.id);
+
+    if (deleteRowError) {
+      return { error: deleteRowError.message };
+    }
+
+    await supabase.storage
+      .from(INCIDENT_MEDIA_BUCKET)
+      .remove([attachment.storage_path]);
+
+    await writeAuditLog(supabase, {
+      churchId: church.id,
+      userId: user.id,
+      action: AuditAction.INCIDENT_PHOTO_REMOVED,
+      entityType: AuditEntityType.INCIDENT_ATTACHMENT,
+      entityId: attachmentId,
+      metadata: {
+        incident_id: attachment.incident_id,
+        storage_path: attachment.storage_path,
+      },
+      ipAddress: await getRequestIpAddress(),
+    });
+
+    revalidatePath(`/incidents/${attachment.incident_id}`);
+    revalidatePath("/incidents");
+    return { success: true };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to remove incident photo.",
     };
   }
 }

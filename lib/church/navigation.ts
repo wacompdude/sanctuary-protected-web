@@ -26,6 +26,7 @@ export type NavItemId =
   | "select-church"
   | "team"
   | "certifications"
+  | "security-hardware"
   | "campuses"
   | "security-settings"
   | "church-settings"
@@ -91,6 +92,18 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
       security_leader: "Certification admin",
       administrator: "Certification admin",
       owner: "Certification admin",
+    },
+  },
+  {
+    id: "security-hardware",
+    href: "/security-hardware",
+    minRole: "security_member",
+    label: "Security Hardware",
+    labels: {
+      security_member: "Security Hardware",
+      security_leader: "Security Hardware",
+      administrator: "Hardware inventory",
+      owner: "Hardware inventory",
     },
   },
   {

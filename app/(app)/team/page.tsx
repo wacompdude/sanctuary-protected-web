@@ -127,6 +127,7 @@ async function TeamContent({ created }: { created?: string }) {
             members={churchMembers}
             actorRole={membership.role}
             actorUserId={user.id}
+            canManageCertifications={canManageCertifications}
           />
         </CardContent>
       </Card>
@@ -204,6 +205,15 @@ async function TeamContent({ created }: { created?: string }) {
                         "No title or email"}
                     </p>
                   </div>
+                  {canManageCertifications && (
+                    <Button size="sm" variant="outline" asChild>
+                      <Link
+                        href={`/certifications/new?teamMemberId=${encodeURIComponent(member.id)}`}
+                      >
+                        Add certification
+                      </Link>
+                    </Button>
+                  )}
                 </li>
               ))}
             </ul>

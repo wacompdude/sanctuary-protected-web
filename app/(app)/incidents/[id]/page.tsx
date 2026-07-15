@@ -15,6 +15,7 @@ import {
 import { INCIDENT_STATUSES, INCIDENT_TYPES } from "@/lib/incidents/constants";
 import { IncidentUpdateForm } from "@/components/incidents/incident-update-form";
 import { IncidentTimeline } from "@/components/incidents/incident-timeline";
+import { IncidentPhotosCard } from "@/components/incidents/incident-photos";
 import {
   IncidentSeverityText,
   IncidentStatusBadge,
@@ -27,21 +28,27 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { hasMinRole } from "@/lib/church/navigation";
 import { ArrowLeft } from "lucide-react";
 
 async function IncidentDetailContent({
   id,
   created,
+  photoError,
 }: {
   id: string;
   created?: string;
+  photoError?: string;
 }) {
-  const { church } = await getAuthenticatedUserWithChurch();
+  const { church, user, membership } = await getAuthenticatedUserWithChurch();
   const incident = await getIncidentWithUpdates(id);
 
   if (!incident || incident.church_id !== church.id) {
     notFound();
   }
+
+  const canUpload = membership.role !== "viewer";
+  const canManageAll = hasMinRole(membership.role, "security_leader");
 
   return (
     <>
@@ -67,6 +74,11 @@ async function IncidentDetailContent({
         {created === "1" && (
           <p className="mt-4 rounded-md border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm text-green-700 dark:text-green-400">
             Incident created successfully.
+          </p>
+        )}
+        {photoError && (
+          <p className="mt-4 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
+            Photos could not be uploaded: {photoError}. You can add them below.
           </p>
         )}
       </div>
@@ -130,6 +142,14 @@ async function IncidentDetailContent({
         </CardContent>
       </Card>
 
+      <IncidentPhotosCard
+        incidentId={incident.id}
+        attachments={incident.attachments ?? []}
+        canUpload={canUpload}
+        currentUserId={user.id}
+        canManageAll={canManageAll}
+      />
+
       <div className="grid gap-8 lg:grid-cols-2">
         <IncidentTimeline updates={incident.updates} />
         <IncidentUpdateForm
@@ -154,12 +174,20 @@ function IncidentDetailFallback() {
 async function IncidentDetailWrapper({
   id,
   created,
+  photoError,
 }: {
   id: string;
   created?: string;
+  photoError?: string;
 }) {
   try {
-    return <IncidentDetailContent id={id} created={created} />;
+    return (
+      <IncidentDetailContent
+        id={id}
+        created={created}
+        photoError={photoError}
+      />
+    );
   } catch (error) {
     rethrowOrRedirectForChurchAccess(error);
 
@@ -182,11 +210,17 @@ async function IncidentDetailLoader({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ created?: string }>;
+  searchParams: Promise<{ created?: string; photo_error?: string }>;
 }) {
   const { id } = await params;
-  const { created } = await searchParams;
-  return <IncidentDetailWrapper id={id} created={created} />;
+  const { created, photo_error: photoError } = await searchParams;
+  return (
+    <IncidentDetailWrapper
+      id={id}
+      created={created}
+      photoError={photoError}
+    />
+  );
 }
 
 export default function IncidentDetailPage({
@@ -194,7 +228,7 @@ export default function IncidentDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ created?: string }>;
+  searchParams: Promise<{ created?: string; photo_error?: string }>;
 }) {
   return (
     <div className="space-y-8">

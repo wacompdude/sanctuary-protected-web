@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   updateTeamMemberRole,
@@ -42,10 +43,12 @@ function MemberActions({
   member,
   actorRole,
   actorUserId,
+  canManageCertifications,
 }: {
   member: TeamMemberRow;
   actorRole: MembershipRole;
   actorUserId: string;
+  canManageCertifications: boolean;
 }) {
   const router = useRouter();
   const [roleState, roleAction, rolePending] = useActionState(
@@ -110,9 +113,16 @@ function MemberActions({
     isLastActiveOwner: member.isLastActiveOwner,
   });
 
+  const canAddCertification =
+    canManageCertifications && member.status === "active";
+
   const busy = rolePending || statusPending || isPending;
   const hasActions =
-    assignableRoles.length > 0 || canSuspend || canRemove || canReactivate;
+    assignableRoles.length > 0 ||
+    canSuspend ||
+    canRemove ||
+    canReactivate ||
+    canAddCertification;
 
   if (!hasActions) {
     if (member.role === "owner") {
@@ -125,7 +135,10 @@ function MemberActions({
     return <span className="text-xs text-muted-foreground">—</span>;
   }
 
-  const runStatus = (status: "active" | "suspended" | "removed", label: string) => {
+  const runStatus = (
+    status: "active" | "suspended" | "removed",
+    label: string,
+  ) => {
     const needsConfirm = status === "suspended" || status === "removed";
     if (needsConfirm) {
       const ok = window.confirm(
@@ -155,7 +168,11 @@ function MemberActions({
           }}
           className="flex items-center gap-2"
         >
-          <input type="hidden" name="membership_id" value={member.membershipId} />
+          <input
+            type="hidden"
+            name="membership_id"
+            value={member.membershipId}
+          />
           <label className="sr-only" htmlFor={`role-${member.membershipId}`}>
             Change role
           </label>
@@ -170,8 +187,9 @@ function MemberActions({
               event.currentTarget.form?.requestSubmit();
             }}
           >
-            {/* Keep current role visible even if not in assignable list */}
-            {!assignableRoles.includes(member.role as (typeof assignableRoles)[number]) && (
+            {!assignableRoles.includes(
+              member.role as (typeof assignableRoles)[number],
+            ) && (
               <option value={member.role}>
                 {labelForMembershipRole(member.role)}
               </option>
@@ -186,6 +204,15 @@ function MemberActions({
       )}
 
       <div className="flex flex-wrap gap-1.5">
+        {canAddCertification && (
+          <Button size="sm" variant="outline" className="h-7 text-xs" asChild>
+            <Link
+              href={`/certifications/new?membershipId=${encodeURIComponent(member.membershipId)}`}
+            >
+              Add certification
+            </Link>
+          </Button>
+        )}
         {canSuspend && (
           <Button
             type="button"
@@ -237,10 +264,12 @@ export function TeamMembersTable({
   members,
   actorRole,
   actorUserId,
+  canManageCertifications = false,
 }: {
   members: TeamMemberRow[];
   actorRole: MembershipRole;
   actorUserId: string;
+  canManageCertifications?: boolean;
 }) {
   if (members.length === 0) {
     return (
@@ -294,6 +323,7 @@ export function TeamMembersTable({
                   member={member}
                   actorRole={actorRole}
                   actorUserId={actorUserId}
+                  canManageCertifications={canManageCertifications}
                 />
               </td>
             </tr>

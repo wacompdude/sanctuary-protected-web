@@ -1,5 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
-import type { Incident, IncidentUpdate } from "./types";
+import {
+  INCIDENT_MEDIA_BUCKET,
+  INCIDENT_SIGNED_URL_SECONDS,
+} from "@/lib/incidents/attachment-storage";
+import type {
+  Incident,
+  IncidentAttachment,
+  IncidentUpdate,
+} from "./types";
 import type { IncidentListSort } from "./format";
 
 export {
@@ -90,8 +98,44 @@ export async function getIncidentWithUpdates(incidentId: string) {
     throw new Error(updatesError.message);
   }
 
+  const { data: attachmentRows, error: attachmentsError } = await supabase
+    .from("incident_attachments")
+    .select("*")
+    .eq("incident_id", incidentId)
+    .order("created_at", { ascending: true });
+
+  if (attachmentsError) {
+    // Migration may not be applied yet — treat as no photos instead of failing the page.
+    if (
+      attachmentsError.message.includes("incident_attachments") ||
+      attachmentsError.code === "42P01" ||
+      attachmentsError.code === "PGRST205"
+    ) {
+      return {
+        ...(incident as Incident),
+        updates: (updates ?? []) as IncidentUpdate[],
+        attachments: [],
+      };
+    }
+    throw new Error(attachmentsError.message);
+  }
+
+  const attachments = (attachmentRows ?? []) as IncidentAttachment[];
+  const withUrls: IncidentAttachment[] = [];
+
+  for (const attachment of attachments) {
+    const { data: signed } = await supabase.storage
+      .from(INCIDENT_MEDIA_BUCKET)
+      .createSignedUrl(attachment.storage_path, INCIDENT_SIGNED_URL_SECONDS);
+    withUrls.push({
+      ...attachment,
+      signed_url: signed?.signedUrl ?? null,
+    });
+  }
+
   return {
     ...(incident as Incident),
     updates: (updates ?? []) as IncidentUpdate[],
+    attachments: withUrls,
   };
 }

@@ -47,6 +47,21 @@ export interface IncidentUpdate {
   author_email?: string | null;
 }
 
+export interface IncidentAttachment {
+  id: string;
+  church_id: string;
+  incident_id: string;
+  uploaded_by: string;
+  storage_path: string;
+  mime_type: string;
+  byte_size: number;
+  original_filename: string | null;
+  created_at: string;
+  /** Short-lived signed URL for private storage display. */
+  signed_url?: string | null;
+}
+
 export interface IncidentWithUpdates extends Incident {
   updates: IncidentUpdate[];
+  attachments: IncidentAttachment[];
 }

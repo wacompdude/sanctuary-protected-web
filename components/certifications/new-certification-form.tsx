@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { createCertification } from "@/app/(app)/certifications/actions";
 import { Button } from "@/components/ui/button";
@@ -22,18 +22,26 @@ const initialState: ActionState = {};
 
 export function NewCertificationForm({
   teamMembers,
+  defaultTeamMemberId,
+  lockedToDefault = false,
 }: {
   teamMembers: TeamMember[];
+  defaultTeamMemberId?: string;
+  lockedToDefault?: boolean;
 }) {
   const [state, formAction, pending] = useActionState(
     createCertification,
     initialState,
   );
   const formRef = useRef<HTMLFormElement>(null);
+  const [typeChoice, setTypeChoice] = useState("");
+  const [customType, setCustomType] = useState("");
 
   useEffect(() => {
     if (state.success) {
       formRef.current?.reset();
+      setTypeChoice("");
+      setCustomType("");
     }
   }, [state.success]);
 
@@ -51,12 +59,25 @@ export function NewCertificationForm({
     );
   }
 
+  const selectedDefault =
+    defaultTeamMemberId &&
+    teamMembers.some((member) => member.id === defaultTeamMemberId)
+      ? defaultTeamMemberId
+      : "";
+  const selectedMember = teamMembers.find(
+    (member) => member.id === selectedDefault,
+  );
+  const certificationTypeValue =
+    typeChoice === "Other" ? customType.trim() : typeChoice;
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Add Certification</CardTitle>
         <CardDescription>
-          Link a certification to a team member for your church.
+          {selectedMember
+            ? `Certification will be saved for ${selectedMember.full_name}.`
+            : "Link a certification to a team member for your church."}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -69,23 +90,38 @@ export function NewCertificationForm({
 
           <div className="space-y-2">
             <Label htmlFor="team_member_id">Team member</Label>
-            <select
-              id="team_member_id"
-              name="team_member_id"
-              defaultValue=""
-              className={selectClassName}
-              aria-invalid={!!state.fieldErrors?.team_member_id}
-            >
-              <option value="" disabled>
-                Select team member
-              </option>
-              {teamMembers.map((member) => (
-                <option key={member.id} value={member.id}>
-                  {member.full_name}
-                  {member.title ? ` — ${member.title}` : ""}
+            {lockedToDefault && selectedDefault ? (
+              <>
+                <input
+                  type="hidden"
+                  name="team_member_id"
+                  value={selectedDefault}
+                />
+                <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
+                  {selectedMember?.full_name}
+                  {selectedMember?.title ? ` — ${selectedMember.title}` : ""}
+                  {selectedMember?.email ? ` (${selectedMember.email})` : ""}
+                </p>
+              </>
+            ) : (
+              <select
+                id="team_member_id"
+                name="team_member_id"
+                defaultValue={selectedDefault}
+                className={selectClassName}
+                aria-invalid={!!state.fieldErrors?.team_member_id}
+              >
+                <option value="" disabled>
+                  Select team member
                 </option>
-              ))}
-            </select>
+                {teamMembers.map((member) => (
+                  <option key={member.id} value={member.id}>
+                    {member.full_name}
+                    {member.title ? ` — ${member.title}` : ""}
+                  </option>
+                ))}
+              </select>
+            )}
             {state.fieldErrors?.team_member_id && (
               <p className="text-sm text-destructive">
                 {state.fieldErrors.team_member_id}
@@ -94,19 +130,39 @@ export function NewCertificationForm({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="certification_type">Certification type</Label>
-            <Input
-              id="certification_type"
-              name="certification_type"
-              list="certification-type-options"
-              placeholder="e.g. CPR & First Aid"
+            <Label htmlFor="certification_type_choice">Certification type</Label>
+            <select
+              id="certification_type_choice"
+              value={typeChoice}
+              onChange={(event) => setTypeChoice(event.target.value)}
+              className={selectClassName}
               aria-invalid={!!state.fieldErrors?.certification_type}
-            />
-            <datalist id="certification-type-options">
+              required
+            >
+              <option value="" disabled>
+                Select certification type
+              </option>
               {CERTIFICATION_TYPE_OPTIONS.map((option) => (
-                <option key={option} value={option} />
+                <option key={option} value={option}>
+                  {option}
+                </option>
               ))}
-            </datalist>
+            </select>
+            {typeChoice === "Other" && (
+              <Input
+                id="certification_type_custom"
+                value={customType}
+                onChange={(event) => setCustomType(event.target.value)}
+                placeholder="Enter certification type"
+                aria-invalid={!!state.fieldErrors?.certification_type}
+                required
+              />
+            )}
+            <input
+              type="hidden"
+              name="certification_type"
+              value={certificationTypeValue}
+            />
             {state.fieldErrors?.certification_type && (
               <p className="text-sm text-destructive">
                 {state.fieldErrors.certification_type}

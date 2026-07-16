@@ -27,6 +27,7 @@ export type NavItemId =
   | "team"
   | "certifications"
   | "security-hardware"
+  | "medical-supplies"
   | "campuses"
   | "security-settings"
   | "church-settings"
@@ -105,6 +106,19 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
       security_leader: "Security Hardware",
       administrator: "Hardware inventory",
       owner: "Hardware inventory",
+    },
+  },
+  {
+    id: "medical-supplies",
+    href: "/medical-supplies",
+    minRole: "viewer",
+    label: "Medical supplies",
+    labels: {
+      viewer: "Medical supplies",
+      security_member: "Medical supplies",
+      security_leader: "Medical inventory",
+      administrator: "Medical inventory",
+      owner: "Medical inventory",
     },
   },
   {

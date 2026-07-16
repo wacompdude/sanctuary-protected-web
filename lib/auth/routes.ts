@@ -33,6 +33,7 @@ export const PROTECTED_PATH_PREFIXES = [
   "/team",
   "/campuses",
   "/security-hardware",
+  "/medical-supplies",
   "/cameras",
   "/sensors",
   "/audit",

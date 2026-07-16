@@ -1,4 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
+import { listChurchTeamMemberships } from "@/lib/church/team-queries";
+import { hasMinRole } from "@/lib/church/navigation";
 import {
   INCIDENT_MEDIA_BUCKET,
   INCIDENT_SIGNED_URL_SECONDS,
@@ -6,8 +8,10 @@ import {
 import type {
   Incident,
   IncidentAttachment,
+  IncidentInvolvedMember,
   IncidentUpdate,
 } from "./types";
+import type { TeamMemberRow } from "@/lib/church/team";
 import type { IncidentListSort } from "./format";
 
 export {
@@ -138,4 +142,58 @@ export async function getIncidentWithUpdates(incidentId: string) {
     updates: (updates ?? []) as IncidentUpdate[],
     attachments: withUrls,
   };
+}
+
+export async function listActiveIncidentTeamMembers(
+  churchId: string,
+): Promise<TeamMemberRow[]> {
+  const rows = await listChurchTeamMemberships(churchId);
+  return rows.filter(
+    (member) =>
+      member.status === "active" && hasMinRole(member.role, "security_member"),
+  );
+}
+
+export async function listIncidentInvolvedMembers(
+  churchId: string,
+  incidentId: string,
+): Promise<IncidentInvolvedMember[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("incident_team_members")
+    .select("id, incident_id, membership_id, created_at")
+    .eq("church_id", churchId)
+    .eq("incident_id", incidentId)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    if (
+      error.message.includes("incident_team_members") ||
+      error.code === "42P01" ||
+      error.code === "PGRST205"
+    ) {
+      return [];
+    }
+    throw new Error(error.message);
+  }
+
+  const memberships = await listChurchTeamMemberships(churchId).catch(() => []);
+  const membershipMap = new Map(
+    memberships.map((membership) => [membership.membershipId, membership]),
+  );
+
+  return (data ?? []).map((row) => {
+    const membership = membershipMap.get(row.membership_id as string);
+    return {
+      id: row.id as string,
+      incident_id: row.incident_id as string,
+      membership_id: row.membership_id as string,
+      user_id: membership?.userId ?? null,
+      name: membership?.name ?? "Former team member",
+      email: membership?.email ?? null,
+      role: membership?.role ?? "viewer",
+      status: membership?.status ?? "removed",
+      created_at: row.created_at as string,
+    };
+  });
 }

@@ -61,6 +61,18 @@ export interface IncidentAttachment {
   signed_url?: string | null;
 }
 
+export interface IncidentInvolvedMember {
+  id: string;
+  incident_id: string;
+  membership_id: string;
+  user_id: string | null;
+  name: string;
+  email: string | null;
+  role: string;
+  status: string;
+  created_at: string;
+}
+
 export interface IncidentWithUpdates extends Incident {
   updates: IncidentUpdate[];
   attachments: IncidentAttachment[];

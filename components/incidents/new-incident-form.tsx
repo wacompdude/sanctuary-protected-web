@@ -19,7 +19,11 @@ import {
 } from "@/lib/incidents/constants";
 import { formatDateTimeLocalValue } from "@/lib/incidents/format";
 import type { ActionState } from "@/lib/incidents/types";
+import type { MedicalSupply } from "@/lib/medical-supplies/types";
 import { IncidentPhotoPicker } from "@/components/incidents/incident-photo-picker";
+import { IncidentTeamMembersFields } from "@/components/incidents/incident-team-members-fields";
+import { MedicalSuppliesUsedFields } from "@/components/incidents/medical-supplies-used-fields";
+import type { TeamMemberRow } from "@/lib/church/team";
 import { selectClassName, textareaClassName } from "./incident-badges";
 
 const initialState: ActionState = {};
@@ -27,12 +31,17 @@ const initialState: ActionState = {};
 export function NewIncidentForm({
   requireLocation = true,
   requireSeverity = true,
+  medicalSupplies = [],
+  teamMembers = [],
 }: {
   requireLocation?: boolean;
   requireSeverity?: boolean;
+  medicalSupplies?: MedicalSupply[];
+  teamMembers?: TeamMemberRow[];
 }) {
   const router = useRouter();
   const [occurredAt, setOccurredAt] = useState("");
+  const [incidentType, setIncidentType] = useState("");
   const [state, formAction, pending] = useActionState(
     createIncident,
     initialState,
@@ -77,7 +86,8 @@ export function NewIncidentForm({
               <select
                 id="type"
                 name="type"
-                defaultValue=""
+                value={incidentType}
+                onChange={(event) => setIncidentType(event.target.value)}
                 className={selectClassName}
                 aria-invalid={!!state.fieldErrors?.type}
               >
@@ -175,6 +185,22 @@ export function NewIncidentForm({
               </p>
             )}
           </div>
+
+          <IncidentTeamMembersFields members={teamMembers} />
+          {state.fieldErrors?.incident_members && (
+            <p className="text-sm text-destructive">
+              {state.fieldErrors.incident_members}
+            </p>
+          )}
+
+          {incidentType === "medical" && (
+            <MedicalSuppliesUsedFields supplies={medicalSupplies} />
+          )}
+          {state.fieldErrors?.medical_supplies && (
+            <p className="text-sm text-destructive">
+              {state.fieldErrors.medical_supplies}
+            </p>
+          )}
 
           <IncidentPhotoPicker error={state.fieldErrors?.photos} />
 

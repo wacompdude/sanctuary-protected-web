@@ -5,6 +5,8 @@ import {
   ChurchAccessError,
   getAuthenticatedUserWithChurch,
   getIncidentWithUpdates,
+  listActiveIncidentTeamMembers,
+  listIncidentInvolvedMembers,
 } from "@/lib/incidents/queries";
 import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
 import {
@@ -16,6 +18,8 @@ import { INCIDENT_STATUSES, INCIDENT_TYPES } from "@/lib/incidents/constants";
 import { IncidentUpdateForm } from "@/components/incidents/incident-update-form";
 import { IncidentTimeline } from "@/components/incidents/incident-timeline";
 import { IncidentPhotosCard } from "@/components/incidents/incident-photos";
+import { IncidentTeamMembersCard } from "@/components/incidents/incident-team-members-card";
+import { IncidentMedicalSuppliesCard } from "@/components/medical-supplies/incident-medical-supplies";
 import {
   IncidentSeverityText,
   IncidentStatusBadge,
@@ -29,16 +33,26 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { hasMinRole } from "@/lib/church/navigation";
+import {
+  canManageMedicalSupplies,
+  canRecordMedicalSupplyUsage,
+} from "@/lib/medical-supplies/types";
+import {
+  listAvailableSuppliesForIncident,
+  listUsageForIncident,
+} from "@/lib/medical-supplies/queries";
 import { ArrowLeft } from "lucide-react";
 
 async function IncidentDetailContent({
   id,
   created,
   photoError,
+  memberError,
 }: {
   id: string;
   created?: string;
   photoError?: string;
+  memberError?: string;
 }) {
   const { church, user, membership } = await getAuthenticatedUserWithChurch();
   const incident = await getIncidentWithUpdates(id);
@@ -49,6 +63,19 @@ async function IncidentDetailContent({
 
   const canUpload = membership.role !== "viewer";
   const canManageAll = hasMinRole(membership.role, "security_leader");
+  const isMedical = incident.type === "medical";
+  const canRecordSupplies = canRecordMedicalSupplyUsage(membership.role);
+  const canManageSupplies = canManageMedicalSupplies(membership.role);
+
+  const [involvedMembers, availableTeamMembers, supplyUsages, availableSupplies] =
+    await Promise.all([
+      listIncidentInvolvedMembers(church.id, incident.id),
+      listActiveIncidentTeamMembers(church.id).catch(() => []),
+      isMedical ? listUsageForIncident(church.id, incident.id) : Promise.resolve([]),
+      isMedical
+        ? listAvailableSuppliesForIncident(church.id)
+        : Promise.resolve([]),
+    ]);
 
   return (
     <>
@@ -79,6 +106,12 @@ async function IncidentDetailContent({
         {photoError && (
           <p className="mt-4 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
             Photos could not be uploaded: {photoError}. You can add them below.
+          </p>
+        )}
+        {memberError && (
+          <p className="mt-4 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
+            Involved team members could not be saved: {memberError}. You can add
+            them below.
           </p>
         )}
       </div>
@@ -150,6 +183,23 @@ async function IncidentDetailContent({
         canManageAll={canManageAll}
       />
 
+      <IncidentTeamMembersCard
+        incidentId={incident.id}
+        members={involvedMembers}
+        availableMembers={availableTeamMembers}
+        canManage={canUpload}
+      />
+
+      {isMedical && (
+        <IncidentMedicalSuppliesCard
+          incidentId={incident.id}
+          usages={supplyUsages}
+          supplies={availableSupplies}
+          canRecord={canRecordSupplies}
+          canManage={canManageSupplies}
+        />
+      )}
+
       <div className="grid gap-8 lg:grid-cols-2">
         <IncidentTimeline updates={incident.updates} />
         <IncidentUpdateForm
@@ -175,10 +225,12 @@ async function IncidentDetailWrapper({
   id,
   created,
   photoError,
+  memberError,
 }: {
   id: string;
   created?: string;
   photoError?: string;
+  memberError?: string;
 }) {
   try {
     return (
@@ -186,6 +238,7 @@ async function IncidentDetailWrapper({
         id={id}
         created={created}
         photoError={photoError}
+        memberError={memberError}
       />
     );
   } catch (error) {
@@ -210,15 +263,21 @@ async function IncidentDetailLoader({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ created?: string; photo_error?: string }>;
+  searchParams: Promise<{
+    created?: string;
+    photo_error?: string;
+    member_error?: string;
+  }>;
 }) {
   const { id } = await params;
-  const { created, photo_error: photoError } = await searchParams;
+  const { created, photo_error: photoError, member_error: memberError } =
+    await searchParams;
   return (
     <IncidentDetailWrapper
       id={id}
       created={created}
       photoError={photoError}
+      memberError={memberError}
     />
   );
 }
@@ -228,7 +287,11 @@ export default function IncidentDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ created?: string; photo_error?: string }>;
+  searchParams: Promise<{
+    created?: string;
+    photo_error?: string;
+    member_error?: string;
+  }>;
 }) {
   return (
     <div className="space-y-8">

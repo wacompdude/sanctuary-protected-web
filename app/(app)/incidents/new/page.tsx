@@ -7,16 +7,22 @@ import { getOperationalChurchContext } from "@/lib/church/auth";
 import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
 import { Card, CardContent } from "@/components/ui/card";
 import { ChurchAccessError } from "@/lib/church/errors";
+import { listActiveIncidentTeamMembers } from "@/lib/incidents/queries";
+import { listAvailableSuppliesForIncident } from "@/lib/medical-supplies/queries";
 
 async function NewIncidentContent() {
   const { supabase, church } = await getOperationalChurchContext();
-  const { data } = await supabase
-    .from("churches")
-    .select(
-      "require_incident_location, require_incident_severity, allow_security_members_create_incidents",
-    )
-    .eq("id", church.id)
-    .maybeSingle();
+  const [{ data }, medicalSupplies, teamMembers] = await Promise.all([
+    supabase
+      .from("churches")
+      .select(
+        "require_incident_location, require_incident_severity, allow_security_members_create_incidents",
+      )
+      .eq("id", church.id)
+      .maybeSingle(),
+    listAvailableSuppliesForIncident(church.id).catch(() => []),
+    listActiveIncidentTeamMembers(church.id).catch(() => []),
+  ]);
 
   return (
     <>
@@ -36,6 +42,8 @@ async function NewIncidentContent() {
       <NewIncidentForm
         requireLocation={data?.require_incident_location ?? true}
         requireSeverity={data?.require_incident_severity ?? true}
+        medicalSupplies={medicalSupplies}
+        teamMembers={teamMembers}
       />
     </>
   );

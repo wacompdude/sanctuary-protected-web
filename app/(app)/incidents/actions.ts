@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
   getIncidentWithUpdates,
+  listActiveIncidentTeamMembers,
+  listIncidentInvolvedMembers,
   getOperationalChurchContext,
 } from "@/lib/incidents/queries";
 import type { ActionState, IncidentStatus } from "@/lib/incidents/types";
@@ -24,7 +26,133 @@ import {
 import { AuditAction, AuditEntityType } from "@/lib/audit/actions";
 import { getRequestIpAddress, writeAuditLog } from "@/lib/audit/log";
 import { hasMinRole } from "@/lib/church/navigation";
+import { canRecordMedicalSupplyUsage } from "@/lib/medical-supplies/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
+
+function parseMedicalSupplyUsages(formData: FormData): {
+  supplyId: string;
+  quantity: number;
+}[] {
+  const supplyIds = formData.getAll("medical_supply_ids").map(String);
+  const quantities = formData.getAll("medical_supply_quantities").map(String);
+  const rows: { supplyId: string; quantity: number }[] = [];
+
+  for (let i = 0; i < supplyIds.length; i += 1) {
+    const supplyId = supplyIds[i]?.trim();
+    if (!supplyId) continue;
+    const quantity = Number.parseInt(quantities[i] ?? "", 10);
+    if (!Number.isFinite(quantity) || quantity <= 0) continue;
+    rows.push({ supplyId, quantity });
+  }
+
+  return rows;
+}
+
+function parseIncidentMemberIds(formData: FormData): string[] {
+  const seen = new Set<string>();
+  const values: string[] = [];
+
+  for (const raw of formData.getAll("incident_member_ids")) {
+    const value = String(raw).trim();
+    if (!value || seen.has(value)) continue;
+    seen.add(value);
+    values.push(value);
+  }
+
+  return values;
+}
+
+async function recordIncidentTeamMembers(params: {
+  supabase: SupabaseClient;
+  churchId: string;
+  incidentId: string;
+  userId: string;
+  membershipIds: string[];
+}): Promise<string | null> {
+  for (const membershipId of params.membershipIds) {
+    const { data, error } = await params.supabase
+      .from("incident_team_members")
+      .insert({
+        church_id: params.churchId,
+        incident_id: params.incidentId,
+        membership_id: membershipId,
+        added_by: params.userId,
+      })
+      .select("id")
+      .single();
+
+    if (error || !data) {
+      if (
+        error?.message.includes("incident_team_members") ||
+        error?.code === "42P01" ||
+        error?.code === "PGRST205"
+      ) {
+        return "Run supabase/migrations/024_incident_team_members.sql in the Supabase SQL Editor to enable involved incident team members.";
+      }
+      return error?.message || "Unable to save one or more involved team members.";
+    }
+
+    await writeAuditLog(params.supabase, {
+      churchId: params.churchId,
+      userId: params.userId,
+      action: AuditAction.INCIDENT_MEMBER_ADDED,
+      entityType: AuditEntityType.INCIDENT_MEMBER,
+      entityId: data.id,
+      metadata: {
+        incident_id: params.incidentId,
+        membership_id: membershipId,
+      },
+      ipAddress: await getRequestIpAddress(),
+    });
+  }
+
+  return null;
+}
+
+async function recordUsagesForIncident(params: {
+  supabase: SupabaseClient;
+  churchId: string;
+  incidentId: string;
+  userId: string;
+  usages: { supplyId: string; quantity: number }[];
+}): Promise<string | null> {
+  for (const usage of params.usages) {
+    const { data, error } = await params.supabase
+      .from("medical_supply_usage")
+      .insert({
+        church_id: params.churchId,
+        incident_id: params.incidentId,
+        medical_supply_id: usage.supplyId,
+        quantity_used: usage.quantity,
+        recorded_by: params.userId,
+      })
+      .select("id")
+      .single();
+
+    if (error || !data) {
+      return (
+        error?.message ||
+        "Unable to record one or more medical supplies. Check on-hand quantities."
+      );
+    }
+
+    await writeAuditLog(params.supabase, {
+      churchId: params.churchId,
+      userId: params.userId,
+      action: AuditAction.MEDICAL_SUPPLY_USED,
+      entityType: AuditEntityType.MEDICAL_SUPPLY_USAGE,
+      entityId: data.id,
+      metadata: {
+        incident_id: params.incidentId,
+        medical_supply_id: usage.supplyId,
+        quantity_used: usage.quantity,
+      },
+      ipAddress: await getRequestIpAddress(),
+    });
+  }
+
+  return null;
+}
 
 async function loadIncidentPolicy(churchId: string) {
   const { supabase, membership } = await getOperationalChurchContext();
@@ -182,6 +310,7 @@ export async function createIncident(
 ): Promise<ActionState> {
   let incidentId: string;
   let photoError: string | undefined;
+  let memberError: string | undefined;
 
   try {
     const context = await getOperationalChurchContext();
@@ -226,6 +355,37 @@ export async function createIncident(
 
     const { supabase, user, church } = context;
     const input = parseCreateIncidentInput(formData);
+    const involvedMemberIds = parseIncidentMemberIds(formData);
+    const medicalUsages =
+      input.type === "medical" ? parseMedicalSupplyUsages(formData) : [];
+
+    if (involvedMemberIds.length > 0) {
+      const availableMembers = await listActiveIncidentTeamMembers(church.id).catch(
+        () => [],
+      );
+      const allowedIds = new Set(
+        availableMembers.map((member) => member.membershipId),
+      );
+      const hasInvalidMember = involvedMemberIds.some((id) => !allowedIds.has(id));
+      if (hasInvalidMember) {
+        return {
+          fieldErrors: {
+            incident_members:
+              "Choose valid active security team members for this incident.",
+          },
+          error: "Please fix the highlighted fields.",
+        };
+      }
+    }
+
+    if (medicalUsages.length > 0 && !canRecordMedicalSupplyUsage(context.membership.role)) {
+      return {
+        fieldErrors: {
+          medical_supplies:
+            "You do not have permission to record medical supply usage.",
+        },
+      };
+    }
 
     const { data: incident, error: incidentError } = await supabase
       .from("incidents")
@@ -265,6 +425,7 @@ export async function createIncident(
     }
 
     let photoCount = 0;
+    let supplyError: string | undefined;
     if (photoFiles.length > 0) {
       const photoResult = await uploadIncidentPhotoFiles({
         supabase,
@@ -276,6 +437,32 @@ export async function createIncident(
       photoCount = photoResult.uploaded;
       if (photoResult.error) {
         photoError = photoResult.error;
+      }
+    }
+
+    if (medicalUsages.length > 0) {
+      const usageError = await recordUsagesForIncident({
+        supabase,
+        churchId: church.id,
+        incidentId: incident.id,
+        userId: user.id,
+        usages: medicalUsages,
+      });
+      if (usageError) {
+        supplyError = usageError;
+      }
+    }
+
+    if (involvedMemberIds.length > 0) {
+      const incidentMemberError = await recordIncidentTeamMembers({
+        supabase,
+        churchId: church.id,
+        incidentId: incident.id,
+        userId: user.id,
+        membershipIds: involvedMemberIds,
+      });
+      if (incidentMemberError) {
+        memberError = incidentMemberError;
       }
     }
 
@@ -291,23 +478,30 @@ export async function createIncident(
         status: "open",
         photo_count: photoCount,
         photo_error: photoError,
+        involved_member_count: involvedMemberIds.length,
+        involved_member_error: memberError,
+        medical_supply_count: medicalUsages.length,
+        medical_supply_error: supplyError,
       },
       ipAddress: await getRequestIpAddress(),
     });
+
+    revalidatePath("/incidents");
+    revalidatePath("/medical-supplies");
+    revalidatePath("/medical-supplies/restock");
+    revalidatePath(`/incidents/${incidentId}`);
+
+    const params = new URLSearchParams({ created: "1" });
+    if (photoError) params.set("photo_error", photoError);
+    if (memberError) params.set("member_error", memberError);
+    if (supplyError) params.set("supply_error", supplyError);
+    redirect(`/incidents/${incidentId}?${params.toString()}`);
   } catch (error) {
     return {
       error:
         error instanceof Error ? error.message : "Failed to create incident.",
     };
   }
-
-  revalidatePath("/incidents");
-  if (photoError) {
-    redirect(
-      `/incidents/${incidentId}?created=1&photo_error=${encodeURIComponent(photoError)}`,
-    );
-  }
-  redirect(`/incidents/${incidentId}?created=1`);
 }
 
 export async function addIncidentUpdate(
@@ -426,6 +620,149 @@ export async function addIncidentUpdate(
         error instanceof Error
           ? error.message
           : "Failed to add incident update.",
+    };
+  }
+}
+
+export async function addIncidentTeamMember(
+  incidentId: string,
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  try {
+    const context = await getOperationalChurchContext();
+    const { supabase, user, church, membership } = context;
+
+    if (membership.role === "viewer") {
+      return { error: "Viewers cannot manage involved team members." };
+    }
+
+    const membershipId = String(formData.get("membership_id") ?? "").trim();
+    if (!membershipId) {
+      return {
+        fieldErrors: { membership_id: "Select a team member." },
+        error: "Please fix the highlighted fields.",
+      };
+    }
+
+    const incident = await getIncidentWithUpdates(incidentId);
+    if (!incident || incident.church_id !== church.id) {
+      return { error: "Incident not found." };
+    }
+
+    const availableMembers = await listActiveIncidentTeamMembers(church.id);
+    const targetMember = availableMembers.find(
+      (memberRow) => memberRow.membershipId === membershipId,
+    );
+
+    if (!targetMember) {
+      return {
+        fieldErrors: {
+          membership_id: "Choose an active security team member.",
+        },
+        error: "Please fix the highlighted fields.",
+      };
+    }
+
+    const existing = await listIncidentInvolvedMembers(church.id, incidentId);
+    if (existing.some((memberRow) => memberRow.membership_id === membershipId)) {
+      return { error: "That team member is already attached to this incident." };
+    }
+
+    const recordError = await recordIncidentTeamMembers({
+      supabase,
+      churchId: church.id,
+      incidentId,
+      userId: user.id,
+      membershipIds: [membershipId],
+    });
+
+    if (recordError) {
+      return { error: recordError };
+    }
+
+    revalidatePath(`/incidents/${incidentId}`);
+    revalidatePath("/incidents");
+    return { success: true };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to add incident team member.",
+    };
+  }
+}
+
+export async function removeIncidentTeamMember(
+  incidentMemberId: string,
+  incidentId: string,
+): Promise<ActionState> {
+  try {
+    const context = await getOperationalChurchContext();
+    const { supabase, user, church, membership } = context;
+
+    if (membership.role === "viewer") {
+      return { error: "Viewers cannot manage involved team members." };
+    }
+
+    const { data: incidentMember, error } = await supabase
+      .from("incident_team_members")
+      .select("id, incident_id, membership_id, church_id")
+      .eq("id", incidentMemberId)
+      .eq("church_id", church.id)
+      .maybeSingle();
+
+    if (error) {
+      if (
+        error.message.includes("incident_team_members") ||
+        error.code === "42P01" ||
+        error.code === "PGRST205"
+      ) {
+        return {
+          error:
+            "Run supabase/migrations/024_incident_team_members.sql in the Supabase SQL Editor to enable involved incident team members.",
+        };
+      }
+      return { error: error.message };
+    }
+
+    if (!incidentMember || incidentMember.incident_id !== incidentId) {
+      return { error: "Incident team member not found." };
+    }
+
+    const { error: deleteError } = await supabase
+      .from("incident_team_members")
+      .delete()
+      .eq("id", incidentMemberId)
+      .eq("church_id", church.id);
+
+    if (deleteError) {
+      return { error: deleteError.message };
+    }
+
+    await writeAuditLog(supabase, {
+      churchId: church.id,
+      userId: user.id,
+      action: AuditAction.INCIDENT_MEMBER_REMOVED,
+      entityType: AuditEntityType.INCIDENT_MEMBER,
+      entityId: incidentMemberId,
+      metadata: {
+        incident_id: incidentId,
+        membership_id: incidentMember.membership_id,
+      },
+      ipAddress: await getRequestIpAddress(),
+    });
+
+    revalidatePath(`/incidents/${incidentId}`);
+    revalidatePath("/incidents");
+    return { success: true };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to remove incident team member.",
     };
   }
 }

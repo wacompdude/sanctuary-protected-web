@@ -14,6 +14,7 @@ export const AuditAction = {
   CHURCH_SETTINGS_BRANDING_UPDATED: "church.settings.branding_updated",
   CHURCH_SETTINGS_SECURITY_UPDATED: "church.settings.security_updated",
   CHURCH_SETTINGS_PREFERENCES_UPDATED: "church.settings.preferences_updated",
+  CHURCH_THREAT_LEVEL_UPDATED: "church.threat_level_updated",
   CHURCH_LOGO_UPDATED: "church.logo_updated",
   CHURCH_ACCOUNT_SUSPENDED: "church.account_suspended",
   CHURCH_ACCOUNT_REACTIVATED: "church.account_reactivated",
@@ -74,6 +75,7 @@ export const AuditEntityType = {
   CHURCH_INVITATION: "church_invitation",
   CHURCH_MEMBERSHIP: "church_membership",
   CHURCH_CONTACT: "church_contact",
+  CHURCH_THREAT_LEVEL: "church_threat_level",
   USER: "user",
   INCIDENT: "incident",
   INCIDENT_MEMBER: "incident_member",
@@ -105,6 +107,7 @@ export function labelForAuditAction(action: string): string {
     [AuditAction.CHURCH_SETTINGS_SECURITY_UPDATED]: "Security settings updated",
     [AuditAction.CHURCH_SETTINGS_PREFERENCES_UPDATED]:
       "Application preferences updated",
+    [AuditAction.CHURCH_THREAT_LEVEL_UPDATED]: "Threat level updated",
     [AuditAction.CHURCH_LOGO_UPDATED]: "Church logo updated",
     [AuditAction.CHURCH_ACCOUNT_SUSPENDED]: "Church account suspended",
     [AuditAction.CHURCH_ACCOUNT_REACTIVATED]: "Church account reactivated",

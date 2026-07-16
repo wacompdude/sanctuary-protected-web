@@ -64,6 +64,32 @@ export async function auditChurchAccountStatusChanged(
   });
 }
 
+export async function auditChurchThreatLevelUpdated(
+  supabase: SupabaseClient,
+  params: {
+    churchId: string;
+    userId: string;
+    threatLevelId: string;
+    weekStart: string;
+    previousLevel: string | null;
+    nextLevel: string;
+  },
+) {
+  return writeAuditLog(supabase, {
+    churchId: params.churchId,
+    userId: params.userId,
+    action: AuditAction.CHURCH_THREAT_LEVEL_UPDATED,
+    entityType: AuditEntityType.CHURCH_THREAT_LEVEL,
+    entityId: params.threatLevelId,
+    metadata: {
+      week_start: params.weekStart,
+      previous_level: params.previousLevel,
+      next_level: params.nextLevel,
+    },
+    ipAddress: await getRequestIpAddress(),
+  });
+}
+
 export async function auditCampusCreated(
   supabase: SupabaseClient,
   params: { churchId: string; userId: string; campusId: string; name: string },

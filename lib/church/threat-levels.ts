@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import type { MembershipRole } from "@/lib/church/types";
 
 export const THREAT_LEVEL_OPTIONS = [
@@ -48,18 +49,58 @@ export function rankLabelForThreatLevel(value: ThreatLevel): string {
   );
 }
 
-export function threatLevelBadgeClassName(value: ThreatLevel): string {
+/** Shared layout classes only — colors come from threatLevelBadgeStyle. */
+export function threatLevelBadgeClassName(_value?: ThreatLevel): string {
+  void _value;
+  return "inline-flex items-center rounded-md border px-3 py-1 text-sm font-bold uppercase tracking-wide";
+}
+
+/**
+ * Explicit colors so theme/Badge variants cannot wash out the label
+ * (e.g. white-on-white). Inline styles beat utility class conflicts.
+ */
+export function threatLevelBadgeStyle(value: ThreatLevel): CSSProperties {
   switch (value) {
     case "green":
-      return "border-green-300 bg-green-100 text-green-900";
+      return {
+        backgroundColor: "#86efac",
+        borderColor: "#16a34a",
+        borderStyle: "solid",
+        borderWidth: "1px",
+        color: "#111111",
+      };
     case "blue":
-      return "border-blue-300 bg-blue-200 text-blue-950";
+      return {
+        backgroundColor: "#93c5fd",
+        borderColor: "#2563eb",
+        borderStyle: "solid",
+        borderWidth: "1px",
+        color: "#111111",
+      };
     case "yellow":
-      return "border-yellow-400/50 bg-yellow-300 text-yellow-950";
+      return {
+        backgroundColor: "#fde047",
+        borderColor: "#ca8a04",
+        borderStyle: "solid",
+        borderWidth: "1px",
+        color: "#111111",
+      };
     case "orange":
-      return "border-orange-300 bg-orange-200 text-orange-950";
+      return {
+        backgroundColor: "#fdba74",
+        borderColor: "#ea580c",
+        borderStyle: "solid",
+        borderWidth: "1px",
+        color: "#111111",
+      };
     case "red":
-      return "border-red-300 bg-red-200 text-red-950";
+      return {
+        backgroundColor: "#fca5a5",
+        borderColor: "#dc2626",
+        borderStyle: "solid",
+        borderWidth: "1px",
+        color: "#111111",
+      };
   }
 }
 

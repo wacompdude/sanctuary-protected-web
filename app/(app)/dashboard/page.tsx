@@ -16,7 +16,6 @@ import { getCertificationCounts } from "@/lib/certifications/queries";
 import { listIncidentsForChurch } from "@/lib/incidents/queries";
 import { getUnacknowledgedEventCount } from "@/lib/events/queries";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { formatDateTime } from "@/lib/incidents/format";
 import { getCurrentChurchThreatLevel } from "@/lib/church/threat-level-queries";
 import {
@@ -25,6 +24,7 @@ import {
   labelForThreatLevel,
   rankLabelForThreatLevel,
   threatLevelBadgeClassName,
+  threatLevelBadgeStyle,
 } from "@/lib/church/threat-levels";
 
 async function DashboardContent() {
@@ -77,12 +77,14 @@ async function DashboardContent() {
               <CardDescription>Weekly Threat Level</CardDescription>
               {currentThreatLevel ? (
                 <div className="mt-2 flex flex-wrap items-center gap-3">
-                  <Badge
-                    variant="outline"
-                    className={`px-3 py-1 text-sm font-bold uppercase tracking-wide ${threatLevelBadgeClassName(currentThreatLevel.threat_level)}`}
+                  <span
+                    className={threatLevelBadgeClassName(
+                      currentThreatLevel.threat_level,
+                    )}
+                    style={threatLevelBadgeStyle(currentThreatLevel.threat_level)}
                   >
                     {labelForThreatLevel(currentThreatLevel.threat_level)}
-                  </Badge>
+                  </span>
                   <p className="text-sm text-muted-foreground">
                     {rankLabelForThreatLevel(currentThreatLevel.threat_level)}
                   </p>

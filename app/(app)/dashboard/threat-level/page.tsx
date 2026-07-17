@@ -10,13 +10,13 @@ import {
   rankLabelForThreatLevel,
   startOfThreatWeek,
   threatLevelBadgeClassName,
+  threatLevelBadgeStyle,
 } from "@/lib/church/threat-levels";
 import {
   getCurrentChurchThreatLevel,
   listChurchThreatLevels,
 } from "@/lib/church/threat-level-queries";
 import { ThreatLevelForm } from "@/components/dashboard/threat-level-form";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -67,12 +67,14 @@ async function ThreatLevelPageContent() {
           {currentThreatLevel ? (
             <>
               <div className="flex flex-wrap items-center gap-3">
-                <Badge
-                  variant="outline"
-                  className={`px-3 py-1 text-sm font-bold uppercase tracking-wide ${threatLevelBadgeClassName(currentThreatLevel.threat_level)}`}
+                <span
+                  className={threatLevelBadgeClassName(
+                    currentThreatLevel.threat_level,
+                  )}
+                  style={threatLevelBadgeStyle(currentThreatLevel.threat_level)}
                 >
                   {labelForThreatLevel(currentThreatLevel.threat_level)}
-                </Badge>
+                </span>
                 <p className="text-sm text-muted-foreground">
                   {rankLabelForThreatLevel(currentThreatLevel.threat_level)}
                 </p>
@@ -117,12 +119,12 @@ async function ThreatLevelPageContent() {
                     className="rounded-md border border-border px-3 py-3"
                   >
                     <div className="flex flex-wrap items-center gap-3">
-                      <Badge
-                        variant="outline"
-                        className={`px-3 py-1 text-sm font-bold uppercase tracking-wide ${threatLevelBadgeClassName(entry.threat_level)}`}
+                      <span
+                        className={threatLevelBadgeClassName(entry.threat_level)}
+                        style={threatLevelBadgeStyle(entry.threat_level)}
                       >
                         {labelForThreatLevel(entry.threat_level)}
-                      </Badge>
+                      </span>
                       <p className="text-sm font-medium">
                         Week of {formatThreatWeek(entry.week_start)}
                       </p>

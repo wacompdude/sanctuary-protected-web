@@ -68,7 +68,8 @@ async function ThreatLevelPageContent() {
             <>
               <div className="flex flex-wrap items-center gap-3">
                 <Badge
-                  className={`px-3 py-1 text-sm ${threatLevelBadgeClassName(currentThreatLevel.threat_level)}`}
+                  variant="outline"
+                  className={`px-3 py-1 text-sm font-bold uppercase tracking-wide ${threatLevelBadgeClassName(currentThreatLevel.threat_level)}`}
                 >
                   {labelForThreatLevel(currentThreatLevel.threat_level)}
                 </Badge>
@@ -117,7 +118,8 @@ async function ThreatLevelPageContent() {
                   >
                     <div className="flex flex-wrap items-center gap-3">
                       <Badge
-                        className={`px-3 py-1 text-sm ${threatLevelBadgeClassName(entry.threat_level)}`}
+                        variant="outline"
+                        className={`px-3 py-1 text-sm font-bold uppercase tracking-wide ${threatLevelBadgeClassName(entry.threat_level)}`}
                       >
                         {labelForThreatLevel(entry.threat_level)}
                       </Badge>

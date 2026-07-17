@@ -51,15 +51,15 @@ export function rankLabelForThreatLevel(value: ThreatLevel): string {
 export function threatLevelBadgeClassName(value: ThreatLevel): string {
   switch (value) {
     case "green":
-      return "border-green-600/30 bg-green-600 text-white";
+      return "border-green-300 bg-green-100 text-green-900";
     case "blue":
-      return "border-blue-600/30 bg-blue-600 text-white";
+      return "border-blue-300 bg-blue-200 text-blue-950";
     case "yellow":
       return "border-yellow-400/50 bg-yellow-300 text-yellow-950";
     case "orange":
-      return "border-orange-600/30 bg-orange-500 text-white";
+      return "border-orange-300 bg-orange-200 text-orange-950";
     case "red":
-      return "border-red-600/30 bg-red-600 text-white";
+      return "border-red-300 bg-red-200 text-red-950";
   }
 }
 

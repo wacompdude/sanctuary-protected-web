@@ -4,6 +4,17 @@ import { createClient } from "@/lib/supabase/server";
 import { LogoutButton } from "./logout-button";
 import { hasEnvVars } from "@/lib/supabase/env";
 
+function isPrerenderControlError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const digest =
+    "digest" in error ? String((error as { digest?: unknown }).digest) : "";
+  return (
+    digest === "HANGING_PROMISE_REJECTION" ||
+    digest.startsWith("NEXT_REDIRECT") ||
+    digest.startsWith("NEXT_NOT_FOUND")
+  );
+}
+
 export async function AuthButton() {
   if (!hasEnvVars) {
     return (
@@ -34,6 +45,10 @@ export async function AuthButton() {
       </div>
     );
   } catch (error) {
+    // Do not swallow Next.js prerender/control-flow rejections.
+    if (isPrerenderControlError(error)) {
+      throw error;
+    }
     console.error("AuthButton failed:", error);
     return (
       <Button asChild size="sm" variant="outline">

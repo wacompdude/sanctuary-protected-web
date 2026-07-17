@@ -27,6 +27,8 @@ import { AuditAction, AuditEntityType } from "@/lib/audit/actions";
 import { getRequestIpAddress, writeAuditLog } from "@/lib/audit/log";
 import { hasMinRole } from "@/lib/church/navigation";
 import { canRecordMedicalSupplyUsage } from "@/lib/medical-supplies/types";
+import { createNotification } from "@/lib/notifications/create-notification";
+import { mapIncidentSeverityToNotification } from "@/lib/notifications/constants";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 function parseMedicalSupplyUsages(formData: FormData): {
@@ -308,9 +310,10 @@ export async function createIncident(
   _prevState: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  let incidentId: string;
+  let incidentId: string | undefined;
   let photoError: string | undefined;
   let memberError: string | undefined;
+  let supplyError: string | undefined;
 
   try {
     const context = await getOperationalChurchContext();
@@ -425,7 +428,6 @@ export async function createIncident(
     }
 
     let photoCount = 0;
-    let supplyError: string | undefined;
     if (photoFiles.length > 0) {
       const photoResult = await uploadIncidentPhotoFiles({
         supabase,
@@ -486,22 +488,54 @@ export async function createIncident(
       ipAddress: await getRequestIpAddress(),
     });
 
-    revalidatePath("/incidents");
-    revalidatePath("/medical-supplies");
-    revalidatePath("/medical-supplies/restock");
-    revalidatePath(`/incidents/${incidentId}`);
+    // Send notification for critical and high incidents.
+    if (input.severity === "critical" || input.severity === "high") {
+      const notificationType =
+        input.severity === "critical" ? "incident.critical" : "incident.created";
+      void createNotification(
+        {
+          churchId: church.id,
+          createdBy: user.id,
+          notificationType,
+          severity: mapIncidentSeverityToNotification(input.severity),
+          entityType: "incident",
+          entityId: incident.id,
+          actionUrl: `/incidents/${incident.id}`,
+          deduplicationKey: `${notificationType}:${incident.id}`,
+          templateVariables: {
+            incident_title: input.title,
+            incident_severity: input.severity,
+            incident_location: input.location ?? "",
+            incident_time: input.occurred_at,
+          },
+        },
+        { supabase },
+      ).catch((err: unknown) => {
+        console.error("createNotification failed for incident:", err);
+      });
+    }
 
-    const params = new URLSearchParams({ created: "1" });
-    if (photoError) params.set("photo_error", photoError);
-    if (memberError) params.set("member_error", memberError);
-    if (supplyError) params.set("supply_error", supplyError);
-    redirect(`/incidents/${incidentId}?${params.toString()}`);
   } catch (error) {
     return {
       error:
         error instanceof Error ? error.message : "Failed to create incident.",
     };
   }
+
+  if (!incidentId) {
+    return { error: "Failed to create incident." };
+  }
+
+  revalidatePath("/incidents");
+  revalidatePath("/medical-supplies");
+  revalidatePath("/medical-supplies/restock");
+  revalidatePath(`/incidents/${incidentId}`);
+
+  const params = new URLSearchParams({ created: "1" });
+  if (photoError) params.set("photo_error", photoError);
+  if (memberError) params.set("member_error", memberError);
+  if (supplyError) params.set("supply_error", supplyError);
+  redirect(`/incidents/${incidentId}?${params.toString()}`);
 }
 
 export async function addIncidentUpdate(

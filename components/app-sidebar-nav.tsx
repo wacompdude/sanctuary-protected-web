@@ -14,6 +14,7 @@ import {
   Crown,
   Cross,
   HardDrive,
+  Bell,
   LayoutDashboard,
   LogOut,
   MailPlus,
@@ -44,6 +45,7 @@ const STORAGE_KEY = "sp-sidebar-collapsed";
 
 const NAV_ICONS: Record<NavItemId, LucideIcon> = {
   dashboard: LayoutDashboard,
+  notifications: Bell,
   incidents: AlertTriangle,
   "select-church": ArrowLeftRight,
   team: Users,

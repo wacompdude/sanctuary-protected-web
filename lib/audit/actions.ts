@@ -65,6 +65,19 @@ export const AuditAction = {
   CERTIFICATION_UPDATED: "certification.updated",
   CERTIFICATION_ARCHIVED: "certification.archived",
   CERTIFICATION_DELETED: "certification.deleted",
+  NOTIFICATION_CREATED: "notification.created",
+  NOTIFICATION_QUEUED: "notification.queued",
+  NOTIFICATION_CANCELLED: "notification.cancelled",
+  NOTIFICATION_ACKNOWLEDGED: "notification.acknowledged",
+  NOTIFICATION_DELIVERY_SENT: "notification.delivery_sent",
+  NOTIFICATION_DELIVERY_FAILED: "notification.delivery_failed",
+  NOTIFICATION_DELIVERY_RETRIED: "notification.delivery_retried",
+  NOTIFICATION_PREFERENCES_UPDATED: "notification.preferences_updated",
+  NOTIFICATION_SETTINGS_UPDATED: "notification.settings_updated",
+  NOTIFICATION_TEMPLATE_CREATED: "notification.template_created",
+  NOTIFICATION_TEMPLATE_UPDATED: "notification.template_updated",
+  NOTIFICATION_TEMPLATE_RESTORED: "notification.template_restored",
+  NOTIFICATION_TEST_EMAIL_SENT: "notification.test_email_sent",
 } as const;
 
 export type AuditActionName = (typeof AuditAction)[keyof typeof AuditAction];
@@ -88,6 +101,10 @@ export const AuditEntityType = {
   MEDICAL_SUPPLY: "medical_supply",
   MEDICAL_SUPPLY_USAGE: "medical_supply_usage",
   CERTIFICATION: "certification",
+  NOTIFICATION: "notification",
+  NOTIFICATION_DELIVERY: "notification_delivery",
+  NOTIFICATION_TEMPLATE: "notification_template",
+  NOTIFICATION_SETTINGS: "notification_settings",
 } as const;
 
 export type AuditEntityTypeName =
@@ -158,6 +175,22 @@ export function labelForAuditAction(action: string): string {
     [AuditAction.CERTIFICATION_UPDATED]: "Certification updated",
     [AuditAction.CERTIFICATION_ARCHIVED]: "Certification archived",
     [AuditAction.CERTIFICATION_DELETED]: "Certification deleted",
+    [AuditAction.NOTIFICATION_CREATED]: "Notification created",
+    [AuditAction.NOTIFICATION_QUEUED]: "Notification queued",
+    [AuditAction.NOTIFICATION_CANCELLED]: "Notification cancelled",
+    [AuditAction.NOTIFICATION_ACKNOWLEDGED]: "Notification acknowledged",
+    [AuditAction.NOTIFICATION_DELIVERY_SENT]: "Notification delivery sent",
+    [AuditAction.NOTIFICATION_DELIVERY_FAILED]: "Notification delivery failed",
+    [AuditAction.NOTIFICATION_DELIVERY_RETRIED]: "Notification delivery retried",
+    [AuditAction.NOTIFICATION_PREFERENCES_UPDATED]:
+      "Notification preferences updated",
+    [AuditAction.NOTIFICATION_SETTINGS_UPDATED]:
+      "Notification settings updated",
+    [AuditAction.NOTIFICATION_TEMPLATE_CREATED]: "Notification template created",
+    [AuditAction.NOTIFICATION_TEMPLATE_UPDATED]: "Notification template updated",
+    [AuditAction.NOTIFICATION_TEMPLATE_RESTORED]:
+      "Notification template restored",
+    [AuditAction.NOTIFICATION_TEST_EMAIL_SENT]: "Test notification email sent",
     // Legacy rows from earlier phases
     "membership.invitation_created": "Member invited",
     "membership.invitation_accepted": "Invitation accepted",

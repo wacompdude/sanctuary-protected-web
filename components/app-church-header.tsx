@@ -7,10 +7,12 @@ import { ChurchIdentity } from "@/components/church-identity";
 import { SyncActiveChurchCookie } from "@/components/sync-active-church-cookie";
 import { Button } from "@/components/ui/button";
 import { ArrowLeftRight } from "lucide-react";
+import { NotificationBell } from "@/components/notifications/notification-bell";
+import { countUnreadNotifications, listUserNotifications } from "@/lib/notifications";
 
 export async function AppChurchHeader() {
   try {
-    const { supabase, church, memberships, cookieSyncChurchId } =
+    const { supabase, user, church, memberships, cookieSyncChurchId } =
       await requireChurchMembership();
 
     const { data: branding } = await supabase
@@ -30,6 +32,16 @@ export async function AppChurchHeader() {
       role: membership.role,
     }));
 
+    const [unreadCount, recentUnread] = await Promise.all([
+      countUnreadNotifications(supabase, church.id, user.id).catch(() => 0),
+      listUserNotifications(supabase, {
+        churchId: church.id,
+        userId: user.id,
+        unreadOnly: true,
+        limit: 8,
+      }).catch(() => []),
+    ]);
+
     return (
       <header className="mb-4 flex flex-col gap-3 border-b border-border pb-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between sm:pb-4">
         {cookieSyncChurchId ? (
@@ -41,14 +53,19 @@ export async function AppChurchHeader() {
           </p>
           <ChurchIdentity name={church.name} logoPath={logoPath} />
         </div>
-        <div className="hidden w-full flex-col gap-2 sm:flex sm:max-w-sm sm:items-end">
+        <div className="flex w-full items-center justify-end gap-2 sm:max-w-sm sm:flex-col sm:items-end">
+          <NotificationBell unreadCount={unreadCount} recentUnread={recentUnread} />
           {memberships.length > 1 ? (
-            <ChurchSwitcher
-              churches={churchOptions}
-              activeChurchId={church.id}
-            />
+            <div className="hidden w-full sm:block">
+              <ChurchSwitcher churches={churchOptions} activeChurchId={church.id} />
+            </div>
           ) : null}
-          <Button variant="outline" size="sm" className="w-full sm:w-auto" asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className="hidden w-full sm:inline-flex sm:w-auto"
+            asChild
+          >
             <Link href="/select-church">
               <ArrowLeftRight className="h-4 w-4" />
               {memberships.length > 1 ? "Manage church selection" : "Your churches"}

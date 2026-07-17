@@ -22,6 +22,7 @@ export function hasMinRole(
 
 export type NavItemId =
   | "dashboard"
+  | "notifications"
   | "incidents"
   | "select-church"
   | "team"
@@ -59,6 +60,12 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
     href: "/dashboard",
     minRole: "viewer",
     label: "Dashboard",
+  },
+  {
+    id: "notifications",
+    href: "/notifications",
+    minRole: "viewer",
+    label: "Notifications",
   },
   {
     id: "incidents",

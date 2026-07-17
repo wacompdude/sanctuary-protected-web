@@ -17,6 +17,7 @@ import {
 import { INCIDENT_STATUSES, INCIDENT_TYPES } from "@/lib/incidents/constants";
 import { IncidentUpdateForm } from "@/components/incidents/incident-update-form";
 import { IncidentTimeline } from "@/components/incidents/incident-timeline";
+import { ResendIncidentNotificationButton } from "@/components/incidents/resend-incident-notification-button";
 import { IncidentPhotosCard } from "@/components/incidents/incident-photos";
 import { IncidentTeamMembersCard } from "@/components/incidents/incident-team-members-card";
 import { IncidentMedicalSuppliesCard } from "@/components/medical-supplies/incident-medical-supplies";
@@ -33,6 +34,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { hasMinRole } from "@/lib/church/navigation";
+import { canCreateOperationalNotifications } from "@/lib/notifications/permissions";
 import {
   canManageMedicalSupplies,
   canRecordMedicalSupplyUsage,
@@ -63,6 +65,7 @@ async function IncidentDetailContent({
 
   const canUpload = membership.role !== "viewer";
   const canManageAll = hasMinRole(membership.role, "security_leader");
+  const canResendAlert = canCreateOperationalNotifications(membership.role);
   const isMedical = incident.type === "medical";
   const canRecordSupplies = canRecordMedicalSupplyUsage(membership.role);
   const canManageSupplies = canManageMedicalSupplies(membership.role);
@@ -95,7 +98,15 @@ async function IncidentDetailContent({
             <h1 className="text-3xl font-bold tracking-tight">{incident.title}</h1>
             <p className="mt-1 text-muted-foreground">{church.name}</p>
           </div>
-          <IncidentStatusBadge status={incident.status} />
+          <div className="flex flex-wrap items-center gap-3">
+            {canResendAlert ? (
+              <ResendIncidentNotificationButton
+                incidentId={incident.id}
+                severity={incident.severity}
+              />
+            ) : null}
+            <IncidentStatusBadge status={incident.status} />
+          </div>
         </div>
 
         {created === "1" && (

@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { getAuthenticatedUserWithChurch } from "@/lib/church/auth";
 import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
 import {
+  areNotificationTablesAvailable,
   countUnreadNotifications,
   labelForNotificationType,
   listUserNotifications,
@@ -29,6 +30,40 @@ async function NotificationsContent({
   unreadOnly: boolean;
 }) {
   const { supabase, church, user } = await getAuthenticatedUserWithChurch();
+  const tablesAvailable = await areNotificationTablesAvailable(supabase);
+
+  if (!tablesAvailable) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+            Notifications
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground sm:text-base">
+            {church.name}
+          </p>
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Notifications not configured</CardTitle>
+            <CardDescription>
+              The notification tables are missing in this database.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm text-muted-foreground">
+            <p>
+              Apply{" "}
+              <code className="rounded bg-muted px-1 py-0.5 text-xs">
+                supabase/migrations/027_notifications.sql
+              </code>{" "}
+              in your production Supabase SQL editor, then reload this page.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   const [items, unreadCount] = await Promise.all([
     listUserNotifications(supabase, {
       churchId: church.id,

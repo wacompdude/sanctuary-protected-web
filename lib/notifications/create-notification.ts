@@ -71,7 +71,11 @@ export async function createNotification(
       : channel === "in_app" || channel === "email",
   ) as NotificationChannel[];
 
-  const supabase = options?.supabase ?? (await writeClient());
+  // Prefer service-role writes so creation is not blocked by caller RLS
+  // (e.g. security_member creating an incident) and email delivery rows can be inserted.
+  const supabase = isServiceRoleConfigured()
+    ? createAdminClient()
+    : (options?.supabase ?? (await writeClient()));
 
   try {
     const settings = await getChurchNotificationSettings(

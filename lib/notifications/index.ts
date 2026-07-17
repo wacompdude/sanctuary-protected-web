@@ -28,7 +28,9 @@ export {
 export {
   listUserNotifications,
   countUnreadNotifications,
+  areNotificationTablesAvailable,
 } from "@/lib/notifications/queries";
+export type { UserNotificationListItem } from "@/lib/notifications/queries";
 export * from "@/lib/notifications/types";
 export * from "@/lib/notifications/constants";
 export * from "@/lib/notifications/permissions";

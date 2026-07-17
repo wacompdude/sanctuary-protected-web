@@ -29,6 +29,8 @@ import { hasMinRole } from "@/lib/church/navigation";
 import { canRecordMedicalSupplyUsage } from "@/lib/medical-supplies/types";
 import { createNotification } from "@/lib/notifications/create-notification";
 import { mapIncidentSeverityToNotification } from "@/lib/notifications/constants";
+import { canCreateOperationalNotifications } from "@/lib/notifications/permissions";
+import { auditNotificationCreated } from "@/lib/audit/notification-events";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 function parseMedicalSupplyUsages(formData: FormData): {
@@ -488,12 +490,12 @@ export async function createIncident(
       ipAddress: await getRequestIpAddress(),
     });
 
-    // Send notification for critical and high incidents.
+    // Await notification create before redirect — fire-and-forget is dropped on Vercel.
     if (input.severity === "critical" || input.severity === "high") {
       const notificationType =
         input.severity === "critical" ? "incident.critical" : "incident.created";
-      void createNotification(
-        {
+      try {
+        const notifyResult = await createNotification({
           churchId: church.id,
           createdBy: user.id,
           notificationType,
@@ -508,11 +510,16 @@ export async function createIncident(
             incident_location: input.location ?? "",
             incident_time: input.occurred_at,
           },
-        },
-        { supabase },
-      ).catch((err: unknown) => {
+        });
+        if (notifyResult.error) {
+          console.error(
+            "createNotification failed for incident:",
+            notifyResult.error,
+          );
+        }
+      } catch (err: unknown) {
         console.error("createNotification failed for incident:", err);
-      });
+      }
     }
 
   } catch (error) {
@@ -536,6 +543,92 @@ export async function createIncident(
   if (memberError) params.set("member_error", memberError);
   if (supplyError) params.set("supply_error", supplyError);
   redirect(`/incidents/${incidentId}?${params.toString()}`);
+}
+
+export async function resendIncidentNotificationAction(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  try {
+    const context = await getOperationalChurchContext();
+    const { supabase, user, church, membership } = context;
+
+    if (!canCreateOperationalNotifications(membership.role)) {
+      return {
+        error: "You do not have permission to resend incident notifications.",
+      };
+    }
+
+    const incidentId = String(formData.get("incident_id") ?? "").trim();
+    if (!incidentId) {
+      return { error: "Incident is required." };
+    }
+
+    const incident = await getIncidentWithUpdates(incidentId);
+    if (!incident || incident.church_id !== church.id) {
+      return { error: "Incident not found." };
+    }
+
+    if (incident.severity !== "critical" && incident.severity !== "high") {
+      return {
+        error: "Email alerts are only available for high and critical incidents.",
+      };
+    }
+
+    const notificationType =
+      incident.severity === "critical" ? "incident.critical" : "incident.created";
+
+    const result = await createNotification(
+      {
+        churchId: church.id,
+        createdBy: user.id,
+        notificationType,
+        severity: mapIncidentSeverityToNotification(incident.severity),
+        entityType: "incident",
+        entityId: incident.id,
+        actionUrl: `/incidents/${incident.id}`,
+        deduplicationKey: `${notificationType}:${incident.id}:resend:${new Date().toISOString()}`,
+        templateVariables: {
+          incident_title: incident.title,
+          incident_severity: incident.severity,
+          incident_location: incident.location ?? "",
+          incident_time: incident.occurred_at,
+        },
+      },
+      { dispatchNow: true },
+    );
+
+    if (result.error) {
+      return { error: result.error };
+    }
+    if (result.status === "skipped") {
+      return { error: "Notification could not be sent." };
+    }
+
+    if (result.notificationId) {
+      await auditNotificationCreated(supabase, {
+        churchId: church.id,
+        userId: user.id,
+        notificationId: result.notificationId,
+        notificationType,
+        severity: mapIncidentSeverityToNotification(incident.severity),
+        recipientCount: result.recipientCount,
+      });
+    }
+
+    revalidatePath(`/incidents/${incidentId}`);
+    revalidatePath("/notifications");
+    revalidatePath("/notifications/history");
+
+    return { success: true };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unable to resend incident notification.",
+    };
+  }
 }
 
 export async function addIncidentUpdate(

@@ -112,3 +112,17 @@ export async function countUnreadNotifications(
   }
   return count ?? 0;
 }
+
+/** Returns false when migration 027 has not been applied. */
+export async function areNotificationTablesAvailable(
+  supabase: SupabaseClient,
+): Promise<boolean> {
+  const { error } = await supabase
+    .from("notifications")
+    .select("id", { count: "exact", head: true })
+    .limit(1);
+  if (!error) return true;
+  return !/does not exist|schema cache|Could not find the table/i.test(
+    error.message,
+  );
+}

@@ -70,8 +70,6 @@ async function DashboardContent() {
 
   return (
     <>
-  return (
-    <>
       <Card>
         <CardHeader className="space-y-0 pb-3">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">

@@ -71,7 +71,10 @@ export async function listUserNotifications(
 
   return ((data ?? []) as Array<Record<string, unknown>>)
     .map((row) => {
-      const notification = row.notification as Record<string, unknown> | null;
+      const rawNotification = row.notification;
+      const notification = (
+        Array.isArray(rawNotification) ? rawNotification[0] : rawNotification
+      ) as Record<string, unknown> | null | undefined;
       if (!notification) return null;
       if (notification.status === "cancelled") return null;
       return {

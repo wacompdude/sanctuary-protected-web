@@ -68,6 +68,16 @@ AS $$
   );
 $$;
 
+REVOKE ALL ON FUNCTION public.can_manage_notification_settings(uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.can_view_notification_history(uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.can_manage_notification_templates(uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.can_create_operational_notifications(uuid) FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION public.can_manage_notification_settings(uuid) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.can_view_notification_history(uuid) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.can_manage_notification_templates(uuid) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.can_create_operational_notifications(uuid) TO authenticated, service_role;
+
 -- ---------------------------------------------------------------------------
 -- Church notification settings (1:1 with churches)
 -- ---------------------------------------------------------------------------
@@ -257,6 +267,10 @@ AS $$
       AND nr.user_id = auth.uid()
   );
 $$;
+
+REVOKE ALL ON FUNCTION public.is_notification_recipient(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_notification_recipient(uuid)
+  TO authenticated, service_role;
 
 -- ---------------------------------------------------------------------------
 -- Notification deliveries (per channel)

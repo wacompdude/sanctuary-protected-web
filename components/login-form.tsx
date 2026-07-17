@@ -12,7 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
 import {
@@ -33,7 +33,6 @@ export function LoginForm({
     password?: string;
   }>({});
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
   const searchParams = useSearchParams();
   const nextPath = searchParams.get("next");
 
@@ -60,18 +59,18 @@ export function LoginForm({
       });
       if (signInError) throw signInError;
 
-      try {
-        await recordLoginSecurityEvent();
-      } catch {
-        // Audit failure must not block sign-in.
-      }
-
       const destination =
         nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//")
           ? nextPath
           : "/home";
-      router.push(destination);
-      router.refresh();
+
+      // Audit writes are best-effort and must never delay the sign-in redirect.
+      void recordLoginSecurityEvent().catch(() => undefined);
+
+      // Force a document navigation so the next request definitely carries the
+      // freshly issued auth cookies through middleware and server components.
+      window.location.assign(destination);
+      return;
     } catch (err: unknown) {
       setError(
         err instanceof Error

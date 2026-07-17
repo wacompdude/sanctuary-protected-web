@@ -71,44 +71,65 @@ async function DashboardContent() {
   return (
     <>
       <Card>
-        <CardHeader className="gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="space-y-3">
-            <div>
-              <CardDescription>Weekly Threat Level</CardDescription>
-              {currentThreatLevel ? (
-                <div className="mt-2 flex flex-wrap items-center gap-3">
-                  <span
-                    className={threatLevelBadgeClassName(
-                      currentThreatLevel.threat_level,
-                    )}
-                    style={threatLevelBadgeStyle(currentThreatLevel.threat_level)}
-                  >
-                    {labelForThreatLevel(currentThreatLevel.threat_level)}
-                  </span>
-                  <p className="text-sm text-muted-foreground">
-                    {rankLabelForThreatLevel(currentThreatLevel.threat_level)}
-                  </p>
-                </div>
-              ) : (
-                <CardTitle className="mt-2 text-2xl">
-                  No threat level recorded
-                </CardTitle>
-              )}
-            </div>
-            <p className="text-sm text-muted-foreground">
-              {currentThreatLevel
-                ? `Week of ${formatThreatWeek(currentThreatLevel.week_start)}. Last changed by ${currentThreatLevel.changed_by_name} on ${formatDateTime(currentThreatLevel.created_at)}.`
-                : "Set the weekly threat level so the team sees the current operational posture at a glance."}
-            </p>
+        <CardHeader className="gap-4 space-y-0 md:flex-row md:items-start md:justify-between">
+          <div className="min-w-0 flex-1 space-y-3">
+            <CardDescription>Weekly Threat Level</CardDescription>
+            {currentThreatLevel ? (
+              <div className="flex flex-wrap items-center gap-3">
+                <span
+                  className={threatLevelBadgeClassName(
+                    currentThreatLevel.threat_level,
+                  )}
+                  style={threatLevelBadgeStyle(currentThreatLevel.threat_level)}
+                >
+                  {labelForThreatLevel(currentThreatLevel.threat_level)}
+                </span>
+                <p className="text-sm text-muted-foreground">
+                  {rankLabelForThreatLevel(currentThreatLevel.threat_level)}
+                </p>
+              </div>
+            ) : (
+              <CardTitle className="text-2xl">No threat level recorded</CardTitle>
+            )}
           </div>
           {canManageThreatLevels(membership.role) && (
-            <Button asChild>
+            <Button asChild className="h-11 w-full shrink-0 md:w-auto">
               <Link href="/dashboard/threat-level">
                 {currentThreatLevel ? "Change threat level" : "Set threat level"}
               </Link>
             </Button>
           )}
         </CardHeader>
+        <CardContent className="space-y-3">
+          {currentThreatLevel ? (
+            <>
+              <div className="min-w-0 rounded-md border border-border bg-muted/40 px-3 py-3">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Why this level
+                </p>
+                {currentThreatLevel.notes ? (
+                  <p className="mt-2 break-words whitespace-pre-wrap text-base leading-relaxed text-foreground">
+                    {currentThreatLevel.notes}
+                  </p>
+                ) : (
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    No notes recorded for this weekly threat level.
+                  </p>
+                )}
+              </div>
+              <p className="break-words text-sm text-muted-foreground">
+                Week of {formatThreatWeek(currentThreatLevel.week_start)}. Last
+                changed by {currentThreatLevel.changed_by_name} on{" "}
+                {formatDateTime(currentThreatLevel.created_at)}.
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Set the weekly threat level so the team sees the current operational
+              posture at a glance.
+            </p>
+          )}
+        </CardContent>
       </Card>
 
       <div>

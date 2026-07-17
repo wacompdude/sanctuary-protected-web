@@ -6,6 +6,7 @@ import {
   canManageThreatLevels,
   isThreatLevel,
   normalizeThreatWeekInput,
+  THREAT_LEVEL_NOTES_MAX_LENGTH,
   threatLevelMigrationHintFromError,
 } from "@/lib/church/threat-levels";
 import type { ActionState } from "@/lib/church/types";
@@ -26,9 +27,13 @@ export async function updateChurchThreatLevel(
       };
     }
 
-    const threatLevel = String(formData.get("threat_level") ?? "").trim().toLowerCase();
+    const threatLevel = String(formData.get("threat_level") ?? "")
+      .trim()
+      .toLowerCase();
     const weekInput = String(formData.get("week_start") ?? "").trim();
     const weekStart = normalizeThreatWeekInput(weekInput);
+    const notesRaw = String(formData.get("notes") ?? "").trim();
+    const notes = notesRaw ? notesRaw : null;
     const fieldErrors: Record<string, string> = {};
 
     if (!isThreatLevel(threatLevel)) {
@@ -36,6 +41,9 @@ export async function updateChurchThreatLevel(
     }
     if (!weekStart) {
       fieldErrors.week_start = "Choose a valid week.";
+    }
+    if (notes && notes.length > THREAT_LEVEL_NOTES_MAX_LENGTH) {
+      fieldErrors.notes = `Notes must be ${THREAT_LEVEL_NOTES_MAX_LENGTH} characters or fewer.`;
     }
     if (Object.keys(fieldErrors).length > 0) {
       return {
@@ -68,6 +76,7 @@ export async function updateChurchThreatLevel(
         church_id: church.id,
         week_start: resolvedWeekStart,
         threat_level: threatLevel,
+        notes,
         changed_by: user.id,
       })
       .select("id")

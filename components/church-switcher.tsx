@@ -43,43 +43,89 @@ export function ChurchSwitcher({
     const only = churches[0];
     if (!only) return null;
 
-    if (collapsed) {
-      return (
+    return (
+      <>
         <div
           className={cn(
-            "flex h-10 w-10 items-center justify-center rounded-md bg-muted/60 text-muted-foreground",
+            "flex min-h-11 items-center gap-2 rounded-md bg-muted/50 px-3 py-2 text-sm",
+            collapsed && "md:hidden",
             className,
           )}
-          title={only.name}
-          aria-label={only.name}
         >
-          <Building2 className="h-4 w-4" />
+          <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <span className="truncate font-medium">{only.name}</span>
         </div>
-      );
-    }
-
-    return (
-      <div
-        className={cn(
-          "flex items-center gap-2 rounded-md bg-muted/50 px-3 py-2 text-sm",
-          className,
+        {collapsed && (
+          <div
+            className={cn(
+              "hidden h-10 w-10 items-center justify-center rounded-md bg-muted/60 text-muted-foreground md:flex",
+              className,
+            )}
+            title={only.name}
+            aria-label={only.name}
+          >
+            <Building2 className="h-4 w-4" />
+          </div>
         )}
-      >
-        <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
-        <span className="truncate font-medium">{only.name}</span>
-      </div>
+      </>
     );
   }
 
-  if (collapsed) {
-    return (
+  const expandedSelect = (
+    <form
+      action={(formData) => {
+        startTransition(() => {
+          formAction(formData);
+        });
+      }}
+      className={cn("w-full", collapsed && "md:hidden", className)}
+    >
+      <label className="sr-only" htmlFor="church-switcher">
+        Active church
+      </label>
+      <div className="relative">
+        <Building2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <select
+          id="church-switcher"
+          key={activeChurchId}
+          name="church_id"
+          defaultValue={activeChurchId}
+          disabled={pending || isPending}
+          onChange={(event) => {
+            event.currentTarget.form?.requestSubmit();
+          }}
+          className="min-h-11 w-full cursor-pointer appearance-none rounded-md border border-border bg-background py-2 pl-9 pr-8 text-base font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60 md:h-10 md:min-h-0 md:text-sm"
+        >
+          {churches.map((church) => (
+            <option key={church.id} value={church.id}>
+              {church.name}
+            </option>
+          ))}
+        </select>
+        <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      </div>
+      {state.error && (
+        <p className="mt-1 text-xs text-destructive" role="alert">
+          {state.error}
+        </p>
+      )}
+    </form>
+  );
+
+  if (!collapsed) {
+    return expandedSelect;
+  }
+
+  return (
+    <>
+      {expandedSelect}
       <form
         action={(formData) => {
           startTransition(() => {
             formAction(formData);
           });
         }}
-        className={cn("w-full", className)}
+        className={cn("hidden w-full md:block", className)}
       >
         <label className="sr-only" htmlFor="church-switcher-collapsed">
           Switch church
@@ -106,47 +152,6 @@ export function ChurchSwitcher({
           </select>
         </div>
       </form>
-    );
-  }
-
-  return (
-    <form
-      action={(formData) => {
-        startTransition(() => {
-          formAction(formData);
-        });
-      }}
-      className={cn("w-full", className)}
-    >
-      <label className="sr-only" htmlFor="church-switcher">
-        Active church
-      </label>
-      <div className="relative">
-        <Building2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <select
-          id="church-switcher"
-          key={activeChurchId}
-          name="church_id"
-          defaultValue={activeChurchId}
-          disabled={pending || isPending}
-          onChange={(event) => {
-            event.currentTarget.form?.requestSubmit();
-          }}
-          className="h-10 w-full cursor-pointer appearance-none rounded-md border border-border bg-background py-2 pl-9 pr-8 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
-        >
-          {churches.map((church) => (
-            <option key={church.id} value={church.id}>
-              {church.name}
-            </option>
-          ))}
-        </select>
-        <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-      </div>
-      {state.error && (
-        <p className="mt-1 text-xs text-destructive" role="alert">
-          {state.error}
-        </p>
-      )}
-    </form>
+    </>
   );
 }

@@ -44,13 +44,20 @@ async function ThreatLevelPageContent() {
   return (
     <div className="space-y-8">
       <div>
-        <Button variant="ghost" size="sm" className="mb-4 -ml-2" asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="mb-4 -ml-2 h-11 px-3"
+          asChild
+        >
           <Link href="/dashboard">
             <ArrowLeft className="h-4 w-4" />
             Back to Dashboard
           </Link>
         </Button>
-        <h1 className="text-3xl font-bold tracking-tight">Weekly Threat Level</h1>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+          Weekly Threat Level
+        </h1>
         <p className="mt-1 text-muted-foreground">
           Update and review the current weekly threat posture for {church.name}.
         </p>
@@ -66,18 +73,29 @@ async function ThreatLevelPageContent() {
         <CardContent className="space-y-3">
           {currentThreatLevel ? (
             <>
-              <div className="flex flex-wrap items-center gap-3">
-                <span
-                  className={threatLevelBadgeClassName(
-                    currentThreatLevel.threat_level,
-                  )}
-                  style={threatLevelBadgeStyle(currentThreatLevel.threat_level)}
-                >
-                  {labelForThreatLevel(currentThreatLevel.threat_level)}
-                </span>
-                <p className="text-sm text-muted-foreground">
-                  {rankLabelForThreatLevel(currentThreatLevel.threat_level)}
-                </p>
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span
+                    className={threatLevelBadgeClassName(
+                      currentThreatLevel.threat_level,
+                    )}
+                    style={threatLevelBadgeStyle(currentThreatLevel.threat_level)}
+                  >
+                    {labelForThreatLevel(currentThreatLevel.threat_level)}
+                  </span>
+                  <p className="text-sm text-muted-foreground">
+                    {rankLabelForThreatLevel(currentThreatLevel.threat_level)}
+                  </p>
+                </div>
+                {currentThreatLevel.notes ? (
+                  <p className="whitespace-pre-wrap text-sm text-foreground">
+                    {currentThreatLevel.notes}
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No notes recorded for this weekly threat level.
+                  </p>
+                )}
               </div>
               <p className="text-sm text-muted-foreground">
                 Week of {formatThreatWeek(currentThreatLevel.week_start)}. Last
@@ -97,13 +115,14 @@ async function ThreatLevelPageContent() {
         <ThreatLevelForm
           defaultWeekStart={startOfThreatWeek()}
           defaultThreatLevel={currentThreatLevel?.threat_level ?? "green"}
+          defaultNotes={currentThreatLevel?.notes ?? ""}
         />
 
         <Card>
           <CardHeader>
             <CardTitle>Recent history</CardTitle>
             <CardDescription>
-              Weekly threat level changes and who recorded them.
+              Weekly threat level changes, notes, and who recorded them.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -129,6 +148,15 @@ async function ThreatLevelPageContent() {
                         Week of {formatThreatWeek(entry.week_start)}
                       </p>
                     </div>
+                    {entry.notes ? (
+                      <p className="mt-2 whitespace-pre-wrap text-sm text-foreground">
+                        {entry.notes}
+                      </p>
+                    ) : (
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        No notes recorded.
+                      </p>
+                    )}
                     <p className="mt-2 text-sm text-muted-foreground">
                       Changed by {entry.changed_by_name}
                       {entry.changed_by_email ? ` (${entry.changed_by_email})` : ""}{" "}

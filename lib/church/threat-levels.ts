@@ -11,11 +11,14 @@ export const THREAT_LEVEL_OPTIONS = [
 
 export type ThreatLevel = (typeof THREAT_LEVEL_OPTIONS)[number]["value"];
 
+export const THREAT_LEVEL_NOTES_MAX_LENGTH = 4000;
+
 export type ChurchThreatLevelRecord = {
   id: string;
   church_id: string;
   week_start: string;
   threat_level: ThreatLevel;
+  notes: string | null;
   changed_by: string;
   created_at: string;
 };
@@ -59,8 +62,12 @@ export function threatLevelBadgeClassName(_value?: ThreatLevel): string {
  * Explicit colors so theme/Badge variants cannot wash out the label
  * (e.g. white-on-white). Inline styles beat utility class conflicts.
  */
-export function threatLevelBadgeStyle(value: ThreatLevel): CSSProperties {
-  switch (value) {
+export function threatLevelBadgeStyle(
+  value: ThreatLevel | string,
+): CSSProperties {
+  const level = String(value ?? "").trim().toLowerCase();
+
+  switch (level) {
     case "green":
       return {
         backgroundColor: "#86efac",
@@ -97,6 +104,14 @@ export function threatLevelBadgeStyle(value: ThreatLevel): CSSProperties {
       return {
         backgroundColor: "#fca5a5",
         borderColor: "#dc2626",
+        borderStyle: "solid",
+        borderWidth: "1px",
+        color: "#111111",
+      };
+    default:
+      return {
+        backgroundColor: "#e5e7eb",
+        borderColor: "#9ca3af",
         borderStyle: "solid",
         borderWidth: "1px",
         color: "#111111",
@@ -138,8 +153,11 @@ export function formatThreatWeek(value: string): string {
 export function threatLevelMigrationHintFromError(
   message: string,
 ): string | null {
+  if (/notes/i.test(message) && /church_threat_levels|column/i.test(message)) {
+    return "Threat level notes are not configured yet. Run supabase/migrations/026_church_threat_level_notes.sql in the Supabase SQL Editor.";
+  }
   if (/church_threat_levels|does not exist|PGRST205|42P01/i.test(message)) {
-    return "Threat level tracking is not configured yet. Run supabase/migrations/025_church_threat_levels.sql in the Supabase SQL Editor.";
+    return "Threat level tracking is not configured yet. Run supabase/migrations/025_church_threat_levels.sql (and 026_church_threat_level_notes.sql) in the Supabase SQL Editor.";
   }
   return null;
 }

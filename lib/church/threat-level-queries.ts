@@ -11,6 +11,7 @@ type ThreatLevelRow = {
   church_id: string;
   week_start: string;
   threat_level: ChurchThreatLevelRecord["threat_level"];
+  notes: string | null;
   changed_by: string;
   created_at: string;
 };
@@ -28,6 +29,7 @@ async function mapThreatLevelHistory(
     const actor = byUserId.get(row.changed_by);
     return {
       ...row,
+      notes: row.notes ?? null,
       changed_by_name: actor?.name ?? "Former team member",
       changed_by_email: actor?.email ?? null,
     };
@@ -41,14 +43,44 @@ export async function listChurchThreatLevels(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("church_threat_levels")
-    .select("id, church_id, week_start, threat_level, changed_by, created_at")
+    .select(
+      "id, church_id, week_start, threat_level, notes, changed_by, created_at",
+    )
     .eq("church_id", churchId)
     .order("week_start", { ascending: false })
     .order("created_at", { ascending: false })
     .limit(limit);
 
   if (error) {
-    throw new Error(threatLevelMigrationHintFromError(error.message) ?? error.message);
+    // Older DBs may have migration 025 without notes yet.
+    if (/notes/i.test(error.message) && /column|does not exist/i.test(error.message)) {
+      const legacy = await supabase
+        .from("church_threat_levels")
+        .select("id, church_id, week_start, threat_level, changed_by, created_at")
+        .eq("church_id", churchId)
+        .order("week_start", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(limit);
+
+      if (legacy.error) {
+        throw new Error(
+          threatLevelMigrationHintFromError(legacy.error.message) ??
+            legacy.error.message,
+        );
+      }
+
+      return mapThreatLevelHistory(
+        churchId,
+        ((legacy.data ?? []) as Omit<ThreatLevelRow, "notes">[]).map((row) => ({
+          ...row,
+          notes: null,
+        })),
+      );
+    }
+
+    throw new Error(
+      threatLevelMigrationHintFromError(error.message) ?? error.message,
+    );
   }
 
   return mapThreatLevelHistory(churchId, (data ?? []) as ThreatLevelRow[]);

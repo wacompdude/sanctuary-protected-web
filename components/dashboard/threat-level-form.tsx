@@ -14,10 +14,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  THREAT_LEVEL_NOTES_MAX_LENGTH,
   THREAT_LEVEL_OPTIONS,
   type ThreatLevel,
 } from "@/lib/church/threat-levels";
-import { selectClassName } from "@/components/incidents/incident-badges";
+import { selectClassName, textareaClassName } from "@/components/incidents/incident-badges";
 import type { ActionState } from "@/lib/church/types";
 
 const initialState: ActionState = {};
@@ -25,9 +26,11 @@ const initialState: ActionState = {};
 export function ThreatLevelForm({
   defaultWeekStart,
   defaultThreatLevel = "green",
+  defaultNotes = "",
 }: {
   defaultWeekStart: string;
   defaultThreatLevel?: ThreatLevel;
+  defaultNotes?: string | null;
 }) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState(
@@ -47,7 +50,7 @@ export function ThreatLevelForm({
         <CardTitle>Change weekly threat level</CardTitle>
         <CardDescription>
           Save a new weekly threat level entry. Each change is recorded with the
-          user and timestamp for historical review.
+          user, timestamp, and optional notes for historical review.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -103,7 +106,28 @@ export function ThreatLevelForm({
             </div>
           </div>
 
-          <Button type="submit" disabled={pending}>
+          <div className="space-y-2">
+            <Label htmlFor="notes">Threat level notes</Label>
+            <textarea
+              id="notes"
+              name="notes"
+              rows={4}
+              defaultValue={defaultNotes ?? ""}
+              maxLength={THREAT_LEVEL_NOTES_MAX_LENGTH}
+              placeholder="Explain why this weekly threat level was selected…"
+              className={textareaClassName}
+              aria-invalid={!!state.fieldErrors?.notes}
+            />
+            {state.fieldErrors?.notes && (
+              <p className="text-sm text-destructive">{state.fieldErrors.notes}</p>
+            )}
+          </div>
+
+          <Button
+            type="submit"
+            disabled={pending}
+            className="h-11 w-full sm:w-auto"
+          >
             {pending ? "Saving..." : "Save threat level"}
           </Button>
         </form>

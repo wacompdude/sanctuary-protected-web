@@ -31,7 +31,7 @@ export async function AppChurchHeader() {
     }));
 
     return (
-      <header className="mb-6 flex flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-center sm:justify-between">
+      <header className="mb-4 flex flex-col gap-3 border-b border-border pb-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between sm:pb-4">
         {cookieSyncChurchId ? (
           <SyncActiveChurchCookie churchId={cookieSyncChurchId} />
         ) : null}
@@ -41,7 +41,7 @@ export async function AppChurchHeader() {
           </p>
           <ChurchIdentity name={church.name} logoPath={logoPath} />
         </div>
-        <div className="flex w-full flex-col gap-2 sm:max-w-sm sm:items-end">
+        <div className="hidden w-full flex-col gap-2 sm:flex sm:max-w-sm sm:items-end">
           {memberships.length > 1 ? (
             <ChurchSwitcher
               churches={churchOptions}

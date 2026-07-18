@@ -426,6 +426,23 @@ export async function markNotificationRead(params: {
   return { ok: true };
 }
 
+export async function markAllNotificationsRead(params: {
+  supabase: SupabaseClient;
+  churchId: string;
+  userId: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await params.supabase
+    .from("notification_recipients")
+    .update({ read_at: new Date().toISOString() })
+    .eq("church_id", params.churchId)
+    .eq("user_id", params.userId)
+    .is("read_at", null)
+    .is("dismissed_at", null);
+
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
 export async function acknowledgeNotification(params: {
   supabase: SupabaseClient;
   notificationId: string;

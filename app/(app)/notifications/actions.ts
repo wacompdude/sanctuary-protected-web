@@ -7,6 +7,7 @@ import {
   acknowledgeNotification,
   countUnreadNotifications,
   createNotification,
+  markAllNotificationsRead,
   markNotificationRead,
 } from "@/lib/notifications";
 import {
@@ -58,6 +59,30 @@ export async function markNotificationReadAction(
 
 export async function markNotificationReadFormAction(formData: FormData) {
   await markNotificationReadAction({}, formData);
+}
+
+export async function markAllNotificationsReadAction(): Promise<ActionState> {
+  try {
+    const { supabase, user, church } = await getAuthenticatedUserWithChurch();
+    const result = await markAllNotificationsRead({
+      supabase,
+      churchId: church.id,
+      userId: user.id,
+    });
+    if (!result.ok) {
+      return { error: result.error ?? "Unable to clear notifications." };
+    }
+    revalidatePath("/notifications");
+    revalidatePath("/", "layout");
+    return { success: true };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unable to clear notifications.",
+    };
+  }
 }
 
 export async function markNotificationUnreadAction(

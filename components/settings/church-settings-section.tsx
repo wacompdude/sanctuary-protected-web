@@ -125,7 +125,9 @@ export async function ChurchSettingsSectionPage({
         </div>
 
         <div className="grid gap-6 md:grid-cols-[220px_minmax(0,1fr)]">
-          <ChurchSettingsNav />
+          <aside className="md:rounded-lg md:bg-accent/20 md:p-2 md:ring-1 md:ring-primary/20">
+            <ChurchSettingsNav />
+          </aside>
           <div className="min-w-0 space-y-6">
             <div>
               <h2 className="text-xl font-semibold tracking-tight">

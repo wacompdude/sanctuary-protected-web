@@ -240,6 +240,11 @@ export function ChurchBrandingForm({
                 error={fieldErrors?.secondary_brand_color}
               />
             </div>
+            <p className="text-xs text-muted-foreground">
+              Primary colors buttons, active navigation (including settings
+              submenus), and focus rings. Secondary tints submenu shells and
+              hover surfaces; if omitted, a soft tint of the primary is used.
+            </p>
             {(church.primary_brand_color || church.secondary_brand_color) && (
               <div className="flex gap-3">
                 {church.primary_brand_color && (

@@ -274,7 +274,7 @@ export function AppSidebarNav({
                       "md:h-10 md:w-10 md:justify-center md:gap-0 md:px-0 md:py-0",
                     isActive
                       ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                      : "text-muted-foreground hover:bg-[hsl(var(--nav-hover))] hover:text-accent-foreground",
                   )}
                 >
                   {Icon ? <Icon className="h-4 w-4 shrink-0" /> : null}

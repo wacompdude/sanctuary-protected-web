@@ -6,7 +6,12 @@ import {
   listIncidentsForChurch,
 } from "@/lib/incidents/queries";
 import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
-import { formatDateTime, formatIncidentId, labelForEnum, resolveIncidentListSort } from "@/lib/incidents/format";
+import {
+  formatDateTime,
+  formatIncidentId,
+  labelForEnum,
+  resolveIncidentListSort,
+} from "@/lib/incidents/format";
 import { INCIDENT_TYPES } from "@/lib/incidents/constants";
 import { parseAppPreferences } from "@/lib/church/settings";
 import { Button } from "@/components/ui/button";
@@ -23,7 +28,9 @@ import {
 } from "@/components/incidents/incident-badges";
 import { Plus } from "lucide-react";
 
-async function IncidentsList() {
+const CLOSED_STATUSES = new Set(["closed", "resolved"]);
+
+async function IncidentsList({ showAll }: { showAll: boolean }) {
   const { church, supabase } = await getAuthenticatedUserWithChurch();
   const { data: settingsRow } = await supabase
     .from("churches")
@@ -59,38 +66,71 @@ async function IncidentsList() {
     );
   }
 
+  const visibleIncidents = showAll
+    ? incidents
+    : incidents.filter((incident) => !CLOSED_STATUSES.has(incident.status));
+
   return (
     <>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Incidents</h1>
           <p className="mt-1 text-muted-foreground">
-            Incidents for {church.name}.
+            {showAll
+              ? `All incidents for ${church.name}.`
+              : `Open and investigating incidents for ${church.name}.`}
           </p>
         </div>
-        <Button asChild>
-          <Link href="/incidents/new">
-            <Plus className="h-4 w-4" />
-            New Incident
-          </Link>
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {showAll ? (
+            <Button asChild variant="outline" className="h-11">
+              <Link href="/incidents">Active incidents</Link>
+            </Button>
+          ) : (
+            <Button asChild variant="outline" className="h-11">
+              <Link href="/incidents?view=all">View all incidents</Link>
+            </Button>
+          )}
+          <Button asChild className="h-11">
+            <Link href="/incidents/new">
+              <Plus className="h-4 w-4" />
+              New Incident
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>All Incidents</CardTitle>
+          <CardTitle>{showAll ? "All incidents" : "Active incidents"}</CardTitle>
           <CardDescription>
-            {incidents.length} incident{incidents.length === 1 ? "" : "s"} on
-            record
+            {visibleIncidents.length} incident
+            {visibleIncidents.length === 1 ? "" : "s"}
+            {showAll
+              ? " on record"
+              : " open or investigating"}
+            {!showAll && incidents.length > visibleIncidents.length
+              ? ` · ${incidents.length - visibleIncidents.length} closed or resolved hidden`
+              : ""}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {incidents.length === 0 ? (
+          {visibleIncidents.length === 0 ? (
             <div className="py-8 text-center text-sm text-muted-foreground">
-              <p>No incidents have been reported yet.</p>
-              <Button asChild className="mt-4" variant="outline">
-                <Link href="/incidents/new">Report the first incident</Link>
-              </Button>
+              <p>
+                {showAll
+                  ? "No incidents have been reported yet."
+                  : "No open or investigating incidents."}
+              </p>
+              {!showAll && incidents.length > 0 ? (
+                <Button asChild className="mt-4" variant="outline">
+                  <Link href="/incidents?view=all">View all incidents</Link>
+                </Button>
+              ) : (
+                <Button asChild className="mt-4" variant="outline">
+                  <Link href="/incidents/new">Report the first incident</Link>
+                </Button>
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -121,7 +161,7 @@ async function IncidentsList() {
                   </tr>
                 </thead>
                 <tbody>
-                  {incidents.map((incident) => (
+                  {visibleIncidents.map((incident) => (
                     <tr
                       key={incident.id}
                       className="border-b border-border last:border-0"
@@ -200,19 +240,9 @@ function IncidentsError({ message }: { message: string }) {
   );
 }
 
-export default function IncidentsPage() {
-  return (
-    <div className="space-y-8">
-      <Suspense fallback={<IncidentsListFallback />}>
-        <IncidentsListWrapper />
-      </Suspense>
-    </div>
-  );
-}
-
-async function IncidentsListWrapper() {
+async function IncidentsListWrapper({ showAll }: { showAll: boolean }) {
   try {
-    return <IncidentsList />;
+    return <IncidentsList showAll={showAll} />;
   } catch (error) {
     rethrowOrRedirectForChurchAccess(error);
 
@@ -233,4 +263,28 @@ async function IncidentsListWrapper() {
       </>
     );
   }
+}
+
+async function IncidentsPageLoader({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string }>;
+}) {
+  const params = await searchParams;
+  const showAll = params.view === "all";
+  return <IncidentsListWrapper showAll={showAll} />;
+}
+
+export default function IncidentsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string }>;
+}) {
+  return (
+    <div className="space-y-8">
+      <Suspense fallback={<IncidentsListFallback />}>
+        <IncidentsPageLoader searchParams={searchParams} />
+      </Suspense>
+    </div>
+  );
 }

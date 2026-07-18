@@ -3,6 +3,7 @@ export { getEmailProvider, getEmailProviderStatus } from "@/lib/notifications/pr
 export {
   createNotification,
   markNotificationRead,
+  markAllNotificationsRead,
   acknowledgeNotification,
   cancelNotification,
 } from "@/lib/notifications/create-notification";

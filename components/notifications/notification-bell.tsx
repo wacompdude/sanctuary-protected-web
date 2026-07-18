@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTransition } from "react";
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { UserNotificationListItem } from "@/lib/notifications/queries";
 import { labelForNotificationType } from "@/lib/notifications/constants";
+import { markAllNotificationsReadAction } from "@/app/(app)/notifications/actions";
 
 export function NotificationBell({
   unreadCount,
@@ -21,6 +23,14 @@ export function NotificationBell({
   unreadCount: number;
   recentUnread: UserNotificationListItem[];
 }) {
+  const [isPending, startTransition] = useTransition();
+
+  function clearAll() {
+    startTransition(async () => {
+      await markAllNotificationsReadAction();
+    });
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -39,13 +49,27 @@ export function NotificationBell({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[min(22rem,92vw)] p-0">
-        <div className="p-3">
-          <DropdownMenuLabel className="px-0 py-0 text-sm">
-            Notifications
-          </DropdownMenuLabel>
-          <p className="text-xs text-muted-foreground">
-            {unreadCount} unread
-          </p>
+        <div className="flex items-start justify-between gap-2 p-3">
+          <div>
+            <DropdownMenuLabel className="px-0 py-0 text-sm">
+              Notifications
+            </DropdownMenuLabel>
+            <p className="text-xs text-muted-foreground">
+              {unreadCount} unread
+            </p>
+          </div>
+          {unreadCount > 0 ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 shrink-0 px-2 text-xs"
+              disabled={isPending}
+              onClick={clearAll}
+            >
+              {isPending ? "Clearing…" : "Clear all"}
+            </Button>
+          ) : null}
         </div>
         <DropdownMenuSeparator />
         <div className="max-h-[22rem] overflow-y-auto p-2">

@@ -48,7 +48,7 @@ export function SelectChurchList({
               </p>
             </div>
             {isActive ? (
-              <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
+              <span className="inline-flex items-center gap-1 text-sm font-medium text-primary">
                 <Check className="h-4 w-4" />
                 Active
               </span>

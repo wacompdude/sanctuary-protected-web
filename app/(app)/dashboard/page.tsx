@@ -47,24 +47,28 @@ async function DashboardContent() {
       value: String(openIncidents),
       description: `${incidents.length} total on record`,
       href: "/incidents",
+      emphasis: "red" as const,
     },
     {
       label: "Unacknowledged Events",
       value: String(unackedEvents),
       description: "Device alerts needing review",
       href: "/events",
+      emphasis: "orange" as const,
     },
     {
       label: "Expiring Certifications",
       value: String(certCounts.expiring_soon),
       description: "Expiring within 60 days",
       href: "/certifications",
+      emphasis: "blue" as const,
     },
     {
       label: "Expired Certifications",
       value: String(certCounts.expired),
       description: "Need renewal",
       href: "/certifications",
+      emphasis: "yellow" as const,
     },
   ];
 
@@ -149,21 +153,70 @@ async function DashboardContent() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => (
-          <Link key={stat.label} href={stat.href} className="block">
-            <Card className="h-full transition-colors hover:bg-accent/40">
-              <CardHeader className="pb-2">
-                <CardDescription>{stat.label}</CardDescription>
-                <CardTitle className="text-3xl">{stat.value}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  {stat.description}
-                </p>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
+        {stats.map((stat) => {
+          const emphasis =
+            "emphasis" in stat
+              ? (stat.emphasis as "red" | "yellow" | "orange" | "blue")
+              : undefined;
+          const badgeStyle = emphasis
+            ? threatLevelBadgeStyle(emphasis)
+            : undefined;
+          const textClass =
+            emphasis === "red"
+              ? "text-red-950"
+              : emphasis === "yellow"
+                ? "text-yellow-950"
+                : emphasis === "orange"
+                  ? "text-orange-950"
+                  : emphasis === "blue"
+                    ? "text-blue-950"
+                    : undefined;
+          const mutedTextClass =
+            emphasis === "red"
+              ? "text-red-950/70"
+              : emphasis === "yellow"
+                ? "text-yellow-950/70"
+                : emphasis === "orange"
+                  ? "text-orange-950/70"
+                  : emphasis === "blue"
+                    ? "text-blue-950/70"
+                    : undefined;
+
+          return (
+            <Link key={stat.label} href={stat.href} className="block">
+              <Card
+                className={
+                  badgeStyle
+                    ? "h-full border transition-opacity hover:opacity-90"
+                    : "h-full transition-colors hover:bg-accent/40"
+                }
+                style={badgeStyle}
+              >
+                <CardHeader className="pb-2">
+                  <CardDescription className={mutedTextClass}>
+                    {stat.label}
+                  </CardDescription>
+                  <CardTitle
+                    className={textClass ? `text-3xl ${textClass}` : "text-3xl"}
+                  >
+                    {stat.value}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p
+                    className={
+                      mutedTextClass
+                        ? `text-sm ${mutedTextClass}`
+                        : "text-sm text-muted-foreground"
+                    }
+                  >
+                    {stat.description}
+                  </p>
+                </CardContent>
+              </Card>
+            </Link>
+          );
+        })}
       </div>
     </>
   );

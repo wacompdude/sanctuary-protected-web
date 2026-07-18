@@ -152,7 +152,7 @@ async function DashboardContent() {
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => {
           const emphasis =
             "emphasis" in stat
@@ -187,27 +187,37 @@ async function DashboardContent() {
               <Card
                 className={
                   badgeStyle
-                    ? "h-full border transition-opacity hover:opacity-90"
-                    : "h-full transition-colors hover:bg-accent/40"
+                    ? "h-full border shadow-none transition-opacity hover:opacity-90"
+                    : "h-full shadow-none transition-colors hover:bg-accent/40"
                 }
                 style={badgeStyle}
               >
-                <CardHeader className="pb-2">
-                  <CardDescription className={mutedTextClass}>
+                <CardHeader className="space-y-1 p-3 pb-1">
+                  <CardDescription
+                    className={
+                      mutedTextClass
+                        ? `text-xs leading-snug ${mutedTextClass}`
+                        : "text-xs leading-snug"
+                    }
+                  >
                     {stat.label}
                   </CardDescription>
                   <CardTitle
-                    className={textClass ? `text-3xl ${textClass}` : "text-3xl"}
+                    className={
+                      textClass
+                        ? `text-xl font-semibold tabular-nums ${textClass}`
+                        : "text-xl font-semibold tabular-nums"
+                    }
                   >
                     {stat.value}
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-3 pt-0">
                   <p
                     className={
                       mutedTextClass
-                        ? `text-sm ${mutedTextClass}`
-                        : "text-sm text-muted-foreground"
+                        ? `text-xs leading-snug ${mutedTextClass}`
+                        : "text-xs leading-snug text-muted-foreground"
                     }
                   >
                     {stat.description}

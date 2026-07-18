@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { changeChurchAccountStatus } from "@/app/(app)/settings/church/actions";
 import { Button } from "@/components/ui/button";
@@ -116,7 +117,8 @@ export function ChurchDangerZone({
         <CardHeader>
           <CardTitle className="text-destructive">Danger zone</CardTitle>
           <CardDescription>
-            Only church owners can suspend, reactivate, or close the account.
+            Only church owners or co-owners can suspend, reactivate, or close
+            the account.
           </CardDescription>
         </CardHeader>
       </Card>
@@ -168,11 +170,11 @@ export function ChurchDangerZone({
         <div className="space-y-2 rounded-md border border-border p-4">
           <h3 className="font-medium">Transfer ownership</h3>
           <p className="text-sm text-muted-foreground">
-            Ownership transfer is not implemented yet. When available, it will
-            live on the Ownership settings page and require owner confirmation.
+            Assign co-owners on the Team page, then transfer the primary owner
+            role from Ownership settings.
           </p>
-          <Button type="button" variant="outline" disabled>
-            Transfer ownership (coming soon)
+          <Button asChild variant="outline">
+            <Link href="/settings/ownership">Open ownership settings</Link>
           </Button>
         </div>
       </CardContent>

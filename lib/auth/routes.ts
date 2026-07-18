@@ -28,6 +28,7 @@ export const PROTECTED_PATH_PREFIXES = [
   "/home",
   "/dashboard",
   "/notifications",
+  "/notification-groups",
   "/incidents",
   "/events",
   "/certifications",

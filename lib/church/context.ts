@@ -15,6 +15,7 @@ import type {
 import {
   canManageCertifications,
   isOwnerRecoveryChurchStatus,
+  isOwnershipRole,
   isUsableChurchStatus,
   normalizeMembershipRole,
 } from "@/lib/church/types";
@@ -230,7 +231,7 @@ export async function getUserMemberships(
     const role = normalizeMembershipRole(row.role);
     const usable = isUsableChurchStatus(church.status);
     const ownerRecovery =
-      isOwnerRecoveryChurchStatus(church.status) && role === "owner";
+      isOwnerRecoveryChurchStatus(church.status) && isOwnershipRole(role);
 
     if (!usable && !ownerRecovery) continue;
 

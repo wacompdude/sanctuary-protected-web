@@ -4,6 +4,8 @@ import { getAuthenticatedUserWithChurch } from "@/lib/church/auth";
 import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
 import {
   areNotificationTablesAvailable,
+  canCreateOperationalNotifications,
+  canViewNotificationHistory,
   countUnreadNotifications,
   labelForNotificationType,
   listUserNotifications,
@@ -29,8 +31,11 @@ async function NotificationsContent({
 }: {
   unreadOnly: boolean;
 }) {
-  const { supabase, church, user } = await getAuthenticatedUserWithChurch();
+  const { supabase, church, user, membership } =
+    await getAuthenticatedUserWithChurch();
   const tablesAvailable = await areNotificationTablesAvailable(supabase);
+  const canCompose = canCreateOperationalNotifications(membership.role);
+  const canViewHistory = canViewNotificationHistory(membership.role);
 
   if (!tablesAvailable) {
     return (
@@ -103,6 +108,16 @@ async function NotificationsContent({
           <Button asChild variant="outline" className="h-11">
             <Link href="/notifications/preferences">Preferences</Link>
           </Button>
+          {canViewHistory ? (
+            <Button asChild variant="outline" className="h-11">
+              <Link href="/notifications/history">History</Link>
+            </Button>
+          ) : null}
+          {canCompose ? (
+            <Button asChild className="h-11">
+              <Link href="/notifications/new">Compose</Link>
+            </Button>
+          ) : null}
         </div>
       </div>
 
@@ -226,15 +241,22 @@ async function NotificationsWrapper({ unreadOnly }: { unreadOnly: boolean }) {
   }
 }
 
+async function NotificationsPageLoader({
+  searchParams,
+}: {
+  searchParams: Promise<{ filter?: string | string[] }>;
+}) {
+  const params = await searchParams;
+  const filter = Array.isArray(params.filter) ? params.filter[0] : params.filter;
+  const unreadOnly = filter === "unread";
+  return <NotificationsWrapper unreadOnly={unreadOnly} />;
+}
+
 export default function NotificationsPage({
   searchParams,
 }: {
-  searchParams?: Record<string, string | string[] | undefined>;
+  searchParams: Promise<{ filter?: string | string[] }>;
 }) {
-  const params = searchParams ?? {};
-  const filter = Array.isArray(params.filter) ? params.filter[0] : params.filter;
-  const unreadOnly = filter === "unread";
-
   return (
     <Suspense
       fallback={
@@ -245,7 +267,7 @@ export default function NotificationsPage({
         </Card>
       }
     >
-      <NotificationsWrapper unreadOnly={unreadOnly} />
+      <NotificationsPageLoader searchParams={searchParams} />
     </Suspense>
   );
 }

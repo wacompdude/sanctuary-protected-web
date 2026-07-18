@@ -39,6 +39,7 @@ async function NotificationHistoryContent() {
       failed_at,
       last_error_code,
       last_error_message,
+      suppression_reason,
       created_at,
       recipient:notification_recipients!inner (
         display_name,
@@ -78,6 +79,8 @@ async function NotificationHistoryContent() {
         failed_at: (row.failed_at as string | null) ?? null,
         last_error_code: (row.last_error_code as string | null) ?? null,
         last_error_message: (row.last_error_message as string | null) ?? null,
+        suppression_reason:
+          (row.suppression_reason as string | null) ?? null,
         created_at: String(row.created_at ?? ""),
         recipient: {
           display_name: (recipient?.display_name as string | null) ?? null,
@@ -105,6 +108,7 @@ async function NotificationHistoryContent() {
         failed_at: string | null;
         last_error_code: string | null;
         last_error_message: string | null;
+        suppression_reason: string | null;
         created_at: string;
         recipient: { display_name: string | null; recipient_address: string | null };
         notification: {
@@ -165,6 +169,12 @@ async function NotificationHistoryContent() {
                   {delivery.last_error_message ? (
                     <p className="mt-1 text-sm text-destructive">
                       {delivery.last_error_message}
+                    </p>
+                  ) : null}
+                  {delivery.suppression_reason ? (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Suppressed:{" "}
+                      {delivery.suppression_reason.replaceAll("_", " ")}
                     </p>
                   ) : null}
                   <div className="mt-2 flex flex-wrap gap-2">

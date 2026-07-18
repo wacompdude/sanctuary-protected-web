@@ -61,10 +61,11 @@ export function NotificationPreferencesForm({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>My notification preferences</CardTitle>
+        <CardTitle>Church-wide preferences</CardTitle>
         <CardDescription>
-          Preferences are scoped to your active church. Critical alerts may bypass
-          routine quiet-hour preferences when church policy requires it.
+          Defaults for this church. Group rules and emergency policy can still
+          change what you receive. Critical alerts may bypass quiet hours when
+          your church enables that override.
         </CardDescription>
       </CardHeader>
       <CardContent>

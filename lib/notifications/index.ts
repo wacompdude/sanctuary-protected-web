@@ -17,7 +17,18 @@ export {
   resolveUsersByIds,
   resolveIncidentNotificationRecipients,
   applyRecipientPreferences,
+  dedupeRecipients,
 } from "@/lib/notifications/resolve-recipients";
+export {
+  resolveNotificationAudience,
+  resolveGroupMembers,
+  resolveSystemGroupIdsForRoles,
+} from "@/lib/notifications/resolve-audience";
+export type {
+  NotificationTargetInput,
+  AudienceMember,
+  PlannedDelivery,
+} from "@/lib/notifications/resolve-audience";
 export {
   renderNotificationTemplate,
   wrapEmailHtml,
@@ -35,3 +46,13 @@ export type { UserNotificationListItem } from "@/lib/notifications/queries";
 export * from "@/lib/notifications/types";
 export * from "@/lib/notifications/constants";
 export * from "@/lib/notifications/permissions";
+export * from "@/lib/notifications/groups/permissions";
+export * from "@/lib/notifications/groups/constants";
+export type {
+  NotificationGroup,
+  NotificationGroupListItem,
+  NotificationGroupMember,
+  NotificationGroupDefault,
+} from "@/lib/notifications/groups/types";
+export type { NotificationEndpoint } from "@/lib/notifications/endpoints/types";
+export { maskDestination } from "@/lib/notifications/endpoints/normalize";

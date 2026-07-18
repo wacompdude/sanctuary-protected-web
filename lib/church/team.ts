@@ -1,5 +1,5 @@
 import type { MembershipRole, MembershipStatus } from "@/lib/church/types";
-import { normalizeMembershipRole } from "@/lib/church/types";
+import { isOwnershipRole, normalizeMembershipRole } from "@/lib/church/types";
 
 export type ManageableRole = Exclude<MembershipRole, "owner">;
 
@@ -17,7 +17,7 @@ export type TeamMemberRow = {
 
 export function canManageTeamMemberships(role: MembershipRole): boolean {
   return (
-    role === "owner" ||
+    isOwnershipRole(role) ||
     role === "administrator" ||
     role === "security_leader"
   );
@@ -25,8 +25,9 @@ export function canManageTeamMemberships(role: MembershipRole): boolean {
 
 /** Roles the actor may assign when changing another member's role. */
 export function rolesActorMayAssign(actorRole: MembershipRole): ManageableRole[] {
-  if (actorRole === "owner") {
+  if (isOwnershipRole(actorRole)) {
     return [
+      "co_owner",
       "administrator",
       "security_leader",
       "security_member",
@@ -34,7 +35,7 @@ export function rolesActorMayAssign(actorRole: MembershipRole): ManageableRole[]
     ];
   }
   if (actorRole === "administrator") {
-    // Admins may manage peer admins and lower roles; never owner.
+    // Admins may manage peer admins and lower roles; never ownership tier.
     return [
       "administrator",
       "security_leader",
@@ -50,8 +51,9 @@ export function rolesActorMayAssign(actorRole: MembershipRole): ManageableRole[]
 
 /** Target membership roles this actor is allowed to manage. */
 export function rolesActorMayManage(actorRole: MembershipRole): MembershipRole[] {
-  if (actorRole === "owner") {
+  if (isOwnershipRole(actorRole)) {
     return [
+      "co_owner",
       "administrator",
       "security_leader",
       "security_member",
@@ -89,9 +91,9 @@ export function canActorManageTarget(params: {
 
   if (!canManageTeamMemberships(actorRole)) return false;
   if (actorUserId === targetUserId) return false;
+  // Primary owner role changes go through ownership transfer, not team role edit.
   if (targetRole === "owner") return false;
   if (targetStatus === "removed" && actorRole === "security_leader") {
-    // Leaders cannot revive/remove-history of removed members
     return false;
   }
   return rolesActorMayManage(actorRole).includes(targetRole);
@@ -148,10 +150,6 @@ export function canChangeStatus(params: {
 
   if (params.nextStatus === params.targetStatus) return false;
 
-  // Soft-delete only — never hard delete. Allowed transitions:
-  // active -> suspended | removed
-  // suspended -> active | removed
-  // removed -> active (reactivate) for owner/admin only
   const { targetStatus, nextStatus, targetRole, isLastActiveOwner } = params;
 
   if (targetRole === "owner" && isLastActiveOwner) {
@@ -167,7 +165,7 @@ export function canChangeStatus(params: {
   if (targetStatus === "removed") {
     return (
       nextStatus === "active" &&
-      (params.actorRole === "owner" || params.actorRole === "administrator")
+      (isOwnershipRole(params.actorRole) || params.actorRole === "administrator")
     );
   }
   return false;

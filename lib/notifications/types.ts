@@ -91,6 +91,8 @@ export type NotificationType =
   | "admin.daily_summary"
   | "admin.weekly_summary"
   | "admin.config_warning"
+  | "general.announcement"
+  | "emergency.alert"
   | "notification.test";
 
 export type ChurchNotificationSettings = {
@@ -161,10 +163,14 @@ export type CreateNotificationInput = {
   metadata?: Record<string, unknown> | null;
   templateKey?: string | null;
   templateVariables?: Record<string, string | number | null | undefined>;
-  /** Explicit user IDs; if omitted, roles from church settings are used when applicable. */
+  /** Explicit user IDs; if omitted, roles/groups from church settings are used when applicable. */
   recipientUserIds?: string[];
-  /** Roles to resolve when recipientUserIds not provided. */
+  /** Roles to resolve when recipientUserIds / target groups not provided. */
   recipientRoles?: MembershipRole[];
+  /** Prefer group targeting when present (Phase 5+). */
+  targetGroupIds?: string[];
+  /** Direct church membership IDs. */
+  targetMembershipIds?: string[];
   channels?: NotificationChannel[];
   /** Skip email even if enabled (in-app only). */
   emailOnlyToVerified?: boolean;

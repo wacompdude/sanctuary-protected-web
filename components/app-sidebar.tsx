@@ -2,11 +2,7 @@ import { AppSidebarNav } from "@/components/app-sidebar-nav";
 import { requireChurchMembership } from "@/lib/church/context";
 import { ChurchAccessError } from "@/lib/church/errors";
 import { isNextControlFlowError } from "@/lib/church/access-guard";
-import {
-  getNavItemsForRole,
-  navLabelForRole,
-  type NavItemId,
-} from "@/lib/church/navigation";
+import { getNavSectionsForRole } from "@/lib/church/navigation";
 import type { MembershipRole } from "@/lib/church/types";
 
 export async function AppSidebar() {
@@ -34,18 +30,14 @@ export async function AppSidebar() {
     }
   }
 
-  const navItems = getNavItemsForRole(role).map((item) => ({
-    id: item.id as NavItemId,
-    href: item.href,
-    label: role ? navLabelForRole(item, role) : item.label,
-  }));
+  const navSections = getNavSectionsForRole(role);
 
   return (
     <AppSidebarNav
       churches={churches}
       activeChurchId={activeChurchId}
       role={role}
-      navItems={navItems}
+      navSections={navSections}
     />
   );
 }

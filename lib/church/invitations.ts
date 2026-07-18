@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "crypto";
 import type { MembershipRole } from "@/lib/church/types";
 import type { ActionState } from "@/lib/church/types";
+import { isOwnershipRole } from "@/lib/church/types";
 
 export const INVITE_EXPIRATION_OPTIONS = [
   { value: "7", label: "7 days" },
@@ -11,6 +12,14 @@ export const INVITE_EXPIRATION_OPTIONS = [
 export type InviteExpirationDays = 7 | 14 | 30;
 
 export type InvitableRole = Exclude<MembershipRole, "owner">;
+
+export const OWNERSHIP_INVITE_ROLES: InvitableRole[] = [
+  "co_owner",
+  "administrator",
+  "security_leader",
+  "security_member",
+  "viewer",
+];
 
 export const OWNER_ADMIN_INVITE_ROLES: InvitableRole[] = [
   "administrator",
@@ -30,14 +39,17 @@ export function normalizeInviteEmail(email: string): string {
 
 export function canInviteMembers(role: MembershipRole): boolean {
   return (
-    role === "owner" ||
+    isOwnershipRole(role) ||
     role === "administrator" ||
     role === "security_leader"
   );
 }
 
 export function rolesInviterMayAssign(role: MembershipRole): InvitableRole[] {
-  if (role === "owner" || role === "administrator") {
+  if (isOwnershipRole(role)) {
+    return OWNERSHIP_INVITE_ROLES;
+  }
+  if (role === "administrator") {
     return OWNER_ADMIN_INVITE_ROLES;
   }
   if (role === "security_leader") {
@@ -105,6 +117,7 @@ export function validateInviteForm(formData: FormData): {
   }
 
   if (
+    roleRaw !== "co_owner" &&
     roleRaw !== "administrator" &&
     roleRaw !== "security_leader" &&
     roleRaw !== "security_member" &&
@@ -135,6 +148,8 @@ export function labelForMembershipRole(role: string): string {
   switch (role) {
     case "owner":
       return "Owner";
+    case "co_owner":
+      return "Co-owner";
     case "administrator":
       return "Administrator";
     case "security_leader":

@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Activity,
   Award,
   Building2,
+  ChevronDown,
   ChevronsLeft,
   ChevronsRight,
   Church,
@@ -15,17 +16,19 @@ import {
   Cross,
   HardDrive,
   Bell,
+  Layers,
   LayoutDashboard,
   LogOut,
   MailPlus,
-  ArrowLeftRight,
   Menu,
   ScrollText,
+  Settings2,
   Shield,
   Users,
   AlertTriangle,
   UserRound,
   X,
+  Inbox,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -34,51 +37,96 @@ import { ChurchSwitcher, type ChurchOption } from "@/components/church-switcher"
 import { LogoutButton } from "@/components/logout-button";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
-import type { NavItemId } from "@/lib/church/navigation";
+import type {
+  NavEntry,
+  NavItemId,
+  NavSection,
+} from "@/lib/church/navigation";
 import type { MembershipRole } from "@/lib/church/types";
 
 const STORAGE_KEY = "sp-sidebar-collapsed";
 
-const NAV_ICONS: Record<NavItemId, LucideIcon> = {
+const NAV_ICONS: Partial<Record<NavItemId, LucideIcon>> = {
   dashboard: LayoutDashboard,
-  notifications: Bell,
   incidents: AlertTriangle,
-  "select-church": ArrowLeftRight,
-  team: Users,
-  certifications: Award,
+  notifications: Bell,
+  "notification-inbox": Inbox,
+  "notification-groups": Layers,
+  "notification-preferences": Bell,
   "security-hardware": HardDrive,
   "medical-supplies": Cross,
-  campuses: Building2,
-  "security-settings": Shield,
-  "church-settings": Church,
+  team: Users,
+  "team-members": Users,
   invitations: MailPlus,
-  audit: ScrollText,
+  certifications: Award,
+  campuses: Building2,
+  settings: Settings2,
+  "church-settings": Church,
+  "security-settings": Shield,
   ownership: Crown,
   billing: CreditCard,
   "account-status": Activity,
+  audit: ScrollText,
   profile: UserRound,
 };
 
-export type SidebarNavItem = {
-  id: NavItemId;
-  href: string;
-  label: string;
-};
+function pathMatches(pathname: string, href: string): boolean {
+  if (pathname === href) return true;
+  if (href === "/dashboard") return false;
+  // Avoid /notifications matching /notifications/preferences incorrectly for inbox
+  // when comparing exact children — callers pass the specific href.
+  return pathname.startsWith(`${href}/`);
+}
+
+function entryIsActive(pathname: string, entry: NavEntry): boolean {
+  if (entry.kind === "link") {
+    return pathMatches(pathname, entry.href) || pathname === entry.href;
+  }
+  return entry.children.some(
+    (child) => pathname === child.href || pathMatches(pathname, child.href),
+  );
+}
+
+function childIsActive(pathname: string, href: string, siblings: string[]): boolean {
+  if (pathname === href) return true;
+  // Prefer the most specific matching sibling so /notifications doesn't
+  // stay active when viewing /notifications/preferences.
+  const matches = siblings.filter(
+    (candidate) =>
+      pathname === candidate || pathname.startsWith(`${candidate}/`),
+  );
+  if (matches.length === 0) return false;
+  const best = matches.reduce((a, b) => (a.length >= b.length ? a : b));
+  return best === href;
+}
 
 export function AppSidebarNav({
   churches,
   activeChurchId,
-  navItems,
+  navSections,
 }: {
   churches: ChurchOption[];
   activeChurchId: string | null;
   role?: MembershipRole | null;
-  navItems: SidebarNavItem[];
+  navSections: NavSection[];
 }) {
   const pathname = usePathname();
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+
+  const activeGroupIds = useMemo(() => {
+    const ids: string[] = [];
+    for (const section of navSections) {
+      for (const entry of section.items) {
+        if (entry.kind === "group" && entryIsActive(pathname, entry)) {
+          ids.push(entry.id);
+        }
+      }
+    }
+    return ids;
+  }, [navSections, pathname]);
 
   useEffect(() => {
     const stored = window.localStorage.getItem(STORAGE_KEY);
@@ -95,6 +143,17 @@ export function AppSidebarNav({
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    if (activeGroupIds.length === 0) return;
+    setOpenGroups((prev) => {
+      const next = { ...prev };
+      for (const id of activeGroupIds) {
+        next[id] = true;
+      }
+      return next;
+    });
+  }, [activeGroupIds]);
 
   useEffect(() => {
     if (!mobileOpen) return;
@@ -118,8 +177,146 @@ export function AppSidebarNav({
     });
   };
 
+  const toggleGroup = (id: string) => {
+    setOpenGroups((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
   // Desktop can be icon-only; the phone drawer always shows full labels.
   const desktopCompact = collapsed;
+
+  const renderLink = (
+    item: {
+      id: NavItemId;
+      href: string;
+      label: string;
+    },
+    options?: { nested?: boolean; active?: boolean },
+  ) => {
+    const Icon = NAV_ICONS[item.id];
+    const nested = options?.nested ?? false;
+    const isActive = options?.active ?? false;
+
+    return (
+      <Link
+        key={item.id}
+        href={item.href}
+        title={item.label}
+        aria-label={item.label}
+        aria-current={isActive ? "page" : undefined}
+        onClick={() => setMobileOpen(false)}
+        className={cn(
+          "flex min-h-11 items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
+          nested && "min-h-9 py-1.5 pl-9 text-[13px]",
+          desktopCompact &&
+            !nested &&
+            "md:h-10 md:w-10 md:justify-center md:gap-0 md:px-0 md:py-0",
+          desktopCompact && nested && "md:hidden",
+          isActive
+            ? nested
+              ? "bg-[hsl(var(--nav-hover))] text-foreground"
+              : "bg-primary text-primary-foreground"
+            : "text-muted-foreground hover:bg-[hsl(var(--nav-hover))] hover:text-accent-foreground",
+        )}
+      >
+        {Icon && !nested ? <Icon className="h-4 w-4 shrink-0" /> : null}
+        {nested ? (
+          <span
+            className={cn(
+              "mr-2 h-1.5 w-1.5 shrink-0 rounded-full",
+              isActive ? "bg-primary" : "bg-border",
+            )}
+            aria-hidden
+          />
+        ) : null}
+        <span className={cn(desktopCompact && !nested && "md:hidden")}>
+          {item.label}
+        </span>
+      </Link>
+    );
+  };
+
+  const renderEntry = (entry: NavEntry) => {
+    if (entry.kind === "link") {
+      const active =
+        pathname === entry.href || pathMatches(pathname, entry.href);
+      // Special-case: /notifications should not mark as active for preferences
+      // when this is a top-level collapsed single link named Notifications.
+      const isActive =
+        entry.href === "/notifications"
+          ? pathname === "/notifications" ||
+            (pathname.startsWith("/notifications/") &&
+              !pathname.startsWith("/notifications/preferences") &&
+              !pathname.startsWith("/notification-groups"))
+          : active;
+      return renderLink(entry, { active: isActive });
+    }
+
+    const Icon = NAV_ICONS[entry.id] ?? Settings2;
+    const groupActive = entryIsActive(pathname, entry);
+    const isOpen = openGroups[entry.id] ?? groupActive;
+    const siblingHrefs = entry.children.map((child) => child.href);
+
+    if (desktopCompact) {
+      // Collapsed: icon jumps to group landing; expand sidebar to browse children.
+      return (
+        <Link
+          key={entry.id}
+          href={entry.href}
+          title={entry.label}
+          aria-label={entry.label}
+          onClick={() => {
+            setMobileOpen(false);
+            setCollapsed(false);
+            window.localStorage.setItem(STORAGE_KEY, "0");
+            setOpenGroups((prev) => ({ ...prev, [entry.id]: true }));
+          }}
+          className={cn(
+            "flex h-10 w-10 items-center justify-center rounded-md transition-colors",
+            groupActive
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:bg-[hsl(var(--nav-hover))] hover:text-accent-foreground",
+          )}
+        >
+          <Icon className="h-4 w-4" />
+        </Link>
+      );
+    }
+
+    return (
+      <div key={entry.id} className="space-y-0.5">
+        <button
+          type="button"
+          onClick={() => toggleGroup(entry.id)}
+          aria-expanded={isOpen}
+          className={cn(
+            "flex min-h-11 w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
+            groupActive
+              ? "bg-primary/10 text-foreground"
+              : "text-muted-foreground hover:bg-[hsl(var(--nav-hover))] hover:text-accent-foreground",
+          )}
+        >
+          <Icon className="h-4 w-4 shrink-0" />
+          <span className="flex-1 text-left">{entry.label}</span>
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 shrink-0 transition-transform",
+              isOpen && "rotate-180",
+            )}
+          />
+        </button>
+        {isOpen ? (
+          <div className="space-y-0.5">
+            {entry.children.map((child) =>
+              renderLink(child, {
+                nested: true,
+                active: childIsActive(pathname, child.href, siblingHrefs),
+              }),
+            )}
+          </div>
+        ) : null}
+      </div>
+    );
+  };
 
   return (
     <>
@@ -141,7 +338,6 @@ export function AppSidebarNav({
         />
       </div>
 
-      {/* Zero footprint on phone so the drawer doesn't shove main content. */}
       <div
         className={cn(
           "max-md:pointer-events-none max-md:h-0 max-md:w-0 max-md:overflow-visible",
@@ -250,40 +446,32 @@ export function AppSidebarNav({
 
           <nav
             className={cn(
-              "flex flex-1 flex-col gap-1 overflow-y-auto p-3 md:p-4",
-              desktopCompact && "md:items-center md:p-2",
+              "flex flex-1 flex-col gap-4 overflow-y-auto p-3 md:p-4",
+              desktopCompact && "md:items-center md:gap-2 md:p-2",
             )}
           >
-            {navItems.map((item) => {
-              const Icon = NAV_ICONS[item.id];
-              const label = item.label;
-              const isActive =
-                pathname === item.href ||
-                (item.href !== "/dashboard" && pathname.startsWith(item.href));
-
-              return (
-                <Link
-                  key={item.id}
-                  href={item.href}
-                  title={label}
-                  aria-label={label}
-                  onClick={() => setMobileOpen(false)}
-                  className={cn(
-                    "flex min-h-11 items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
-                    desktopCompact &&
-                      "md:h-10 md:w-10 md:justify-center md:gap-0 md:px-0 md:py-0",
-                    isActive
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-[hsl(var(--nav-hover))] hover:text-accent-foreground",
-                  )}
-                >
-                  {Icon ? <Icon className="h-4 w-4 shrink-0" /> : null}
-                  <span className={cn(desktopCompact && "md:hidden")}>
-                    {label}
-                  </span>
-                </Link>
-              );
-            })}
+            {navSections.map((section) => (
+              <div
+                key={section.id}
+                className={cn(
+                  "space-y-1",
+                  desktopCompact && "md:flex md:flex-col md:items-center md:space-y-1",
+                )}
+              >
+                {section.label && !desktopCompact ? (
+                  <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/80">
+                    {section.label}
+                  </p>
+                ) : null}
+                {section.label && desktopCompact ? (
+                  <div
+                    className="my-1 hidden h-px w-6 bg-border md:block"
+                    aria-hidden
+                  />
+                ) : null}
+                {section.items.map((entry) => renderEntry(entry))}
+              </div>
+            ))}
           </nav>
 
           <div

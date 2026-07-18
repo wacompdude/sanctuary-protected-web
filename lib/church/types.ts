@@ -1,9 +1,15 @@
 export type MembershipRole =
   | "owner"
+  | "co_owner"
   | "administrator"
   | "security_leader"
   | "security_member"
   | "viewer";
+
+/** Primary owner or co-owner — shared administrative ownership tier. */
+export function isOwnershipRole(role: MembershipRole | null | undefined): boolean {
+  return role === "owner" || role === "co_owner";
+}
 
 /** @deprecated Use MembershipRole — kept for gradual migration */
 export type AppRole = MembershipRole | "member";
@@ -58,6 +64,7 @@ export type ActionState = {
 
 export const CERT_MANAGEMENT_ROLES: MembershipRole[] = [
   "owner",
+  "co_owner",
   "administrator",
   "security_leader",
 ];
@@ -72,6 +79,7 @@ export function normalizeMembershipRole(
 ): MembershipRole {
   switch (role) {
     case "owner":
+    case "co_owner":
     case "administrator":
     case "security_leader":
     case "security_member":
@@ -90,7 +98,7 @@ export function isUsableChurchStatus(
   return !status || status === "trial" || status === "active";
 }
 
-/** Owner may keep context on suspended/closed churches for recovery only. */
+/** Ownership-tier members may keep context on suspended/closed churches for recovery. */
 export function isOwnerRecoveryChurchStatus(
   status: string | null | undefined,
 ): boolean {

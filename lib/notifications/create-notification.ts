@@ -10,12 +10,10 @@ import {
   wrapEmailHtml,
 } from "@/lib/notifications/render-template";
 import {
-  applyRecipientPreferences,
-  dedupeRecipients,
-  resolveIncidentNotificationRecipients,
-  resolveUsersByChurchRole,
-  resolveUsersByIds,
-} from "@/lib/notifications/resolve-recipients";
+  resolveNotificationAudience,
+  resolveSystemGroupIdsForRoles,
+  type NotificationTargetInput,
+} from "@/lib/notifications/resolve-audience";
 import {
   getChurchNotificationSettings,
   getNotificationTemplate,
@@ -24,7 +22,7 @@ import type {
   CreateNotificationInput,
   CreateNotificationResult,
   NotificationChannel,
-  ResolvedRecipient,
+  NotificationSeverity,
 } from "@/lib/notifications/types";
 import {
   sanitizeNotificationMetadata,
@@ -209,75 +207,89 @@ export async function createNotification(
 
     const notificationId = notification.id as string;
 
-    let recipients = await resolveCreateRecipients(
+    const targets = await buildNotificationTargets(
       supabase,
       input,
       settings,
       severity,
     );
-    recipients = await dedupeRecipients(recipients);
 
-    const preferred = await applyRecipientPreferences({
+    await writeNotificationTargets(
+      supabase,
+      input.churchId,
+      notificationId,
+      targets,
+    );
+
+    const audience = await resolveNotificationAudience({
       supabase,
       churchId: input.churchId,
       notificationType: input.notificationType,
       severity,
       settings,
-      recipients,
+      channels,
+      targets,
     });
 
-    const recipientRows = preferred.inApp.length
-      ? preferred.inApp
-      : recipients;
-
-    const insertedRecipients: Array<{
-      id: string;
-      userId: string;
-      email: string | null;
-      displayName: string;
-    }> = [];
-
-    for (const recipient of recipientRows) {
+    const recipientIdByUser = new Map<string, string>();
+    for (const member of audience.members) {
+      const emailDelivery = audience.deliveries.find(
+        (row) =>
+          row.userId === member.userId &&
+          row.channel === "email" &&
+          row.status === "pending",
+      );
       const { data: row, error: recipientError } = await supabase
         .from("notification_recipients")
         .insert({
           church_id: input.churchId,
           notification_id: notificationId,
-          user_id: recipient.userId,
+          user_id: member.userId,
           recipient_type: "user",
-          recipient_address: recipient.email,
-          display_name: recipient.displayName,
-          membership_id: recipient.membershipId,
-          role_at_send: recipient.role,
+          recipient_address: emailDelivery?.destination ?? null,
+          display_name: member.displayName,
+          membership_id: member.membershipId,
+          role_at_send: member.role,
+          groups_at_send: member.sourceGroups,
+          preference_rule_applied:
+            audience.deliveries.find((d) => d.userId === member.userId)
+              ?.preferenceRuleApplied ?? null,
+          override_applied: audience.deliveries.some(
+            (d) => d.userId === member.userId && d.overrideApplied,
+          ),
+          resolution_metadata: {
+            source_groups: member.sourceGroups,
+            used_groups: audience.usedGroups,
+          },
         })
-        .select("id, user_id, recipient_address, display_name")
+        .select("id")
         .single();
 
-      if (recipientError || !row) {
-        continue;
+      if (!recipientError && row) {
+        recipientIdByUser.set(member.userId, row.id as string);
       }
-      insertedRecipients.push({
-        id: row.id as string,
-        userId: row.user_id as string,
-        email: (row.recipient_address as string | null) ?? null,
-        displayName: (row.display_name as string) ?? recipient.displayName,
-      });
     }
 
     let deliveryCount = 0;
-    if (isServiceRoleConfigured()) {
+    if (isServiceRoleConfigured() && recipientIdByUser.size > 0) {
       const admin = createAdminClient();
-      const emailRecipientIds = new Set(
-        preferred.email.map((recipient) => recipient.userId),
-      );
-
       const deliveryInserts: Record<string, unknown>[] = [];
-      for (const recipient of insertedRecipients) {
-        if (channels.includes("in_app")) {
+
+      for (const planned of audience.deliveries) {
+        const recipientId = recipientIdByUser.get(planned.userId);
+        if (!recipientId) continue;
+
+        // Persist suppressions for auditability, but only for email/sms/push.
+        // In-app suppressions are skipped to avoid noise; delivered in-app is kept.
+        if (planned.status === "suppressed" && planned.channel === "in_app") {
+          continue;
+        }
+
+        if (planned.channel === "in_app" && planned.status === "delivered") {
           deliveryInserts.push({
             church_id: input.churchId,
             notification_id: notificationId,
-            recipient_id: recipient.id,
+            recipient_id: recipientId,
             channel: "in_app",
             provider: "internal",
             status: "delivered",
@@ -285,25 +297,58 @@ export async function createNotification(
             max_attempts: 1,
             delivered_at: new Date().toISOString(),
             sent_at: new Date().toISOString(),
+            endpoint_id: null,
+            normalized_destination: "in_app",
+            source_groups: planned.sourceGroups,
+            preference_rule_applied: planned.preferenceRuleApplied,
+            override_applied: planned.overrideApplied,
           });
+          continue;
         }
 
-        if (
-          channels.includes("email") &&
-          settings.email_notifications_enabled &&
-          emailRecipientIds.has(recipient.userId) &&
-          recipient.email
-        ) {
+        if (planned.channel === "email" && planned.status === "pending") {
           deliveryInserts.push({
             church_id: input.churchId,
             notification_id: notificationId,
-            recipient_id: recipient.id,
+            recipient_id: recipientId,
             channel: "email",
             provider: (process.env.EMAIL_PROVIDER ?? "resend").toLowerCase(),
             status: "pending",
             attempt_number: 0,
             max_attempts: settings.max_email_attempts,
             scheduled_for: input.scheduledFor ?? new Date().toISOString(),
+            endpoint_id: planned.endpointId,
+            normalized_destination: planned.normalizedDestination,
+            source_groups: planned.sourceGroups,
+            preference_rule_applied: planned.preferenceRuleApplied,
+            override_applied: planned.overrideApplied,
+          });
+          continue;
+        }
+
+        if (planned.status === "suppressed") {
+          deliveryInserts.push({
+            church_id: input.churchId,
+            notification_id: notificationId,
+            recipient_id: recipientId,
+            channel: planned.channel,
+            provider:
+              planned.channel === "email"
+                ? (process.env.EMAIL_PROVIDER ?? "resend").toLowerCase()
+                : planned.channel === "sms"
+                  ? "sms_placeholder"
+                  : planned.channel === "push"
+                    ? "push_placeholder"
+                    : "internal",
+            status: "suppressed",
+            attempt_number: 0,
+            max_attempts: 1,
+            endpoint_id: planned.endpointId,
+            normalized_destination: planned.normalizedDestination,
+            source_groups: planned.sourceGroups,
+            preference_rule_applied: planned.preferenceRuleApplied,
+            override_applied: planned.overrideApplied,
+            suppression_reason: planned.suppressionReason ?? "other",
           });
         }
       }
@@ -316,15 +361,25 @@ export async function createNotification(
         if (!deliveryError) {
           deliveryCount = deliveries?.length ?? 0;
         } else {
-          console.error("createNotification deliveries failed:", deliveryError.message);
+          console.error(
+            "createNotification deliveries failed:",
+            deliveryError.message,
+          );
         }
       }
     }
 
+    const actionableDeliveries = audience.deliveries.filter(
+      (row) => row.status === "pending" || row.status === "delivered",
+    ).length;
+
     await supabase
       .from("notifications")
       .update({
-        status: deliveryCount > 0 || insertedRecipients.length > 0 ? "queued" : "sent",
+        status:
+          actionableDeliveries > 0 || recipientIdByUser.size > 0
+            ? "queued"
+            : "sent",
       })
       .eq("id", notificationId);
 
@@ -344,7 +399,7 @@ export async function createNotification(
     return {
       notificationId,
       status: "queued",
-      recipientCount: insertedRecipients.length,
+      recipientCount: recipientIdByUser.size,
       deliveryCount,
     };
   } catch (error) {
@@ -359,41 +414,94 @@ export async function createNotification(
   }
 }
 
-async function resolveCreateRecipients(
+async function buildNotificationTargets(
   supabase: SupabaseClient,
   input: CreateNotificationInput,
   settings: Awaited<ReturnType<typeof getChurchNotificationSettings>>,
-  severity: NonNullable<CreateNotificationInput["severity"]>,
-): Promise<ResolvedRecipient[]> {
+  severity: NotificationSeverity,
+): Promise<NotificationTargetInput> {
+  if (input.targetGroupIds?.length || input.targetMembershipIds?.length) {
+    return {
+      groupIds: input.targetGroupIds,
+      membershipIds: input.targetMembershipIds,
+      userIds: input.recipientUserIds,
+      roles: input.recipientRoles,
+    };
+  }
+
   if (input.recipientUserIds?.length) {
-    return resolveUsersByIds(supabase, input.churchId, input.recipientUserIds);
+    return { userIds: input.recipientUserIds };
   }
 
-  if (input.recipientRoles?.length) {
-    return resolveUsersByChurchRole(
-      supabase,
-      input.churchId,
-      input.recipientRoles as MembershipRole[],
-    );
+  const roles: MembershipRole[] = input.recipientRoles?.length
+    ? (input.recipientRoles as MembershipRole[])
+    : input.notificationType.startsWith("incident.") ||
+        input.notificationType === "notification.test"
+      ? ((severity === "critical"
+          ? settings.default_critical_notification_roles
+          : settings.default_incident_notification_roles) as MembershipRole[])
+      : ["owner", "co_owner", "administrator", "security_leader"];
+
+  const groupIds = await resolveSystemGroupIdsForRoles(
+    supabase,
+    input.churchId,
+    roles,
+  );
+
+  if (groupIds.length > 0) {
+    return { groupIds, roles };
   }
 
-  if (
-    input.notificationType.startsWith("incident.") ||
-    input.notificationType === "notification.test"
-  ) {
-    return resolveIncidentNotificationRecipients(
-      supabase,
-      input.churchId,
-      settings,
-      severity,
-    );
+  return { roles };
+}
+
+async function writeNotificationTargets(
+  supabase: SupabaseClient,
+  churchId: string,
+  notificationId: string,
+  targets: NotificationTargetInput,
+): Promise<void> {
+  const rows: Record<string, unknown>[] = [];
+
+  for (const groupId of targets.groupIds ?? []) {
+    rows.push({
+      church_id: churchId,
+      notification_id: notificationId,
+      target_type: "group",
+      group_id: groupId,
+    });
+  }
+  for (const membershipId of targets.membershipIds ?? []) {
+    rows.push({
+      church_id: churchId,
+      notification_id: notificationId,
+      target_type: "member",
+      membership_id: membershipId,
+    });
+  }
+  for (const userId of targets.userIds ?? []) {
+    rows.push({
+      church_id: churchId,
+      notification_id: notificationId,
+      target_type: "user",
+      user_id: userId,
+    });
+  }
+  for (const role of targets.roles ?? []) {
+    rows.push({
+      church_id: churchId,
+      notification_id: notificationId,
+      target_type: "role",
+      role,
+    });
   }
 
-  return resolveUsersByChurchRole(supabase, input.churchId, [
-    "owner",
-    "administrator",
-    "security_leader",
-  ]);
+  if (rows.length === 0) return;
+
+  const { error } = await supabase.from("notification_targets").insert(rows);
+  if (error && !/does not exist|schema cache/i.test(error.message)) {
+    console.error("writeNotificationTargets failed:", error.message);
+  }
 }
 
 async function loadChurchName(

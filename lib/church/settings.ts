@@ -1,14 +1,17 @@
 import type { ActionState, ChurchStatus, MembershipRole } from "@/lib/church/types";
+import { isOwnershipRole } from "@/lib/church/types";
 import { ONBOARDING_TIMEZONES } from "@/lib/church/onboarding";
 
 export const CHURCH_SETTINGS_VIEW_ROLES: MembershipRole[] = [
   "owner",
+  "co_owner",
   "administrator",
   "security_leader",
 ];
 
 export const CHURCH_SETTINGS_EDIT_ROLES: MembershipRole[] = [
   "owner",
+  "co_owner",
   "administrator",
 ];
 
@@ -21,7 +24,7 @@ export function canManageChurchSettings(role: MembershipRole): boolean {
 }
 
 export function canManageChurchAccountStatus(role: MembershipRole): boolean {
-  return role === "owner";
+  return isOwnershipRole(role);
 }
 
 export const SETTINGS_TIMEZONES = ONBOARDING_TIMEZONES;

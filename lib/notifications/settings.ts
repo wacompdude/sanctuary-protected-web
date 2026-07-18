@@ -4,7 +4,7 @@ import type {
   NotificationTemplate,
 } from "@/lib/notifications/types";
 
-const DEFAULT_ROLES = ["owner", "administrator", "security_leader"];
+const DEFAULT_ROLES = ["owner", "co_owner", "administrator", "security_leader"];
 
 function normalizeRoleArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [...DEFAULT_ROLES];
@@ -13,6 +13,7 @@ function normalizeRoleArray(value: unknown): string[] {
     .filter((item) =>
       [
         "owner",
+        "co_owner",
         "administrator",
         "security_leader",
         "security_member",

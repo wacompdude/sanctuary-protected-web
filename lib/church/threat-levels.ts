@@ -31,6 +31,7 @@ export type ChurchThreatLevelHistoryEntry = ChurchThreatLevelRecord & {
 export function canManageThreatLevels(role: MembershipRole): boolean {
   return (
     role === "owner" ||
+    role === "co_owner" ||
     role === "administrator" ||
     role === "security_leader"
   );

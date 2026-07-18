@@ -96,6 +96,8 @@ export function labelForNotificationType(type: string): string {
     "equipment.out_of_service": "Equipment out of service",
     "membership.invited": "Team invitation",
     "membership.role_changed": "Role changed",
+    "general.announcement": "Announcement",
+    "emergency.alert": "Emergency alert",
     "notification.test": "Test notification",
   };
   return labels[type] ?? type;

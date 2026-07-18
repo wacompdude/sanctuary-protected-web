@@ -30,7 +30,7 @@ export function ChurchAccountCard({
         <CardDescription>
           {isOwner
             ? "Account metadata for support and billing planning."
-            : "Read-only account information. Only owners can change account status."}
+            : "Read-only account information. Only owners or co-owners can change account status."}
         </CardDescription>
       </CardHeader>
       <CardContent>

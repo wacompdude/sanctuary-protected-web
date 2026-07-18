@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getAuthenticatedUserWithChurch } from "@/lib/church/auth";
 import { isChurchOperationallyLocked } from "@/lib/church/operations";
+import { isOwnershipRole } from "@/lib/church/types";
 import { ChurchOperationalRedirect } from "@/components/church-operational-redirect";
 
 export async function ChurchStatusBanner() {
@@ -23,7 +24,7 @@ export async function ChurchStatusBanner() {
             <p className="mt-1 text-amber-900/80 dark:text-amber-100/80">
               Operational features such as incidents, team changes, and
               certifications are locked.{" "}
-              {membership.role === "owner" ? (
+              {isOwnershipRole(membership.role) ? (
                 <>
                   You can manage recovery options in{" "}
                   <Link
@@ -35,7 +36,7 @@ export async function ChurchStatusBanner() {
                   .
                 </>
               ) : (
-                <>Ask a church owner to reactivate the account.</>
+                <>Ask a church owner or co-owner to reactivate the account.</>
               )}
             </p>
           </div>

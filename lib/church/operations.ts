@@ -1,4 +1,5 @@
 import type { ChurchStatus, MembershipRole } from "@/lib/church/types";
+import { isOwnershipRole } from "@/lib/church/types";
 import type { ChurchAppPreferences } from "@/lib/church/settings";
 import { DEFAULT_APP_PREFERENCES } from "@/lib/church/settings";
 
@@ -16,7 +17,7 @@ export function isUsableOrOwnerRecoveryStatus(
   if (!status || status === "trial" || status === "active") return true;
   if (
     (status === "suspended" || status === "closed") &&
-    role === "owner"
+    isOwnershipRole(role)
   ) {
     return true;
   }

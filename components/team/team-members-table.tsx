@@ -128,7 +128,7 @@ function MemberActions({
     if (member.role === "owner") {
       return (
         <p className="text-xs text-muted-foreground">
-          Ownership transfer coming later
+          Transfer ownership from Ownership settings
         </p>
       );
     }

@@ -67,7 +67,10 @@ export async function updateTeamMemberRole(
 
   const nextRole = parseMembershipRoleSafe(nextRoleRaw);
   if (nextRole === "owner") {
-    return { error: "Ownership transfer is not available yet." };
+    return {
+      error:
+        "Use Ownership settings to transfer the primary owner role to a co-owner.",
+    };
   }
 
   try {

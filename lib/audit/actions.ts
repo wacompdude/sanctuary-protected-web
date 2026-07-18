@@ -78,6 +78,17 @@ export const AuditAction = {
   NOTIFICATION_TEMPLATE_UPDATED: "notification.template_updated",
   NOTIFICATION_TEMPLATE_RESTORED: "notification.template_restored",
   NOTIFICATION_TEST_EMAIL_SENT: "notification.test_email_sent",
+  NOTIFICATION_GROUP_CREATED: "notification_group.created",
+  NOTIFICATION_GROUP_UPDATED: "notification_group.updated",
+  NOTIFICATION_GROUP_ARCHIVED: "notification_group.archived",
+  NOTIFICATION_GROUP_MEMBER_ADDED: "notification_group.member_added",
+  NOTIFICATION_GROUP_MEMBER_REMOVED: "notification_group.member_removed",
+  NOTIFICATION_GROUP_DEFAULTS_UPDATED: "notification_group.defaults_updated",
+  NOTIFICATION_ENDPOINT_ADDED: "notification.endpoint_added",
+  NOTIFICATION_ENDPOINT_VERIFIED: "notification.endpoint_verified",
+  NOTIFICATION_ENDPOINT_DISABLED: "notification.endpoint_disabled",
+  NOTIFICATION_SMS_OPTED_IN: "notification.sms_opted_in",
+  NOTIFICATION_SMS_OPTED_OUT: "notification.sms_opted_out",
 } as const;
 
 export type AuditActionName = (typeof AuditAction)[keyof typeof AuditAction];
@@ -105,6 +116,8 @@ export const AuditEntityType = {
   NOTIFICATION_DELIVERY: "notification_delivery",
   NOTIFICATION_TEMPLATE: "notification_template",
   NOTIFICATION_SETTINGS: "notification_settings",
+  NOTIFICATION_GROUP: "notification_group",
+  NOTIFICATION_ENDPOINT: "notification_endpoint",
 } as const;
 
 export type AuditEntityTypeName =
@@ -191,6 +204,22 @@ export function labelForAuditAction(action: string): string {
     [AuditAction.NOTIFICATION_TEMPLATE_RESTORED]:
       "Notification template restored",
     [AuditAction.NOTIFICATION_TEST_EMAIL_SENT]: "Test notification email sent",
+    [AuditAction.NOTIFICATION_GROUP_CREATED]: "Notification group created",
+    [AuditAction.NOTIFICATION_GROUP_UPDATED]: "Notification group updated",
+    [AuditAction.NOTIFICATION_GROUP_ARCHIVED]: "Notification group archived",
+    [AuditAction.NOTIFICATION_GROUP_MEMBER_ADDED]:
+      "Notification group member added",
+    [AuditAction.NOTIFICATION_GROUP_MEMBER_REMOVED]:
+      "Notification group member removed",
+    [AuditAction.NOTIFICATION_GROUP_DEFAULTS_UPDATED]:
+      "Notification group defaults updated",
+    [AuditAction.NOTIFICATION_ENDPOINT_ADDED]: "Notification endpoint added",
+    [AuditAction.NOTIFICATION_ENDPOINT_VERIFIED]:
+      "Notification endpoint verified",
+    [AuditAction.NOTIFICATION_ENDPOINT_DISABLED]:
+      "Notification endpoint disabled",
+    [AuditAction.NOTIFICATION_SMS_OPTED_IN]: "SMS notifications opted in",
+    [AuditAction.NOTIFICATION_SMS_OPTED_OUT]: "SMS notifications opted out",
     // Legacy rows from earlier phases
     "membership.invitation_created": "Member invited",
     "membership.invitation_accepted": "Invitation accepted",

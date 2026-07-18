@@ -12,7 +12,7 @@ export const PUBLIC_PATHS = [
 ];
 
 /** Path prefixes that remain public (e.g. email confirmation callbacks). */
-export const PUBLIC_PATH_PREFIXES = ["/auth"];
+export const PUBLIC_PATH_PREFIXES = ["/auth", "/api"];
 
 /** Auth entry pages — signed-in users are redirected to the dashboard. */
 export const AUTH_ENTRY_PATHS = [
@@ -27,6 +27,7 @@ export const AUTH_ENTRY_PATHS = [
 export const PROTECTED_PATH_PREFIXES = [
   "/home",
   "/dashboard",
+  "/notifications",
   "/incidents",
   "/events",
   "/certifications",

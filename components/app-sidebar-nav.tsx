@@ -34,11 +34,7 @@ import { ChurchSwitcher, type ChurchOption } from "@/components/church-switcher"
 import { LogoutButton } from "@/components/logout-button";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
-import {
-  getNavItemsForRole,
-  navLabelForRole,
-  type NavItemId,
-} from "@/lib/church/navigation";
+import type { NavItemId } from "@/lib/church/navigation";
 import type { MembershipRole } from "@/lib/church/types";
 
 const STORAGE_KEY = "sp-sidebar-collapsed";
@@ -63,20 +59,26 @@ const NAV_ICONS: Record<NavItemId, LucideIcon> = {
   profile: UserRound,
 };
 
+export type SidebarNavItem = {
+  id: NavItemId;
+  href: string;
+  label: string;
+};
+
 export function AppSidebarNav({
   churches,
   activeChurchId,
-  role,
+  navItems,
 }: {
   churches: ChurchOption[];
   activeChurchId: string | null;
-  role: MembershipRole | null;
+  role?: MembershipRole | null;
+  navItems: SidebarNavItem[];
 }) {
   const pathname = usePathname();
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const navItems = getNavItemsForRole(role);
 
   useEffect(() => {
     const stored = window.localStorage.getItem(STORAGE_KEY);
@@ -254,7 +256,7 @@ export function AppSidebarNav({
           >
             {navItems.map((item) => {
               const Icon = NAV_ICONS[item.id];
-              const label = role ? navLabelForRole(item, role) : item.label;
+              const label = item.label;
               const isActive =
                 pathname === item.href ||
                 (item.href !== "/dashboard" && pathname.startsWith(item.href));
@@ -275,7 +277,7 @@ export function AppSidebarNav({
                       : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
                   )}
                 >
-                  <Icon className="h-4 w-4 shrink-0" />
+                  {Icon ? <Icon className="h-4 w-4 shrink-0" /> : null}
                   <span className={cn(desktopCompact && "md:hidden")}>
                     {label}
                   </span>

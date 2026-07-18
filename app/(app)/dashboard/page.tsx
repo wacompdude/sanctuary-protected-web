@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+import { Suspense, type CSSProperties } from "react";
 import Link from "next/link";
 import {
   Card,
@@ -27,6 +27,66 @@ import {
   threatLevelBadgeStyle,
 } from "@/lib/church/threat-levels";
 
+type DashboardStatTone =
+  | "red"
+  | "orange"
+  | "blue"
+  | "yellow"
+  | "silver"
+  | "bright-red";
+
+const DASHBOARD_STAT_TONES: Record<
+  DashboardStatTone,
+  {
+    card: CSSProperties;
+    textClass: string;
+    mutedTextClass: string;
+  }
+> = {
+  red: {
+    card: threatLevelBadgeStyle("red"),
+    textClass: "text-red-950",
+    mutedTextClass: "text-red-950/70",
+  },
+  orange: {
+    card: threatLevelBadgeStyle("orange"),
+    textClass: "text-orange-950",
+    mutedTextClass: "text-orange-950/70",
+  },
+  blue: {
+    card: threatLevelBadgeStyle("blue"),
+    textClass: "text-blue-950",
+    mutedTextClass: "text-blue-950/70",
+  },
+  yellow: {
+    card: threatLevelBadgeStyle("yellow"),
+    textClass: "text-yellow-950",
+    mutedTextClass: "text-yellow-950/70",
+  },
+  silver: {
+    card: {
+      backgroundColor: "#c0c0c0",
+      borderColor: "#9ca3af",
+      borderStyle: "solid",
+      borderWidth: "1px",
+      color: "#111111",
+    },
+    textClass: "text-neutral-900",
+    mutedTextClass: "text-neutral-800/75",
+  },
+  "bright-red": {
+    card: {
+      backgroundColor: "#ff1a1a",
+      borderColor: "#b91c1c",
+      borderStyle: "solid",
+      borderWidth: "1px",
+      color: "#ffffff",
+    },
+    textClass: "text-white",
+    mutedTextClass: "text-white/85",
+  },
+};
+
 async function DashboardContent() {
   const { church, membership } = await getAuthenticatedUserWithChurch();
   const [certCounts, incidents, unackedEvents, currentThreatLevel] = await Promise.all([
@@ -47,28 +107,44 @@ async function DashboardContent() {
       value: String(openIncidents),
       description: `${incidents.length} total on record`,
       href: "/incidents",
-      emphasis: "red" as const,
+      tone: "red" as const,
     },
     {
       label: "Unacknowledged Events",
       value: String(unackedEvents),
       description: "Device alerts needing review",
       href: "/events",
-      emphasis: "orange" as const,
+      tone: "orange" as const,
+    },
+    {
+      label: "Camera Events",
+      value: "—",
+      description: "Placeholder — camera feed alerts coming soon",
+      href: "/cameras",
+      tone: "silver" as const,
+      placeholder: true,
+    },
+    {
+      label: "Security Alarm Events",
+      value: "—",
+      description: "Placeholder — alarm monitoring coming soon",
+      href: "/sensors",
+      tone: "bright-red" as const,
+      placeholder: true,
     },
     {
       label: "Expiring Certifications",
       value: String(certCounts.expiring_soon),
       description: "Expiring within 60 days",
       href: "/certifications",
-      emphasis: "blue" as const,
+      tone: "blue" as const,
     },
     {
       label: "Expired Certifications",
       value: String(certCounts.expired),
       description: "Need renewal",
       href: "/certifications",
-      emphasis: "yellow" as const,
+      tone: "yellow" as const,
     },
   ];
 
@@ -152,73 +228,36 @@ async function DashboardContent() {
         </p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
         {stats.map((stat) => {
-          const emphasis =
-            "emphasis" in stat
-              ? (stat.emphasis as "red" | "yellow" | "orange" | "blue")
-              : undefined;
-          const badgeStyle = emphasis
-            ? threatLevelBadgeStyle(emphasis)
-            : undefined;
-          const textClass =
-            emphasis === "red"
-              ? "text-red-950"
-              : emphasis === "yellow"
-                ? "text-yellow-950"
-                : emphasis === "orange"
-                  ? "text-orange-950"
-                  : emphasis === "blue"
-                    ? "text-blue-950"
-                    : undefined;
-          const mutedTextClass =
-            emphasis === "red"
-              ? "text-red-950/70"
-              : emphasis === "yellow"
-                ? "text-yellow-950/70"
-                : emphasis === "orange"
-                  ? "text-orange-950/70"
-                  : emphasis === "blue"
-                    ? "text-blue-950/70"
-                    : undefined;
+          const tone = DASHBOARD_STAT_TONES[stat.tone];
 
           return (
-            <Link key={stat.label} href={stat.href} className="block">
+            <Link
+              key={stat.label}
+              href={stat.href}
+              className="block"
+              aria-disabled={stat.placeholder ? true : undefined}
+            >
               <Card
-                className={
-                  badgeStyle
-                    ? "h-full border shadow-none transition-opacity hover:opacity-90"
-                    : "h-full shadow-none transition-colors hover:bg-accent/40"
-                }
-                style={badgeStyle}
+                className="h-full border shadow-none transition-opacity hover:opacity-90"
+                style={tone.card}
               >
                 <CardHeader className="space-y-1 p-3 pb-1">
                   <CardDescription
-                    className={
-                      mutedTextClass
-                        ? `text-xs leading-snug ${mutedTextClass}`
-                        : "text-xs leading-snug"
-                    }
+                    className={`text-xs leading-snug ${tone.mutedTextClass}`}
                   >
                     {stat.label}
                   </CardDescription>
                   <CardTitle
-                    className={
-                      textClass
-                        ? `text-xl font-semibold tabular-nums ${textClass}`
-                        : "text-xl font-semibold tabular-nums"
-                    }
+                    className={`text-xl font-semibold tabular-nums ${tone.textClass}`}
                   >
                     {stat.value}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-3 pt-0">
                   <p
-                    className={
-                      mutedTextClass
-                        ? `text-xs leading-snug ${mutedTextClass}`
-                        : "text-xs leading-snug text-muted-foreground"
-                    }
+                    className={`text-xs leading-snug ${tone.mutedTextClass}`}
                   >
                     {stat.description}
                   </p>

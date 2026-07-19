@@ -4,6 +4,7 @@ import { hasMinRole } from "@/lib/church/navigation";
 /** Roles that can create, edit, archive, and manage equipment relationships. */
 export const HARDWARE_MANAGEMENT_ROLES: MembershipRole[] = [
   "owner",
+  "co_owner",
   "administrator",
   "security_leader",
 ];
@@ -11,6 +12,7 @@ export const HARDWARE_MANAGEMENT_ROLES: MembershipRole[] = [
 /** Roles that can schedule maintenance, complete inspections, and assign gear. */
 export const HARDWARE_OPERATION_ROLES: MembershipRole[] = [
   "owner",
+  "co_owner",
   "administrator",
   "security_leader",
   "security_member",

@@ -17,6 +17,7 @@ type RpcRow = {
   first_name: string | null;
   last_name: string | null;
   full_name: string | null;
+  avatar_url?: string | null;
   is_last_active_owner: boolean;
 };
 
@@ -51,5 +52,6 @@ export async function listChurchTeamMemberships(
     joinedAt: row.joined_at,
     updatedAt: row.updated_at,
     isLastActiveOwner: Boolean(row.is_last_active_owner),
+    avatarUrl: row.avatar_url ?? null,
   }));
 }

@@ -13,6 +13,7 @@ export type TeamMemberRow = {
   joinedAt: string | null;
   updatedAt: string | null;
   isLastActiveOwner: boolean;
+  avatarUrl: string | null;
 };
 
 export function canManageTeamMemberships(role: MembershipRole): boolean {

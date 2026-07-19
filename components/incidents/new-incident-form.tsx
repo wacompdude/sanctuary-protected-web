@@ -42,10 +42,13 @@ export function NewIncidentForm({
   const router = useRouter();
   const [occurredAt, setOccurredAt] = useState("");
   const [incidentType, setIncidentType] = useState("");
+  const [severity, setSeverity] = useState("");
   const [state, formAction, pending] = useActionState(
     createIncident,
     initialState,
   );
+  const notifiesByDefault =
+    severity === "high" || severity === "critical";
 
   useEffect(() => {
     setOccurredAt(formatDateTimeLocalValue(new Date()));
@@ -112,7 +115,8 @@ export function NewIncidentForm({
               <select
                 id="severity"
                 name="severity"
-                defaultValue=""
+                value={severity}
+                onChange={(event) => setSeverity(event.target.value)}
                 className={selectClassName}
                 aria-invalid={!!state.fieldErrors?.severity}
                 required={requireSeverity}
@@ -133,6 +137,28 @@ export function NewIncidentForm({
               )}
             </div>
           </div>
+
+          {notifiesByDefault ? (
+            <div className="rounded-md border border-border bg-muted/40 px-3 py-3">
+              <label className="flex items-start gap-3 text-sm">
+                <input
+                  type="checkbox"
+                  name="skip_notification"
+                  value="1"
+                  className="mt-1 h-4 w-4"
+                />
+                <span>
+                  <span className="font-medium text-foreground">
+                    Do not send a notification
+                  </span>
+                  <span className="mt-0.5 block text-muted-foreground">
+                    High and critical incidents normally alert the team. Check
+                    this for record-keeping when no alert is needed.
+                  </span>
+                </span>
+              </label>
+            </div>
+          ) : null}
 
           <div className="space-y-2">
             <Label htmlFor="location">

@@ -89,19 +89,6 @@ export function ProfileForm({ profile }: { profile: UserProfile }) {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="avatar_url">Avatar</Label>
-            <Input
-              id="avatar_url"
-              value={profile.avatar_url ?? ""}
-              disabled
-              readOnly
-            />
-            <p className="text-xs text-muted-foreground">
-              Avatar upload will be available in a later step.
-            </p>
-          </div>
-
           <Button type="submit" disabled={pending}>
             {pending ? "Saving…" : "Save profile"}
           </Button>

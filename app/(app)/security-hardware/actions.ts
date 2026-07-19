@@ -19,6 +19,12 @@ import {
 import { parseCategoryDetailsFromForm } from "@/lib/security-hardware/category-details";
 import { validateEquipmentForm } from "@/lib/security-hardware/validation";
 import type { EquipmentActionState } from "@/lib/security-hardware/types";
+import {
+  EQUIPMENT_PHOTO_MAX_COUNT,
+  collectEquipmentPhotoFiles,
+  uploadEquipmentPhotoFiles,
+  validateEquipmentPhotoFile,
+} from "@/lib/security-hardware/attachment-storage";
 
 async function assertCampusBelongsToChurch(
   churchId: string,
@@ -55,6 +61,21 @@ export async function createSecurityEquipment(
     const validation = validateEquipmentForm(formData);
     if (validation.fieldErrors || !validation.data) {
       return { fieldErrors: validation.fieldErrors };
+    }
+
+    const photoFiles = collectEquipmentPhotoFiles(formData);
+    if (photoFiles.length > EQUIPMENT_PHOTO_MAX_COUNT) {
+      return {
+        fieldErrors: {
+          photos: `You can attach at most ${EQUIPMENT_PHOTO_MAX_COUNT} photos.`,
+        },
+      };
+    }
+    for (const file of photoFiles) {
+      const fileError = validateEquipmentPhotoFile(file);
+      if (fileError) {
+        return { fieldErrors: { photos: fileError } };
+      }
     }
 
     const input = validation.data;
@@ -161,6 +182,22 @@ export async function createSecurityEquipment(
       });
     }
 
+    let photoCount = 0;
+    let photoError: string | undefined;
+    if (photoFiles.length > 0) {
+      const photoResult = await uploadEquipmentPhotoFiles({
+        supabase,
+        churchId: church.id,
+        equipmentId,
+        userId: user.id,
+        files: photoFiles,
+      });
+      photoCount = photoResult.uploaded;
+      if (photoResult.error) {
+        photoError = photoResult.error;
+      }
+    }
+
     await writeAuditLog(supabase, {
       churchId: church.id,
       userId: user.id,
@@ -173,9 +210,15 @@ export async function createSecurityEquipment(
         status: input.status,
         asset_tag: assetTag,
         has_category_details: Boolean(details),
+        photo_count: photoCount,
+        photo_error: photoError,
       },
       ipAddress: await getRequestIpAddress(),
     });
+
+    if (photoError) {
+      console.error("Equipment photo upload failed:", photoError);
+    }
   } catch (error) {
     return {
       error:
@@ -184,6 +227,7 @@ export async function createSecurityEquipment(
   }
 
   revalidatePath("/security-hardware");
+  revalidatePath(equipmentPath(equipmentId));
   redirect(equipmentPath(equipmentId));
 }
 

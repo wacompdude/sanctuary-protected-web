@@ -15,11 +15,14 @@ import { labelForMembershipRole } from "@/lib/church/invitations";
 import {
   canChangeRole,
   canChangeStatus,
+  canManageTeamMemberships,
   formatTeamDate,
   labelForMembershipStatus,
   rolesActorMayAssign,
   type TeamMemberRow,
 } from "@/lib/church/team";
+import { MemberAvatar } from "@/components/profile/member-avatar";
+import { MemberPhotoButton } from "@/components/team/member-photo-button";
 import { cn } from "@/lib/utils";
 
 const initialState: ActionState = {};
@@ -115,6 +118,8 @@ function MemberActions({
 
   const canAddCertification =
     canManageCertifications && member.status === "active";
+  const canSetPhoto =
+    canManageTeamMemberships(actorRole) && member.status === "active";
 
   const busy = rolePending || statusPending || isPending;
   const hasActions =
@@ -122,7 +127,8 @@ function MemberActions({
     canSuspend ||
     canRemove ||
     canReactivate ||
-    canAddCertification;
+    canAddCertification ||
+    canSetPhoto;
 
   if (!hasActions) {
     if (member.role === "owner") {
@@ -204,6 +210,9 @@ function MemberActions({
       )}
 
       <div className="flex flex-wrap gap-1.5">
+        {canSetPhoto ? (
+          <MemberPhotoButton userId={member.userId} memberName={member.name} />
+        ) : null}
         {canAddCertification && (
           <Button size="sm" variant="outline" className="h-7 text-xs" asChild>
             <Link
@@ -300,7 +309,16 @@ export function TeamMembersTable({
                 member.status === "removed" && "opacity-70",
               )}
             >
-              <td className="py-3 pr-4 align-top font-medium">{member.name}</td>
+              <td className="py-3 pr-4 align-top">
+                <div className="flex items-center gap-3">
+                  <MemberAvatar
+                    name={member.name}
+                    avatarUrl={member.avatarUrl}
+                    size="sm"
+                  />
+                  <span className="font-medium">{member.name}</span>
+                </div>
+              </td>
               <td className="py-3 pr-4 align-top text-muted-foreground">
                 {member.email ?? "—"}
               </td>

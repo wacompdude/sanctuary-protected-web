@@ -6,6 +6,14 @@ import {
   validatePassword,
   validatePasswordConfirmation,
 } from "@/lib/auth/validation";
+import {
+  AVATAR_ALLOWED_MIME,
+  AVATAR_MAX_BYTES,
+  PROFILE_AVATAR_BUCKET,
+  isProfileAvatarStoragePath,
+  profileAvatarObjectPath,
+  validateAvatarFile,
+} from "@/lib/profile/avatar-storage";
 import type {
   ChangePasswordActionState,
   ProfileActionState,
@@ -74,6 +82,150 @@ export async function updateOwnProfile(
         error instanceof Error
           ? error.message
           : "Unable to update your profile.",
+    };
+  }
+}
+
+export async function uploadProfileAvatar(
+  _prev: ProfileActionState,
+  formData: FormData,
+): Promise<ProfileActionState> {
+  const file = formData.get("avatar");
+  const targetUserId = String(formData.get("user_id") ?? "").trim();
+
+  if (!(file instanceof File) || file.size === 0) {
+    return { fieldErrors: { avatar: "Choose a photo to upload." } };
+  }
+
+  const fileError = validateAvatarFile(file);
+  if (fileError) {
+    return { fieldErrors: { avatar: fileError } };
+  }
+
+  if (!AVATAR_ALLOWED_MIME.has(file.type) || file.size > AVATAR_MAX_BYTES) {
+    return { fieldErrors: { avatar: "Invalid photo file." } };
+  }
+
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return { error: "You must be signed in to update a profile photo." };
+    }
+
+    const userId = targetUserId || user.id;
+    const objectPath = profileAvatarObjectPath(userId, file.type);
+    if (!objectPath) {
+      return { fieldErrors: { avatar: "Unsupported image type." } };
+    }
+
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const { error: uploadError } = await supabase.storage
+      .from(PROFILE_AVATAR_BUCKET)
+      .upload(objectPath, bytes, {
+        upsert: true,
+        contentType: file.type,
+        cacheControl: "3600",
+      });
+
+    if (uploadError) {
+      return {
+        error:
+          uploadError.message.includes("Bucket not found") ||
+          uploadError.message.includes("not found")
+            ? "Run supabase/migrations/032_profile_avatars.sql in the Supabase SQL Editor, then try again."
+            : uploadError.message || "Unable to upload photo.",
+      };
+    }
+
+    const { error: updateError } = await supabase.rpc("set_profile_avatar_url", {
+      p_user_id: userId,
+      p_avatar_url: objectPath,
+    });
+
+    if (updateError) {
+      return {
+        error:
+          updateError.message.includes("set_profile_avatar_url") ||
+          updateError.message.includes("does not exist")
+            ? "Run supabase/migrations/032_profile_avatars.sql in the Supabase SQL Editor, then try again."
+            : updateError.message || "Unable to save profile photo.",
+      };
+    }
+
+    revalidatePath("/profile");
+    revalidatePath("/team");
+    return { success: true };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unable to upload profile photo.",
+    };
+  }
+}
+
+export async function removeProfileAvatar(
+  _prev: ProfileActionState,
+  formData: FormData,
+): Promise<ProfileActionState> {
+  const targetUserId = String(formData.get("user_id") ?? "").trim();
+
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return { error: "You must be signed in to remove a profile photo." };
+    }
+
+    const userId = targetUserId || user.id;
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("avatar_url")
+      .eq("id", userId)
+      .maybeSingle();
+
+    const currentPath =
+      typeof profile?.avatar_url === "string" ? profile.avatar_url : null;
+
+    const { error: updateError } = await supabase.rpc("set_profile_avatar_url", {
+      p_user_id: userId,
+      p_avatar_url: "",
+    });
+
+    if (updateError) {
+      return {
+        error:
+          updateError.message.includes("set_profile_avatar_url") ||
+          updateError.message.includes("does not exist")
+            ? "Run supabase/migrations/032_profile_avatars.sql in the Supabase SQL Editor, then try again."
+            : updateError.message || "Unable to remove profile photo.",
+      };
+    }
+
+    if (currentPath && isProfileAvatarStoragePath(currentPath, userId)) {
+      await supabase.storage.from(PROFILE_AVATAR_BUCKET).remove([currentPath]);
+    }
+
+    revalidatePath("/profile");
+    revalidatePath("/team");
+    return { success: true };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unable to remove profile photo.",
     };
   }
 }

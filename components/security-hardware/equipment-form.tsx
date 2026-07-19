@@ -29,6 +29,7 @@ import type {
   EquipmentCategory,
   SecurityEquipment,
 } from "@/lib/security-hardware/types";
+import { EquipmentPhotoPicker } from "@/components/security-hardware/equipment-photo-picker";
 
 const initialState: EquipmentActionState = {};
 
@@ -451,6 +452,21 @@ export function EquipmentForm({
           </div>
         </CardContent>
       </Card>
+
+      {mode === "create" ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Photos</CardTitle>
+            <CardDescription>
+              Optional photos of the equipment. You can add more documents later
+              from the equipment detail page.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <EquipmentPhotoPicker error={state.fieldErrors?.photos} />
+          </CardContent>
+        </Card>
+      ) : null}
 
       <div className="flex flex-wrap gap-3">
         <Button type="submit" disabled={pending}>

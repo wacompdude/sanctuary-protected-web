@@ -470,6 +470,11 @@ export async function createIncident(
       }
     }
 
+    const skipNotification =
+      formData.get("skip_notification") === "1" ||
+      formData.get("skip_notification") === "on" ||
+      formData.get("skip_notification") === "true";
+
     await writeAuditLog(supabase, {
       churchId: church.id,
       userId: user.id,
@@ -486,12 +491,16 @@ export async function createIncident(
         involved_member_error: memberError,
         medical_supply_count: medicalUsages.length,
         medical_supply_error: supplyError,
+        notification_skipped: skipNotification,
       },
       ipAddress: await getRequestIpAddress(),
     });
 
     // Await notification create before redirect — fire-and-forget is dropped on Vercel.
-    if (input.severity === "critical" || input.severity === "high") {
+    if (
+      !skipNotification &&
+      (input.severity === "critical" || input.severity === "high")
+    ) {
       const notificationType =
         input.severity === "critical" ? "incident.critical" : "incident.created";
       try {

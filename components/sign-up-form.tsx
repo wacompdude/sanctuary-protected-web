@@ -16,6 +16,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
+import { buildAuthConfirmUrl } from "@/lib/auth/app-origin";
 import {
   MIN_PASSWORD_LENGTH,
   validateEmail,
@@ -78,7 +79,7 @@ export function SignUpForm({
         email: email.trim(),
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/confirm?next=${encodeURIComponent(safeNext)}`,
+          emailRedirectTo: buildAuthConfirmUrl(safeNext),
           data: {
             first_name: trimmedFirst,
             last_name: trimmedLast,

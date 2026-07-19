@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from "crypto";
+import { getPublicAppOrigin } from "@/lib/auth/app-origin";
 import type { MembershipRole } from "@/lib/church/types";
 import type { ActionState } from "@/lib/church/types";
 import { isOwnershipRole } from "@/lib/church/types";
@@ -81,13 +82,7 @@ export function buildInvitationUrl(origin: string, token: string): string {
 }
 
 export function getAppOrigin(): string {
-  if (process.env.NEXT_PUBLIC_APP_URL) {
-    return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
-  }
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL.replace(/\/$/, "")}`;
-  }
-  return "http://localhost:3000";
+  return getPublicAppOrigin();
 }
 
 export type InviteActionState = ActionState & {

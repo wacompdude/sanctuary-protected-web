@@ -39,7 +39,7 @@ export function ResendInvitationButton({
         disabled={pending || isPending}
         onClick={() => {
           const ok = window.confirm(
-            `Resend the invitation for ${email}? The previous link will stop working and a new one will be generated.`,
+            `Resend the invitation email to ${email}? The previous link will stop working and a new one will be generated.`,
           );
           if (!ok) return;
           const formData = new FormData();
@@ -49,17 +49,23 @@ export function ResendInvitationButton({
           });
         }}
       >
-        {pending || isPending ? "Resending…" : "Resend"}
+        {pending || isPending ? "Resending…" : "Resend email"}
       </Button>
       {state.error && (
         <p className="text-xs text-destructive" role="alert">
           {state.error}
         </p>
       )}
-      {state.success && state.invitationUrl && (
-        <div className="w-full space-y-1 rounded-md border border-green-500/30 bg-green-500/10 px-2 py-2 text-xs">
-          <p className="font-medium text-green-800 dark:text-green-300">
-            New link ready — copy and share it:
+      {state.success && state.emailSent && (
+        <p className="text-xs text-green-700 dark:text-green-400">
+          Invitation email resent.
+        </p>
+      )}
+      {state.success && !state.emailSent && state.invitationUrl && (
+        <div className="w-full space-y-1 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-2 text-xs">
+          <p className="font-medium text-amber-900 dark:text-amber-200">
+            Email failed
+            {state.emailError ? `: ${state.emailError}` : "."} Copy this link:
           </p>
           <Input
             readOnly

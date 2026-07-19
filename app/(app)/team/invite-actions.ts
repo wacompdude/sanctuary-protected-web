@@ -15,6 +15,7 @@ import {
 } from "@/lib/church/invitations";
 import { AuditAction, AuditEntityType } from "@/lib/audit/actions";
 import { getRequestIpAddress, writeAuditLog } from "@/lib/audit/log";
+import { sendChurchInvitationEmail } from "@/lib/church/send-invitation-email";
 
 export async function createChurchInvitation(
   _prev: InviteActionState,
@@ -103,6 +104,33 @@ export async function createChurchInvitation(
       };
     }
 
+    const headerStore = await headers();
+    const host = headerStore.get("x-forwarded-host") || headerStore.get("host");
+    const proto = headerStore.get("x-forwarded-proto") || "http";
+    const origin = host ? `${proto}://${host}` : getAppOrigin();
+    const invitationUrl = buildInvitationUrl(origin, token);
+
+    const { data: inviterProfile } = await supabase
+      .from("profiles")
+      .select("full_name, first_name, last_name")
+      .eq("id", user.id)
+      .maybeSingle();
+    const invitedByName =
+      inviterProfile?.full_name ||
+      [inviterProfile?.first_name, inviterProfile?.last_name]
+        .filter(Boolean)
+        .join(" ") ||
+      null;
+
+    const emailResult = await sendChurchInvitationEmail({
+      toEmail: input.email,
+      churchName: church.name,
+      role: input.role,
+      invitationUrl,
+      expiresAt: expiresAt.toISOString(),
+      invitedByName,
+    });
+
     await writeAuditLog(supabase, {
       churchId: church.id,
       userId: user.id,
@@ -114,15 +142,12 @@ export async function createChurchInvitation(
         role: input.role,
         expires_at: expiresAt.toISOString(),
         expires_in_days: input.expiresInDays,
+        email_sent: emailResult.sent,
+        email_error: emailResult.error ?? null,
+        provider_message_id: emailResult.providerMessageId ?? null,
       },
       ipAddress: await getRequestIpAddress(),
     });
-
-    const headerStore = await headers();
-    const host = headerStore.get("x-forwarded-host") || headerStore.get("host");
-    const proto = headerStore.get("x-forwarded-proto") || "http";
-    const origin = host ? `${proto}://${host}` : getAppOrigin();
-    const invitationUrl = buildInvitationUrl(origin, token);
 
     revalidatePath("/team");
     revalidatePath("/team/invite");
@@ -131,6 +156,8 @@ export async function createChurchInvitation(
       success: true,
       invitationId: invitation.id,
       invitationUrl,
+      emailSent: emailResult.sent,
+      emailError: emailResult.error ?? null,
     };
   } catch (error) {
     return {
@@ -207,6 +234,33 @@ export async function resendChurchInvitation(
       return { error: updateError.message };
     }
 
+    const headerStore = await headers();
+    const host = headerStore.get("x-forwarded-host") || headerStore.get("host");
+    const proto = headerStore.get("x-forwarded-proto") || "http";
+    const origin = host ? `${proto}://${host}` : getAppOrigin();
+    const invitationUrl = buildInvitationUrl(origin, token);
+
+    const { data: inviterProfile } = await supabase
+      .from("profiles")
+      .select("full_name, first_name, last_name")
+      .eq("id", user.id)
+      .maybeSingle();
+    const invitedByName =
+      inviterProfile?.full_name ||
+      [inviterProfile?.first_name, inviterProfile?.last_name]
+        .filter(Boolean)
+        .join(" ") ||
+      null;
+
+    const emailResult = await sendChurchInvitationEmail({
+      toEmail: String(invite.email),
+      churchName: church.name,
+      role: String(invite.role),
+      invitationUrl,
+      expiresAt: expiresAt.toISOString(),
+      invitedByName,
+    });
+
     await writeAuditLog(supabase, {
       churchId: church.id,
       userId: user.id,
@@ -218,15 +272,12 @@ export async function resendChurchInvitation(
         role: invite.role,
         expires_at: expiresAt.toISOString(),
         expires_in_days: RESEND_EXPIRATION_DAYS,
+        email_sent: emailResult.sent,
+        email_error: emailResult.error ?? null,
+        provider_message_id: emailResult.providerMessageId ?? null,
       },
       ipAddress: await getRequestIpAddress(),
     });
-
-    const headerStore = await headers();
-    const host = headerStore.get("x-forwarded-host") || headerStore.get("host");
-    const proto = headerStore.get("x-forwarded-proto") || "http";
-    const origin = host ? `${proto}://${host}` : getAppOrigin();
-    const invitationUrl = buildInvitationUrl(origin, token);
 
     revalidatePath("/team");
     revalidatePath("/team/invite");
@@ -235,6 +286,8 @@ export async function resendChurchInvitation(
       success: true,
       invitationId,
       invitationUrl,
+      emailSent: emailResult.sent,
+      emailError: emailResult.error ?? null,
     };
   } catch (error) {
     return {

@@ -23,10 +23,8 @@ const initialState: InviteActionState = {};
 
 export function InviteMemberForm({
   allowedRoles,
-  showInvitationUrl = false,
 }: {
   allowedRoles: InvitableRole[];
-  showInvitationUrl?: boolean;
 }) {
   const [state, formAction, pending] = useActionState(
     createChurchInvitation,
@@ -38,8 +36,8 @@ export function InviteMemberForm({
       <CardHeader>
         <CardTitle>Invitation details</CardTitle>
         <CardDescription>
-          Send a secure invitation link. Only the invitee&apos;s email can
-          accept it.
+          We&apos;ll email a secure invitation link. Only the invitee&apos;s
+          email can accept it. Replies go to members@sanctuaryprotected.com.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -50,29 +48,34 @@ export function InviteMemberForm({
             </p>
           )}
 
-          {state.success && state.invitationUrl && (
+          {state.success && (
             <div className="space-y-2 rounded-md border border-green-500/30 bg-green-500/10 px-3 py-3 text-sm">
-              <p className="font-medium text-green-800 dark:text-green-300">
-                Invitation created
-                {showInvitationUrl ? " (development link)" : ""}.
-              </p>
-              {showInvitationUrl ? (
-                <>
-                  <p className="text-muted-foreground">
-                    Email delivery is not configured yet. Copy this URL:
-                  </p>
-                  <Input
-                    readOnly
-                    value={state.invitationUrl}
-                    className="font-mono text-xs"
-                    onFocus={(event) => event.currentTarget.select()}
-                  />
-                </>
-              ) : (
-                <p className="text-muted-foreground">
-                  Share the invitation with the recipient. Email sending will be
-                  added later.
+              {state.emailSent ? (
+                <p className="font-medium text-green-800 dark:text-green-300">
+                  Invitation email sent.
                 </p>
+              ) : (
+                <>
+                  <p className="font-medium text-green-800 dark:text-green-300">
+                    Invitation created, but the email could not be sent.
+                  </p>
+                  {state.emailError ? (
+                    <p className="text-muted-foreground">{state.emailError}</p>
+                  ) : null}
+                  {state.invitationUrl ? (
+                    <>
+                      <p className="text-muted-foreground">
+                        Copy and share this link instead:
+                      </p>
+                      <Input
+                        readOnly
+                        value={state.invitationUrl}
+                        className="font-mono text-xs"
+                        onFocus={(event) => event.currentTarget.select()}
+                      />
+                    </>
+                  ) : null}
+                </>
               )}
             </div>
           )}
@@ -140,7 +143,7 @@ export function InviteMemberForm({
           </div>
 
           <Button type="submit" disabled={pending || allowedRoles.length === 0}>
-            {pending ? "Creating invitation…" : "Create invitation"}
+            {pending ? "Sending invitation…" : "Send invitation"}
           </Button>
         </form>
       </CardContent>

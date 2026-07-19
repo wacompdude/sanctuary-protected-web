@@ -93,6 +93,8 @@ export function getAppOrigin(): string {
 export type InviteActionState = ActionState & {
   invitationUrl?: string;
   invitationId?: string;
+  emailSent?: boolean;
+  emailError?: string | null;
 };
 
 export function validateInviteForm(formData: FormData): {

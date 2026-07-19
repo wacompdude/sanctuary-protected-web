@@ -42,14 +42,12 @@ async function InviteMemberContent() {
         </Button>
         <h1 className="text-3xl font-bold tracking-tight">Invite member</h1>
         <p className="mt-1 text-muted-foreground">
-          Invite someone to join {church.name} with a secure link.
+          Invite someone to join {church.name}. We&apos;ll email them a secure
+          acceptance link.
         </p>
       </div>
 
-      <InviteMemberForm
-        allowedRoles={allowedRoles}
-        showInvitationUrl={process.env.NODE_ENV === "development"}
-      />
+      <InviteMemberForm allowedRoles={allowedRoles} />
     </>
   );
 }

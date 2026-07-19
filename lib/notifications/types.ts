@@ -93,7 +93,9 @@ export type NotificationType =
   | "admin.config_warning"
   | "general.announcement"
   | "emergency.alert"
-  | "notification.test";
+  | "notification.test"
+  | "policy.published"
+  | "policy.acknowledgment_required";
 
 export type ChurchNotificationSettings = {
   id: string;

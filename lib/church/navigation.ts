@@ -25,6 +25,7 @@ export function hasMinRole(
 export type NavItemId =
   | "dashboard"
   | "incidents"
+  | "policies"
   | "notifications"
   | "notification-inbox"
   | "notification-groups"
@@ -104,6 +105,13 @@ export const APP_NAV_SECTIONS: NavSection[] = [
         href: "/incidents",
         minRole: "viewer",
         label: "Incidents",
+      },
+      {
+        kind: "link",
+        id: "policies",
+        href: "/policies",
+        minRole: "viewer",
+        label: "Policies & Procedures",
       },
       {
         kind: "group",

@@ -99,6 +99,8 @@ export function labelForNotificationType(type: string): string {
     "general.announcement": "Announcement",
     "emergency.alert": "Emergency alert",
     "notification.test": "Test notification",
+    "policy.published": "Policy published",
+    "policy.acknowledgment_required": "Policy acknowledgment required",
   };
   return labels[type] ?? type;
 }

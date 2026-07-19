@@ -21,6 +21,7 @@ import {
   LogOut,
   MailPlus,
   Menu,
+  BookOpen,
   ScrollText,
   Settings2,
   Shield,
@@ -49,6 +50,7 @@ const STORAGE_KEY = "sp-sidebar-collapsed";
 const NAV_ICONS: Partial<Record<NavItemId, LucideIcon>> = {
   dashboard: LayoutDashboard,
   incidents: AlertTriangle,
+  policies: BookOpen,
   notifications: Bell,
   "notification-inbox": Inbox,
   "notification-groups": Layers,

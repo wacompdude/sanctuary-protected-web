@@ -19,10 +19,12 @@ export function CategoryDetailsView({
   table,
   values,
   canViewSensitive,
+  timeZone,
 }: {
   table: CategoryDetailTable;
   values: CategoryDetailRecord;
   canViewSensitive: boolean;
+  timeZone?: string | null;
 }) {
   const fields = fieldsForDetailTable(table);
   const visible = fields.filter((field) => {
@@ -66,6 +68,7 @@ export function CategoryDetailsView({
           } else if (field.kind === "date") {
             display = formatEquipmentDate(
               raw != null ? String(raw) : null,
+              timeZone,
             );
           } else {
             display = labelForDetailOption(field, raw);

@@ -17,6 +17,7 @@ import {
 import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
 import { listEventsForChurch } from "@/lib/events/queries";
 import { EVENT_TYPES } from "@/lib/events/types";
+import { formatDateTime } from "@/lib/incidents/format";
 import { Plus } from "lucide-react";
 
 function labelFor(
@@ -24,16 +25,6 @@ function labelFor(
   value: string,
 ) {
   return options.find((option) => option.value === value)?.label ?? value;
-}
-
-function formatDateTime(iso: string) {
-  return new Date(iso).toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
 }
 
 async function EventsContent() {
@@ -127,7 +118,11 @@ async function EventsContent() {
                       </td>
                       <td className="py-3 pr-4 capitalize">{event.severity}</td>
                       <td className="py-3 pr-4 text-muted-foreground">
-                        {formatDateTime(event.event_timestamp)}
+                        {formatDateTime(
+                          event.event_timestamp,
+                          null,
+                          church.timezone,
+                        )}
                       </td>
                       <td className="py-3 pr-4 text-muted-foreground">
                         {event.location}

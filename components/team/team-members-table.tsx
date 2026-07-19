@@ -274,11 +274,13 @@ export function TeamMembersTable({
   actorRole,
   actorUserId,
   canManageCertifications = false,
+  timeZone,
 }: {
   members: TeamMemberRow[];
   actorRole: MembershipRole;
   actorUserId: string;
   canManageCertifications?: boolean;
+  timeZone?: string | null;
 }) {
   if (members.length === 0) {
     return (
@@ -331,10 +333,10 @@ export function TeamMembersTable({
                 </Badge>
               </td>
               <td className="py-3 pr-4 align-top text-muted-foreground">
-                {formatTeamDate(member.joinedAt)}
+                {formatTeamDate(member.joinedAt, timeZone)}
               </td>
               <td className="py-3 pr-4 align-top text-muted-foreground">
-                {formatTeamDate(member.updatedAt)}
+                {formatTeamDate(member.updatedAt, timeZone)}
               </td>
               <td className="py-3 align-top">
                 <MemberActions

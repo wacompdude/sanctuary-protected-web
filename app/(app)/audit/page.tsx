@@ -12,6 +12,7 @@ import {
 } from "@/lib/church/auth";
 import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
 import { listRecentAuditLogs } from "@/lib/audit/queries";
+import { formatChurchDateTime } from "@/lib/datetime/format";
 
 async function AuditLogContent() {
   const { church } = await requireMinChurchRole("administrator");
@@ -58,7 +59,9 @@ async function AuditLogContent() {
                       )}
                     </div>
                     <time className="shrink-0 text-xs text-muted-foreground">
-                      {new Date(log.created_at).toLocaleString()}
+                      {formatChurchDateTime(log.created_at, {
+                        timeZone: church.timezone,
+                      })}
                     </time>
                   </div>
                 </li>

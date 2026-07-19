@@ -213,9 +213,11 @@ function CompleteMaintenanceForm({
 export function MaintenanceHistoryCard({
   records,
   canOperate,
+  timeZone,
 }: {
   records: EquipmentMaintenanceRecord[];
   canOperate: boolean;
+  timeZone?: string | null;
 }) {
   const open = records.filter(
     (row) => row.status === "scheduled" || row.status === "in_progress",
@@ -251,7 +253,7 @@ export function MaintenanceHistoryCard({
                 </p>
                 <p className="text-muted-foreground">
                   {labelForMaintenanceStatus(record.status)} · scheduled{" "}
-                  {formatEquipmentDate(record.scheduled_date)}
+                  {formatEquipmentDate(record.scheduled_date, timeZone)}
                 </p>
                 {record.description && (
                   <p className="mt-1 text-muted-foreground">
@@ -274,7 +276,7 @@ export function MaintenanceHistoryCard({
             </p>
             <p className="text-muted-foreground">
               {labelForMaintenanceStatus(record.status)} · completed{" "}
-              {formatEquipmentDate(record.completed_date)}
+              {formatEquipmentDate(record.completed_date, timeZone)}
             </p>
             {record.findings && (
               <p className="mt-1 text-muted-foreground">{record.findings}</p>

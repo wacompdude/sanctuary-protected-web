@@ -7,7 +7,10 @@ import {
   SettingsSectionCard,
 } from "@/components/settings/settings-form-shell";
 import { updateChurchGeneralSettings } from "@/app/(app)/settings/church/actions";
-import type { ChurchSettingsRecord } from "@/lib/church/settings";
+import {
+  SETTINGS_TIMEZONES,
+  type ChurchSettingsRecord,
+} from "@/lib/church/settings";
 
 const LANGUAGE_OPTIONS = [
   { value: "en", label: "English" },
@@ -17,6 +20,11 @@ const LANGUAGE_OPTIONS = [
   { value: "other", label: "Other" },
 ] as const;
 
+const TIMEZONE_OPTIONS = SETTINGS_TIMEZONES.map((tz) => ({
+  value: tz,
+  label: tz.replace(/_/g, " "),
+}));
+
 export function ChurchGeneralForm({
   church,
   canEdit,
@@ -24,10 +32,17 @@ export function ChurchGeneralForm({
   church: ChurchSettingsRecord;
   canEdit: boolean;
 }) {
+  const timezone = church.timezone || "America/Los_Angeles";
+  const timezoneOptions = TIMEZONE_OPTIONS.some(
+    (option) => option.value === timezone,
+  )
+    ? TIMEZONE_OPTIONS
+    : [{ value: timezone, label: timezone }, ...TIMEZONE_OPTIONS];
+
   return (
     <SettingsSectionCard
       title="General information"
-      description="Identity and public profile details for this church."
+      description="Identity, public profile, and the time zone used for dates across the app."
       action={updateChurchGeneralSettings}
       canEdit={canEdit}
     >
@@ -80,6 +95,15 @@ export function ChurchGeneralForm({
             defaultValue={church.primary_language ?? "en"}
             error={fieldErrors?.primary_language}
             options={LANGUAGE_OPTIONS}
+          />
+          <LabeledSelect
+            id="timezone"
+            name="timezone"
+            label="Time zone"
+            defaultValue={timezone}
+            error={fieldErrors?.timezone}
+            options={timezoneOptions}
+            hint="All timestamps in the app (dashboard, incidents, notifications, and more) use this time zone."
           />
           <LabeledTextarea
             id="description"

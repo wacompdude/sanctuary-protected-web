@@ -138,7 +138,7 @@ async function EquipmentDetailContent({ id }: { id: string }) {
           <p className="mt-4 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
             This equipment is archived
             {equipment.archived_at
-              ? ` (since ${formatEquipmentDate(equipment.archived_at)})`
+              ? ` (since ${formatEquipmentDate(equipment.archived_at, church.timezone)})`
               : ""}
             .
           </p>
@@ -223,7 +223,7 @@ async function EquipmentDetailContent({ id }: { id: string }) {
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <DetailItem
             label="Purchase date"
-            value={formatEquipmentDate(equipment.purchase_date)}
+            value={formatEquipmentDate(equipment.purchase_date, church.timezone)}
           />
           <DetailItem
             label="Purchase price"
@@ -237,23 +237,38 @@ async function EquipmentDetailContent({ id }: { id: string }) {
           <DetailItem label="Vendor contact" value={equipment.vendor_contact} />
           <DetailItem
             label="Warranty expiration"
-            value={formatEquipmentDate(equipment.warranty_expiration)}
+            value={formatEquipmentDate(
+              equipment.warranty_expiration,
+              church.timezone,
+            )}
           />
           <DetailItem
             label="Installed date"
-            value={formatEquipmentDate(equipment.installed_date)}
+            value={formatEquipmentDate(
+              equipment.installed_date,
+              church.timezone,
+            )}
           />
           <DetailItem
             label="Next inspection"
-            value={formatEquipmentDate(equipment.next_inspection_at)}
+            value={formatEquipmentDate(
+              equipment.next_inspection_at,
+              church.timezone,
+            )}
           />
           <DetailItem
             label="Next maintenance"
-            value={formatEquipmentDate(equipment.next_maintenance_at)}
+            value={formatEquipmentDate(
+              equipment.next_maintenance_at,
+              church.timezone,
+            )}
           />
           <DetailItem
             label="Expected replacement"
-            value={formatEquipmentDate(equipment.expected_replacement_date)}
+            value={formatEquipmentDate(
+              equipment.expected_replacement_date,
+              church.timezone,
+            )}
           />
           <DetailItem
             label="Replacement estimate"
@@ -271,6 +286,7 @@ async function EquipmentDetailContent({ id }: { id: string }) {
           table={equipment.categoryDetails.table as CategoryDetailTable}
           values={equipment.categoryDetails.values}
           canViewSensitive={canViewSensitive}
+          timeZone={church.timezone}
         />
       ) : (
         <Card>
@@ -288,6 +304,7 @@ async function EquipmentDetailContent({ id }: { id: string }) {
         <MaintenanceHistoryCard
           records={maintenance}
           canOperate={canOperate}
+          timeZone={church.timezone}
         />
         {canOperate ? (
           <ScheduleMaintenanceForm equipmentId={equipment.id} />
@@ -310,6 +327,7 @@ async function EquipmentDetailContent({ id }: { id: string }) {
         members={assignableMembers}
         canOperate={canOperate}
         canManage={canManage}
+        timeZone={church.timezone}
       />
 
       <EquipmentAttachmentsCard

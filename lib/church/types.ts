@@ -27,6 +27,8 @@ export interface Church {
   name: string;
   status?: ChurchStatus | null;
   slug?: string | null;
+  /** IANA timezone used for all church-scoped timestamps (e.g. America/Chicago). */
+  timezone?: string | null;
 }
 
 export interface Profile {

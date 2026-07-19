@@ -18,6 +18,7 @@ import {
 import type { MedicalSupply } from "@/lib/medical-supplies/types";
 import type { MedicalSupplyUsage } from "@/lib/medical-supplies/types";
 import type { MedicalSupplyActionState } from "@/lib/medical-supplies/types";
+import { formatChurchDateTime } from "@/lib/datetime/format";
 import { Trash2 } from "lucide-react";
 
 const initialState: MedicalSupplyActionState = {};
@@ -65,12 +66,14 @@ export function IncidentMedicalSuppliesCard({
   supplies,
   canRecord,
   canManage,
+  timeZone,
 }: {
   incidentId: string;
   usages: MedicalSupplyUsage[];
   supplies: MedicalSupply[];
   canRecord: boolean;
   canManage: boolean;
+  timeZone?: string | null;
 }) {
   const boundRecord = recordMedicalSupplyUsage.bind(null, incidentId);
   const [state, formAction, pending] = useActionState(boundRecord, initialState);
@@ -112,7 +115,7 @@ export function IncidentMedicalSuppliesCard({
                     {usage.notes ? ` · ${usage.notes}` : ""}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {new Date(usage.created_at).toLocaleString()}
+                    {formatChurchDateTime(usage.created_at, { timeZone })}
                   </p>
                 </div>
                 <RemoveUsageButton

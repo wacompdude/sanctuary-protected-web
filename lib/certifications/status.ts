@@ -1,3 +1,4 @@
+import { formatChurchDate } from "@/lib/datetime/format";
 import {
   EXPIRING_SOON_DAYS,
   type CertificationComputedStatus,
@@ -33,13 +34,8 @@ function startOfDay(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
-export function formatDate(date: string) {
-  return new Date(date).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
+export function formatDate(date: string, timeZone?: string | null) {
+  return formatChurchDate(date, { timeZone });
 }
 
 export const certificationStatusLabel: Record<

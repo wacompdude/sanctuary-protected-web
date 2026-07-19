@@ -1,3 +1,4 @@
+import { formatChurchDate } from "@/lib/datetime/format";
 import type {
   EquipmentCategory,
   EquipmentCriticality,
@@ -72,17 +73,10 @@ export function labelForEquipmentCriticality(value: string): string {
 
 export function formatEquipmentDate(
   value: string | null | undefined,
+  timeZone?: string | null,
 ): string {
   if (!value) return "—";
-  try {
-    const dateOnly = value.length <= 10;
-    return new Date(dateOnly ? `${value}T12:00:00` : value).toLocaleDateString(
-      undefined,
-      { year: "numeric", month: "short", day: "numeric" },
-    );
-  } catch {
-    return "—";
-  }
+  return formatChurchDate(value, { timeZone });
 }
 
 export function daysFromNow(date: string | null | undefined): number | null {

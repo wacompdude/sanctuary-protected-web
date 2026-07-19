@@ -3,7 +3,7 @@ export const CHURCH_SETTINGS_SECTIONS = [
     id: "general",
     href: "/settings/church/general",
     label: "General",
-    description: "Church name, slug, denomination, and description.",
+    description: "Church name, slug, denomination, description, and time zone.",
   },
   {
     id: "contact",

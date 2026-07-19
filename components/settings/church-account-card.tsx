@@ -6,14 +6,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { ChurchSettingsRecord } from "@/lib/church/settings";
+import { formatChurchDateTime } from "@/lib/datetime/format";
 
-function formatDate(value: string | null) {
-  if (!value) return "—";
-  try {
-    return new Date(value).toLocaleString();
-  } catch {
-    return value;
-  }
+function formatDate(value: string | null, timeZone?: string | null) {
+  return formatChurchDateTime(value, { timeZone });
 }
 
 export function ChurchAccountCard({
@@ -59,13 +55,17 @@ export function ChurchAccountCard({
             <dt className="text-xs uppercase tracking-wide text-muted-foreground">
               Created
             </dt>
-            <dd className="mt-1 text-sm">{formatDate(church.created_at)}</dd>
+            <dd className="mt-1 text-sm">
+              {formatDate(church.created_at, church.timezone)}
+            </dd>
           </div>
           <div>
             <dt className="text-xs uppercase tracking-wide text-muted-foreground">
               Last updated
             </dt>
-            <dd className="mt-1 text-sm">{formatDate(church.updated_at)}</dd>
+            <dd className="mt-1 text-sm">
+              {formatDate(church.updated_at, church.timezone)}
+            </dd>
           </div>
           <div>
             <dt className="text-xs uppercase tracking-wide text-muted-foreground">
@@ -73,7 +73,7 @@ export function ChurchAccountCard({
             </dt>
             <dd className="mt-1 text-sm">
               {church.trial_ends_at ? (
-                formatDate(church.trial_ends_at)
+                formatDate(church.trial_ends_at, church.timezone)
               ) : (
                 <span className="text-muted-foreground">
                   Placeholder — not configured

@@ -2,19 +2,10 @@
 
 import {
   LabeledInput,
-  LabeledSelect,
   SettingsSectionCard,
 } from "@/components/settings/settings-form-shell";
 import { updateChurchAddressSettings } from "@/app/(app)/settings/church/actions";
-import {
-  SETTINGS_TIMEZONES,
-  type ChurchSettingsRecord,
-} from "@/lib/church/settings";
-
-const TIMEZONE_OPTIONS = SETTINGS_TIMEZONES.map((tz) => ({
-  value: tz,
-  label: tz.replace(/_/g, " "),
-}));
+import type { ChurchSettingsRecord } from "@/lib/church/settings";
 
 export function ChurchAddressForm({
   church,
@@ -23,16 +14,10 @@ export function ChurchAddressForm({
   church: ChurchSettingsRecord;
   canEdit: boolean;
 }) {
-  const timezone = church.timezone || "America/Los_Angeles";
-  const timezoneOptions =
-    TIMEZONE_OPTIONS.some((option) => option.value === timezone)
-      ? TIMEZONE_OPTIONS
-      : [{ value: timezone, label: timezone }, ...TIMEZONE_OPTIONS];
-
   return (
     <SettingsSectionCard
-      title="Address and time zone"
-      description="Physical location and local time used across the application."
+      title="Address"
+      description="Physical location for this church."
       action={updateChurchAddressSettings}
       canEdit={canEdit}
     >
@@ -84,14 +69,6 @@ export function ChurchAddressForm({
               error={fieldErrors?.country}
             />
           </div>
-          <LabeledSelect
-            id="timezone"
-            name="timezone"
-            label="Time zone"
-            defaultValue={timezone}
-            error={fieldErrors?.timezone}
-            options={timezoneOptions}
-          />
         </>
       )}
     </SettingsSectionCard>

@@ -98,9 +98,18 @@ async function ThreatLevelPageContent() {
                 )}
               </div>
               <p className="text-sm text-muted-foreground">
-                Week of {formatThreatWeek(currentThreatLevel.week_start)}. Last
-                changed by {currentThreatLevel.changed_by_name} on{" "}
-                {formatDateTime(currentThreatLevel.created_at)}.
+                Week of{" "}
+                {formatThreatWeek(
+                  currentThreatLevel.week_start,
+                  church.timezone,
+                )}
+                . Last changed by {currentThreatLevel.changed_by_name} on{" "}
+                {formatDateTime(
+                  currentThreatLevel.created_at,
+                  null,
+                  church.timezone,
+                )}
+                .
               </p>
             </>
           ) : (
@@ -145,7 +154,8 @@ async function ThreatLevelPageContent() {
                         {labelForThreatLevel(entry.threat_level)}
                       </span>
                       <p className="text-sm font-medium">
-                        Week of {formatThreatWeek(entry.week_start)}
+                        Week of{" "}
+                        {formatThreatWeek(entry.week_start, church.timezone)}
                       </p>
                     </div>
                     {entry.notes ? (
@@ -160,7 +170,8 @@ async function ThreatLevelPageContent() {
                     <p className="mt-2 text-sm text-muted-foreground">
                       Changed by {entry.changed_by_name}
                       {entry.changed_by_email ? ` (${entry.changed_by_email})` : ""}{" "}
-                      on {formatDateTime(entry.created_at)}.
+                      on{" "}
+                      {formatDateTime(entry.created_at, null, church.timezone)}.
                     </p>
                   </li>
                 ))}

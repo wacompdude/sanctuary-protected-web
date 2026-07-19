@@ -289,6 +289,27 @@ export function normalizeChurchSettings(
 
 type ValidationResult<T> = ActionState & { data?: T };
 
+function parseTimezoneField(
+  formData: FormData,
+  fieldErrors: Record<string, string>,
+): string {
+  const timezone =
+    emptyToNull(readString(formData, "timezone")) ?? "America/Los_Angeles";
+
+  if (
+    !(SETTINGS_TIMEZONES as readonly string[]).includes(timezone) &&
+    timezone !== "America/Los_Angeles"
+  ) {
+    // Allow saved values outside the curated list if already present, but reject
+    // unknown newly submitted ones that are clearly invalid.
+    if (!/^[A-Za-z_]+\/[A-Za-z0-9_+\-]+$/.test(timezone)) {
+      fieldErrors.timezone = "Select a valid time zone.";
+    }
+  }
+
+  return timezone;
+}
+
 export function validateGeneralSettings(
   formData: FormData,
 ): ValidationResult<{
@@ -299,6 +320,7 @@ export function validateGeneralSettings(
   year_established: number | null;
   description: string | null;
   primary_language: string | null;
+  timezone: string;
 }> {
   const fieldErrors: Record<string, string> = {};
   const name = readString(formData, "name").trim();
@@ -309,6 +331,7 @@ export function validateGeneralSettings(
   const primary_language =
     emptyToNull(readString(formData, "primary_language")) ?? "en";
   const yearRaw = readString(formData, "year_established").trim();
+  const timezone = parseTimezoneField(formData, fieldErrors);
 
   if (!name) fieldErrors.name = "Church name is required.";
   else if (name.length > 200) fieldErrors.name = "Church name is too long.";
@@ -347,6 +370,7 @@ export function validateGeneralSettings(
       year_established,
       description,
       primary_language,
+      timezone,
     },
   };
 }
@@ -414,7 +438,6 @@ export function validateAddressSettings(
   state: string | null;
   postal_code: string | null;
   country: string | null;
-  timezone: string;
 }> {
   const fieldErrors: Record<string, string> = {};
   const address_line_1 = emptyToNull(readString(formData, "address_line_1"));
@@ -424,19 +447,6 @@ export function validateAddressSettings(
   const postal_code = emptyToNull(readString(formData, "postal_code"));
   const country =
     emptyToNull(readString(formData, "country")) ?? "United States";
-  const timezone =
-    emptyToNull(readString(formData, "timezone")) ?? "America/Los_Angeles";
-
-  if (
-    !(SETTINGS_TIMEZONES as readonly string[]).includes(timezone) &&
-    timezone !== "America/Los_Angeles"
-  ) {
-    // Allow saved values outside the curated list if already present, but reject
-    // unknown newly submitted ones that are clearly invalid.
-    if (!/^[A-Za-z_]+\/[A-Za-z0-9_+\-]+$/.test(timezone)) {
-      fieldErrors.timezone = "Select a valid time zone.";
-    }
-  }
 
   if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
 
@@ -448,7 +458,6 @@ export function validateAddressSettings(
       state,
       postal_code,
       country,
-      timezone,
     },
   };
 }

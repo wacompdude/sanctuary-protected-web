@@ -1,3 +1,4 @@
+import { formatChurchDate } from "@/lib/datetime/format";
 import type { MembershipRole, MembershipStatus } from "@/lib/church/types";
 import { isOwnershipRole, normalizeMembershipRole } from "@/lib/church/types";
 
@@ -187,17 +188,12 @@ export function labelForMembershipStatus(status: string): string {
   }
 }
 
-export function formatTeamDate(value: string | null | undefined): string {
+export function formatTeamDate(
+  value: string | null | undefined,
+  timeZone?: string | null,
+): string {
   if (!value) return "—";
-  try {
-    return new Date(value).toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  } catch {
-    return "—";
-  }
+  return formatChurchDate(value, { timeZone });
 }
 
 export function displayMemberName(profile: {

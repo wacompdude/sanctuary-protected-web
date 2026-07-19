@@ -20,7 +20,13 @@ function updateTitle(update: IncidentUpdate) {
   }
 }
 
-export function IncidentTimeline({ updates }: { updates: IncidentUpdate[] }) {
+export function IncidentTimeline({
+  updates,
+  timeZone,
+}: {
+  updates: IncidentUpdate[];
+  timeZone?: string | null;
+}) {
   return (
     <Card>
       <CardHeader>
@@ -40,7 +46,7 @@ export function IncidentTimeline({ updates }: { updates: IncidentUpdate[] }) {
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-sm font-medium">{updateTitle(update)}</p>
                   <time className="text-xs text-muted-foreground">
-                    {formatDateTime(update.created_at)}
+                    {formatDateTime(update.created_at, null, timeZone)}
                   </time>
                 </div>
                 <p className="mt-1 text-sm text-muted-foreground">{update.content}</p>

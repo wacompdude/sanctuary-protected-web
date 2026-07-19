@@ -19,6 +19,7 @@ import {
 } from "@/lib/profile/memberships";
 import { labelForMembershipRole } from "@/lib/church/invitations";
 import { labelForMembershipStatus } from "@/lib/church/team";
+import { formatChurchDate } from "@/lib/datetime/format";
 import { createClient } from "@/lib/supabase/server";
 import { ArrowLeftRight } from "lucide-react";
 
@@ -36,19 +37,6 @@ function statusBadgeVariant(
       return "destructive";
     default:
       return "outline";
-  }
-}
-
-function formatDate(value: string | null | undefined): string {
-  if (!value) return "—";
-  try {
-    return new Date(value).toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  } catch {
-    return "—";
   }
 }
 
@@ -85,6 +73,12 @@ async function ProfileContent() {
     listOwnChurchMemberships(),
     listOwnCertifications(),
   ]);
+  const timezoneByChurchId = new Map(
+    memberships.map((membership) => [
+      membership.church_id,
+      membership.church.timezone,
+    ]),
+  );
 
   return (
     <>
@@ -141,7 +135,9 @@ async function ProfileContent() {
                     <p className="text-sm text-muted-foreground">
                       {labelForMembershipRole(membership.role)}
                       {membership.joined_at
-                        ? ` · joined ${formatDate(membership.joined_at)}`
+                        ? ` · joined ${formatChurchDate(membership.joined_at, {
+                            timeZone: membership.church.timezone,
+                          })}`
                         : ""}
                     </p>
                   </div>
@@ -188,7 +184,10 @@ async function ProfileContent() {
                       {[cert.issuer, cert.church_name].filter(Boolean).join(" · ")}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Expires {formatDate(cert.expiration_date)}
+                      Expires{" "}
+                      {formatChurchDate(cert.expiration_date, {
+                        timeZone: timezoneByChurchId.get(cert.church_id),
+                      })}
                       {cert.certificate_number
                         ? ` · #${cert.certificate_number}`
                         : ""}

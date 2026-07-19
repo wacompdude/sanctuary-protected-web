@@ -178,7 +178,11 @@ async function SecurityHardwareContent({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <EquipmentTable items={items} canManage={canManage} />
+          <EquipmentTable
+            items={items}
+            canManage={canManage}
+            timeZone={church.timezone}
+          />
         </CardContent>
       </Card>
     </>

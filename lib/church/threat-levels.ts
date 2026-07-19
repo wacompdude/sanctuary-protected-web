@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import type { MembershipRole } from "@/lib/church/types";
+import { formatChurchDate } from "@/lib/datetime/format";
 
 export const THREAT_LEVEL_OPTIONS = [
   { value: "green", label: "Green", rankLabel: "Lowest" },
@@ -142,13 +143,11 @@ export function normalizeThreatWeekInput(value: string): string | null {
   return startOfThreatWeek(parsed);
 }
 
-export function formatThreatWeek(value: string): string {
-  const date = new Date(`${value}T00:00:00`);
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+export function formatThreatWeek(
+  value: string,
+  timeZone?: string | null,
+): string {
+  return formatChurchDate(value, { timeZone });
 }
 
 export function threatLevelMigrationHintFromError(

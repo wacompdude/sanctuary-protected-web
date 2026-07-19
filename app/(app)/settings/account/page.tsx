@@ -14,6 +14,7 @@ import {
   requireMinChurchRole,
 } from "@/lib/church/auth";
 import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
+import { formatChurchDateTime } from "@/lib/datetime/format";
 
 async function AccountContent() {
   const { supabase, church } = await requireMinChurchRole("owner");
@@ -67,7 +68,9 @@ async function AccountContent() {
               </dt>
               <dd className="mt-1 text-sm">
                 {data?.trial_ends_at
-                  ? new Date(data.trial_ends_at).toLocaleString()
+                  ? formatChurchDateTime(data.trial_ends_at, {
+                      timeZone: church.timezone,
+                    })
                   : "Placeholder — not configured"}
               </dd>
             </div>

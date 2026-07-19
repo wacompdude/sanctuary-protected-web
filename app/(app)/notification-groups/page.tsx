@@ -23,6 +23,7 @@ import {
   labelForGroupStatus,
   labelForGroupType,
 } from "@/lib/notifications/groups/constants";
+import { formatChurchDate } from "@/lib/datetime/format";
 
 async function NotificationGroupsContent() {
   const { church, membership } = await getAuthenticatedUserWithChurch();
@@ -150,7 +151,9 @@ async function NotificationGroupsContent() {
                           : group.member_count}
                       </td>
                       <td className="py-3 text-muted-foreground">
-                        {new Date(group.updated_at).toLocaleDateString()}
+                        {formatChurchDate(group.updated_at, {
+                          timeZone: church.timezone,
+                        })}
                       </td>
                     </tr>
                   ))}

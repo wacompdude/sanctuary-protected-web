@@ -17,6 +17,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { formatChurchDateTime } from "@/lib/datetime/format";
 
 async function NotificationDetailContent({ id }: { id: string }) {
   const { supabase, church, user, membership } = await getAuthenticatedUserWithChurch();
@@ -98,7 +99,10 @@ async function NotificationDetailContent({ id }: { id: string }) {
             <p className="text-sm text-muted-foreground">{notification.summary}</p>
           ) : null}
           <p className="text-xs text-muted-foreground">
-            Created {new Date(notification.created_at).toLocaleString()}
+            Created{" "}
+            {formatChurchDateTime(notification.created_at, {
+              timeZone: church.timezone,
+            })}
           </p>
           {notification.action_url ? (
             <Button asChild size="sm" className="h-10">

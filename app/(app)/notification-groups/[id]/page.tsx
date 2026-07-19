@@ -32,6 +32,7 @@ import {
   labelForGroupStatus,
   labelForGroupType,
 } from "@/lib/notifications/groups/constants";
+import { formatChurchDateTime } from "@/lib/datetime/format";
 
 async function GroupDetailContent({ id }: { id: string }) {
   const { church, membership } = await getAuthenticatedUserWithChurch();
@@ -109,7 +110,12 @@ async function GroupDetailContent({ id }: { id: string }) {
               {group.dynamic_rule_value}
             </p>
           ) : null}
-          <p>Updated {new Date(group.updated_at).toLocaleString()}</p>
+          <p>
+            Updated{" "}
+            {formatChurchDateTime(group.updated_at, {
+              timeZone: church.timezone,
+            })}
+          </p>
         </CardContent>
       </Card>
 

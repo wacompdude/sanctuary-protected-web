@@ -115,11 +115,11 @@ async function CertificationsContent({ created }: { created?: string }) {
                 </p>
                 <p>
                   <span className="font-medium text-foreground">Issued:</span>{" "}
-                  {formatDate(cert.issue_date)}
+                  {formatDate(cert.issue_date, church.timezone)}
                 </p>
                 <p>
                   <span className="font-medium text-foreground">Expires:</span>{" "}
-                  {formatDate(cert.expiration_date)}
+                  {formatDate(cert.expiration_date, church.timezone)}
                 </p>
                 <p>
                   <span className="font-medium text-foreground">Number:</span>{" "}

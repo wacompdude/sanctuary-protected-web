@@ -1,3 +1,4 @@
+import { parseChurchDateTimeLocal } from "@/lib/datetime/format";
 import {
   INCIDENT_SEVERITY_SET,
   INCIDENT_STATUS_SET,
@@ -20,9 +21,13 @@ export type IncidentUpdateValidationOptions = {
   closingStatuses?: string[];
 };
 
+export type CreateIncidentParseOptions = {
+  timeZone?: string | null;
+};
+
 export function validateCreateIncidentInput(
   formData: FormData,
-  options: CreateIncidentValidationOptions = {},
+  options: CreateIncidentValidationOptions & CreateIncidentParseOptions = {},
 ): ActionState {
   const requireLocation = options.requireLocation !== false;
   const requireSeverity = options.requireSeverity !== false;
@@ -71,7 +76,7 @@ export function validateCreateIncidentInput(
 
   if (!isNonEmptyString(occurredAt)) {
     fieldErrors.occurred_at = "Occurred date and time is required.";
-  } else if (Number.isNaN(Date.parse(occurredAt))) {
+  } else if (!parseChurchDateTimeLocal(occurredAt, options.timeZone)) {
     fieldErrors.occurred_at = "Occurred date and time is invalid.";
   }
 
@@ -137,9 +142,16 @@ export function validateIncidentUpdateInput(
   return {};
 }
 
-export function parseCreateIncidentInput(formData: FormData) {
+export function parseCreateIncidentInput(
+  formData: FormData,
+  options: CreateIncidentParseOptions = {},
+) {
   const severityRaw = formData.get("severity");
   const locationRaw = formData.get("location");
+  const occurredAtRaw = formData.get("occurred_at") as string;
+  const occurredAt =
+    parseChurchDateTimeLocal(occurredAtRaw, options.timeZone) ??
+    new Date(occurredAtRaw);
   return {
     title: (formData.get("title") as string).trim(),
     type: formData.get("type") as string,
@@ -148,7 +160,7 @@ export function parseCreateIncidentInput(formData: FormData) {
       : "medium",
     location: isNonEmptyString(locationRaw) ? locationRaw.trim() : "Unspecified",
     description: ((formData.get("description") as string) || "").trim(),
-    occurred_at: new Date(formData.get("occurred_at") as string).toISOString(),
+    occurred_at: occurredAt.toISOString(),
   };
 }
 

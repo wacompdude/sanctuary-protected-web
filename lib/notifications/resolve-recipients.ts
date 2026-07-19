@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { MembershipRole } from "@/lib/church/types";
 import { normalizeMembershipRole } from "@/lib/church/types";
+import { getChurchClockParts } from "@/lib/datetime/format";
 import {
   CRITICAL_OVERRIDE_TYPES,
   severityAtLeast,
@@ -51,6 +52,7 @@ function inQuietHours(
   now: Date,
   start: string | null,
   end: string | null,
+  timeZone?: string | null,
 ): boolean {
   if (!start || !end) return false;
   const [startH, startM] = start.split(":").map(Number);
@@ -60,7 +62,8 @@ function inQuietHours(
   ) {
     return false;
   }
-  const minutes = now.getHours() * 60 + now.getMinutes();
+  const clock = getChurchClockParts(now, timeZone);
+  const minutes = clock.hour * 60 + clock.minute;
   const startMinutes = (startH ?? 0) * 60 + (startM ?? 0);
   const endMinutes = (endH ?? 0) * 60 + (endM ?? 0);
   if (startMinutes === endMinutes) return false;
@@ -238,7 +241,12 @@ export async function applyRecipientPreferences(params: {
     const quiet =
       !isCriticalOverride &&
       Boolean(pref?.quiet_hours_enabled) &&
-      inQuietHours(now, pref?.quiet_hours_start ?? null, pref?.quiet_hours_end ?? null);
+      inQuietHours(
+        now,
+        pref?.quiet_hours_start ?? null,
+        pref?.quiet_hours_end ?? null,
+        settings.timezone,
+      );
 
     const inAppEnabled = pref?.in_app_enabled !== false;
     if (inAppEnabled) {

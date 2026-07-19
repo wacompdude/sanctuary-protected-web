@@ -154,7 +154,7 @@ export async function updateChurchGeneralSettings(
   );
   if (loaded.error || !loaded.row) return { error: loaded.error };
 
-  return updateChurchSection({
+  const result = await updateChurchSection({
     patch: validation.data,
     before: {
       name: loaded.row.name,
@@ -164,9 +164,24 @@ export async function updateChurchGeneralSettings(
       year_established: loaded.row.year_established,
       description: loaded.row.description,
       primary_language: loaded.row.primary_language,
+      timezone: loaded.row.timezone,
     },
     action: AuditAction.CHURCH_SETTINGS_GENERAL_UPDATED,
   });
+
+  // Keep notification quiet-hours timezone aligned with the church setting.
+  if (
+    result.success &&
+    validation.data.timezone &&
+    validation.data.timezone !== loaded.row.timezone
+  ) {
+    await editor.context.supabase
+      .from("church_notification_settings")
+      .update({ timezone: validation.data.timezone })
+      .eq("church_id", editor.context.church.id);
+  }
+
+  return result;
 }
 
 export async function updateChurchContactSettings(
@@ -229,7 +244,6 @@ export async function updateChurchAddressSettings(
       state: loaded.row.state,
       postal_code: loaded.row.postal_code,
       country: loaded.row.country,
-      timezone: loaded.row.timezone,
     },
     action: AuditAction.CHURCH_SETTINGS_ADDRESS_UPDATED,
   });

@@ -25,6 +25,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { formatChurchDateTime } from "@/lib/datetime/format";
 
 async function NotificationsContent({
   unreadOnly,
@@ -165,7 +166,9 @@ async function NotificationsContent({
                   ) : null}
 
                   <p className="mt-2 text-xs text-muted-foreground">
-                    {new Date(item.createdAt).toLocaleString()}
+                    {formatChurchDateTime(item.createdAt, {
+                      timeZone: church.timezone,
+                    })}
                   </p>
 
                   <div className="mt-3 flex flex-wrap gap-2">

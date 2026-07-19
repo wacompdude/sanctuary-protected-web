@@ -338,6 +338,7 @@ export async function createIncident(
     const validation = validateCreateIncidentInput(formData, {
       requireLocation: policy.requireLocation,
       requireSeverity: policy.requireSeverity,
+      timeZone: context.church.timezone,
     });
     if (validation.error || validation.fieldErrors) {
       return validation;
@@ -359,7 +360,9 @@ export async function createIncident(
     }
 
     const { supabase, user, church } = context;
-    const input = parseCreateIncidentInput(formData);
+    const input = parseCreateIncidentInput(formData, {
+      timeZone: church.timezone,
+    });
     const involvedMemberIds = parseIncidentMemberIds(formData);
     const medicalUsages =
       input.type === "medical" ? parseMedicalSupplyUsages(formData) : [];

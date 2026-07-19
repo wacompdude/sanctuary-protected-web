@@ -44,6 +44,7 @@ async function NewIncidentContent() {
         requireSeverity={data?.require_incident_severity ?? true}
         medicalSupplies={medicalSupplies}
         teamMembers={teamMembers}
+        timeZone={church.timezone}
       />
     </>
   );

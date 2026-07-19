@@ -33,11 +33,13 @@ export function NewIncidentForm({
   requireSeverity = true,
   medicalSupplies = [],
   teamMembers = [],
+  timeZone,
 }: {
   requireLocation?: boolean;
   requireSeverity?: boolean;
   medicalSupplies?: MedicalSupply[];
   teamMembers?: TeamMemberRow[];
+  timeZone?: string | null;
 }) {
   const router = useRouter();
   const [occurredAt, setOccurredAt] = useState("");
@@ -51,8 +53,8 @@ export function NewIncidentForm({
     severity === "high" || severity === "critical";
 
   useEffect(() => {
-    setOccurredAt(formatDateTimeLocalValue(new Date()));
-  }, []);
+    setOccurredAt(formatDateTimeLocalValue(new Date(), timeZone));
+  }, [timeZone]);
 
   return (
     <Card>

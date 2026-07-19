@@ -25,6 +25,7 @@ import { ResendInvitationButton } from "@/components/team/resend-invitation-butt
 import { RevokeInvitationButton } from "@/components/team/revoke-invitation-button";
 import { MailPlus, Plus, UserPlus } from "lucide-react";
 import { isServiceRoleConfigured } from "@/lib/supabase/admin";
+import { formatChurchDate } from "@/lib/datetime/format";
 
 type PendingInvitation = {
   id: string;
@@ -128,6 +129,7 @@ async function TeamContent({ created }: { created?: string }) {
             actorRole={membership.role}
             actorUserId={user.id}
             canManageCertifications={canManageCertifications}
+            timeZone={church.timezone}
           />
         </CardContent>
       </Card>
@@ -157,7 +159,9 @@ async function TeamContent({ created }: { created?: string }) {
                       <p className="font-medium">{invite.email}</p>
                       <p className="text-sm text-muted-foreground">
                         {labelForMembershipRole(invite.role)} · expires{" "}
-                        {new Date(invite.expires_at).toLocaleDateString()}
+                        {formatChurchDate(invite.expires_at, {
+                          timeZone: church.timezone,
+                        })}
                       </p>
                     </div>
                     <div className="flex flex-wrap items-start justify-end gap-2">

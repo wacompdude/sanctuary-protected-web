@@ -30,11 +30,13 @@ function MaintenanceList({
   description,
   rows,
   empty,
+  timeZone,
 }: {
   title: string;
   description: string;
   rows: EquipmentMaintenanceRecord[];
   empty: string;
+  timeZone?: string | null;
 }) {
   return (
     <Card>
@@ -66,7 +68,7 @@ function MaintenanceList({
                     {labelForMaintenanceStatus(row.status)}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Due {formatEquipmentDate(row.scheduled_date)}
+                    Due {formatEquipmentDate(row.scheduled_date, timeZone)}
                     {row.equipment_asset_tag
                       ? ` · ${row.equipment_asset_tag}`
                       : ""}
@@ -149,24 +151,28 @@ async function MaintenanceContent() {
           description="Past scheduled date"
           rows={data.overdue}
           empty="Nothing overdue."
+          timeZone={church.timezone}
         />
         <MaintenanceList
           title="Due within 30 days"
           description="Upcoming scheduled work"
           rows={data.dueSoon}
           empty="Nothing due in the next 30 days."
+          timeZone={church.timezone}
         />
         <MaintenanceList
           title="Scheduled later"
           description="Beyond 30 days or undated open work"
           rows={data.scheduled}
           empty="No later scheduled items."
+          timeZone={church.timezone}
         />
         <MaintenanceList
           title="Failed inspections"
           description="Require follow-up"
           rows={data.failed}
           empty="No failed inspections."
+          timeZone={church.timezone}
         />
       </div>
 
@@ -191,7 +197,7 @@ async function MaintenanceContent() {
                   </Link>
                   <p className="text-muted-foreground">
                     {labelForMaintenanceType(row.maintenance_type)} · completed{" "}
-                    {formatEquipmentDate(row.completed_date)}
+                    {formatEquipmentDate(row.completed_date, church.timezone)}
                   </p>
                 </li>
               ))}

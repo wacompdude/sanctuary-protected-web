@@ -167,13 +167,17 @@ async function IncidentDetailContent({
             <p className="text-xs font-medium uppercase text-muted-foreground">
               Occurred
             </p>
-            <p className="text-sm">{formatDateTime(incident.occurred_at)}</p>
+            <p className="text-sm">
+              {formatDateTime(incident.occurred_at, null, church.timezone)}
+            </p>
           </div>
           <div>
             <p className="text-xs font-medium uppercase text-muted-foreground">
               Reported
             </p>
-            <p className="text-sm">{formatDateTime(incident.created_at)}</p>
+            <p className="text-sm">
+              {formatDateTime(incident.created_at, null, church.timezone)}
+            </p>
           </div>
           <div className="sm:col-span-2">
             <p className="text-xs font-medium uppercase text-muted-foreground">
@@ -208,11 +212,15 @@ async function IncidentDetailContent({
           supplies={availableSupplies}
           canRecord={canRecordSupplies}
           canManage={canManageSupplies}
+          timeZone={church.timezone}
         />
       )}
 
       <div className="grid gap-8 lg:grid-cols-2">
-        <IncidentTimeline updates={incident.updates} />
+        <IncidentTimeline
+          updates={incident.updates}
+          timeZone={church.timezone}
+        />
         <IncidentUpdateForm
           incidentId={incident.id}
           currentStatus={incident.status}

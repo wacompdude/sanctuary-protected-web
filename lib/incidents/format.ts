@@ -1,36 +1,49 @@
 import type { ChurchAppPreferences } from "@/lib/church/settings";
 import { DEFAULT_APP_PREFERENCES } from "@/lib/church/settings";
+import {
+  formatChurchDateTime,
+  resolveChurchTimeZone,
+} from "@/lib/datetime/format";
 
 export function formatDateTime(
   iso: string,
   preferences?: Partial<ChurchAppPreferences> | null,
+  timeZone?: string | null,
 ) {
-  const dateFormat =
-    preferences?.date_format ?? DEFAULT_APP_PREFERENCES.date_format;
-  const timeFormat =
-    preferences?.time_format ?? DEFAULT_APP_PREFERENCES.time_format;
-  const date = new Date(iso);
-
-  const dateOpts: Intl.DateTimeFormatOptions =
-    dateFormat === "YYYY-MM-DD"
-      ? { year: "numeric", month: "2-digit", day: "2-digit" }
-      : dateFormat === "DD/MM/YYYY"
-        ? { day: "2-digit", month: "2-digit", year: "numeric" }
-        : { month: "short", day: "numeric", year: "numeric" };
-
-  const timeOpts: Intl.DateTimeFormatOptions = {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: timeFormat !== "24h",
-  };
-
-  return `${date.toLocaleDateString("en-US", dateOpts)} ${date.toLocaleTimeString("en-US", timeOpts)}`;
+  return formatChurchDateTime(iso, {
+    timeZone: resolveChurchTimeZone(timeZone),
+    dateFormat: preferences?.date_format ?? DEFAULT_APP_PREFERENCES.date_format,
+    timeFormat: preferences?.time_format ?? DEFAULT_APP_PREFERENCES.time_format,
+  });
 }
 
-export function formatDateTimeLocalValue(date = new Date()) {
-  const offset = date.getTimezoneOffset();
-  const local = new Date(date.getTime() - offset * 60_000);
-  return local.toISOString().slice(0, 16);
+/**
+ * Value for `<input type="datetime-local">` in the church timezone.
+ * Falls back to browser-local conversion when Intl parts are unavailable.
+ */
+export function formatDateTimeLocalValue(
+  date = new Date(),
+  timeZone?: string | null,
+) {
+  const resolved = resolveChurchTimeZone(timeZone);
+  try {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: resolved,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(date);
+    const get = (type: Intl.DateTimeFormatPartTypes) =>
+      parts.find((part) => part.type === type)?.value ?? "00";
+    return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
+  } catch {
+    const offset = date.getTimezoneOffset();
+    const local = new Date(date.getTime() - offset * 60_000);
+    return local.toISOString().slice(0, 16);
+  }
 }
 
 export function formatIncidentId(id: string) {

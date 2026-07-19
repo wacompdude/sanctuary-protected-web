@@ -42,12 +42,14 @@ export function AssignmentPanels({
   members,
   canOperate,
   canManage,
+  timeZone,
 }: {
   equipmentId: string;
   assignments: EquipmentAssignmentRecord[];
   members: AssignableMember[];
   canOperate: boolean;
   canManage: boolean;
+  timeZone?: string | null;
 }) {
   const active = assignments.find((row) => row.status === "active") ?? null;
 
@@ -69,11 +71,11 @@ export function AssignmentPanels({
               </p>
               <p>
                 <span className="text-muted-foreground">Assigned: </span>
-                {formatEquipmentDate(active.assigned_at)}
+                {formatEquipmentDate(active.assigned_at, timeZone)}
               </p>
               <p>
                 <span className="text-muted-foreground">Expected return: </span>
-                {formatEquipmentDate(active.expected_return_date)}
+                {formatEquipmentDate(active.expected_return_date, timeZone)}
               </p>
               {active.assignment_notes && (
                 <p className="text-muted-foreground">{active.assignment_notes}</p>
@@ -113,9 +115,9 @@ export function AssignmentPanels({
                   {labelForAssignmentStatus(row.status)}
                 </p>
                 <p className="text-muted-foreground">
-                  {formatEquipmentDate(row.assigned_at)}
+                  {formatEquipmentDate(row.assigned_at, timeZone)}
                   {row.returned_at
-                    ? ` → ${formatEquipmentDate(row.returned_at)}`
+                    ? ` → ${formatEquipmentDate(row.returned_at, timeZone)}`
                     : ""}
                 </p>
               </div>

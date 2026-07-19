@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { MembershipRole } from "@/lib/church/types";
 import { normalizeMembershipRole } from "@/lib/church/types";
+import { getChurchClockParts } from "@/lib/datetime/format";
 import {
   CRITICAL_OVERRIDE_TYPES,
   severityAtLeast,
@@ -92,6 +93,7 @@ function inQuietHours(
   now: Date,
   start: string | null,
   end: string | null,
+  timeZone?: string | null,
 ): boolean {
   if (!start || !end) return false;
   const [startH, startM] = start.split(":").map(Number);
@@ -99,7 +101,8 @@ function inQuietHours(
   if ([startH, startM, endH, endM].some((value) => Number.isNaN(value))) {
     return false;
   }
-  const minutes = now.getHours() * 60 + now.getMinutes();
+  const clock = getChurchClockParts(now, timeZone);
+  const minutes = clock.hour * 60 + clock.minute;
   const startMinutes = (startH ?? 0) * 60 + (startM ?? 0);
   const endMinutes = (endH ?? 0) * 60 + (endM ?? 0);
   if (startMinutes === endMinutes) return false;
@@ -233,7 +236,12 @@ function evaluateChannel(params: {
     );
     const quiet =
       rule.quiet_hours_enabled &&
-      inQuietHours(now, rule.quiet_hours_start, rule.quiet_hours_end);
+      inQuietHours(
+        now,
+        rule.quiet_hours_start,
+        rule.quiet_hours_end,
+        settings.timezone,
+      );
     if (rule.enabled && severityOk && !quiet && rule.digest_frequency !== "never") {
       groupPathEnabled = true;
     }
@@ -261,7 +269,12 @@ function evaluateChannel(params: {
     );
     const quiet =
       typeRule.quiet_hours_enabled &&
-      inQuietHours(now, typeRule.quiet_hours_start, typeRule.quiet_hours_end);
+      inQuietHours(
+        now,
+        typeRule.quiet_hours_start,
+        typeRule.quiet_hours_end,
+        settings.timezone,
+      );
     const enabled =
       typeRule.enabled &&
       severityOk &&
@@ -292,6 +305,7 @@ function evaluateChannel(params: {
       now,
       legacy?.quiet_hours_start ?? null,
       legacy?.quiet_hours_end ?? null,
+      settings.timezone,
     );
   if (quiet) {
     return {

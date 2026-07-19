@@ -195,7 +195,11 @@ async function IncidentsList({ showAll }: { showAll: boolean }) {
                         <IncidentStatusBadge status={incident.status} />
                       </td>
                       <td className="py-3 text-muted-foreground">
-                        {formatDateTime(incident.occurred_at, preferences)}
+                        {formatDateTime(
+                          incident.occurred_at,
+                          preferences,
+                          church.timezone,
+                        )}
                       </td>
                     </tr>
                   ))}

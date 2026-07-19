@@ -200,9 +200,18 @@ async function DashboardContent() {
                 )}
               </div>
               <p className="break-words text-sm text-muted-foreground">
-                Week of {formatThreatWeek(currentThreatLevel.week_start)}. Last
-                changed by {currentThreatLevel.changed_by_name} on{" "}
-                {formatDateTime(currentThreatLevel.created_at)}.
+                Week of{" "}
+                {formatThreatWeek(
+                  currentThreatLevel.week_start,
+                  church.timezone,
+                )}
+                . Last changed by {currentThreatLevel.changed_by_name} on{" "}
+                {formatDateTime(
+                  currentThreatLevel.created_at,
+                  null,
+                  church.timezone,
+                )}
+                .
               </p>
             </>
           ) : (

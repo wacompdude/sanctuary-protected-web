@@ -139,6 +139,7 @@ export function LabeledSelect({
   label,
   defaultValue,
   error,
+  hint,
   options,
 }: {
   id: string;
@@ -146,6 +147,7 @@ export function LabeledSelect({
   label: string;
   defaultValue?: string | null;
   error?: string;
+  hint?: string;
   options: readonly { value: string; label: string }[];
 }) {
   return (
@@ -157,6 +159,9 @@ export function LabeledSelect({
         defaultValue={defaultValue ?? options[0]?.value}
         className={selectClassName}
         aria-invalid={!!error}
+        aria-describedby={
+          error ? `${id}-error` : hint ? `${id}-hint` : undefined
+        }
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>
@@ -164,7 +169,16 @@ export function LabeledSelect({
           </option>
         ))}
       </select>
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {hint && (
+        <p id={`${id}-hint`} className="text-xs text-muted-foreground">
+          {hint}
+        </p>
+      )}
+      {error && (
+        <p id={`${id}-error`} className="text-sm text-destructive">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

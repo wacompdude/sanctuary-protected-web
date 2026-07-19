@@ -37,6 +37,7 @@ type ChurchQueryRow = {
   name: string;
   status: string | null;
   slug: string | null;
+  timezone: string | null;
 };
 
 export type CurrentUser = {
@@ -203,7 +204,7 @@ export async function getUserMemberships(
   const churchIds = [...new Set(rows.map((row) => row.church_id))];
   const { data: churches, error: churchError } = await supabase
     .from("churches")
-    .select("id, name, status, slug")
+    .select("id, name, status, slug, timezone")
     .in("id", churchIds);
 
   if (churchError) {
@@ -248,6 +249,7 @@ export async function getUserMemberships(
         name: church.name,
         status: church.status as Church["status"],
         slug: church.slug,
+        timezone: church.timezone,
       },
     });
   }

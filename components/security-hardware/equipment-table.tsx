@@ -13,9 +13,11 @@ import type { SecurityEquipment } from "@/lib/security-hardware/types";
 export function EquipmentTable({
   items,
   canManage,
+  timeZone,
 }: {
   items: SecurityEquipment[];
   canManage: boolean;
+  timeZone?: string | null;
 }) {
   if (items.length === 0) {
     return (
@@ -105,10 +107,10 @@ export function EquipmentTable({
                 </td>
                 <td className="py-3 pr-4">{item.assigned_team || "—"}</td>
                 <td className="py-3 pr-4">
-                  {formatEquipmentDate(item.next_maintenance_at)}
+                  {formatEquipmentDate(item.next_maintenance_at, timeZone)}
                 </td>
                 <td className="py-3">
-                  {formatEquipmentDate(item.warranty_expiration)}
+                  {formatEquipmentDate(item.warranty_expiration, timeZone)}
                 </td>
               </tr>
             ))}
@@ -139,7 +141,8 @@ export function EquipmentTable({
               <div className="flex flex-wrap gap-2">
                 <EquipmentCriticalityBadge criticality={item.criticality} />
                 <span className="text-xs text-muted-foreground">
-                  Maint. {formatEquipmentDate(item.next_maintenance_at)}
+                  Maint.{" "}
+                  {formatEquipmentDate(item.next_maintenance_at, timeZone)}
                 </span>
               </div>
             </Link>

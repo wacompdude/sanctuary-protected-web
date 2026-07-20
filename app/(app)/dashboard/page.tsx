@@ -17,6 +17,7 @@ import { listIncidentsForChurch } from "@/lib/incidents/queries";
 import { getUnacknowledgedEventCount } from "@/lib/events/queries";
 import { Button } from "@/components/ui/button";
 import { formatDateTime } from "@/lib/incidents/format";
+import { formatChurchDateTime } from "@/lib/datetime/format";
 import { getCurrentChurchThreatLevel } from "@/lib/church/threat-level-queries";
 import {
   canManageThreatLevels,
@@ -26,6 +27,8 @@ import {
   threatLevelBadgeClassName,
   threatLevelBadgeStyle,
 } from "@/lib/church/threat-levels";
+import { canManageSchedule } from "@/lib/schedule/permissions";
+import { getScheduleDashboardSummary } from "@/lib/schedule/dashboard-queries";
 
 type DashboardStatTone =
   | "red"
@@ -88,18 +91,26 @@ const DASHBOARD_STAT_TONES: Record<
 };
 
 async function DashboardContent() {
-  const { church, membership } = await getAuthenticatedUserWithChurch();
-  const [certCounts, incidents, unackedEvents, currentThreatLevel] = await Promise.all([
-    getCertificationCounts(church.id),
-    listIncidentsForChurch(church.id).catch(() => []),
-    getUnacknowledgedEventCount(church.id).catch(() => 0),
-    getCurrentChurchThreatLevel(church.id).catch(() => null),
-  ]);
+  const { church, membership, user } = await getAuthenticatedUserWithChurch();
+  const [certCounts, incidents, unackedEvents, currentThreatLevel, schedule] =
+    await Promise.all([
+      getCertificationCounts(church.id),
+      listIncidentsForChurch(church.id).catch(() => []),
+      getUnacknowledgedEventCount(church.id).catch(() => 0),
+      getCurrentChurchThreatLevel(church.id).catch(() => null),
+      getScheduleDashboardSummary(
+        church.id,
+        user.id,
+        church.timezone ?? "America/Los_Angeles",
+      ).catch(() => null),
+    ]);
 
   const openIncidents = incidents.filter(
     (incident) =>
       incident.status === "open" || incident.status === "investigating",
   ).length;
+
+  const canSeeManagerSchedule = canManageSchedule(membership.role);
 
   const stats = [
     {
@@ -147,6 +158,58 @@ async function DashboardContent() {
       tone: "yellow" as const,
     },
   ];
+
+  const scheduleStats =
+    schedule?.tablesAvailable
+      ? [
+          {
+            label: "Upcoming Events",
+            value: String(schedule.upcomingEvents),
+            description: "Next 7 days",
+            href: "/schedule/events",
+            tone: "blue" as const,
+          },
+          {
+            label: "Today's Shifts",
+            value: String(schedule.todaysShifts),
+            description: "Coverage windows today",
+            href: "/schedule/shifts",
+            tone: "orange" as const,
+          },
+          ...(canSeeManagerSchedule
+            ? [
+                {
+                  label: "Unfilled Shifts",
+                  value: String(schedule.unfilledShifts),
+                  description: "Next 7 days needing staff",
+                  href: "/schedule/shifts?unfilled=1",
+                  tone: "red" as const,
+                },
+                {
+                  label: "Pending Responses",
+                  value: String(schedule.pendingResponses),
+                  description: "Invites awaiting accept/decline",
+                  href: "/schedule/shifts",
+                  tone: "yellow" as const,
+                },
+                {
+                  label: "Unavailable Today",
+                  value: String(schedule.unavailableToday),
+                  description: "Active unavailability blocks",
+                  href: "/schedule/availability?view=team",
+                  tone: "silver" as const,
+                },
+              ]
+            : []),
+          {
+            label: "Upcoming Training",
+            value: String(schedule.upcomingTraining),
+            description: "Training events in 7 days",
+            href: "/schedule/events?eventType=training",
+            tone: "blue" as const,
+          },
+        ]
+      : [];
 
   return (
     <>
@@ -276,6 +339,95 @@ async function DashboardContent() {
           );
         })}
       </div>
+
+      {schedule?.tablesAvailable ? (
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-end justify-between gap-2">
+            <div>
+              <h2 className="text-xl font-semibold tracking-tight">Scheduling</h2>
+              <p className="text-sm text-muted-foreground">
+                Live coverage and staffing signals.
+              </p>
+            </div>
+            <Button asChild variant="outline" className="h-10">
+              <Link href="/schedule/calendar">Open calendar</Link>
+            </Button>
+          </div>
+
+          {schedule.myNextShift ? (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardDescription>My next shift</CardDescription>
+                <CardTitle className="text-lg">
+                  {schedule.myNextShift.title}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm text-muted-foreground">
+                  {formatChurchDateTime(schedule.myNextShift.start_at, {
+                    timeZone: church.timezone ?? undefined,
+                  })}
+                  {" – "}
+                  {formatChurchDateTime(schedule.myNextShift.end_at, {
+                    timeZone: church.timezone ?? undefined,
+                  })}
+                </p>
+                <Button asChild variant="outline" size="sm">
+                  <Link href={`/schedule/shifts/${schedule.myNextShift.id}`}>
+                    View shift
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="py-4 text-sm text-muted-foreground">
+                No upcoming assignments on your schedule.{" "}
+                <Link
+                  href="/schedule/my-schedule"
+                  className="underline underline-offset-2"
+                >
+                  Open My Schedule
+                </Link>
+              </CardContent>
+            </Card>
+          )}
+
+          <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+            {scheduleStats.map((stat) => {
+              const tone = DASHBOARD_STAT_TONES[stat.tone];
+              return (
+                <Link key={stat.label} href={stat.href} className="block">
+                  <Card
+                    className="h-full border shadow-none transition-opacity hover:opacity-90"
+                    style={tone.card}
+                  >
+                    <CardHeader className="space-y-1 p-3 pb-1">
+                      <CardDescription
+                        className={`text-xs leading-snug ${tone.mutedTextClass}`}
+                      >
+                        {stat.label}
+                      </CardDescription>
+                      <CardTitle
+                        className={`text-xl font-semibold tabular-nums ${tone.textClass}`}
+                      >
+                        {stat.value}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-3 pt-0">
+                      <p
+                        className={`text-xs leading-snug ${tone.mutedTextClass}`}
+                      >
+                        {stat.description}
+                      </p>
+                    </CardContent>
+                  </Card>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }

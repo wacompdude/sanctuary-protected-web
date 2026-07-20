@@ -37,6 +37,15 @@ export type NavItemId =
   | "invitations"
   | "certifications"
   | "campuses"
+  | "schedule"
+  | "schedule-calendar"
+  | "schedule-events"
+  | "schedule-shifts"
+  | "schedule-availability"
+  | "schedule-my"
+  | "schedule-notifications"
+  | "schedule-templates"
+  | "scheduling-settings"
   | "settings"
   | "church-settings"
   | "security-settings"
@@ -162,7 +171,7 @@ export const APP_NAV_SECTIONS: NavSection[] = [
   {
     id: "people",
     label: "People",
-    minRole: "security_member",
+    minRole: "viewer",
     items: [
       {
         kind: "group",
@@ -201,6 +210,64 @@ export const APP_NAV_SECTIONS: NavSection[] = [
           },
         ],
       },
+      {
+        kind: "group",
+        id: "schedule",
+        href: "/schedule/calendar",
+        minRole: "viewer",
+        label: "Scheduling",
+        children: [
+          {
+            kind: "link",
+            id: "schedule-calendar",
+            href: "/schedule/calendar",
+            minRole: "viewer",
+            label: "Calendar",
+          },
+          {
+            kind: "link",
+            id: "schedule-my",
+            href: "/schedule/my-schedule",
+            minRole: "viewer",
+            label: "My Schedule",
+          },
+          {
+            kind: "link",
+            id: "schedule-events",
+            href: "/schedule/events",
+            minRole: "viewer",
+            label: "Events",
+          },
+          {
+            kind: "link",
+            id: "schedule-shifts",
+            href: "/schedule/shifts",
+            minRole: "viewer",
+            label: "Team Shifts",
+          },
+          {
+            kind: "link",
+            id: "schedule-availability",
+            href: "/schedule/availability",
+            minRole: "viewer",
+            label: "Availability",
+          },
+          {
+            kind: "link",
+            id: "schedule-notifications",
+            href: "/schedule/notifications",
+            minRole: "security_leader",
+            label: "Schedule Notifications",
+          },
+          {
+            kind: "link",
+            id: "schedule-templates",
+            href: "/schedule/templates",
+            minRole: "security_leader",
+            label: "Schedule Templates",
+          },
+        ],
+      },
     ],
   },
   {
@@ -228,6 +295,13 @@ export const APP_NAV_SECTIONS: NavSection[] = [
             href: "/settings/security",
             minRole: "security_leader",
             label: "Security",
+          },
+          {
+            kind: "link",
+            id: "scheduling-settings",
+            href: "/settings/scheduling",
+            minRole: "administrator",
+            label: "Scheduling",
           },
           {
             kind: "link",

@@ -101,6 +101,19 @@ export function labelForNotificationType(type: string): string {
     "notification.test": "Test notification",
     "policy.published": "Policy published",
     "policy.acknowledgment_required": "Policy acknowledgment required",
+    "schedule.assignment_created": "Schedule assignment",
+    "schedule.assignment_changed": "Schedule assignment changed",
+    "schedule.assignment_cancelled": "Schedule assignment cancelled",
+    "schedule.assignment_reminder": "Upcoming shift reminder",
+    "schedule.assignment_response_required": "Assignment response required",
+    "schedule.assignment_accepted": "Assignment accepted",
+    "schedule.assignment_declined": "Assignment declined",
+    "schedule.open_shift_available": "Open shift available",
+    "schedule.unfilled_shift_warning": "Unfilled shift warning",
+    "schedule.event_cancelled": "Schedule event cancelled",
+    "schedule.conflict_override": "Schedule conflict override",
+    "schedule.custom_message": "Custom schedule message",
+    "schedule.shift_cancelled": "Shift cancelled",
   };
   return labels[type] ?? type;
 }

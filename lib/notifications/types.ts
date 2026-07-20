@@ -95,7 +95,24 @@ export type NotificationType =
   | "emergency.alert"
   | "notification.test"
   | "policy.published"
-  | "policy.acknowledgment_required";
+  | "policy.acknowledgment_required"
+  | "schedule.event_created"
+  | "schedule.event_updated"
+  | "schedule.event_cancelled"
+  | "schedule.shift_created"
+  | "schedule.shift_updated"
+  | "schedule.shift_cancelled"
+  | "schedule.assignment_created"
+  | "schedule.assignment_changed"
+  | "schedule.assignment_cancelled"
+  | "schedule.assignment_reminder"
+  | "schedule.assignment_response_required"
+  | "schedule.assignment_accepted"
+  | "schedule.assignment_declined"
+  | "schedule.open_shift_available"
+  | "schedule.unfilled_shift_warning"
+  | "schedule.conflict_override"
+  | "schedule.custom_message";
 
 export type ChurchNotificationSettings = {
   id: string;

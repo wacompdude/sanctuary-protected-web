@@ -5,8 +5,12 @@
       "schedule": "0 9 * * *"
     },
     {
+      "path": "/api/notifications/schedule/scan",
+      "schedule": "0 * * * *"
+    },
+    {
       "path": "/api/notifications/dispatch",
-      "schedule": "15 9 * * *"
+      "schedule": "5 * * * *"
     }
   ]
 }

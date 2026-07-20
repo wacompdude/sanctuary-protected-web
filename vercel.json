@@ -6,11 +6,11 @@
     },
     {
       "path": "/api/notifications/schedule/scan",
-      "schedule": "0 * * * *"
+      "schedule": "0 8 * * *"
     },
     {
       "path": "/api/notifications/dispatch",
-      "schedule": "5 * * * *"
+      "schedule": "15 9 * * *"
     }
   ]
 }

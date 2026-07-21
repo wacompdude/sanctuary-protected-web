@@ -23,10 +23,15 @@ export {
 export async function listIncidentsForChurch(
   churchId: string,
   sort: IncidentListSort = "occurred_at_desc",
+  options?: { campusFilterOr?: string | null },
 ) {
   const supabase = await createClient();
 
   let query = supabase.from("incidents").select("*").eq("church_id", churchId);
+
+  if (options?.campusFilterOr) {
+    query = query.or(options.campusFilterOr);
+  }
 
   switch (sort) {
     case "occurred_at_asc":
@@ -50,6 +55,9 @@ export async function listIncidentsForChurch(
   const { data, error } = await query;
 
   if (error) {
+    if (/campus_id/i.test(error.message) && options?.campusFilterOr) {
+      return listIncidentsForChurch(churchId, sort);
+    }
     throw new Error(error.message);
   }
 

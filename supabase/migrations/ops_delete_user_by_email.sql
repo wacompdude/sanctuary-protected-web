@@ -14,7 +14,8 @@
 --   3. Delete invitations they sent or that were sent to their email.
 --   4. Reassign or delete rows that reference the user with RESTRICT / NOT NULL.
 --   5. Soft-clean nullable SET NULL references (optional hygiene).
---   6. Delete church_memberships (bypassing membership mutation guards).
+--   6. Delete campus_memberships (036+), then church_memberships
+--      (bypassing membership mutation guards).
 --   7. Delete public.profiles + storage avatar objects.
 --   8. Delete auth.users (cascades / SET NULL remaining FKs).
 --
@@ -22,6 +23,11 @@
 -- Audit log rows are retained with user_id set to NULL (append-only table).
 -- Storage objects for incident/equipment/policy media uploaded by this user
 -- are left in place when rows are reassigned; orphaned when rows are deleted.
+--
+-- Campus note (036_campus_management.sql):
+--   campus_memberships CASCADE from church_memberships / campuses / auth.users,
+--   but authenticated clients cannot DELETE those rows (REVOKE DELETE). This
+--   script clears them explicitly so ops deletes stay reliable and auditable.
 -- =============================================================================
 
 DO $$
@@ -117,6 +123,17 @@ BEGIN
 
     DELETE FROM public.church_invitations
     WHERE church_id = v_sole_owner_church.church_id;
+
+    -- Campus memberships / locations (036+) before campuses / church memberships
+    IF to_regclass('public.campus_memberships') IS NOT NULL THEN
+      DELETE FROM public.campus_memberships
+      WHERE church_id = v_sole_owner_church.church_id;
+    END IF;
+
+    IF to_regclass('public.campus_locations') IS NOT NULL THEN
+      DELETE FROM public.campus_locations
+      WHERE church_id = v_sole_owner_church.church_id;
+    END IF;
 
     DELETE FROM public.campuses
     WHERE church_id = v_sole_owner_church.church_id;
@@ -472,6 +489,25 @@ BEGIN
   WHERE user_id = v_user_id;
 
   ALTER TABLE public.audit_logs ENABLE TRIGGER USER;
+
+  -- ---------------------------------------------------------------------------
+  -- Campus memberships (036+)
+  --   church_membership_id → church_memberships ON DELETE CASCADE
+  --   user_id → auth.users ON DELETE CASCADE
+  --   assigned_by → auth.users ON DELETE SET NULL
+  -- Explicit delete: authenticated role cannot DELETE these rows; keep ops path
+  -- clear before church_memberships / auth.users removal.
+  -- ---------------------------------------------------------------------------
+  IF to_regclass('public.campus_memberships') IS NOT NULL THEN
+    DELETE FROM public.campus_memberships
+    WHERE user_id = v_user_id
+       OR church_membership_id IN (
+            SELECT m.id
+            FROM public.church_memberships m
+            WHERE m.user_id = v_user_id
+          )
+       OR assigned_by = v_user_id;
+  END IF;
 
   -- ---------------------------------------------------------------------------
   -- Memberships (CASCADE from auth.users also removes these; explicit for clarity)

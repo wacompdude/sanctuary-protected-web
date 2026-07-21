@@ -201,13 +201,6 @@ export const APP_NAV_SECTIONS: NavSection[] = [
             minRole: "security_member",
             label: "Certifications",
           },
-          {
-            kind: "link",
-            id: "campuses",
-            href: "/campuses",
-            minRole: "security_member",
-            label: "Campuses",
-          },
         ],
       },
       {
@@ -273,8 +266,15 @@ export const APP_NAV_SECTIONS: NavSection[] = [
   {
     id: "admin",
     label: "Admin",
-    minRole: "security_leader",
+    minRole: "security_member",
     items: [
+      {
+        kind: "link",
+        id: "campuses",
+        href: "/campuses",
+        minRole: "security_member",
+        label: "Campuses",
+      },
       {
         kind: "group",
         id: "settings",

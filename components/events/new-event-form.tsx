@@ -15,10 +15,20 @@ import {
 import { EVENT_SEVERITIES, EVENT_TYPES } from "@/lib/events/types";
 import type { ActionState } from "@/lib/church/types";
 import { selectClassName } from "@/components/incidents/incident-badges";
+import {
+  CampusScopeField,
+  type CampusScopeOption,
+} from "@/components/campuses/campus-scope-field";
 
 const initialState: ActionState = {};
 
-export function NewEventForm() {
+export function NewEventForm({
+  campuses = [],
+  defaultCampusId = "",
+}: {
+  campuses?: CampusScopeOption[];
+  defaultCampusId?: string;
+}) {
   const [state, formAction, pending] = useActionState(
     createTestEvent,
     initialState,
@@ -106,6 +116,11 @@ export function NewEventForm() {
               />
             </div>
           </div>
+
+          <CampusScopeField
+            campuses={campuses}
+            defaultValue={defaultCampusId}
+          />
 
           <Button type="submit" disabled={pending}>
             {pending ? "Creating…" : "Create Event"}

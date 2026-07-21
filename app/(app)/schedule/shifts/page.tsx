@@ -27,6 +27,10 @@ import type {
   ScheduleShiftStatus,
   ScheduleShiftType,
 } from "@/lib/schedule/types";
+import {
+  resolveCampusFilter,
+  resolveListCampusFilterOr,
+} from "@/lib/campuses/filter";
 
 async function ShiftsContent({
   searchParams,
@@ -34,8 +38,13 @@ async function ShiftsContent({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
-  const { church, membership } = await getAuthenticatedUserWithChurch();
+  const { church, membership, user } = await getAuthenticatedUserWithChurch();
   const canManage = canManageSchedule(membership.role);
+  const campusFilter = await resolveCampusFilter({
+    churchId: church.id,
+    userId: user.id,
+    role: membership.role,
+  });
 
   const q = typeof params.q === "string" ? params.q : "";
   const status = typeof params.status === "string" ? params.status : "";
@@ -51,6 +60,7 @@ async function ShiftsContent({
       status: (status || "") as ScheduleShiftStatus | "",
       shiftType: (type || "") as ScheduleShiftType | "",
       campusId: campus || undefined,
+      campusFilterOr: resolveListCampusFilterOr(campusFilter, campus),
       eventId: eventId || undefined,
       unfilledOnly: unfilled,
       page,

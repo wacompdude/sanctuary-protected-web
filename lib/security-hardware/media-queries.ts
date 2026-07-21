@@ -186,13 +186,20 @@ export type EquipmentReportBreakdown = {
 
 export async function getEquipmentReportBreakdown(
   churchId: string,
+  options?: { campusFilterOr?: string | null },
 ): Promise<EquipmentReportBreakdown> {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("security_equipment")
     .select("category, status")
     .eq("church_id", churchId)
     .is("archived_at", null);
+
+  if (options?.campusFilterOr) {
+    query = query.or(options.campusFilterOr);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     throw new Error(error.message);
@@ -237,24 +244,31 @@ function csvEscape(value: string | number | null | undefined): string {
 
 export async function buildEquipmentInventoryCsv(
   churchId: string,
+  options?: { campusFilterOr?: string | null },
 ): Promise<string> {
   const supabase = await createClient();
-  const [{ data, error }, { data: campuses, error: campusError }] =
-    await Promise.all([
-      supabase
-        .from("security_equipment")
-        .select(
-          `
+  let equipmentQuery = supabase
+    .from("security_equipment")
+    .select(
+      `
       asset_tag, name, category, subcategory, status, criticality, campus_id,
       manufacturer, model, serial_number, location_name, building, floor, room,
       assigned_team, purchase_date, purchase_price, vendor_name,
       warranty_expiration, installed_date, next_inspection_at,
       next_maintenance_at, expected_replacement_date, notes, archived_at
     `,
-        )
-        .eq("church_id", churchId)
-        .order("asset_tag", { ascending: true, nullsFirst: false })
-        .order("name", { ascending: true }),
+    )
+    .eq("church_id", churchId)
+    .order("asset_tag", { ascending: true, nullsFirst: false })
+    .order("name", { ascending: true });
+
+  if (options?.campusFilterOr) {
+    equipmentQuery = equipmentQuery.or(options.campusFilterOr);
+  }
+
+  const [{ data, error }, { data: campuses, error: campusError }] =
+    await Promise.all([
+      equipmentQuery,
       supabase
         .from("campuses")
         .select("id, name")

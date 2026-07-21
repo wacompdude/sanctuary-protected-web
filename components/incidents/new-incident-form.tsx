@@ -25,6 +25,10 @@ import { IncidentTeamMembersFields } from "@/components/incidents/incident-team-
 import { MedicalSuppliesUsedFields } from "@/components/incidents/medical-supplies-used-fields";
 import type { TeamMemberRow } from "@/lib/church/team";
 import { selectClassName, textareaClassName } from "./incident-badges";
+import {
+  CampusScopeField,
+  type CampusScopeOption,
+} from "@/components/campuses/campus-scope-field";
 
 const initialState: ActionState = {};
 
@@ -34,12 +38,16 @@ export function NewIncidentForm({
   medicalSupplies = [],
   teamMembers = [],
   timeZone,
+  campuses = [],
+  defaultCampusId = "",
 }: {
   requireLocation?: boolean;
   requireSeverity?: boolean;
   medicalSupplies?: MedicalSupply[];
   teamMembers?: TeamMemberRow[];
   timeZone?: string | null;
+  campuses?: CampusScopeOption[];
+  defaultCampusId?: string;
 }) {
   const router = useRouter();
   const [occurredAt, setOccurredAt] = useState("");
@@ -179,6 +187,12 @@ export function NewIncidentForm({
               </p>
             )}
           </div>
+
+          <CampusScopeField
+            campuses={campuses}
+            defaultValue={defaultCampusId}
+            error={state.fieldErrors?.campus_id}
+          />
 
           <div className="space-y-2">
             <Label htmlFor="occurred_at">Occurred date & time</Label>

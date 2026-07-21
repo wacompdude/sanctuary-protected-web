@@ -20,6 +20,10 @@ import {
   listScheduleEvents,
 } from "@/lib/schedule/queries";
 import type { ScheduleEventStatus, ScheduleEventType } from "@/lib/schedule/types";
+import {
+  resolveCampusFilter,
+  resolveListCampusFilterOr,
+} from "@/lib/campuses/filter";
 
 async function EventsContent({
   searchParams,
@@ -27,8 +31,13 @@ async function EventsContent({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
-  const { church, membership } = await getAuthenticatedUserWithChurch();
+  const { church, membership, user } = await getAuthenticatedUserWithChurch();
   const canManage = canManageSchedule(membership.role);
+  const campusFilter = await resolveCampusFilter({
+    churchId: church.id,
+    userId: user.id,
+    role: membership.role,
+  });
 
   const q = typeof params.q === "string" ? params.q : "";
   const type = typeof params.type === "string" ? params.type : "";
@@ -42,6 +51,7 @@ async function EventsContent({
       eventType: (type || "") as ScheduleEventType | "",
       status: (status || "") as ScheduleEventStatus | "",
       campusId: campus || undefined,
+      campusFilterOr: resolveListCampusFilterOr(campusFilter, campus),
       includeCancelled: true,
       page,
     }),

@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatChurchDateTime } from "@/lib/datetime/format";
+import { resolveCampusFilter } from "@/lib/campuses/filter";
 
 async function NotificationsContent({
   unreadOnly,
@@ -37,6 +38,11 @@ async function NotificationsContent({
   const tablesAvailable = await areNotificationTablesAvailable(supabase);
   const canCompose = canCreateOperationalNotifications(membership.role);
   const canViewHistory = canViewNotificationHistory(membership.role);
+  const campusFilter = await resolveCampusFilter({
+    churchId: church.id,
+    userId: user.id,
+    role: membership.role,
+  });
 
   if (!tablesAvailable) {
     return (
@@ -76,8 +82,9 @@ async function NotificationsContent({
       userId: user.id,
       unreadOnly,
       limit: 100,
+      campusFilter,
     }),
-    countUnreadNotifications(supabase, church.id, user.id),
+    countUnreadNotifications(supabase, church.id, user.id, campusFilter),
   ]);
 
   return (

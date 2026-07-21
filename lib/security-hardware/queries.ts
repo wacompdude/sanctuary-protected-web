@@ -81,6 +81,7 @@ export async function getChurchEquipmentWarningDays(churchId: string): Promise<{
 
 export async function getEquipmentSummary(
   churchId: string,
+  options?: { campusFilterOr?: string | null },
 ): Promise<EquipmentSummary> {
   const supabase = await createClient();
   const warnings = await getChurchEquipmentWarningDays(churchId);
@@ -88,13 +89,19 @@ export async function getEquipmentSummary(
   const replacementCutoff = addDaysIso(warnings.replacementDays);
   const today = addDaysIso(0);
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("security_equipment")
     .select(
       "status, criticality, assigned_user_id, assigned_team, next_maintenance_at, warranty_expiration, expected_replacement_date, archived_at",
     )
     .eq("church_id", churchId)
     .is("archived_at", null);
+
+  if (options?.campusFilterOr) {
+    query = query.or(options.campusFilterOr);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     if (
@@ -174,8 +181,12 @@ export async function listSecurityEquipment(
   if (filters.status) {
     query = query.eq("status", filters.status);
   }
-  if (filters.campusId) {
-    query = query.eq("campus_id", filters.campusId);
+  if (filters.campusFilterOr) {
+    query = query.or(filters.campusFilterOr);
+  } else if (filters.campusId) {
+    query = query.or(
+      `campus_id.eq.${filters.campusId},campus_id.is.null`,
+    );
   }
   if (filters.criticality) {
     query = query.eq("criticality", filters.criticality);

@@ -28,6 +28,7 @@ export async function getScheduleDashboardSummary(
   churchId: string,
   userId: string,
   timeZone = "America/Los_Angeles",
+  options?: { campusFilterOr?: string | null },
 ): Promise<ScheduleDashboardSummary> {
   const empty: ScheduleDashboardSummary = {
     tablesAvailable: false,
@@ -49,6 +50,44 @@ export async function getScheduleDashboardSummary(
     const dayEnd = new Date(
       new Date(dayStart).getTime() + 24 * 60 * 60 * 1000,
     ).toISOString();
+    const campusOr = options?.campusFilterOr ?? null;
+
+    let upcomingEventsQuery = supabase
+      .from("schedule_events")
+      .select("id", { count: "exact", head: true })
+      .eq("church_id", churchId)
+      .gte("start_at", nowIso)
+      .lte("start_at", in7Days)
+      .not("status", "in", '("cancelled","archived")');
+    if (campusOr) upcomingEventsQuery = upcomingEventsQuery.or(campusOr);
+
+    let todaysShiftsQuery = supabase
+      .from("schedule_shifts")
+      .select("id", { count: "exact", head: true })
+      .eq("church_id", churchId)
+      .lt("start_at", dayEnd)
+      .gt("end_at", dayStart)
+      .not("status", "in", '("cancelled","completed")');
+    if (campusOr) todaysShiftsQuery = todaysShiftsQuery.or(campusOr);
+
+    let unfilledQuery = supabase
+      .from("schedule_shifts")
+      .select("id, required_member_count, confirmed_assignment_count")
+      .eq("church_id", churchId)
+      .gte("start_at", nowIso)
+      .lte("start_at", in7Days)
+      .not("status", "in", '("cancelled","completed","draft")');
+    if (campusOr) unfilledQuery = unfilledQuery.or(campusOr);
+
+    let trainingQuery = supabase
+      .from("schedule_events")
+      .select("id", { count: "exact", head: true })
+      .eq("church_id", churchId)
+      .eq("event_type", "training")
+      .gte("start_at", nowIso)
+      .lte("start_at", in7Days)
+      .not("status", "in", '("cancelled","archived")');
+    if (campusOr) trainingQuery = trainingQuery.or(campusOr);
 
     const [
       upcomingEventsRes,
@@ -59,27 +98,9 @@ export async function getScheduleDashboardSummary(
       trainingRes,
       myNextRes,
     ] = await Promise.all([
-      supabase
-        .from("schedule_events")
-        .select("id", { count: "exact", head: true })
-        .eq("church_id", churchId)
-        .gte("start_at", nowIso)
-        .lte("start_at", in7Days)
-        .not("status", "in", '("cancelled","archived")'),
-      supabase
-        .from("schedule_shifts")
-        .select("id", { count: "exact", head: true })
-        .eq("church_id", churchId)
-        .lt("start_at", dayEnd)
-        .gt("end_at", dayStart)
-        .not("status", "in", '("cancelled","completed")'),
-      supabase
-        .from("schedule_shifts")
-        .select("id, required_member_count, confirmed_assignment_count")
-        .eq("church_id", churchId)
-        .gte("start_at", nowIso)
-        .lte("start_at", in7Days)
-        .not("status", "in", '("cancelled","completed","draft")'),
+      upcomingEventsQuery,
+      todaysShiftsQuery,
+      unfilledQuery,
       supabase
         .from("shift_assignments")
         .select("id", { count: "exact", head: true })
@@ -92,14 +113,7 @@ export async function getScheduleDashboardSummary(
         .eq("status", "active")
         .lt("start_at", dayEnd)
         .gt("end_at", dayStart),
-      supabase
-        .from("schedule_events")
-        .select("id", { count: "exact", head: true })
-        .eq("church_id", churchId)
-        .eq("event_type", "training")
-        .gte("start_at", nowIso)
-        .lte("start_at", in7Days)
-        .not("status", "in", '("cancelled","archived")'),
+      trainingQuery,
       supabase
         .from("shift_assignments")
         .select(

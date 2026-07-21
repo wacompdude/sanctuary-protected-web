@@ -19,6 +19,11 @@ import { listEventsForChurch } from "@/lib/events/queries";
 import { EVENT_TYPES } from "@/lib/events/types";
 import { formatDateTime } from "@/lib/incidents/format";
 import { Plus } from "lucide-react";
+import {
+  campusFilterLabel,
+  campusFilterOrClause,
+  resolveCampusFilter,
+} from "@/lib/campuses/filter";
 
 function labelFor(
   options: { value: string; label: string }[],
@@ -28,12 +33,21 @@ function labelFor(
 }
 
 async function EventsContent() {
-  const { church, canManageCertifications } =
+  const { church, membership, user, canManageCertifications } =
     await getAuthenticatedUserWithChurch();
-  const events = await listEventsForChurch(church.id);
+  const campusFilter = await resolveCampusFilter({
+    churchId: church.id,
+    userId: user.id,
+    role: membership.role,
+  });
+  const campusOr = campusFilterOrClause(campusFilter);
+  const events = await listEventsForChurch(church.id, {
+    campusFilterOr: campusOr,
+  });
   const unacked = events.filter(
     (event) => event.acknowledgment_status === "unacknowledged",
   ).length;
+  const filterLabel = campusFilterLabel(campusFilter);
 
   return (
     <>
@@ -41,7 +55,8 @@ async function EventsContent() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Events</h1>
           <p className="mt-1 text-muted-foreground">
-            Device events for {church.name}. {unacked} unacknowledged.
+            Device events for {church.name} · {filterLabel}. {unacked}{" "}
+            unacknowledged.
           </p>
         </div>
         {canManageCertifications && (

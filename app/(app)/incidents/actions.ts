@@ -407,6 +407,7 @@ export async function createIncident(
         location: input.location,
         description: input.description || null,
         occurred_at: input.occurred_at,
+        campus_id: input.campus_id,
       })
       .select("id")
       .single();

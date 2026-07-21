@@ -9,10 +9,19 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ChurchAccessError } from "@/lib/church/errors";
 import { listActiveIncidentTeamMembers } from "@/lib/incidents/queries";
 import { listAvailableSuppliesForIncident } from "@/lib/medical-supplies/queries";
+import {
+  defaultCampusIdForForm,
+  resolveCampusFilter,
+} from "@/lib/campuses/filter";
 
 async function NewIncidentContent() {
-  const { supabase, church } = await getOperationalChurchContext();
-  const [{ data }, medicalSupplies, teamMembers] = await Promise.all([
+  const { supabase, church, user, membership } = await getOperationalChurchContext();
+  const [campusFilter, { data }, medicalSupplies, teamMembers] = await Promise.all([
+    resolveCampusFilter({
+      churchId: church.id,
+      userId: user.id,
+      role: membership.role,
+    }),
     supabase
       .from("churches")
       .select(
@@ -45,6 +54,8 @@ async function NewIncidentContent() {
         medicalSupplies={medicalSupplies}
         teamMembers={teamMembers}
         timeZone={church.timezone}
+        campuses={campusFilter.accessibleCampuses}
+        defaultCampusId={defaultCampusIdForForm(campusFilter)}
       />
     </>
   );

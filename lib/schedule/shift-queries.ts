@@ -74,6 +74,7 @@ export type ListScheduleShiftsParams = {
   shiftType?: ScheduleShiftType | "";
   eventId?: string;
   campusId?: string;
+  campusFilterOr?: string | null;
   from?: string;
   to?: string;
   unfilledOnly?: boolean;
@@ -103,7 +104,13 @@ export async function listScheduleShifts(
     if (params.status) query = query.eq("status", params.status);
     if (params.shiftType) query = query.eq("shift_type", params.shiftType);
     if (params.eventId) query = query.eq("event_id", params.eventId);
-    if (params.campusId) query = query.eq("campus_id", params.campusId);
+    if (params.campusFilterOr) {
+      query = query.or(params.campusFilterOr);
+    } else if (params.campusId) {
+      query = query.or(
+        `campus_id.eq.${params.campusId},campus_id.is.null`,
+      );
+    }
     if (params.from) query = query.gte("end_at", params.from);
     if (params.to) query = query.lte("start_at", params.to);
 

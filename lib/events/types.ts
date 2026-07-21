@@ -22,6 +22,8 @@ export interface SecurityEvent {
   acknowledged_by: string | null;
   acknowledged_at: string | null;
   created_at: string;
+  /** Null = church-wide. Requires migration 036. */
+  campus_id?: string | null;
 }
 
 export const EVENT_TYPES: { value: EventType; label: string }[] = [

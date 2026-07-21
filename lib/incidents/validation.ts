@@ -148,6 +148,7 @@ export function parseCreateIncidentInput(
 ) {
   const severityRaw = formData.get("severity");
   const locationRaw = formData.get("location");
+  const campusIdRaw = formData.get("campus_id");
   const occurredAtRaw = formData.get("occurred_at") as string;
   const occurredAt =
     parseChurchDateTimeLocal(occurredAtRaw, options.timeZone) ??
@@ -161,6 +162,7 @@ export function parseCreateIncidentInput(
     location: isNonEmptyString(locationRaw) ? locationRaw.trim() : "Unspecified",
     description: ((formData.get("description") as string) || "").trim(),
     occurred_at: occurredAt.toISOString(),
+    campus_id: isNonEmptyString(campusIdRaw) ? campusIdRaw.trim() : null,
   };
 }
 

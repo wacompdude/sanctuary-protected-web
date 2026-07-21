@@ -126,6 +126,8 @@ export type PolicyLibraryFilters = {
   documentType?: PolicyDocumentType | "";
   categoryId?: string;
   campusId?: string;
+  /** Prefer over campusId — includes church-wide null rows. */
+  campusFilterOr?: string | null;
   emergencyOnly?: boolean;
   acknowledgmentRequired?: boolean;
   featuredOnly?: boolean;
@@ -175,6 +177,7 @@ export type PolicyManageFilters = {
   documentType?: PolicyDocumentType | "";
   categoryId?: string;
   campusId?: string;
+  campusFilterOr?: string | null;
   includeArchived?: boolean;
   page?: number;
   pageSize?: number;

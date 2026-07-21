@@ -60,6 +60,7 @@ export type ListScheduleEventsParams = {
   eventType?: ScheduleEventType | "";
   status?: ScheduleEventStatus | "";
   campusId?: string;
+  campusFilterOr?: string | null;
   from?: string;
   to?: string;
   includeCancelled?: boolean;
@@ -96,8 +97,12 @@ export async function listScheduleEvents(
     } else if (!params.includeCancelled) {
       query = query.neq("status", "archived");
     }
-    if (params.campusId) {
-      query = query.eq("campus_id", params.campusId);
+    if (params.campusFilterOr) {
+      query = query.or(params.campusFilterOr);
+    } else if (params.campusId) {
+      query = query.or(
+        `campus_id.eq.${params.campusId},campus_id.is.null`,
+      );
     }
     if (params.from) {
       query = query.gte("end_at", params.from);
@@ -194,6 +199,7 @@ export async function listScheduleCalendarItems(
   filters?: {
     eventType?: string;
     campusId?: string;
+    campusFilterOr?: string | null;
     includeCancelled?: boolean;
   },
 ): Promise<{ items: ScheduleCalendarItem[]; tablesAvailable: boolean; hint?: string }> {
@@ -215,8 +221,12 @@ export async function listScheduleCalendarItems(
     if (filters?.eventType) {
       query = query.eq("event_type", filters.eventType);
     }
-    if (filters?.campusId) {
-      query = query.eq("campus_id", filters.campusId);
+    if (filters?.campusFilterOr) {
+      query = query.or(filters.campusFilterOr);
+    } else if (filters?.campusId) {
+      query = query.or(
+        `campus_id.eq.${filters.campusId},campus_id.is.null`,
+      );
     }
 
     const { data, error } = await query;

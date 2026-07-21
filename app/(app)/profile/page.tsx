@@ -17,6 +17,8 @@ import {
   listOwnCertifications,
   listOwnChurchMemberships,
 } from "@/lib/profile/memberships";
+import { listOwnCampusMemberships } from "@/lib/campuses/membership-queries";
+import { labelForCampusRole } from "@/lib/campuses/constants";
 import { labelForMembershipRole } from "@/lib/church/invitations";
 import { labelForMembershipStatus } from "@/lib/church/team";
 import { formatChurchDate } from "@/lib/datetime/format";
@@ -69,9 +71,10 @@ async function ProfileContent() {
     );
   }
 
-  const [memberships, certifications] = await Promise.all([
+  const [memberships, certifications, campusMemberships] = await Promise.all([
     listOwnChurchMemberships(),
     listOwnCertifications(),
+    listOwnCampusMemberships(user.id).catch(() => []),
   ]);
   const timezoneByChurchId = new Map(
     memberships.map((membership) => [
@@ -79,6 +82,12 @@ async function ProfileContent() {
       membership.church.timezone,
     ]),
   );
+  const campusesByChurchId = new Map<string, typeof campusMemberships>();
+  for (const row of campusMemberships) {
+    const list = campusesByChurchId.get(row.church_id) ?? [];
+    list.push(row);
+    campusesByChurchId.set(row.church_id, list);
+  }
 
   return (
     <>
@@ -140,10 +149,80 @@ async function ProfileContent() {
                           })}`
                         : ""}
                     </p>
+                    {(() => {
+                      const campuses =
+                        campusesByChurchId.get(membership.church_id) ?? [];
+                      if (campuses.length === 0) {
+                        return (
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            No campus assignments
+                          </p>
+                        );
+                      }
+                      return (
+                        <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">
+                          {campuses.map((campus) => (
+                            <li key={campus.id}>
+                              {campus.campus_name}
+                              {campus.is_primary_campus ? " (primary)" : ""}
+                              {campus.has_implicit_all_campus_access &&
+                              !campus.campus_id
+                                ? " · implicit access"
+                                : ` · ${labelForCampusRole(campus.campus_role)}`}
+                            </li>
+                          ))}
+                        </ul>
+                      );
+                    })()}
                   </div>
                   <Badge variant={statusBadgeVariant(membership.status)}>
                     {labelForMembershipStatus(membership.status)}
                   </Badge>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Your campuses</CardTitle>
+          <CardDescription>
+            Campus assignments across your churches. Owners, co-owners,
+            administrators, and security leaders also have implicit all-campus
+            access.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {campusMemberships.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No campus assignments yet. Ask an administrator to assign you to a
+              campus, or apply migration 036 if campus memberships are not
+              configured.
+            </p>
+          ) : (
+            <ul className="divide-y divide-border">
+              {campusMemberships.map((campus) => (
+                <li
+                  key={campus.id}
+                  className="flex flex-wrap items-center justify-between gap-2 py-3 first:pt-0 last:pb-0"
+                >
+                  <div>
+                    <p className="font-medium">{campus.campus_name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {campus.church_name}
+                      {campus.campus_id
+                        ? ` · ${labelForCampusRole(campus.campus_role)}`
+                        : " · All campuses"}
+                      {campus.is_primary_campus ? " · Primary" : ""}
+                    </p>
+                  </div>
+                  {campus.has_implicit_all_campus_access ? (
+                    <Badge variant="secondary">All-campus access</Badge>
+                  ) : (
+                    <Badge variant="outline">Assigned</Badge>
+                  )}
                 </li>
               ))}
             </ul>

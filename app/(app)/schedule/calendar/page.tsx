@@ -13,6 +13,10 @@ import {
 } from "@/lib/schedule/queries";
 import { getTypedChurchScheduleSettings } from "@/lib/schedule/settings-queries";
 import type { ScheduleCalendarView } from "@/lib/schedule/types";
+import {
+  resolveCampusFilter,
+  resolveListCampusFilterOr,
+} from "@/lib/campuses/filter";
 
 async function CalendarContent({
   searchParams,
@@ -20,8 +24,13 @@ async function CalendarContent({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
-  const { church, membership } = await getAuthenticatedUserWithChurch();
+  const { church, membership, user } = await getAuthenticatedUserWithChurch();
   const canManage = canManageSchedule(membership.role);
+  const campusFilter = await resolveCampusFilter({
+    churchId: church.id,
+    userId: user.id,
+    role: membership.role,
+  });
 
   const type = typeof params.type === "string" ? params.type : "";
   const campus = typeof params.campus === "string" ? params.campus : "";
@@ -51,6 +60,7 @@ async function CalendarContent({
       {
         eventType: type || undefined,
         campusId: campus || undefined,
+        campusFilterOr: resolveListCampusFilterOr(campusFilter, campus),
         includeCancelled: params.cancelled === "1",
       },
     ),

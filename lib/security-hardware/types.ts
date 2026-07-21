@@ -117,6 +117,7 @@ export type EquipmentListFilters = {
   category?: EquipmentCategory | "";
   status?: EquipmentStatus | "";
   campusId?: string;
+  campusFilterOr?: string | null;
   criticality?: EquipmentCriticality | "";
   includeArchived?: boolean;
   maintenanceDue?: boolean;

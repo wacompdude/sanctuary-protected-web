@@ -27,11 +27,17 @@ import {
   IncidentStatusBadge,
 } from "@/components/incidents/incident-badges";
 import { Plus } from "lucide-react";
+import {
+  campusFilterLabel,
+  campusFilterOrClause,
+  resolveCampusFilter,
+} from "@/lib/campuses/filter";
 
 const CLOSED_STATUSES = new Set(["closed", "resolved"]);
 
 async function IncidentsList({ showAll }: { showAll: boolean }) {
-  const { church, supabase } = await getAuthenticatedUserWithChurch();
+  const { church, membership, user, supabase } =
+    await getAuthenticatedUserWithChurch();
   const { data: settingsRow } = await supabase
     .from("churches")
     .select("settings")
@@ -39,10 +45,18 @@ async function IncidentsList({ showAll }: { showAll: boolean }) {
     .maybeSingle();
   const preferences = parseAppPreferences(settingsRow?.settings);
   const sort = resolveIncidentListSort(preferences);
+  const campusFilter = await resolveCampusFilter({
+    churchId: church.id,
+    userId: user.id,
+    role: membership.role,
+  });
+  const campusOr = campusFilterOrClause(campusFilter);
   let incidents;
 
   try {
-    incidents = await listIncidentsForChurch(church.id, sort);
+    incidents = await listIncidentsForChurch(church.id, sort, {
+      campusFilterOr: campusOr,
+    });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Unable to load incidents.";
@@ -70,6 +84,8 @@ async function IncidentsList({ showAll }: { showAll: boolean }) {
     ? incidents
     : incidents.filter((incident) => !CLOSED_STATUSES.has(incident.status));
 
+  const filterLabel = campusFilterLabel(campusFilter);
+
   return (
     <>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -77,8 +93,10 @@ async function IncidentsList({ showAll }: { showAll: boolean }) {
           <h1 className="text-3xl font-bold tracking-tight">Incidents</h1>
           <p className="mt-1 text-muted-foreground">
             {showAll
-              ? `All incidents for ${church.name}.`
-              : `Open and investigating incidents for ${church.name}.`}
+              ? `All incidents for ${church.name}`
+              : `Open incidents for ${church.name}`}
+            {" · "}
+            {filterLabel}.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

@@ -68,6 +68,7 @@ export async function createTestEvent(
     const severity = String(formData.get("severity") ?? "low");
     const location = String(formData.get("location") ?? "").trim();
     const event_timestamp = String(formData.get("event_timestamp") ?? "");
+    const campus_id = String(formData.get("campus_id") ?? "").trim() || null;
 
     if (!device || !location || !event_timestamp) {
       return { error: "Device, location, and timestamp are required." };
@@ -81,6 +82,7 @@ export async function createTestEvent(
       location,
       event_timestamp: new Date(event_timestamp).toISOString(),
       acknowledgment_status: "unacknowledged",
+      campus_id,
     });
 
     if (error) {

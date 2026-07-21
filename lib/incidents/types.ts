@@ -32,6 +32,8 @@ export interface Incident {
   occurred_at: string;
   created_at: string;
   updated_at: string;
+  /** Null = church-wide. Requires migration 036. */
+  campus_id?: string | null;
 }
 
 export interface IncidentUpdate {

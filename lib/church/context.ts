@@ -6,6 +6,7 @@ import {
   readActiveChurchCookie,
   writeActiveChurchCookie,
 } from "@/lib/church/cookie";
+import { clearActiveCampusCookie } from "@/lib/campuses/filter-cookie";
 import type {
   Church,
   ChurchMembershipWithChurch,
@@ -394,4 +395,6 @@ export async function setActiveChurchForUser(churchId: string): Promise<void> {
   }
 
   await writeActiveChurchCookie(match.church_id);
+  // Campus filter is church-scoped — reset to All Campuses on switch.
+  await clearActiveCampusCookie();
 }

@@ -16,12 +16,26 @@ import {
 } from "@/lib/security-hardware/queries";
 import { getEquipmentReportBreakdown } from "@/lib/security-hardware/media-queries";
 import { ArrowLeft, Download } from "lucide-react";
+import {
+  campusFilterLabel,
+  campusFilterOrClause,
+  resolveCampusFilter,
+} from "@/lib/campuses/filter";
 
 async function ReportsContent() {
-  const { church } = await getAuthenticatedUserWithChurch();
+  const { church, membership, user } = await getAuthenticatedUserWithChurch();
+  const campusFilter = await resolveCampusFilter({
+    churchId: church.id,
+    userId: user.id,
+    role: membership.role,
+  });
   const [summary, breakdown] = await Promise.all([
-    getEquipmentSummary(church.id),
-    getEquipmentReportBreakdown(church.id),
+    getEquipmentSummary(church.id, {
+      campusFilterOr: campusFilterOrClause(campusFilter),
+    }),
+    getEquipmentReportBreakdown(church.id, {
+      campusFilterOr: campusFilterOrClause(campusFilter),
+    }),
   ]);
 
   return (
@@ -36,7 +50,8 @@ async function ReportsContent() {
           </Button>
           <h1 className="text-3xl font-bold tracking-tight">Hardware reports</h1>
           <p className="mt-1 text-muted-foreground">
-            Snapshot and CSV export for {church.name}.
+            Snapshot and CSV export for {church.name} ·{" "}
+            {campusFilterLabel(campusFilter)}.
           </p>
         </div>
         <Button asChild>

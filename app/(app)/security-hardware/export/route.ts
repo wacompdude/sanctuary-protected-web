@@ -1,12 +1,23 @@
 import { NextResponse } from "next/server";
 import { ChurchAccessError } from "@/lib/church/auth";
+import {
+  campusFilterOrClause,
+  resolveCampusFilter,
+} from "@/lib/campuses/filter";
 import { getAuthenticatedUserWithChurch } from "@/lib/security-hardware/queries";
 import { buildEquipmentInventoryCsv } from "@/lib/security-hardware/media-queries";
 
 export async function GET() {
   try {
-    const { church } = await getAuthenticatedUserWithChurch();
-    const csv = await buildEquipmentInventoryCsv(church.id);
+    const { church, membership, user } = await getAuthenticatedUserWithChurch();
+    const campusFilter = await resolveCampusFilter({
+      churchId: church.id,
+      userId: user.id,
+      role: membership.role,
+    });
+    const csv = await buildEquipmentInventoryCsv(church.id, {
+      campusFilterOr: campusFilterOrClause(campusFilter),
+    });
     const slug = church.name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")

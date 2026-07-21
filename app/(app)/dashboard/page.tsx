@@ -29,6 +29,11 @@ import {
 } from "@/lib/church/threat-levels";
 import { canManageSchedule } from "@/lib/schedule/permissions";
 import { getScheduleDashboardSummary } from "@/lib/schedule/dashboard-queries";
+import {
+  campusFilterLabel,
+  campusFilterOrClause,
+  resolveCampusFilter,
+} from "@/lib/campuses/filter";
 
 type DashboardStatTone =
   | "red"
@@ -92,16 +97,29 @@ const DASHBOARD_STAT_TONES: Record<
 
 async function DashboardContent() {
   const { church, membership, user } = await getAuthenticatedUserWithChurch();
+  const campusFilter = await resolveCampusFilter({
+    churchId: church.id,
+    userId: user.id,
+    role: membership.role,
+  });
+  const campusOr = campusFilterOrClause(campusFilter);
+  const filterLabel = campusFilterLabel(campusFilter);
+
   const [certCounts, incidents, unackedEvents, currentThreatLevel, schedule] =
     await Promise.all([
       getCertificationCounts(church.id),
-      listIncidentsForChurch(church.id).catch(() => []),
-      getUnacknowledgedEventCount(church.id).catch(() => 0),
+      listIncidentsForChurch(church.id, "occurred_at_desc", {
+        campusFilterOr: campusOr,
+      }).catch(() => []),
+      getUnacknowledgedEventCount(church.id, {
+        campusFilterOr: campusOr,
+      }).catch(() => 0),
       getCurrentChurchThreatLevel(church.id).catch(() => null),
       getScheduleDashboardSummary(
         church.id,
         user.id,
         church.timezone ?? "America/Los_Angeles",
+        { campusFilterOr: campusOr },
       ).catch(() => null),
     ]);
 
@@ -146,14 +164,14 @@ async function DashboardContent() {
     {
       label: "Expiring Certifications",
       value: String(certCounts.expiring_soon),
-      description: "Expiring within 60 days",
+      description: "Expiring within 60 days (church-wide)",
       href: "/certifications",
       tone: "blue" as const,
     },
     {
       label: "Expired Certifications",
       value: String(certCounts.expired),
-      description: "Need renewal",
+      description: "Need renewal (church-wide)",
       href: "/certifications",
       tone: "yellow" as const,
     },
@@ -296,7 +314,13 @@ async function DashboardContent() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
         <p className="mt-1 text-muted-foreground">
-          Overview for {church.name}.
+          Overview for {church.name} · {filterLabel}
+          {campusFilter.mode === "all" &&
+          !campusFilter.implicitAllAccess &&
+          campusFilter.accessibleCampusIds.length > 0
+            ? ` (${campusFilter.accessibleCampusIds.length} authorized)`
+            : ""}
+          .
         </p>
       </div>
 
@@ -346,7 +370,11 @@ async function DashboardContent() {
             <div>
               <h2 className="text-xl font-semibold tracking-tight">Scheduling</h2>
               <p className="text-sm text-muted-foreground">
-                Live coverage and staffing signals.
+                Live coverage and staffing signals
+                {campusFilter.mode === "campus"
+                  ? ` for ${filterLabel}`
+                  : " across authorized campuses"}
+                .
               </p>
             </div>
             <Button asChild variant="outline" className="h-10">

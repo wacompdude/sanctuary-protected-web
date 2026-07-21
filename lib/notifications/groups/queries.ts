@@ -46,7 +46,10 @@ export async function areNotificationGroupTablesAvailable(): Promise<boolean> {
 
 export async function listNotificationGroups(
   churchId: string,
-  options?: { includeArchived?: boolean },
+  options?: {
+    includeArchived?: boolean;
+    campusFilterOr?: string | null;
+  },
 ): Promise<NotificationGroupListItem[]> {
   const supabase = await createClient();
   let query = supabase
@@ -59,6 +62,9 @@ export async function listNotificationGroups(
 
   if (!options?.includeArchived) {
     query = query.neq("status", "archived");
+  }
+  if (options?.campusFilterOr) {
+    query = query.or(options.campusFilterOr);
   }
 
   const { data, error } = await query;

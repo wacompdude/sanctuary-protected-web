@@ -368,7 +368,13 @@ export async function getPublishedPolicies(
 
   if (filters.documentType) query = query.eq("document_type", filters.documentType);
   if (filters.categoryId) query = query.eq("category_id", filters.categoryId);
-  if (filters.campusId) query = query.eq("campus_id", filters.campusId);
+  if (filters.campusFilterOr) {
+    query = query.or(filters.campusFilterOr);
+  } else if (filters.campusId) {
+    query = query.or(
+      `campus_id.eq.${filters.campusId},campus_id.is.null`,
+    );
+  }
   if (filters.emergencyOnly) query = query.eq("is_emergency_document", true);
   if (filters.acknowledgmentRequired) {
     query = query.eq("requires_acknowledgment", true);
@@ -569,7 +575,13 @@ export async function listManagedPolicies(
     query = query.eq("document_type", filters.documentType);
   }
   if (filters.categoryId) query = query.eq("category_id", filters.categoryId);
-  if (filters.campusId) query = query.eq("campus_id", filters.campusId);
+  if (filters.campusFilterOr) {
+    query = query.or(filters.campusFilterOr);
+  } else if (filters.campusId) {
+    query = query.or(
+      `campus_id.eq.${filters.campusId},campus_id.is.null`,
+    );
+  }
   if (!filters.includeArchived && !filters.status) {
     query = query.neq("status", "archived");
   }

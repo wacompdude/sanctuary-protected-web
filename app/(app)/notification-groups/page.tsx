@@ -24,9 +24,10 @@ import {
   labelForGroupType,
 } from "@/lib/notifications/groups/constants";
 import { formatChurchDate } from "@/lib/datetime/format";
+import { campusFilterOrClause, resolveCampusFilter } from "@/lib/campuses/filter";
 
 async function NotificationGroupsContent() {
-  const { church, membership } = await getAuthenticatedUserWithChurch();
+  const { church, membership, user } = await getAuthenticatedUserWithChurch();
 
   if (!canViewNotificationGroups(membership.role)) {
     return (
@@ -53,8 +54,14 @@ async function NotificationGroupsContent() {
     );
   }
 
+  const campusFilter = await resolveCampusFilter({
+    churchId: church.id,
+    userId: user.id,
+    role: membership.role,
+  });
   const groups = await listNotificationGroups(church.id, {
     includeArchived: true,
+    campusFilterOr: campusFilterOrClause(campusFilter),
   });
   const canCreate = canCreateNotificationGroup(membership.role, "custom");
 

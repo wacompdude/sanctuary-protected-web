@@ -9,9 +9,13 @@ import {
 } from "@/lib/church/auth";
 import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
 import { ArrowLeft } from "lucide-react";
+import {
+  defaultCampusIdForForm,
+  resolveCampusFilter,
+} from "@/lib/campuses/filter";
 
 async function NewEventContent() {
-  const { canManageCertifications, church } =
+  const { canManageCertifications, church, membership, user } =
     await getAuthenticatedUserWithChurch();
 
   if (!canManageCertifications) {
@@ -23,6 +27,12 @@ async function NewEventContent() {
       </Card>
     );
   }
+
+  const campusFilter = await resolveCampusFilter({
+    churchId: church.id,
+    userId: user.id,
+    role: membership.role,
+  });
 
   return (
     <>
@@ -38,7 +48,10 @@ async function NewEventContent() {
           Create a device event for {church.name}.
         </p>
       </div>
-      <NewEventForm />
+      <NewEventForm
+        campuses={campusFilter.accessibleCampuses}
+        defaultCampusId={defaultCampusIdForForm(campusFilter)}
+      />
     </>
   );
 }

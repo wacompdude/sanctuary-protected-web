@@ -28,6 +28,11 @@ import {
   listPolicyCategories,
 } from "@/lib/policies/queries";
 import type { PolicyDocumentType } from "@/lib/policies/types";
+import {
+  campusFilterLabel,
+  resolveCampusFilter,
+  resolveListCampusFilterOr,
+} from "@/lib/campuses/filter";
 
 async function PoliciesLibraryContent({
   searchParams,
@@ -35,9 +40,14 @@ async function PoliciesLibraryContent({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
-  const { church, membership } = await getAuthenticatedUserWithChurch();
+  const { church, membership, user } = await getAuthenticatedUserWithChurch();
   const canManage = canManagePolicyDocuments(membership.role);
   const canManageView = canViewPolicyManagement(membership.role);
+  const campusFilter = await resolveCampusFilter({
+    churchId: church.id,
+    userId: user.id,
+    role: membership.role,
+  });
 
   const q = typeof params.q === "string" ? params.q : "";
   const type = typeof params.type === "string" ? params.type : "";
@@ -51,6 +61,7 @@ async function PoliciesLibraryContent({
       documentType: (type || "") as PolicyDocumentType | "",
       categoryId: category || undefined,
       campusId: campus || undefined,
+      campusFilterOr: resolveListCampusFilterOr(campusFilter, campus),
       emergencyOnly: params.emergency === "1",
       acknowledgmentRequired: params.ack === "1",
       page,
@@ -80,7 +91,8 @@ async function PoliciesLibraryContent({
             Policies & Procedures
           </h1>
           <p className="mt-1 text-muted-foreground">
-            Published safety and security documents for {church.name}.
+            Published safety and security documents for {church.name} ·{" "}
+            {campusFilterLabel(campusFilter)}.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

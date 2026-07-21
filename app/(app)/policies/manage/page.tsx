@@ -23,6 +23,11 @@ import {
   listPolicyCategories,
 } from "@/lib/policies/queries";
 import type { PolicyDocumentStatus, PolicyDocumentType } from "@/lib/policies/types";
+import {
+  campusFilterLabel,
+  resolveCampusFilter,
+  resolveListCampusFilterOr,
+} from "@/lib/campuses/filter";
 
 async function ManagePoliciesContent({
   searchParams,
@@ -30,7 +35,13 @@ async function ManagePoliciesContent({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
-  const { church } = await requireMinChurchRole("security_leader");
+  const { church, membership, user } =
+    await requireMinChurchRole("security_leader");
+  const campusFilter = await resolveCampusFilter({
+    churchId: church.id,
+    userId: user.id,
+    role: membership.role,
+  });
 
   const q = typeof params.q === "string" ? params.q : "";
   const status = typeof params.status === "string" ? params.status : "";
@@ -47,6 +58,7 @@ async function ManagePoliciesContent({
       documentType: (type || "") as PolicyDocumentType | "",
       categoryId: category || undefined,
       campusId: campus || undefined,
+      campusFilterOr: resolveListCampusFilterOr(campusFilter, campus),
       includeArchived,
       page,
     }),
@@ -79,7 +91,8 @@ async function ManagePoliciesContent({
           </Button>
           <h1 className="text-3xl font-bold tracking-tight">Manage policies</h1>
           <p className="mt-1 text-muted-foreground">
-            Drafts, review workflow, and publication for {church.name}.
+            Drafts, review workflow, and publication for {church.name} ·{" "}
+            {campusFilterLabel(campusFilter)}.
           </p>
         </div>
         <Button asChild>

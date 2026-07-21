@@ -32,6 +32,11 @@ import {
   type EquipmentStatus,
 } from "@/lib/security-hardware/types";
 import { FileSpreadsheet, Plus, Wrench } from "lucide-react";
+import {
+  campusFilterLabel,
+  resolveCampusFilter,
+  resolveListCampusFilterOr,
+} from "@/lib/campuses/filter";
 
 function parseFilters(
   params: Record<string, string | undefined>,
@@ -72,8 +77,17 @@ async function SecurityHardwareContent({
 }) {
   const params = await searchParams;
   const filters = parseFilters(params);
-  const { church, membership } = await getAuthenticatedUserWithChurch();
+  const { church, membership, user } = await getAuthenticatedUserWithChurch();
   const canManage = canManageSecurityEquipment(membership.role);
+  const campusFilter = await resolveCampusFilter({
+    churchId: church.id,
+    userId: user.id,
+    role: membership.role,
+  });
+  const campusFilterOr = resolveListCampusFilterOr(
+    campusFilter,
+    filters.campusId,
+  );
 
   let summary;
   let items;
@@ -81,8 +95,8 @@ async function SecurityHardwareContent({
 
   try {
     [summary, items, campuses] = await Promise.all([
-      getEquipmentSummary(church.id),
-      listSecurityEquipment(church.id, filters),
+      getEquipmentSummary(church.id, { campusFilterOr }),
+      listSecurityEquipment(church.id, { ...filters, campusFilterOr }),
       listCampusesForChurch(church.id),
     ]);
   } catch (error) {
@@ -113,7 +127,8 @@ async function SecurityHardwareContent({
             Security Hardware
           </h1>
           <p className="mt-1 text-muted-foreground">
-            Inventory and lifecycle tracking for {church.name}.
+            Inventory and lifecycle tracking for {church.name} ·{" "}
+            {campusFilterLabel(campusFilter)}.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

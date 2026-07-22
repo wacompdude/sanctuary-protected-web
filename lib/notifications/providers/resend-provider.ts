@@ -16,6 +16,33 @@ import { safeErrorMessage } from "@/lib/notifications/validation";
 type ResendSuccess = { id?: string };
 type ResendErrorBody = { message?: string; name?: string; statusCode?: number };
 
+/** Resend tags allow only ASCII letters, numbers, underscores, or dashes. */
+function sanitizeResendTagToken(value: string, maxLength = 256): string {
+  const cleaned = value
+    .trim()
+    .replace(/[^A-Za-z0-9_-]+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^[_-]+|[_-]+$/g, "");
+  return (cleaned || "unknown").slice(0, maxLength);
+}
+
+function buildResendTags(
+  senderCategory: string,
+  tags: Record<string, string> | undefined,
+): Array<{ name: string; value: string }> {
+  const entries = new Map<string, string>();
+  entries.set("sender_category", sanitizeResendTagToken(senderCategory));
+
+  for (const [name, value] of Object.entries(tags ?? {})) {
+    const safeName = sanitizeResendTagToken(name, 50);
+    const safeValue = sanitizeResendTagToken(String(value));
+    if (!safeName || !safeValue) continue;
+    entries.set(safeName, safeValue);
+  }
+
+  return [...entries.entries()].map(([name, value]) => ({ name, value }));
+}
+
 export class ResendEmailProvider implements NotificationProvider {
   channel = "email" as const;
   name = "resend";
@@ -101,15 +128,7 @@ export class ResendEmailProvider implements NotificationProvider {
           text: message.text,
           html: message.html || undefined,
           reply_to: replyTo || undefined,
-          tags: [
-            { name: "sender_category", value: senderCategory },
-            ...(message.tags
-              ? Object.entries(message.tags).map(([name, value]) => ({
-                  name,
-                  value,
-                }))
-              : []),
-          ],
+          tags: buildResendTags(senderCategory, message.tags),
         }),
       });
 

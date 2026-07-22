@@ -1,3 +1,7 @@
+import {
+  getApprovedEmailDomain,
+  isEmailSenderSystemConfigured,
+} from "@/lib/email";
 import { ConsoleEmailProvider } from "@/lib/notifications/providers/console-provider";
 import type { NotificationProvider } from "@/lib/notifications/providers/provider-interface";
 import { ResendEmailProvider } from "@/lib/notifications/providers/resend-provider";
@@ -30,11 +34,21 @@ export function getEmailProviderStatus(): {
   provider: string;
   configured: boolean;
   channelEnabled: true;
+  emailDomain: string | null;
+  senderSystemConfigured: boolean;
 } {
   const provider = getEmailProvider();
+  let emailDomain: string | null = null;
+  try {
+    emailDomain = getApprovedEmailDomain();
+  } catch {
+    emailDomain = null;
+  }
   return {
     provider: provider.name,
     configured: provider.isConfigured(),
     channelEnabled: true,
+    emailDomain,
+    senderSystemConfigured: isEmailSenderSystemConfigured(),
   };
 }

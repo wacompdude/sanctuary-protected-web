@@ -1,4 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  isEmailSenderCategory,
+  type EmailSenderCategory,
+} from "@/lib/email/email-sender-types";
 import type {
   ChurchNotificationSettings,
   NotificationTemplate,
@@ -146,6 +150,12 @@ export async function getNotificationTemplate(
 }
 
 function mapTemplate(row: Record<string, unknown>): NotificationTemplate {
+  const rawCategory = row.default_sender_category;
+  const default_sender_category: EmailSenderCategory | null =
+    typeof rawCategory === "string" && isEmailSenderCategory(rawCategory)
+      ? rawCategory
+      : null;
+
   return {
     id: String(row.id),
     church_id: (row.church_id as string | null) ?? null,
@@ -163,5 +173,6 @@ function mapTemplate(row: Record<string, unknown>): NotificationTemplate {
     allowed_variables: Array.isArray(row.allowed_variables)
       ? row.allowed_variables.map(String)
       : [],
+    default_sender_category,
   };
 }

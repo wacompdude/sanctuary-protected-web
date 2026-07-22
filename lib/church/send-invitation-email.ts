@@ -1,10 +1,13 @@
-import { labelForMembershipRole } from "@/lib/church/invitations";
 import { getEmailProvider } from "@/lib/notifications/providers/email-provider";
+import { labelForMembershipRole } from "@/lib/church/invitations";
 
-/** Reply-to for membership invitations (user-facing support inbox). */
+/**
+ * Invitation reply-to is resolved from the access sender registry
+ * (EMAIL_REPLY_TO_SUPPORT / EMAIL_REPLY_TO_DEFAULT). MEMBERSHIP_INVITE_REPLY_TO
+ * remains a temporary override for existing deployments.
+ */
 export const MEMBERSHIP_INVITE_REPLY_TO =
-  process.env.MEMBERSHIP_INVITE_REPLY_TO?.trim() ||
-  "members@sanctuaryprotected.com";
+  process.env.MEMBERSHIP_INVITE_REPLY_TO?.trim() || undefined;
 
 export type SendInvitationEmailResult = {
   sent: boolean;
@@ -25,7 +28,7 @@ export async function sendChurchInvitationEmail(params: {
     return {
       sent: false,
       error:
-        "Email is not configured. Set EMAIL_PROVIDER_API_KEY and EMAIL_FROM_ADDRESS.",
+        "Email is not configured. Set EMAIL_PROVIDER_API_KEY and sender addresses.",
     };
   }
 
@@ -69,10 +72,11 @@ export async function sendChurchInvitationEmail(params: {
     subject,
     text,
     html,
-    fromName: process.env.EMAIL_FROM_NAME?.trim() || "Sanctuary Protected",
+    senderCategory: "access",
     replyTo: MEMBERSHIP_INVITE_REPLY_TO,
     tags: {
       category: "membership_invite",
+      sender_category: "access",
     },
   });
 

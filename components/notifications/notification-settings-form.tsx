@@ -67,25 +67,10 @@ export function NotificationSettingsForm({
               </p>
             ) : null}
             <fieldset disabled={!canEdit || pending} className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="default_sender_name">Default sender name</Label>
-                  <Input
-                    id="default_sender_name"
-                    name="default_sender_name"
-                    defaultValue={settings.default_sender_name ?? ""}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="reply_to_email">Reply-to email</Label>
-                  <Input
-                    id="reply_to_email"
-                    name="reply_to_email"
-                    type="email"
-                    defaultValue={settings.reply_to_email ?? ""}
-                  />
-                </div>
-              </div>
+              <p className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+                Outbound From and reply-to addresses are managed by the platform
+                sender registry below. They cannot be customized per church.
+              </p>
 
               <div className="grid gap-3 rounded-md border border-border p-3">
                 <label className="flex items-start gap-2 text-sm">

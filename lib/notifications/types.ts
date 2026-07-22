@@ -1,3 +1,4 @@
+import type { EmailSenderCategory } from "@/lib/email/email-sender-types";
 import type { MembershipRole } from "@/lib/church/types";
 
 export const NOTIFICATION_CHANNELS = ["email", "sms", "push", "in_app"] as const;
@@ -151,6 +152,7 @@ export type NotificationTemplate = {
   is_active: boolean;
   version: number;
   allowed_variables: string[];
+  default_sender_category: EmailSenderCategory | null;
 };
 
 export type ResolvedRecipient = {
@@ -193,6 +195,11 @@ export type CreateNotificationInput = {
   channels?: NotificationChannel[];
   /** Skip email even if enabled (in-app only). */
   emailOnlyToVerified?: boolean;
+  /**
+   * Server-side only override for controlled sender tests.
+   * Never accept this from client free-text; validate as EmailSenderCategory.
+   */
+  requestedSenderCategory?: EmailSenderCategory;
 };
 
 export type CreateNotificationResult = {
@@ -209,8 +216,12 @@ export type NotificationMessage = {
   subject: string;
   text: string;
   html?: string | null;
-  fromName?: string | null;
-  fromAddress?: string | null;
+  /**
+   * Required controlled sender category. Arbitrary from addresses are rejected
+   * by the provider; resolve via lib/email only.
+   */
+  senderCategory: EmailSenderCategory;
+  /** Optional reply-to override from trusted server-side config only. */
   replyTo?: string | null;
   tags?: Record<string, string>;
 };

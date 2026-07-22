@@ -85,6 +85,13 @@ export const AuditAction = {
   NOTIFICATION_TEMPLATE_UPDATED: "notification.template_updated",
   NOTIFICATION_TEMPLATE_RESTORED: "notification.template_restored",
   NOTIFICATION_TEST_EMAIL_SENT: "notification.test_email_sent",
+  EMAIL_SENDER_CONFIGURATION_VIEWED: "email.sender_configuration_viewed",
+  EMAIL_SENDER_TEST_SENT: "email.sender_test_sent",
+  EMAIL_SENDER_TEST_FAILED: "email.sender_test_failed",
+  EMAIL_SENDER_CATEGORY_CHANGED: "email.sender_category_changed",
+  EMAIL_DELIVERY_SENDER_RESOLVED: "email.delivery_sender_resolved",
+  EMAIL_DELIVERY_SENDER_FALLBACK_USED: "email.delivery_sender_fallback_used",
+  EMAIL_DELIVERY_SENDER_REJECTED: "email.delivery_sender_rejected",
   NOTIFICATION_GROUP_CREATED: "notification_group.created",
   NOTIFICATION_GROUP_UPDATED: "notification_group.updated",
   NOTIFICATION_GROUP_ARCHIVED: "notification_group.archived",
@@ -164,6 +171,7 @@ export const AuditEntityType = {
   NOTIFICATION_SETTINGS: "notification_settings",
   NOTIFICATION_GROUP: "notification_group",
   NOTIFICATION_ENDPOINT: "notification_endpoint",
+  EMAIL_SENDER: "email_sender",
   POLICY_DOCUMENT: "policy_document",
   POLICY_VERSION: "policy_version",
   POLICY_APPROVAL: "policy_approval",
@@ -270,6 +278,16 @@ export function labelForAuditAction(action: string): string {
     [AuditAction.NOTIFICATION_TEMPLATE_RESTORED]:
       "Notification template restored",
     [AuditAction.NOTIFICATION_TEST_EMAIL_SENT]: "Test notification email sent",
+    [AuditAction.EMAIL_SENDER_CONFIGURATION_VIEWED]:
+      "Email sender configuration viewed",
+    [AuditAction.EMAIL_SENDER_TEST_SENT]: "Email sender test sent",
+    [AuditAction.EMAIL_SENDER_TEST_FAILED]: "Email sender test failed",
+    [AuditAction.EMAIL_SENDER_CATEGORY_CHANGED]: "Email sender category changed",
+    [AuditAction.EMAIL_DELIVERY_SENDER_RESOLVED]: "Email delivery sender resolved",
+    [AuditAction.EMAIL_DELIVERY_SENDER_FALLBACK_USED]:
+      "Email delivery sender fallback used",
+    [AuditAction.EMAIL_DELIVERY_SENDER_REJECTED]:
+      "Email delivery sender rejected",
     [AuditAction.NOTIFICATION_GROUP_CREATED]: "Notification group created",
     [AuditAction.NOTIFICATION_GROUP_UPDATED]: "Notification group updated",
     [AuditAction.NOTIFICATION_GROUP_ARCHIVED]: "Notification group archived",

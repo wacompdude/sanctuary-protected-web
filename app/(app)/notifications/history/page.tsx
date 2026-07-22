@@ -40,6 +40,8 @@ async function NotificationHistoryContent() {
       last_error_code,
       last_error_message,
       suppression_reason,
+      sender_category,
+      from_address,
       created_at,
       recipient:notification_recipients!inner (
         display_name,
@@ -57,9 +59,47 @@ async function NotificationHistoryContent() {
     .order("created_at", { ascending: false })
     .limit(150);
 
-  if (error) throw new Error(error.message);
+  // Before migration 037, sender snapshot columns are absent — retry without them.
+  const { data: fallbackData, error: fallbackError } =
+    error && /sender_category|from_address|column/i.test(error.message)
+      ? await supabase
+          .from("notification_deliveries")
+          .select(
+            `
+      id,
+      channel,
+      provider,
+      status,
+      attempt_number,
+      max_attempts,
+      sent_at,
+      failed_at,
+      last_error_code,
+      last_error_message,
+      suppression_reason,
+      created_at,
+      recipient:notification_recipients!inner (
+        display_name,
+        recipient_address
+      ),
+      notification:notifications!inner (
+        id,
+        title,
+        notification_type,
+        severity
+      )
+    `,
+          )
+          .eq("church_id", church.id)
+          .order("created_at", { ascending: false })
+          .limit(150)
+      : { data: null, error: null };
 
-  const deliveries = ((data ?? []) as Array<Record<string, unknown>>)
+  const rowsData = fallbackData ?? data;
+  const finalError = fallbackData ? fallbackError : error;
+  if (finalError) throw new Error(finalError.message);
+
+  const deliveries = ((rowsData ?? []) as Array<Record<string, unknown>>)
     .map((row) => {
       const recipient = Array.isArray(row.recipient)
         ? (row.recipient[0] as Record<string, unknown> | undefined)
@@ -81,6 +121,8 @@ async function NotificationHistoryContent() {
         last_error_message: (row.last_error_message as string | null) ?? null,
         suppression_reason:
           (row.suppression_reason as string | null) ?? null,
+        sender_category: (row.sender_category as string | null) ?? null,
+        from_address: (row.from_address as string | null) ?? null,
         created_at: String(row.created_at ?? ""),
         recipient: {
           display_name: (recipient?.display_name as string | null) ?? null,
@@ -109,6 +151,8 @@ async function NotificationHistoryContent() {
         last_error_code: string | null;
         last_error_message: string | null;
         suppression_reason: string | null;
+        sender_category: string | null;
+        from_address: string | null;
         created_at: string;
         recipient: { display_name: string | null; recipient_address: string | null };
         notification: {
@@ -162,6 +206,14 @@ async function NotificationHistoryContent() {
                       ? ` (${delivery.recipient.recipient_address})`
                       : ""}
                   </p>
+                  {delivery.from_address || delivery.sender_category ? (
+                    <p className="text-sm text-muted-foreground">
+                      From {delivery.from_address || "—"}
+                      {delivery.sender_category
+                        ? ` · ${delivery.sender_category.replaceAll("_", " ")}`
+                        : ""}
+                    </p>
+                  ) : null}
                   <p className="text-xs text-muted-foreground">
                     Provider: {delivery.provider} · attempts {delivery.attempt_number}/
                     {delivery.max_attempts}

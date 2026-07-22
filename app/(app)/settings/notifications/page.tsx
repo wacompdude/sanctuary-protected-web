@@ -7,11 +7,15 @@ import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
 import {
   areNotificationTablesAvailable,
   canManageChurchNotificationSettings,
+  canSendTestNotification,
   getChurchNotificationSettings,
   getEmailProviderStatus,
 } from "@/lib/notifications";
+import { getEmailSenderRegistryStatus } from "@/lib/email";
 import { isServiceRoleConfigured } from "@/lib/supabase/admin";
 import { NotificationSettingsForm } from "@/components/notifications/notification-settings-form";
+import { EmailSenderStatus } from "@/components/email/email-sender-status";
+import { EmailSenderTestForm } from "@/components/email/email-sender-test-form";
 import {
   Card,
   CardContent,
@@ -23,11 +27,14 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 async function NotificationSettingsContent() {
-  const { supabase, church, membership } = await getAuthenticatedUserWithChurch();
+  const { supabase, church, membership } =
+    await getAuthenticatedUserWithChurch();
   const tablesAvailable = await areNotificationTablesAvailable(supabase);
   const provider = getEmailProviderStatus();
   const canEdit = canManageChurchNotificationSettings(membership.role);
+  const canTest = canSendTestNotification(membership.role);
   const serviceRoleConfigured = isServiceRoleConfigured();
+  const senderRegistry = getEmailSenderRegistryStatus();
 
   let settings = null;
   let recipientCount: number | null = null;
@@ -91,6 +98,10 @@ async function NotificationSettingsContent() {
             · {provider.configured ? "configured" : "not configured"}
           </p>
           <p>
+            <span className="font-medium">Email domain:</span>{" "}
+            {provider.emailDomain ?? senderRegistry.domain ?? "—"}
+          </p>
+          <p>
             <span className="font-medium">Recipient rows for this church:</span>{" "}
             {recipientCount == null ? "—" : recipientCount}
           </p>
@@ -107,9 +118,21 @@ async function NotificationSettingsContent() {
               <code className="rounded bg-muted px-1 py-0.5 text-xs">
                 028_notification_function_grants.sql
               </code>{" "}
-              in the Supabase SQL editor.
+              in the Supabase SQL editor. For sender history snapshots, also apply{" "}
+              <code className="rounded bg-muted px-1 py-0.5 text-xs">
+                037_email_sender_snapshots.sql
+              </code>
+              .
             </p>
-          ) : null}
+          ) : (
+            <p className="text-muted-foreground">
+              For delivery sender history columns, apply{" "}
+              <code className="rounded bg-muted px-1 py-0.5 text-xs">
+                supabase/migrations/037_email_sender_snapshots.sql
+              </code>{" "}
+              if not already applied.
+            </p>
+          )}
           <div className="pt-2">
             <Button asChild variant="outline" className="h-10">
               <Link href="/notifications">Open notifications</Link>
@@ -118,27 +141,15 @@ async function NotificationSettingsContent() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Email provider</CardTitle>
-          <CardDescription>
-            Provider adapters keep app workflows independent from vendor APIs.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          <p>
-            <span className="font-medium">Provider:</span> {provider.provider}
-          </p>
-          <p>
-            <span className="font-medium">Configured:</span>{" "}
-            {provider.configured ? "Yes" : "No"}
-          </p>
-          <p className="text-muted-foreground">
-            SMS and push channels are placeholders and remain disabled until providers
-            and compliance workflows are configured.
-          </p>
-        </CardContent>
-      </Card>
+      <EmailSenderStatus
+        registry={senderRegistry}
+        providerName={provider.provider}
+        providerConfigured={provider.configured}
+      />
+
+      {canEdit || canTest ? (
+        <EmailSenderTestForm rows={senderRegistry.rows} canSend={canTest} />
+      ) : null}
 
       {settings ? (
         <NotificationSettingsForm settings={settings} canEdit={canEdit} />

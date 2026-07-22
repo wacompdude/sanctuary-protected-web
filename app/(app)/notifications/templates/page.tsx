@@ -5,6 +5,8 @@ import {
 } from "@/lib/church/auth";
 import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
 import { canManageNotificationTemplates } from "@/lib/notifications";
+import { hasMinRole } from "@/lib/church/navigation";
+import { EMAIL_SENDER_LABELS, isEmailSenderCategory } from "@/lib/email";
 import {
   Card,
   CardContent,
@@ -13,6 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { NotificationSeverityBadge } from "@/components/notifications/notification-severity-badge";
+import { TemplateSenderCategoryForm } from "@/components/email/template-sender-category-form";
 
 async function NotificationTemplatesContent() {
   const { supabase, church, membership } = await getAuthenticatedUserWithChurch();
@@ -23,13 +26,27 @@ async function NotificationTemplatesContent() {
     );
   }
 
-  const { data, error } = await supabase
+  const canAssignEmergency = hasMinRole(membership.role, "administrator");
+
+  let { data, error } = await supabase
     .from("notification_templates")
     .select(
-      "id, template_key, name, description, channel, severity, is_system_template, is_active, version, updated_at",
+      "id, template_key, name, description, channel, severity, is_system_template, is_active, version, updated_at, church_id, default_sender_category",
     )
     .or(`church_id.eq.${church.id},church_id.is.null`)
     .order("template_key", { ascending: true });
+
+  if (error && /default_sender_category|column/i.test(error.message)) {
+    const fallback = await supabase
+      .from("notification_templates")
+      .select(
+        "id, template_key, name, description, channel, severity, is_system_template, is_active, version, updated_at, church_id",
+      )
+      .or(`church_id.eq.${church.id},church_id.is.null`)
+      .order("template_key", { ascending: true });
+    data = fallback.data as typeof data;
+    error = fallback.error;
+  }
 
   if (error) {
     throw new Error(error.message);
@@ -46,6 +63,8 @@ async function NotificationTemplatesContent() {
     is_active: boolean;
     version: number;
     updated_at: string;
+    church_id: string | null;
+    default_sender_category?: string | null;
   }>;
 
   return (
@@ -55,7 +74,9 @@ async function NotificationTemplatesContent() {
           Notification templates
         </h1>
         <p className="mt-1 text-sm text-muted-foreground sm:text-base">
-          System templates and church overrides for {church.name}.
+          System templates and church overrides for {church.name}. Sender
+          categories are platform-controlled hints and never accept raw From
+          addresses.
         </p>
       </div>
 
@@ -63,8 +84,9 @@ async function NotificationTemplatesContent() {
         <CardHeader>
           <CardTitle>Template catalog</CardTitle>
           <CardDescription>
-            Editing and restore actions are wired in Step 5 after full variable
-            validation and version controls are finalized.
+            Notification-type rules always win over template sender hints.
+            System templates show seeded categories; church overrides can set a
+            non-emergency hint for unmapped types.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -72,33 +94,55 @@ async function NotificationTemplatesContent() {
             <p className="text-sm text-muted-foreground">No templates found.</p>
           ) : (
             <ul className="space-y-3">
-              {templates.map((template) => (
-                <li key={template.id} className="rounded-md border border-border p-3">
-                  <div className="mb-1 flex flex-wrap items-center gap-2">
-                    <p className="font-medium">{template.name}</p>
-                    <NotificationSeverityBadge severity={template.severity} />
-                    <span className="rounded border border-border px-2 py-0.5 text-xs capitalize text-muted-foreground">
-                      {template.channel}
-                    </span>
-                    <span className="rounded border border-border px-2 py-0.5 text-xs text-muted-foreground">
-                      {template.is_system_template ? "System" : "Church"}
-                    </span>
-                    {!template.is_active ? (
-                      <span className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                        Inactive
+              {templates.map((template) => {
+                const category =
+                  typeof template.default_sender_category === "string" &&
+                  isEmailSenderCategory(template.default_sender_category)
+                    ? template.default_sender_category
+                    : null;
+                const isChurchOwned =
+                  Boolean(template.church_id) && !template.is_system_template;
+
+                return (
+                  <li key={template.id} className="rounded-md border border-border p-3">
+                    <div className="mb-1 flex flex-wrap items-center gap-2">
+                      <p className="font-medium">{template.name}</p>
+                      <NotificationSeverityBadge severity={template.severity} />
+                      <span className="rounded border border-border px-2 py-0.5 text-xs capitalize text-muted-foreground">
+                        {template.channel}
                       </span>
-                    ) : null}
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {template.template_key} · v{template.version}
-                  </p>
-                  {template.description ? (
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {template.description}
+                      <span className="rounded border border-border px-2 py-0.5 text-xs text-muted-foreground">
+                        {template.is_system_template ? "System" : "Church"}
+                      </span>
+                      {category ? (
+                        <span className="rounded border border-border px-2 py-0.5 text-xs text-muted-foreground">
+                          {EMAIL_SENDER_LABELS[category]}
+                        </span>
+                      ) : null}
+                      {!template.is_active ? (
+                        <span className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                          Inactive
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {template.template_key} · v{template.version}
                     </p>
-                  ) : null}
-                </li>
-              ))}
+                    {template.description ? (
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {template.description}
+                      </p>
+                    ) : null}
+                    <TemplateSenderCategoryForm
+                      templateId={template.id}
+                      templateKey={template.template_key}
+                      currentCategory={category}
+                      canEdit={isChurchOwned}
+                      canAssignEmergency={canAssignEmergency && isChurchOwned}
+                    />
+                  </li>
+                );
+              })}
             </ul>
           )}
         </CardContent>

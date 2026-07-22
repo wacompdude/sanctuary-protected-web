@@ -137,6 +137,12 @@ export async function createNotification(
       };
     }
 
+    const templateSenderCategory =
+      template?.default_sender_category &&
+      typeof template.default_sender_category === "string"
+        ? template.default_sender_category
+        : null;
+
     if (!title || !body) {
       return {
         notificationId: null,
@@ -174,6 +180,12 @@ export async function createNotification(
           email_subject: renderedEmail?.subject ?? title,
           email_text: renderedEmail?.text ?? body,
           email_html: renderedEmail?.html ?? null,
+          ...(input.requestedSenderCategory
+            ? { requested_sender_category: input.requestedSenderCategory }
+            : {}),
+          ...(templateSenderCategory
+            ? { template_default_sender_category: templateSenderCategory }
+            : {}),
         },
         template_key: templateKey,
         template_version: templateVersion,

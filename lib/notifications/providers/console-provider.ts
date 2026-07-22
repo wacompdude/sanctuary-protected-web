@@ -17,13 +17,17 @@ export class ConsoleEmailProvider implements NotificationProvider {
     console.info("[notifications:console]", {
       to: message.to,
       subject: message.subject,
+      senderCategory: message.senderCategory,
       textPreview: message.text.slice(0, 180),
     });
     return {
       ok: true,
       providerMessageId: `console-${Date.now()}`,
       status: "sent",
-      providerResponse: { provider: "console" },
+      providerResponse: {
+        provider: "console",
+        sender_category: message.senderCategory,
+      },
     };
   }
 }

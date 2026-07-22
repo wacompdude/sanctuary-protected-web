@@ -15,7 +15,7 @@ import {
   canSendTestNotification,
   canViewNotificationHistory,
 } from "@/lib/notifications/permissions";
-import { auditNotificationTestEmailSent } from "@/lib/audit/notification-events";
+import { auditNotificationTestEmailSent, auditEmailSenderTestFailed, auditEmailSenderTestSent } from "@/lib/audit/notification-events";
 import { writeAuditLog } from "@/lib/audit/log";
 import { AuditAction, AuditEntityType } from "@/lib/audit/actions";
 
@@ -262,10 +262,9 @@ export async function updateChurchNotificationSettingsAction(
       return { error: "You do not have permission to update notification settings." };
     }
 
+    // From / reply-to are controlled by the platform sender registry (lib/email).
+    // Do not accept arbitrary sender addresses from church settings forms.
     const patch = {
-      default_sender_name:
-        String(formData.get("default_sender_name") ?? "").trim() || null,
-      reply_to_email: String(formData.get("reply_to_email") ?? "").trim() || null,
       email_notifications_enabled: readCheckbox(formData, "email_notifications_enabled"),
       sms_notifications_enabled: readCheckbox(formData, "sms_notifications_enabled"),
       push_notifications_enabled: readCheckbox(formData, "push_notifications_enabled"),
@@ -317,6 +316,154 @@ export async function updateChurchNotificationSettingsAction(
   }
 }
 
+const SENDER_TEST_COOLDOWN_MS = 60_000;
+const SENDER_TEST_WINDOW_MS = 10 * 60_000;
+const SENDER_TEST_WINDOW_MAX = 5;
+
+async function assertSenderTestRateLimit(params: {
+  supabase: Awaited<
+    ReturnType<typeof getAuthenticatedUserWithChurch>
+  >["supabase"];
+  churchId: string;
+  userId: string;
+}): Promise<string | null> {
+  const since = new Date(Date.now() - SENDER_TEST_WINDOW_MS).toISOString();
+  const { data, error } = await params.supabase
+    .from("audit_logs")
+    .select("id, created_at, metadata")
+    .eq("church_id", params.churchId)
+    .eq("user_id", params.userId)
+    .eq("action", AuditAction.EMAIL_SENDER_TEST_SENT)
+    .gte("created_at", since)
+    .order("created_at", { ascending: false })
+    .limit(SENDER_TEST_WINDOW_MAX + 1);
+
+  if (error) {
+    // Fail open on audit read errors would enable abuse; fail closed safely.
+    return "Unable to verify sender test rate limit. Try again shortly.";
+  }
+
+  const rows = data ?? [];
+  if (rows.length >= SENDER_TEST_WINDOW_MAX) {
+    return "Too many sender tests. Wait a few minutes and try again.";
+  }
+
+  const latest = rows[0] as { created_at?: string } | undefined;
+  if (latest?.created_at) {
+    const elapsed = Date.now() - new Date(latest.created_at).getTime();
+    if (elapsed < SENDER_TEST_COOLDOWN_MS) {
+      return "Please wait at least one minute between sender tests.";
+    }
+  }
+
+  return null;
+}
+
+export async function sendEmailSenderTestAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  try {
+    const { supabase, church, user, membership } =
+      await getAuthenticatedUserWithChurch();
+    if (!canSendTestNotification(membership.role)) {
+      return { error: "You do not have permission to send a sender test email." };
+    }
+
+    const { isEmailSenderCategory, EMAIL_SENDER_LABELS, resolveEmailSender } =
+      await import("@/lib/email");
+    const categoryRaw = String(formData.get("sender_category") ?? "").trim();
+    if (!isEmailSenderCategory(categoryRaw)) {
+      return { error: "Select a valid sender category." };
+    }
+
+    const senderLabel = EMAIL_SENDER_LABELS[categoryRaw];
+    try {
+      resolveEmailSender(categoryRaw);
+    } catch {
+      await auditEmailSenderTestFailed(supabase, {
+        churchId: church.id,
+        userId: user.id,
+        senderCategory: categoryRaw,
+        errorCode: "sender_not_configured",
+      });
+      return {
+        error: "That sender category is not configured correctly on the server.",
+      };
+    }
+
+    const rateLimitError = await assertSenderTestRateLimit({
+      supabase,
+      churchId: church.id,
+      userId: user.id,
+    });
+    if (rateLimitError) return { error: rateLimitError };
+
+    const result = await createNotification(
+      {
+        churchId: church.id,
+        createdBy: user.id,
+        notificationType: "notification.test",
+        severity: "informational",
+        // Avoid system notification.test template so the category appears in subject.
+        templateKey: "email.sender_test",
+        recipientUserIds: [user.id],
+        requestedSenderCategory: categoryRaw,
+        title: `Sanctuary Protected email sender test — ${senderLabel}`,
+        body: [
+          `Hello,`,
+          ``,
+          `This is a controlled Sanctuary Protected sender-category test.`,
+          ``,
+          `Sender category: ${senderLabel}`,
+          `Church: ${church.name}`,
+          ``,
+          `If you received this message, the selected From address is working.`,
+        ].join("\n"),
+        deduplicationKey: `email.sender_test:${categoryRaw}:${user.id}:${new Date()
+          .toISOString()
+          .slice(0, 16)}`,
+        actionUrl: "/settings/notifications",
+      },
+      { dispatchNow: true },
+    );
+
+    if (!result.notificationId) {
+      await auditEmailSenderTestFailed(supabase, {
+        churchId: church.id,
+        userId: user.id,
+        senderCategory: categoryRaw,
+        errorCode: "create_failed",
+      });
+      return { error: result.error ?? "Unable to send sender test email." };
+    }
+
+    await auditEmailSenderTestSent(supabase, {
+      churchId: church.id,
+      userId: user.id,
+      notificationId: result.notificationId,
+      senderCategory: categoryRaw,
+    });
+    await auditNotificationTestEmailSent(supabase, {
+      churchId: church.id,
+      userId: user.id,
+      notificationId: result.notificationId,
+    });
+
+    revalidatePath("/settings/notifications");
+    revalidatePath("/notifications");
+    revalidatePath("/notifications/history");
+    return { success: true };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unable to send sender test email.",
+    };
+  }
+}
+
 export async function sendTestNotificationEmailAction(
   _prev: ActionState,
   _formData: FormData,
@@ -345,6 +492,7 @@ export async function sendTestNotificationEmailAction(
         severity: "informational",
         templateKey: "notification.test",
         recipientUserIds: [user.id],
+        requestedSenderCategory: "no_reply",
         deduplicationKey: `notification.test:${user.id}:${new Date()
           .toISOString()
           .slice(0, 16)}`,

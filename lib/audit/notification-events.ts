@@ -153,3 +153,69 @@ export async function auditNotificationTestEmailSent(
     ipAddress: await getRequestIpAddress(),
   });
 }
+
+export async function auditEmailSenderTestSent(
+  supabase: SupabaseClient,
+  params: {
+    churchId: string;
+    userId: string;
+    notificationId: string;
+    senderCategory: string;
+    deliveryId?: string | null;
+  },
+) {
+  return writeAuditLog(supabase, {
+    churchId: params.churchId,
+    userId: params.userId,
+    action: AuditAction.EMAIL_SENDER_TEST_SENT,
+    entityType: AuditEntityType.EMAIL_SENDER,
+    entityId: params.notificationId,
+    metadata: {
+      sender_category: params.senderCategory,
+      notification_type: "notification.test",
+      delivery_id: params.deliveryId ?? null,
+    },
+    ipAddress: await getRequestIpAddress(),
+  });
+}
+
+export async function auditEmailSenderTestFailed(
+  supabase: SupabaseClient,
+  params: {
+    churchId: string;
+    userId: string;
+    senderCategory: string;
+    errorCode?: string | null;
+  },
+) {
+  return writeAuditLog(supabase, {
+    churchId: params.churchId,
+    userId: params.userId,
+    action: AuditAction.EMAIL_SENDER_TEST_FAILED,
+    entityType: AuditEntityType.EMAIL_SENDER,
+    entityId: params.churchId,
+    metadata: {
+      sender_category: params.senderCategory,
+      error_code: params.errorCode ?? null,
+    },
+    ipAddress: await getRequestIpAddress(),
+  });
+}
+
+export async function auditEmailSenderConfigurationViewed(
+  supabase: SupabaseClient,
+  params: {
+    churchId: string;
+    userId: string;
+  },
+) {
+  return writeAuditLog(supabase, {
+    churchId: params.churchId,
+    userId: params.userId,
+    action: AuditAction.EMAIL_SENDER_CONFIGURATION_VIEWED,
+    entityType: AuditEntityType.EMAIL_SENDER,
+    entityId: params.churchId,
+    metadata: { viewed: true },
+    ipAddress: await getRequestIpAddress(),
+  });
+}

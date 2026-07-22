@@ -12,6 +12,8 @@ export {
   listEmailSenderConfigurations,
   isEmailSenderSystemConfigured,
   isEmailProviderApiConfigured,
+  buildEmailSenderForCategory,
+  extractEmailAddress,
 } from "@/lib/email/email-senders";
 export {
   resolveEmailSender,

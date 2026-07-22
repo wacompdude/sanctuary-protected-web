@@ -2,10 +2,12 @@ import {
   EMAIL_SENDER_CATEGORIES,
   EMAIL_SENDER_LABELS,
   type EmailSenderCategory,
-  type EmailSenderConfiguration,
 } from "@/lib/email/email-sender-types";
-import { getEmailSenders } from "@/lib/email/email-senders";
-import { EmailSenderConfigError, getApprovedEmailDomain } from "@/lib/email/validate-email-sender";
+import { buildEmailSenderForCategory } from "@/lib/email/email-senders";
+import {
+  EmailSenderConfigError,
+  getApprovedEmailDomain,
+} from "@/lib/email/validate-email-sender";
 
 export type EmailSenderStatusRow = {
   category: EmailSenderCategory;
@@ -34,20 +36,21 @@ export function getEmailSenderRegistryStatus(): EmailSenderRegistryStatus {
     domain = null;
   }
 
-  let registry: Record<EmailSenderCategory, EmailSenderConfiguration> | null =
-    null;
-  let registryError: string | null = null;
-  try {
-    registry = getEmailSenders();
-  } catch (error) {
-    registryError =
-      error instanceof EmailSenderConfigError
-        ? error.code
-        : "sender_resolution_failed";
-  }
-
   const rows: EmailSenderStatusRow[] = EMAIL_SENDER_CATEGORIES.map((category) => {
-    if (!registry) {
+    try {
+      const sender = buildEmailSenderForCategory(category);
+      return {
+        category,
+        label: EMAIL_SENDER_LABELS[category],
+        name: sender.name,
+        address: sender.address,
+        replyTo: sender.replyTo ?? null,
+        allowReplies: sender.allowReplies,
+        description: sender.description,
+        status: "configured" as const,
+        errorCode: null,
+      };
+    } catch (error) {
       return {
         category,
         label: EMAIL_SENDER_LABELS[category],
@@ -57,22 +60,12 @@ export function getEmailSenderRegistryStatus(): EmailSenderRegistryStatus {
         allowReplies: false,
         description: "",
         status: "error" as const,
-        errorCode: registryError,
+        errorCode:
+          error instanceof EmailSenderConfigError
+            ? error.code
+            : "sender_resolution_failed",
       };
     }
-
-    const sender = registry[category];
-    return {
-      category,
-      label: EMAIL_SENDER_LABELS[category],
-      name: sender.name,
-      address: sender.address,
-      replyTo: sender.replyTo ?? null,
-      allowReplies: sender.allowReplies,
-      description: sender.description,
-      status: "configured" as const,
-      errorCode: null,
-    };
   });
 
   return {

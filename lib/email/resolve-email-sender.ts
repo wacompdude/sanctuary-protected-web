@@ -3,7 +3,7 @@ import type {
   EmailSenderConfiguration,
 } from "@/lib/email/email-sender-types";
 import { isEmailSenderCategory } from "@/lib/email/email-sender-types";
-import { getEmailSenders } from "@/lib/email/email-senders";
+import { buildEmailSenderForCategory } from "@/lib/email/email-senders";
 import {
   assertSafeHeaderValue,
   EmailSenderConfigError,
@@ -23,16 +23,20 @@ export function resolveEmailSender(
   }
 
   try {
-    const sender = getEmailSenders()[category];
-    // Re-validate friendly name before use.
+    const sender = buildEmailSenderForCategory(category);
     assertSafeHeaderValue("Sender name", sender.name, 120);
     return sender;
   } catch (error) {
     if (error instanceof EmailSenderConfigError) {
-      console.error("[email] resolveEmailSender failed:", error.code);
+      console.error("[email] resolveEmailSender failed:", {
+        category,
+        code: error.code,
+      });
       throw error;
     }
-    console.error("[email] resolveEmailSender failed with unexpected error");
+    console.error("[email] resolveEmailSender failed with unexpected error", {
+      category,
+    });
     throw new EmailSenderConfigError(
       "sender_resolution_failed",
       "Unable to resolve email sender configuration.",

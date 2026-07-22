@@ -1,5 +1,6 @@
 import {
   assertApprovedSenderAddress,
+  extractEmailAddress,
   formatEmailSender,
   isEmailProviderApiConfigured,
   resolveEmailSender,
@@ -53,10 +54,17 @@ export class ResendEmailProvider implements NotificationProvider {
       senderCategory = sender.category;
       from = formatEmailSender(sender);
       if (message.replyTo?.trim()) {
-        replyTo = assertApprovedSenderAddress(
-          message.replyTo.trim(),
-          sender.category,
-        );
+        try {
+          replyTo = assertApprovedSenderAddress(
+            extractEmailAddress(message.replyTo.trim()),
+            sender.category,
+          );
+        } catch {
+          console.warn(
+            "[email] ignoring off-domain replyTo override; using registry reply-to",
+          );
+          replyTo = sender.replyTo || undefined;
+        }
       } else {
         replyTo = sender.replyTo || undefined;
       }
@@ -71,7 +79,11 @@ export class ResendEmailProvider implements NotificationProvider {
         status: "rejected",
         errorCode: code,
         errorMessage:
-          "Email sender is not configured correctly for this message type.",
+          code === "unapproved_sender_domain"
+            ? "Email From/Reply-To must use the approved Sanctuary Protected domain."
+            : code === "provider_not_configured"
+              ? "Email provider is not configured."
+              : `Email sender is not configured correctly (${code}).`,
       };
     }
 

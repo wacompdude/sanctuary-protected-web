@@ -288,7 +288,9 @@ export async function sendEmailDelivery(
         failed_at: new Date().toISOString(),
         last_error_code: code,
         last_error_message:
-          "Email sender is not configured correctly for this message type.",
+          code === "unapproved_sender_domain"
+            ? "Email From/Reply-To must use the approved Sanctuary Protected domain."
+            : `Email sender is not configured correctly (${code}).`,
         updated_at: new Date().toISOString(),
       })
       .eq("id", delivery.id);

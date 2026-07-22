@@ -9,11 +9,16 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { NotificationGroupMembersPanel } from "@/components/notifications/notification-group-members-panel";
+import { NotificationGroupIncludedPanel } from "@/components/notifications/notification-group-included-panel";
+import { NotificationGroupParentsPanel } from "@/components/notifications/notification-group-parents-panel";
+import { NotificationGroupEffectiveMembersPanel } from "@/components/notifications/notification-group-effective-members";
 import { NotificationGroupDefaultsForm } from "@/components/notifications/notification-group-defaults-form";
 import {
   addNotificationGroupMembersAction,
   addNotificationGroupMembersByRoleAction,
+  addNotificationGroupNestingAction,
   removeNotificationGroupMemberAction,
+  removeNotificationGroupNestingAction,
   upsertNotificationGroupDefaultAction,
 } from "@/app/(app)/notification-groups/actions";
 import { getAuthenticatedUserWithChurch } from "@/lib/church/auth";
@@ -23,11 +28,7 @@ import {
   canManageNotificationGroup,
   canViewNotificationGroups,
 } from "@/lib/notifications/groups/permissions";
-import {
-  getNotificationGroup,
-  listNotificationGroupDefaults,
-  listEffectiveNotificationGroupMembers,
-} from "@/lib/notifications/groups/queries";
+import { getGroupDetail } from "@/lib/notifications/groups/group-service";
 import {
   labelForGroupStatus,
   labelForGroupType,
@@ -47,8 +48,8 @@ async function GroupDetailContent({ id }: { id: string }) {
     );
   }
 
-  const group = await getNotificationGroup(church.id, id);
-  if (!group) {
+  const detail = await getGroupDetail(church.id, id);
+  if (!detail) {
     return (
       <Card>
         <CardContent className="py-8 text-sm text-muted-foreground">
@@ -58,17 +59,19 @@ async function GroupDetailContent({ id }: { id: string }) {
     );
   }
 
+  const group = detail.group;
   const canManage = canManageNotificationGroup(
     membership.role,
     group.group_type,
     group.is_system_group,
   );
 
-  const [members, defaults, team] = await Promise.all([
-    listEffectiveNotificationGroupMembers(church.id, group),
-    listNotificationGroupDefaults(church.id, group.id),
-    listChurchTeamMemberships(church.id).catch(() => []),
-  ]);
+  const team = await listChurchTeamMemberships(church.id).catch(() => []);
+
+  const showFlatteningWarning =
+    !group.is_system_group &&
+    detail.counts.includedGroups > 0 &&
+    detail.counts.directUsers > 0;
 
   return (
     <div className="space-y-6">
@@ -100,10 +103,34 @@ async function GroupDetailContent({ id }: { id: string }) {
             {group.description || "No description provided."}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-1 text-sm text-muted-foreground">
-          <p>
-            Default severity: {group.default_notification_severity}
-          </p>
+        <CardContent className="space-y-3 text-sm text-muted-foreground">
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-md border border-border px-3 py-2">
+              <p className="text-xs uppercase tracking-wide">Direct users</p>
+              <p className="mt-1 text-lg font-semibold text-foreground">
+                {detail.counts.directUsers}
+              </p>
+            </div>
+            <div className="rounded-md border border-border px-3 py-2">
+              <p className="text-xs uppercase tracking-wide">Included groups</p>
+              <p className="mt-1 text-lg font-semibold text-foreground">
+                {detail.counts.includedGroups}
+              </p>
+            </div>
+            <div className="rounded-md border border-border px-3 py-2">
+              <p className="text-xs uppercase tracking-wide">Effective users</p>
+              <p className="mt-1 text-lg font-semibold text-foreground">
+                {detail.counts.effectiveUsers}
+              </p>
+            </div>
+            <div className="rounded-md border border-border px-3 py-2">
+              <p className="text-xs uppercase tracking-wide">Parent groups</p>
+              <p className="mt-1 text-lg font-semibold text-foreground">
+                {detail.counts.parentGroups}
+              </p>
+            </div>
+          </div>
+          <p>Default severity: {group.default_notification_severity}</p>
           {group.dynamic_rule_type ? (
             <p>
               Dynamic rule: {group.dynamic_rule_type} ={" "}
@@ -116,12 +143,46 @@ async function GroupDetailContent({ id }: { id: string }) {
               timeZone: church.timezone,
             })}
           </p>
+          {showFlatteningWarning ? (
+            <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-amber-950 dark:text-amber-100">
+              This group may contain members previously copied from another
+              group. Review direct members after adding nested groups to avoid
+              maintaining unnecessary direct assignments.
+            </p>
+          ) : null}
         </CardContent>
       </Card>
 
+      {!group.is_system_group ? (
+        <NotificationGroupIncludedPanel
+          groupId={group.id}
+          included={detail.included}
+          candidateGroups={detail.nestableGroupOptions}
+          canManage={canManage}
+          addAction={addNotificationGroupNestingAction}
+          removeAction={removeNotificationGroupNestingAction}
+        />
+      ) : null}
+
       <NotificationGroupMembersPanel
         groupId={group.id}
-        members={members}
+        members={
+          group.is_system_group
+            ? detail.effectiveUsers.map((user) => ({
+                id: `dynamic:${user.membershipId}`,
+                church_id: church.id,
+                group_id: group.id,
+                membership_id: user.membershipId,
+                user_id: user.userId,
+                status: "active" as const,
+                added_by: null,
+                added_at: new Date(0).toISOString(),
+                removed_at: null,
+                display_name: user.displayName,
+                role: user.role,
+              }))
+            : detail.directUsers
+        }
         candidateMembers={team
           .filter((row) => row.status === "active")
           .map((row) => ({
@@ -136,9 +197,17 @@ async function GroupDetailContent({ id }: { id: string }) {
         removeAction={removeNotificationGroupMemberAction}
       />
 
+      {!group.is_system_group ? (
+        <NotificationGroupEffectiveMembersPanel
+          users={detail.effectiveUsers}
+        />
+      ) : null}
+
+      <NotificationGroupParentsPanel parents={detail.parents} />
+
       <NotificationGroupDefaultsForm
         groupId={group.id}
-        defaults={defaults}
+        defaults={detail.defaults}
         canManage={canManage}
         action={upsertNotificationGroupDefaultAction}
       />

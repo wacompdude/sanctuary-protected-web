@@ -17,6 +17,7 @@ import {
   listChurchThreatLevels,
 } from "@/lib/church/threat-level-queries";
 import { ThreatLevelForm } from "@/components/dashboard/threat-level-form";
+import { ThreatLevelHistoryList } from "@/components/dashboard/threat-level-history-list";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -128,55 +129,22 @@ async function ThreatLevelPageContent() {
         />
 
         <Card>
-          <CardHeader>
-            <CardTitle>Recent history</CardTitle>
-            <CardDescription>
-              Weekly threat level changes, notes, and who recorded them.
-            </CardDescription>
+          <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
+            <div className="space-y-1.5">
+              <CardTitle>Recent history</CardTitle>
+              <CardDescription>
+                Weekly threat level changes, notes, and who recorded them.
+              </CardDescription>
+            </div>
+            <Button asChild variant="outline" size="sm" className="h-10 shrink-0">
+              <Link href="/dashboard/threat-level/history">View all</Link>
+            </Button>
           </CardHeader>
           <CardContent>
-            {history.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No threat level history has been recorded yet.
-              </p>
-            ) : (
-              <ul className="space-y-3">
-                {history.map((entry) => (
-                  <li
-                    key={entry.id}
-                    className="rounded-md border border-border px-3 py-3"
-                  >
-                    <div className="flex flex-wrap items-center gap-3">
-                      <span
-                        className={threatLevelBadgeClassName(entry.threat_level)}
-                        style={threatLevelBadgeStyle(entry.threat_level)}
-                      >
-                        {labelForThreatLevel(entry.threat_level)}
-                      </span>
-                      <p className="text-sm font-medium">
-                        Week of{" "}
-                        {formatThreatWeek(entry.week_start, church.timezone)}
-                      </p>
-                    </div>
-                    {entry.notes ? (
-                      <p className="mt-2 whitespace-pre-wrap text-sm text-foreground">
-                        {entry.notes}
-                      </p>
-                    ) : (
-                      <p className="mt-2 text-sm text-muted-foreground">
-                        No notes recorded.
-                      </p>
-                    )}
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      Changed by {entry.changed_by_name}
-                      {entry.changed_by_email ? ` (${entry.changed_by_email})` : ""}{" "}
-                      on{" "}
-                      {formatDateTime(entry.created_at, null, church.timezone)}.
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <ThreatLevelHistoryList
+              entries={history}
+              timeZone={church.timezone ?? "America/Los_Angeles"}
+            />
           </CardContent>
         </Card>
       </div>

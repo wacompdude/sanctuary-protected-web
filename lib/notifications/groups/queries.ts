@@ -1,6 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { normalizeMembershipRole } from "@/lib/church/types";
+import { listActiveNestingEdges } from "@/lib/notifications/groups/nesting";
+import { getEffectiveGroupUsers } from "@/lib/notifications/groups/membership-resolver";
 import type {
+  EffectiveGroupUser,
   NotificationGroup,
   NotificationGroupDefault,
   NotificationGroupListItem,
@@ -88,22 +91,37 @@ export async function listNotificationGroups(
     ),
   ];
 
-  const [{ data: memberRows }, { data: campusRows }] = await Promise.all([
-    supabase
-      .from("notification_group_members")
-      .select("group_id")
-      .eq("church_id", churchId)
-      .eq("status", "active")
-      .in("group_id", groupIds),
-    campusIds.length > 0
-      ? supabase.from("campuses").select("id, name").in("id", campusIds)
-      : Promise.resolve({ data: [] as Array<{ id: string; name: string }> }),
-  ]);
+  const [{ data: memberRows }, { data: campusRows }, nestingEdges] =
+    await Promise.all([
+      supabase
+        .from("notification_group_members")
+        .select("group_id")
+        .eq("church_id", churchId)
+        .eq("status", "active")
+        .in("group_id", groupIds),
+      campusIds.length > 0
+        ? supabase.from("campuses").select("id, name").in("id", campusIds)
+        : Promise.resolve({ data: [] as Array<{ id: string; name: string }> }),
+      listActiveNestingEdges(churchId, supabase),
+    ]);
 
   const counts = new Map<string, number>();
   for (const row of memberRows ?? []) {
     const groupId = String((row as { group_id: string }).group_id);
     counts.set(groupId, (counts.get(groupId) ?? 0) + 1);
+  }
+
+  const includedCounts = new Map<string, number>();
+  const parentCounts = new Map<string, number>();
+  for (const edge of nestingEdges) {
+    includedCounts.set(
+      edge.parentGroupId,
+      (includedCounts.get(edge.parentGroupId) ?? 0) + 1,
+    );
+    parentCounts.set(
+      edge.childGroupId,
+      (parentCounts.get(edge.childGroupId) ?? 0) + 1,
+    );
   }
 
   const campusNames = new Map(
@@ -116,6 +134,8 @@ export async function listNotificationGroups(
   return groups.map((group) => ({
     ...group,
     member_count: group.is_system_group ? 0 : (counts.get(group.id) ?? 0),
+    included_group_count: includedCounts.get(group.id) ?? 0,
+    parent_group_count: parentCounts.get(group.id) ?? 0,
     campus_name: group.campus_id
       ? (campusNames.get(group.campus_id) ?? null)
       : null,
@@ -176,9 +196,10 @@ export async function listNotificationGroupMembers(
 }
 
 /**
- * Members shown on the group detail page.
- * System/dynamic groups are expanded from church_memberships using the same
- * rules as send-time audience resolution.
+ * Members shown on the group detail member list.
+ * System/dynamic groups expand from church_memberships.
+ * Custom groups return direct members only (nested expansion is
+ * listEffectiveGroupUsersWithSources / getEffectiveGroupUsers).
  */
 export async function listEffectiveNotificationGroupMembers(
   churchId: string,
@@ -195,47 +216,27 @@ export async function listEffectiveNotificationGroupMembers(
     return listNotificationGroupMembers(churchId, group.id);
   }
 
-  const supabase = await createClient();
-  let query = supabase
-    .from("church_memberships")
-    .select("id, user_id, role, status, created_at")
-    .eq("church_id", churchId)
-    .eq("status", "active")
-    .order("created_at", { ascending: true });
-
-  if (group.dynamic_rule_type === "role" && group.dynamic_rule_value) {
-    query = query.eq("role", group.dynamic_rule_value);
-  } else if (
-    group.dynamic_rule_type === "membership_status" &&
-    group.dynamic_rule_value === "active"
-  ) {
-    // already filtered to active
-  } else {
-    return [];
-  }
-
-  const { data, error } = await query;
-  if (error) throw new Error(error.message);
-
-  const rows = ((data ?? []) as Array<{
-    id: string;
-    user_id: string;
-    role: string;
-    created_at: string;
-  }>).map((row) => ({
-    id: `dynamic:${row.id}`,
+  const effective = await getEffectiveGroupUsers(churchId, group.id);
+  return effective.map((user) => ({
+    id: `dynamic:${user.membershipId}`,
     church_id: churchId,
     group_id: group.id,
-    membership_id: row.id,
-    user_id: row.user_id,
+    membership_id: user.membershipId,
+    user_id: user.userId,
     status: "active" as const,
     added_by: null,
-    added_at: row.created_at,
+    added_at: new Date(0).toISOString(),
     removed_at: null,
+    display_name: user.displayName,
+    role: user.role,
   }));
+}
 
-  if (rows.length === 0) return [];
-  return enrichGroupMembers(supabase, churchId, rows);
+export async function listEffectiveGroupUsersWithSources(
+  churchId: string,
+  groupId: string,
+): Promise<EffectiveGroupUser[]> {
+  return getEffectiveGroupUsers(churchId, groupId);
 }
 
 async function enrichGroupMembers(

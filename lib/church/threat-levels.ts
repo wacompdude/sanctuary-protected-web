@@ -60,6 +60,25 @@ export function threatLevelBadgeClassName(_value?: ThreatLevel): string {
   return "inline-flex items-center rounded-md border px-3 py-1 text-sm font-bold uppercase tracking-wide";
 }
 
+/** Solid fill colors for charts and calendar day tints. */
+export function threatLevelFillColor(value: ThreatLevel | string): string {
+  const level = String(value ?? "").trim().toLowerCase();
+  switch (level) {
+    case "green":
+      return "#86efac";
+    case "blue":
+      return "#93c5fd";
+    case "yellow":
+      return "#fde047";
+    case "orange":
+      return "#fdba74";
+    case "red":
+      return "#fca5a5";
+    default:
+      return "#e5e7eb";
+  }
+}
+
 /**
  * Explicit colors so theme/Badge variants cannot wash out the label
  * (e.g. white-on-white). Inline styles beat utility class conflicts.

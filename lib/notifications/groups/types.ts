@@ -15,6 +15,8 @@ export type NotificationGroupStatus = "active" | "inactive" | "archived";
 
 export type NotificationGroupMemberStatus = "active" | "inactive" | "removed";
 
+export type NotificationGroupNestingStatus = "active" | "removed";
+
 export type DynamicRuleType =
   | "role"
   | "campus"
@@ -44,6 +46,8 @@ export type NotificationGroup = {
 
 export type NotificationGroupListItem = NotificationGroup & {
   member_count: number;
+  included_group_count: number;
+  parent_group_count: number;
   campus_name: string | null;
 };
 
@@ -59,6 +63,60 @@ export type NotificationGroupMember = {
   removed_at: string | null;
   display_name: string;
   role: MembershipRole | null;
+};
+
+export type NotificationGroupNesting = {
+  id: string;
+  church_id: string;
+  parent_group_id: string;
+  child_group_id: string;
+  status: NotificationGroupNestingStatus;
+  added_by: string | null;
+  added_at: string;
+  removed_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type NotificationGroupSummary = Pick<
+  NotificationGroup,
+  "id" | "name" | "group_type" | "status" | "is_system_group" | "description"
+>;
+
+export type NotificationGroupNestingSummary = NotificationGroupNesting & {
+  child_group?: NotificationGroupSummary;
+  parent_group?: NotificationGroupSummary;
+};
+
+export type MembershipSourceKind = "direct" | "inherited";
+
+export type EffectiveMembershipSource = {
+  type: MembershipSourceKind;
+  groupId: string;
+  groupName: string;
+  /** Root → … → leaf group names when inherited. */
+  groupPath: string[];
+};
+
+export type EffectiveGroupUser = {
+  userId: string;
+  membershipId: string;
+  displayName: string;
+  role: MembershipRole | null;
+  sources: EffectiveMembershipSource[];
+  isDirect: boolean;
+};
+
+export type NotificationGroupCounts = {
+  directUsers: number;
+  includedGroups: number;
+  parentGroups: number;
+  effectiveUsers: number;
+};
+
+export type NestingEdge = {
+  parentGroupId: string;
+  childGroupId: string;
 };
 
 export type NotificationGroupDefault = {

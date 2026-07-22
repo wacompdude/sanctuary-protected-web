@@ -7,6 +7,7 @@ import {
   severityAtLeast,
 } from "@/lib/notifications/constants";
 import { normalizeEmail } from "@/lib/notifications/endpoints/normalize";
+import { resolveEffectiveMembersForGroups } from "@/lib/notifications/groups/membership-resolver";
 import type {
   ChurchNotificationSettings,
   NotificationChannel,
@@ -363,7 +364,7 @@ function selectEndpoint(
   );
 }
 
-/** Expand system + custom groups into active memberships. */
+/** Expand system + custom groups (including nested children) into active memberships. */
 export async function resolveGroupMembers(
   supabase: SupabaseClient,
   churchId: string,
@@ -372,111 +373,20 @@ export async function resolveGroupMembers(
   const members = new Map<string, AudienceMember>();
   if (groupIds.length === 0) return members;
 
-  const { data: groups, error } = await supabase
-    .from("notification_groups")
-    .select(
-      "id, name, status, is_system_group, dynamic_rule_type, dynamic_rule_value",
-    )
-    .eq("church_id", churchId)
-    .in("id", groupIds)
-    .eq("status", "active");
+  const resolved = await resolveEffectiveMembersForGroups(
+    supabase,
+    churchId,
+    groupIds,
+  );
 
-  if (error) throw new Error(error.message);
-
-  for (const group of (groups ?? []) as Array<{
-    id: string;
-    name: string;
-    is_system_group: boolean;
-    dynamic_rule_type: string | null;
-    dynamic_rule_value: string | null;
-  }>) {
-    const source = { id: group.id, name: group.name };
-
-    if (group.is_system_group && group.dynamic_rule_type) {
-      let query = supabase
-        .from("church_memberships")
-        .select("id, user_id, role, status")
-        .eq("church_id", churchId)
-        .eq("status", "active");
-
-      if (
-        group.dynamic_rule_type === "role" &&
-        group.dynamic_rule_value
-      ) {
-        query = query.eq("role", group.dynamic_rule_value);
-      } else if (
-        group.dynamic_rule_type === "membership_status" &&
-        group.dynamic_rule_value === "active"
-      ) {
-        // already filtered active
-      } else {
-        continue;
-      }
-
-      const { data: rows } = await query;
-      for (const row of (rows ?? []) as Array<{
-        id: string;
-        user_id: string;
-        role: string;
-      }>) {
-        const existing = members.get(row.user_id);
-        if (existing) {
-          if (!existing.sourceGroups.some((g) => g.id === source.id)) {
-            existing.sourceGroups.push(source);
-          }
-        } else {
-          members.set(row.user_id, {
-            userId: row.user_id,
-            membershipId: row.id,
-            displayName: "Member",
-            role: normalizeMembershipRole(row.role),
-            sourceGroups: [source],
-          });
-        }
-      }
-      continue;
-    }
-
-    const { data: memberRows } = await supabase
-      .from("notification_group_members")
-      .select("membership_id, user_id")
-      .eq("church_id", churchId)
-      .eq("group_id", group.id)
-      .eq("status", "active");
-
-    const membershipIds = (
-      (memberRows ?? []) as Array<{ membership_id: string; user_id: string }>
-    ).map((row) => row.membership_id);
-
-    if (membershipIds.length === 0) continue;
-
-    const { data: memberships } = await supabase
-      .from("church_memberships")
-      .select("id, user_id, role, status")
-      .eq("church_id", churchId)
-      .eq("status", "active")
-      .in("id", membershipIds);
-
-    for (const row of (memberships ?? []) as Array<{
-      id: string;
-      user_id: string;
-      role: string;
-    }>) {
-      const existing = members.get(row.user_id);
-      if (existing) {
-        if (!existing.sourceGroups.some((g) => g.id === source.id)) {
-          existing.sourceGroups.push(source);
-        }
-      } else {
-        members.set(row.user_id, {
-          userId: row.user_id,
-          membershipId: row.id,
-          displayName: "Member",
-          role: normalizeMembershipRole(row.role),
-          sourceGroups: [source],
-        });
-      }
-    }
+  for (const [userId, row] of resolved) {
+    members.set(userId, {
+      userId,
+      membershipId: row.membershipId,
+      displayName: "Member",
+      role: normalizeMembershipRole(row.role),
+      sourceGroups: row.sourceGroups,
+    });
   }
 
   return members;

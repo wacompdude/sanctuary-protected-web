@@ -90,10 +90,10 @@ export type PreferableGroup = {
   id: string;
   name: string;
   is_system_group: boolean;
-  source: "membership" | "role";
+  source: "membership" | "role" | "inherited";
 };
 
-/** Groups the user can set preferences for: manual memberships + matching system role groups. */
+/** Groups the user can set preferences for: direct, system role, and nested parents. */
 export async function listPreferableGroupsForUser(params: {
   supabase: SupabaseClient;
   churchId: string;
@@ -144,11 +144,14 @@ export async function listPreferableGroupsForUser(params: {
 
   const { data: systemGroups } = await supabase
     .from("notification_groups")
-    .select("id, name, is_system_group, dynamic_rule_type, dynamic_rule_value, status")
+    .select(
+      "id, name, is_system_group, dynamic_rule_type, dynamic_rule_value, status",
+    )
     .eq("church_id", churchId)
     .eq("is_system_group", true)
     .eq("status", "active");
 
+  const matchingSystemIds: string[] = [];
   for (const row of systemGroups ?? []) {
     const g = row as {
       id: string;
@@ -156,7 +159,6 @@ export async function listPreferableGroupsForUser(params: {
       is_system_group: boolean;
       dynamic_rule_type: string | null;
       dynamic_rule_value: string | null;
-      status: string;
     };
     const matchesRole =
       g.dynamic_rule_type === "role" && g.dynamic_rule_value === role;
@@ -164,12 +166,71 @@ export async function listPreferableGroupsForUser(params: {
       g.dynamic_rule_type === "membership_status" &&
       g.dynamic_rule_value === "active";
     if (matchesRole || matchesAll) {
+      matchingSystemIds.push(g.id);
       result.set(g.id, {
         id: g.id,
         name: g.name,
         is_system_group: true,
         source: "role",
       });
+    }
+  }
+
+  // Walk up nesting so preferences can target parent groups the user inherits into.
+  const seedIds = [...new Set([...memberGroupIds, ...matchingSystemIds])];
+  if (seedIds.length > 0) {
+    const { data: nestingRows, error: nestingError } = await supabase
+      .from("notification_group_nestings")
+      .select("parent_group_id, child_group_id")
+      .eq("church_id", churchId)
+      .eq("status", "active");
+
+    if (!nestingError && nestingRows) {
+      const parentsByChild = new Map<string, string[]>();
+      for (const row of nestingRows as Array<{
+        parent_group_id: string;
+        child_group_id: string;
+      }>) {
+        const list = parentsByChild.get(row.child_group_id) ?? [];
+        list.push(row.parent_group_id);
+        parentsByChild.set(row.child_group_id, list);
+      }
+
+      const ancestorIds = new Set<string>();
+      const queue = [...seedIds];
+      const seen = new Set<string>(seedIds);
+      while (queue.length > 0) {
+        const current = queue.shift()!;
+        for (const parentId of parentsByChild.get(current) ?? []) {
+          if (seen.has(parentId)) continue;
+          seen.add(parentId);
+          ancestorIds.add(parentId);
+          queue.push(parentId);
+        }
+      }
+
+      const missing = [...ancestorIds].filter((id) => !result.has(id));
+      if (missing.length > 0) {
+        const { data: parentGroups } = await supabase
+          .from("notification_groups")
+          .select("id, name, is_system_group, status")
+          .eq("church_id", churchId)
+          .in("id", missing)
+          .neq("status", "archived");
+
+        for (const g of (parentGroups ?? []) as Array<{
+          id: string;
+          name: string;
+          is_system_group: boolean;
+        }>) {
+          result.set(g.id, {
+            id: g.id,
+            name: g.name,
+            is_system_group: g.is_system_group,
+            source: "inherited",
+          });
+        }
+      }
     }
   }
 

@@ -62,13 +62,14 @@ export function NotificationGroupMembersPanel({
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Members</CardTitle>
+          <CardTitle>Direct members</CardTitle>
           <CardDescription>
-            Resolved dynamically from church memberships
+            System groups resolve members dynamically from church roles
             {members.length > 0
-              ? ` · ${members.length} active member${members.length === 1 ? "" : "s"}`
+              ? ` · ${members.length} active`
               : ""}
-            . Manual member changes are not allowed.
+            . Manual member changes are not allowed — include this group inside
+            a custom group instead of copying people.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -104,9 +105,13 @@ export function NotificationGroupMembersPanel({
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Members</CardTitle>
+          <CardTitle>Direct members</CardTitle>
           <CardDescription>
-            {members.length} active member{members.length === 1 ? "" : "s"}
+            People individually assigned to this group
+            {members.length > 0
+              ? ` · ${members.length}`
+              : ""}
+            . Prefer including another group when you want live role membership.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -158,9 +163,9 @@ export function NotificationGroupMembersPanel({
         <>
           <Card>
             <CardHeader>
-              <CardTitle>Add members</CardTitle>
+              <CardTitle>Add individual members</CardTitle>
               <CardDescription>
-                Select one or more active church members.
+                Select one or more active church members to assign directly.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -214,9 +219,11 @@ export function NotificationGroupMembersPanel({
 
           <Card>
             <CardHeader>
-              <CardTitle>Bulk add by role</CardTitle>
+              <CardTitle>Copy current role holders</CardTitle>
               <CardDescription>
-                Add every active member with the selected role.
+                One-time copy of people who currently have the selected role.
+                This does not keep them in sync — use Include existing groups
+                for live nested membership.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -242,7 +249,7 @@ export function NotificationGroupMembersPanel({
                   </select>
                 </div>
                 <Button type="submit" disabled={rolePending} className="h-11">
-                  {rolePending ? "Adding…" : "Add by role"}
+                  {rolePending ? "Copying…" : "Copy role holders"}
                 </Button>
               </form>
             </CardContent>

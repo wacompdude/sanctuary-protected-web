@@ -17,6 +17,11 @@ import {
   parseGroupType,
 } from "@/lib/notifications/groups/validation";
 import { getNotificationGroup } from "@/lib/notifications/groups/queries";
+import {
+  addGroupToGroup,
+  removeGroupFromGroup,
+} from "@/lib/notifications/groups/nesting";
+
 function readCheckbox(formData: FormData, name: string): boolean {
   return (
     formData.get(name) === "on" ||
@@ -509,6 +514,149 @@ export async function upsertNotificationGroupDefaultAction(
         error instanceof Error
           ? error.message
           : "Unable to save group defaults.",
+    };
+  }
+}
+
+export async function addNotificationGroupNestingAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  try {
+    const { supabase, church, user, membership } =
+      await getAuthenticatedUserWithChurch();
+    const parentGroupId = String(formData.get("group_id") ?? "").trim();
+    const childGroupId = String(formData.get("child_group_id") ?? "").trim();
+    if (!parentGroupId || !childGroupId) {
+      return { error: "Parent and included group are required." };
+    }
+
+    const [parent, child] = await Promise.all([
+      getNotificationGroup(church.id, parentGroupId),
+      getNotificationGroup(church.id, childGroupId),
+    ]);
+    if (!parent || !child) return { error: "Group not found." };
+    if (parent.is_system_group) {
+      return { error: "System groups cannot contain nested groups." };
+    }
+    if (
+      !canManageNotificationGroup(
+        membership.role,
+        parent.group_type,
+        parent.is_system_group,
+      )
+    ) {
+      return { error: "You do not have permission to manage this group." };
+    }
+
+    const result = await addGroupToGroup({
+      supabase,
+      churchId: church.id,
+      parentGroupId,
+      childGroupId,
+      addedBy: user.id,
+      parent,
+      child,
+    });
+
+    if (!result.ok) {
+      await writeAuditLog(supabase, {
+        churchId: church.id,
+        userId: user.id,
+        action: AuditAction.NOTIFICATION_GROUP_NESTING_REJECTED,
+        entityType: AuditEntityType.NOTIFICATION_GROUP,
+        entityId: parentGroupId,
+        metadata: {
+          child_group_id: childGroupId,
+          reason: result.error,
+        },
+      });
+      return { error: result.error };
+    }
+
+    await writeAuditLog(supabase, {
+      churchId: church.id,
+      userId: user.id,
+      action: AuditAction.NOTIFICATION_GROUP_CHILD_ADDED,
+      entityType: AuditEntityType.NOTIFICATION_GROUP,
+      entityId: parentGroupId,
+      metadata: {
+        child_group_id: childGroupId,
+        nesting_id: result.nestingId,
+      },
+    });
+
+    revalidateGroups(parentGroupId);
+    revalidateGroups(childGroupId);
+    return { success: true };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unable to include the selected group.",
+    };
+  }
+}
+
+export async function removeNotificationGroupNestingAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  try {
+    const { supabase, church, user, membership } =
+      await getAuthenticatedUserWithChurch();
+    const parentGroupId = String(formData.get("group_id") ?? "").trim();
+    const nestingId = String(formData.get("nesting_id") ?? "").trim();
+    const childGroupId = String(formData.get("child_group_id") ?? "").trim();
+    if (!parentGroupId || !nestingId) {
+      return { error: "Included group relationship is required." };
+    }
+
+    const parent = await getNotificationGroup(church.id, parentGroupId);
+    if (!parent) return { error: "Group not found." };
+    if (parent.is_system_group) {
+      return { error: "System groups cannot contain nested groups." };
+    }
+    if (
+      !canManageNotificationGroup(
+        membership.role,
+        parent.group_type,
+        parent.is_system_group,
+      )
+    ) {
+      return { error: "You do not have permission to manage this group." };
+    }
+
+    const result = await removeGroupFromGroup({
+      supabase,
+      churchId: church.id,
+      parentGroupId,
+      nestingId,
+    });
+    if (!result.ok) return { error: result.error };
+
+    await writeAuditLog(supabase, {
+      churchId: church.id,
+      userId: user.id,
+      action: AuditAction.NOTIFICATION_GROUP_CHILD_REMOVED,
+      entityType: AuditEntityType.NOTIFICATION_GROUP,
+      entityId: parentGroupId,
+      metadata: {
+        nesting_id: nestingId,
+        child_group_id: childGroupId || null,
+      },
+    });
+
+    revalidateGroups(parentGroupId);
+    if (childGroupId) revalidateGroups(childGroupId);
+    return { success: true };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unable to remove the included group.",
     };
   }
 }

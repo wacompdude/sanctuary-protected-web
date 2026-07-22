@@ -93,6 +93,7 @@ async function ComposerContent() {
             group_type: group.group_type,
             is_system_group: group.is_system_group,
             member_count: group.member_count,
+            included_group_count: group.included_group_count,
           }))}
         members={team
           .filter((row) => row.status === "active")

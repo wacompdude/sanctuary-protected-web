@@ -53,6 +53,30 @@ export type {
   NotificationGroupListItem,
   NotificationGroupMember,
   NotificationGroupDefault,
+  NotificationGroupNesting,
+  NotificationGroupNestingSummary,
+  EffectiveGroupUser,
+  NotificationGroupCounts,
 } from "@/lib/notifications/groups/types";
+export {
+  getEffectiveGroupUsers,
+  getNotificationGroupCounts,
+  resolveEffectiveMembersForGroups,
+} from "@/lib/notifications/groups/membership-resolver";
+export {
+  listDirectChildGroups,
+  listDirectParentGroups,
+  validateGroupNesting,
+  expandGroupDescendantIds,
+  wouldCreateGroupNestingCycle,
+  addGroupToGroup,
+  removeGroupFromGroup,
+} from "@/lib/notifications/groups/nesting";
+export {
+  getGroupDetail,
+  isUserEffectiveGroupMember,
+} from "@/lib/notifications/groups/group-service";
+export type { GroupDetail } from "@/lib/notifications/groups/group-service";
+export { NOTIFICATION_GROUP_MAX_NESTING_DEPTH } from "@/lib/notifications/groups/constants";
 export type { NotificationEndpoint } from "@/lib/notifications/endpoints/types";
 export { maskDestination } from "@/lib/notifications/endpoints/normalize";

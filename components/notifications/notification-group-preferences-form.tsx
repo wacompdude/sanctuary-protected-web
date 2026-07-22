@@ -101,6 +101,7 @@ export function NotificationGroupPreferencesForm({
                     <option key={group.id} value={group.id}>
                       {group.name}
                       {group.is_system_group ? " (system)" : ""}
+                      {group.source === "inherited" ? " (via nested group)" : ""}
                     </option>
                   ))}
                 </select>

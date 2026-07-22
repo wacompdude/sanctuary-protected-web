@@ -254,13 +254,22 @@ async function DashboardContent() {
                 <CardTitle className="text-2xl">No threat level recorded</CardTitle>
               )}
             </div>
-            {canManageThreatLevels(membership.role) && (
-              <Button asChild className="hidden h-11 shrink-0 md:inline-flex">
-                <Link href="/dashboard/threat-level">
-                  {currentThreatLevel ? "Change threat level" : "Set threat level"}
+            <div className="hidden shrink-0 flex-wrap gap-2 md:flex">
+              <Button asChild variant="outline" className="h-11">
+                <Link href="/dashboard/threat-level/history">
+                  Threat level history
                 </Link>
               </Button>
-            )}
+              {canManageThreatLevels(membership.role) ? (
+                <Button asChild className="h-11">
+                  <Link href="/dashboard/threat-level">
+                    {currentThreatLevel
+                      ? "Change threat level"
+                      : "Set threat level"}
+                  </Link>
+                </Button>
+              ) : null}
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -301,13 +310,22 @@ async function DashboardContent() {
               posture at a glance.
             </p>
           )}
-          {canManageThreatLevels(membership.role) && (
-            <Button asChild className="h-11 w-full md:hidden">
-              <Link href="/dashboard/threat-level">
-                {currentThreatLevel ? "Change threat level" : "Set threat level"}
+          <div className="flex flex-col gap-2 md:hidden">
+            <Button asChild variant="outline" className="h-11 w-full">
+              <Link href="/dashboard/threat-level/history">
+                Threat level history
               </Link>
             </Button>
-          )}
+            {canManageThreatLevels(membership.role) ? (
+              <Button asChild className="h-11 w-full">
+                <Link href="/dashboard/threat-level">
+                  {currentThreatLevel
+                    ? "Change threat level"
+                    : "Set threat level"}
+                </Link>
+              </Button>
+            ) : null}
+          </div>
         </CardContent>
       </Card>
 

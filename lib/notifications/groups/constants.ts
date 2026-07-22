@@ -20,6 +20,9 @@ export const NOTIFICATION_GROUP_TYPES: {
 export const OPERATIONAL_GROUP_TYPES: ReadonlySet<NotificationGroupType> =
   new Set(["security", "emergency", "medical"]);
 
+/** Shared with DB function notification_group_max_nesting_depth(). */
+export const NOTIFICATION_GROUP_MAX_NESTING_DEPTH = 10;
+
 export const NOTIFICATION_GROUP_STATUSES: {
   value: NotificationGroupStatus;
   label: string;

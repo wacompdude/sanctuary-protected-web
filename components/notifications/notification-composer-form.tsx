@@ -28,6 +28,7 @@ type GroupOption = {
   group_type: string;
   is_system_group: boolean;
   member_count: number;
+  included_group_count: number;
 };
 
 type MemberOption = {
@@ -167,7 +168,8 @@ export function NotificationComposerForm({
         <CardHeader>
           <CardTitle>Audience</CardTitle>
           <CardDescription>
-            Select one or more notification groups. You may also add specific
+            Select one or more notification groups. Nested groups expand to
+            effective members automatically (deduped). You may also add specific
             members. Contact details stay masked from this screen.
           </CardDescription>
         </CardHeader>
@@ -196,7 +198,14 @@ export function NotificationComposerForm({
                       <span className="block text-xs text-muted-foreground">
                         {group.is_system_group
                           ? "System · dynamic membership"
-                          : `${group.member_count} member${group.member_count === 1 ? "" : "s"}`}
+                          : [
+                              `${group.member_count} direct`,
+                              group.included_group_count > 0
+                                ? `${group.included_group_count} nested`
+                                : null,
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")}
                       </span>
                     </span>
                   </label>

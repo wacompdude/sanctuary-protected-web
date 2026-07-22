@@ -97,6 +97,9 @@ export const AuditAction = {
   NOTIFICATION_GROUP_ARCHIVED: "notification_group.archived",
   NOTIFICATION_GROUP_MEMBER_ADDED: "notification_group.member_added",
   NOTIFICATION_GROUP_MEMBER_REMOVED: "notification_group.member_removed",
+  NOTIFICATION_GROUP_CHILD_ADDED: "notification_group.child_group_added",
+  NOTIFICATION_GROUP_CHILD_REMOVED: "notification_group.child_group_removed",
+  NOTIFICATION_GROUP_NESTING_REJECTED: "notification_group.nesting_rejected",
   NOTIFICATION_GROUP_DEFAULTS_UPDATED: "notification_group.defaults_updated",
   NOTIFICATION_ENDPOINT_ADDED: "notification.endpoint_added",
   NOTIFICATION_ENDPOINT_VERIFIED: "notification.endpoint_verified",
@@ -295,6 +298,12 @@ export function labelForAuditAction(action: string): string {
       "Notification group member added",
     [AuditAction.NOTIFICATION_GROUP_MEMBER_REMOVED]:
       "Notification group member removed",
+    [AuditAction.NOTIFICATION_GROUP_CHILD_ADDED]:
+      "Nested notification group added",
+    [AuditAction.NOTIFICATION_GROUP_CHILD_REMOVED]:
+      "Nested notification group removed",
+    [AuditAction.NOTIFICATION_GROUP_NESTING_REJECTED]:
+      "Notification group nesting rejected",
     [AuditAction.NOTIFICATION_GROUP_DEFAULTS_UPDATED]:
       "Notification group defaults updated",
     [AuditAction.NOTIFICATION_ENDPOINT_ADDED]: "Notification endpoint added",

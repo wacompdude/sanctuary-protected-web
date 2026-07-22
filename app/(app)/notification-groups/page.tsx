@@ -46,8 +46,9 @@ async function NotificationGroupsContent() {
         <CardHeader>
           <CardTitle>Notification groups not configured</CardTitle>
           <CardDescription>
-            Run <code>supabase/migrations/029_notification_groups.sql</code> in
-            the Supabase SQL Editor, then reload.
+            Run <code>029_notification_groups.sql</code> (and{" "}
+            <code>039_notification_group_nesting.sql</code> for nested groups)
+            in the Supabase SQL Editor, then reload.
           </CardDescription>
         </CardHeader>
       </Card>
@@ -117,7 +118,10 @@ async function NotificationGroupsContent() {
                       Campus
                     </th>
                     <th className="pb-3 pr-4 font-medium text-muted-foreground">
-                      Members
+                      Direct
+                    </th>
+                    <th className="pb-3 pr-4 font-medium text-muted-foreground">
+                      Included
                     </th>
                     <th className="pb-3 font-medium text-muted-foreground">
                       Updated
@@ -156,6 +160,9 @@ async function NotificationGroupsContent() {
                         {group.is_system_group
                           ? "Dynamic"
                           : group.member_count}
+                      </td>
+                      <td className="py-3 pr-4 text-muted-foreground">
+                        {group.included_group_count}
                       </td>
                       <td className="py-3 text-muted-foreground">
                         {formatChurchDate(group.updated_at, {

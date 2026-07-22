@@ -172,6 +172,87 @@ export async function listNotificationGroupMembers(
 
   if (rows.length === 0) return [];
 
+  return enrichGroupMembers(supabase, churchId, rows);
+}
+
+/**
+ * Members shown on the group detail page.
+ * System/dynamic groups are expanded from church_memberships using the same
+ * rules as send-time audience resolution.
+ */
+export async function listEffectiveNotificationGroupMembers(
+  churchId: string,
+  group: Pick<
+    NotificationGroup,
+    | "id"
+    | "is_system_group"
+    | "dynamic_rule_type"
+    | "dynamic_rule_value"
+    | "status"
+  >,
+): Promise<NotificationGroupMember[]> {
+  if (!group.is_system_group || !group.dynamic_rule_type) {
+    return listNotificationGroupMembers(churchId, group.id);
+  }
+
+  const supabase = await createClient();
+  let query = supabase
+    .from("church_memberships")
+    .select("id, user_id, role, status, created_at")
+    .eq("church_id", churchId)
+    .eq("status", "active")
+    .order("created_at", { ascending: true });
+
+  if (group.dynamic_rule_type === "role" && group.dynamic_rule_value) {
+    query = query.eq("role", group.dynamic_rule_value);
+  } else if (
+    group.dynamic_rule_type === "membership_status" &&
+    group.dynamic_rule_value === "active"
+  ) {
+    // already filtered to active
+  } else {
+    return [];
+  }
+
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+
+  const rows = ((data ?? []) as Array<{
+    id: string;
+    user_id: string;
+    role: string;
+    created_at: string;
+  }>).map((row) => ({
+    id: `dynamic:${row.id}`,
+    church_id: churchId,
+    group_id: group.id,
+    membership_id: row.id,
+    user_id: row.user_id,
+    status: "active" as const,
+    added_by: null,
+    added_at: row.created_at,
+    removed_at: null,
+  }));
+
+  if (rows.length === 0) return [];
+  return enrichGroupMembers(supabase, churchId, rows);
+}
+
+async function enrichGroupMembers(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  churchId: string,
+  rows: Array<{
+    id: string;
+    church_id: string;
+    group_id: string;
+    membership_id: string;
+    user_id: string;
+    status: NotificationGroupMember["status"];
+    added_by: string | null;
+    added_at: string;
+    removed_at: string | null;
+  }>,
+): Promise<NotificationGroupMember[]> {
   const membershipIds = rows.map((row) => row.membership_id);
   const userIds = [...new Set(rows.map((row) => row.user_id))];
 
@@ -211,11 +292,13 @@ export async function listNotificationGroupMembers(
     }),
   );
 
-  return rows.map((row) => ({
-    ...row,
-    display_name: nameByUser.get(row.user_id) ?? "Member",
-    role: roleByMembership.get(row.membership_id) ?? null,
-  }));
+  return rows
+    .map((row) => ({
+      ...row,
+      display_name: nameByUser.get(row.user_id) ?? "Member",
+      role: roleByMembership.get(row.membership_id) ?? null,
+    }))
+    .sort((a, b) => a.display_name.localeCompare(b.display_name));
 }
 
 export async function listNotificationGroupDefaults(

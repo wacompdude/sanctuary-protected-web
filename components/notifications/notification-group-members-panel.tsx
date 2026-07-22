@@ -64,10 +64,38 @@ export function NotificationGroupMembersPanel({
         <CardHeader>
           <CardTitle>Members</CardTitle>
           <CardDescription>
-            This system group is resolved dynamically from church memberships.
-            Manual member changes are not allowed.
+            Resolved dynamically from church memberships
+            {members.length > 0
+              ? ` · ${members.length} active member${members.length === 1 ? "" : "s"}`
+              : ""}
+            . Manual member changes are not allowed.
           </CardDescription>
         </CardHeader>
+        <CardContent>
+          {members.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No active church members currently match this group&apos;s rule.
+            </p>
+          ) : (
+            <ul className="divide-y divide-border rounded-md border border-border">
+              {members.map((member) => (
+                <li
+                  key={member.id}
+                  className="flex flex-wrap items-center justify-between gap-2 px-3 py-2"
+                >
+                  <div>
+                    <p className="text-sm font-medium">{member.display_name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {member.role
+                        ? labelForMembershipRole(member.role)
+                        : "Member"}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
       </Card>
     );
   }

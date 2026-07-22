@@ -26,7 +26,7 @@ import {
 import {
   getNotificationGroup,
   listNotificationGroupDefaults,
-  listNotificationGroupMembers,
+  listEffectiveNotificationGroupMembers,
 } from "@/lib/notifications/groups/queries";
 import {
   labelForGroupStatus,
@@ -65,7 +65,7 @@ async function GroupDetailContent({ id }: { id: string }) {
   );
 
   const [members, defaults, team] = await Promise.all([
-    listNotificationGroupMembers(church.id, group.id),
+    listEffectiveNotificationGroupMembers(church.id, group),
     listNotificationGroupDefaults(church.id, group.id),
     listChurchTeamMemberships(church.id).catch(() => []),
   ]);

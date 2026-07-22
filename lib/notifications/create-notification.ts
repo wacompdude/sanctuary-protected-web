@@ -310,7 +310,9 @@ export async function createNotification(
             delivered_at: new Date().toISOString(),
             sent_at: new Date().toISOString(),
             endpoint_id: null,
-            normalized_destination: "in_app",
+            // Unique per recipient (see notification_deliveries_dedupe_active_idx).
+            normalized_destination:
+              planned.normalizedDestination ?? `in_app:${planned.userId}`,
             source_groups: planned.sourceGroups,
             preference_rule_applied: planned.preferenceRuleApplied,
             override_applied: planned.overrideApplied,
@@ -374,9 +376,29 @@ export async function createNotification(
           deliveryCount = deliveries?.length ?? 0;
         } else {
           console.error(
-            "createNotification deliveries failed:",
+            "createNotification deliveries batch failed:",
             deliveryError.message,
           );
+          // Fall back to per-row inserts so one bad row cannot wipe email + in-app.
+          for (const row of deliveryInserts) {
+            const { data: one, error: oneError } = await admin
+              .from("notification_deliveries")
+              .insert(row)
+              .select("id")
+              .maybeSingle();
+            if (!oneError && one) {
+              deliveryCount += 1;
+            } else if (oneError) {
+              console.error(
+                "createNotification delivery row failed:",
+                oneError.message,
+                {
+                  channel: row.channel,
+                  normalized_destination: row.normalized_destination,
+                },
+              );
+            }
+          }
         }
       }
     }

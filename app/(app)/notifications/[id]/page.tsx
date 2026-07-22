@@ -124,14 +124,25 @@ async function NotificationDetailContent({ id }: { id: string }) {
         <CardHeader>
           <CardTitle>Delivery status</CardTitle>
           <CardDescription>
-            Channel status and provider responses are role-restricted.
+            {canViewAll
+              ? "All channel deliveries for this notification."
+              : "Shows deliveries for your recipient record. Leaders can view full history under Notification history."}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {rows.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No delivery rows recorded.
-            </p>
+            <div className="space-y-2 text-sm text-muted-foreground">
+              <p>No delivery rows recorded for this view.</p>
+              <p>
+                If this notification was just created and email/in-app alerts were
+                expected, deliveries may have failed to insert. Try resending the
+                incident alert, or check that{" "}
+                <code className="rounded bg-muted px-1 py-0.5 text-xs">
+                  SUPABASE_SERVICE_ROLE_KEY
+                </code>{" "}
+                is configured on the server.
+              </p>
+            </div>
           ) : (
             <ul className="space-y-3">
               {rows.map((row) => (

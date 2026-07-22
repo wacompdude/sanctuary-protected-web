@@ -747,7 +747,9 @@ export async function resolveNotificationAudience(params: {
           role: member.role,
           channel: "in_app",
           destination: null,
-          normalizedDestination: "in_app",
+          // Must be unique per recipient — DB unique index is
+          // (notification_id, channel, lower(normalized_destination)).
+          normalizedDestination: `in_app:${member.userId}`,
           endpointId: null,
           sourceGroups: member.sourceGroups,
           preferenceRuleApplied: decision.preferenceRuleApplied,

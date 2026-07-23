@@ -144,6 +144,9 @@ export const AuditAction = {
   SCHEDULE_TEMPLATE_UPDATED: "schedule.template_updated",
   SCHEDULE_TEMPLATE_ARCHIVED: "schedule.template_archived",
   SCHEDULE_TEMPLATE_APPLIED: "schedule.template_applied",
+  DASHBOARD_BOX_SETTINGS_UPDATED: "dashboard.box_settings_updated",
+  DASHBOARD_BOX_SETTING_RESET: "dashboard.box_setting_reset",
+  DASHBOARD_BOX_SETTINGS_RESET_ALL: "dashboard.box_settings_reset_all",
 } as const;
 
 export type AuditActionName = (typeof AuditAction)[keyof typeof AuditAction];
@@ -187,6 +190,7 @@ export const AuditEntityType = {
   MEMBER_UNAVAILABILITY: "member_unavailability",
   SCHEDULE_SETTINGS: "schedule_settings",
   SCHEDULE_TEMPLATE: "schedule_template",
+  DASHBOARD_BOX_SETTINGS: "dashboard_box_settings",
 } as const;
 
 export type AuditEntityTypeName =
@@ -352,6 +356,11 @@ export function labelForAuditAction(action: string): string {
     [AuditAction.SCHEDULE_TEMPLATE_UPDATED]: "Schedule template updated",
     [AuditAction.SCHEDULE_TEMPLATE_ARCHIVED]: "Schedule template archived",
     [AuditAction.SCHEDULE_TEMPLATE_APPLIED]: "Schedule template applied",
+    [AuditAction.DASHBOARD_BOX_SETTINGS_UPDATED]:
+      "Dashboard box settings updated",
+    [AuditAction.DASHBOARD_BOX_SETTING_RESET]: "Dashboard box setting reset",
+    [AuditAction.DASHBOARD_BOX_SETTINGS_RESET_ALL]:
+      "Dashboard box settings reset to defaults",
     // Legacy rows from earlier phases
     "membership.invitation_created": "Member invited",
     "membership.invitation_accepted": "Invitation accepted",

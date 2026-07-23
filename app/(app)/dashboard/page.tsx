@@ -1,4 +1,4 @@
-import { Suspense, type CSSProperties } from "react";
+import { Suspense } from "react";
 import Link from "next/link";
 import {
   Card,
@@ -7,6 +7,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { DashboardStatBox } from "@/components/dashboard/dashboard-stat-box";
+import { Button } from "@/components/ui/button";
 import {
   ChurchAccessError,
   getAuthenticatedUserWithChurch,
@@ -15,7 +17,6 @@ import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
 import { getCertificationCounts } from "@/lib/certifications/queries";
 import { listIncidentsForChurch } from "@/lib/incidents/queries";
 import { getUnacknowledgedEventCount } from "@/lib/events/queries";
-import { Button } from "@/components/ui/button";
 import { formatDateTime } from "@/lib/incidents/format";
 import { formatChurchDateTime } from "@/lib/datetime/format";
 import { getCurrentChurchThreatLevel } from "@/lib/church/threat-level-queries";
@@ -34,66 +35,18 @@ import {
   campusFilterOrClause,
   resolveCampusFilter,
 } from "@/lib/campuses/filter";
-
-type DashboardStatTone =
-  | "red"
-  | "orange"
-  | "blue"
-  | "yellow"
-  | "silver"
-  | "bright-red";
-
-const DASHBOARD_STAT_TONES: Record<
-  DashboardStatTone,
-  {
-    card: CSSProperties;
-    textClass: string;
-    mutedTextClass: string;
-  }
-> = {
-  red: {
-    card: threatLevelBadgeStyle("red"),
-    textClass: "text-red-950",
-    mutedTextClass: "text-red-950/70",
-  },
-  orange: {
-    card: threatLevelBadgeStyle("orange"),
-    textClass: "text-orange-950",
-    mutedTextClass: "text-orange-950/70",
-  },
-  blue: {
-    card: threatLevelBadgeStyle("blue"),
-    textClass: "text-blue-950",
-    mutedTextClass: "text-blue-950/70",
-  },
-  yellow: {
-    card: threatLevelBadgeStyle("yellow"),
-    textClass: "text-yellow-950",
-    mutedTextClass: "text-yellow-950/70",
-  },
-  silver: {
-    card: {
-      backgroundColor: "#c0c0c0",
-      borderColor: "#9ca3af",
-      borderStyle: "solid",
-      borderWidth: "1px",
-      color: "#111111",
-    },
-    textClass: "text-neutral-900",
-    mutedTextClass: "text-neutral-800/75",
-  },
-  "bright-red": {
-    card: {
-      backgroundColor: "#ff1a1a",
-      borderColor: "#b91c1c",
-      borderStyle: "solid",
-      borderWidth: "1px",
-      color: "#ffffff",
-    },
-    textClass: "text-white",
-    mutedTextClass: "text-white/85",
-  },
-};
+import {
+  canManageDashboardCustomization,
+  resolveDashboardBoxSettings,
+} from "@/lib/dashboard";
+import {
+  dashboardBoxNeedsCertifications,
+  dashboardBoxNeedsEvents,
+  dashboardBoxNeedsIncidents,
+  getDashboardBoxValue,
+  type DashboardBoxDataContext,
+} from "@/lib/dashboard/box-values";
+import type { DashboardBoxKey } from "@/lib/dashboard/types";
 
 async function DashboardContent() {
   const { church, membership, user } = await getAuthenticatedUserWithChurch();
@@ -104,130 +57,69 @@ async function DashboardContent() {
   });
   const campusOr = campusFilterOrClause(campusFilter);
   const filterLabel = campusFilterLabel(campusFilter);
+  const canSeeManagerSchedule = canManageSchedule(membership.role);
+  const canCustomize = canManageDashboardCustomization(membership.role);
 
-  const [certCounts, incidents, unackedEvents, currentThreatLevel, schedule] =
-    await Promise.all([
-      getCertificationCounts(church.id),
-      listIncidentsForChurch(church.id, "occurred_at_desc", {
-        campusFilterOr: campusOr,
-      }).catch(() => []),
-      getUnacknowledgedEventCount(church.id, {
-        campusFilterOr: campusOr,
-      }).catch(() => 0),
-      getCurrentChurchThreatLevel(church.id).catch(() => null),
-      getScheduleDashboardSummary(
-        church.id,
-        user.id,
-        church.timezone ?? "America/Los_Angeles",
-        { campusFilterOr: campusOr },
-      ).catch(() => null),
-    ]);
+  const resolvedBoxes = await resolveDashboardBoxSettings({
+    churchId: church.id,
+    userRole: membership.role,
+    canManageSchedule: canSeeManagerSchedule,
+    includeHidden: false,
+  });
+
+  const visibleKeys = resolvedBoxes.map((box) => box.key);
+  const needsIncidents = dashboardBoxNeedsIncidents(visibleKeys);
+  const needsEvents = dashboardBoxNeedsEvents(visibleKeys);
+  const needsCertifications = dashboardBoxNeedsCertifications(visibleKeys);
+
+  const [
+    certCounts,
+    incidents,
+    unackedEvents,
+    currentThreatLevel,
+    schedule,
+  ] = await Promise.all([
+    needsCertifications
+      ? getCertificationCounts(church.id)
+      : Promise.resolve({ expiring_soon: 0, expired: 0 }),
+    needsIncidents
+      ? listIncidentsForChurch(church.id, "occurred_at_desc", {
+          campusFilterOr: campusOr,
+        }).catch(() => [])
+      : Promise.resolve([]),
+    needsEvents
+      ? getUnacknowledgedEventCount(church.id, {
+          campusFilterOr: campusOr,
+        }).catch(() => 0)
+      : Promise.resolve(0),
+    getCurrentChurchThreatLevel(church.id).catch(() => null),
+    // Always load for “My next shift”; also powers visible schedule boxes.
+    getScheduleDashboardSummary(
+      church.id,
+      user.id,
+      church.timezone ?? "America/Los_Angeles",
+      { campusFilterOr: campusOr },
+    ).catch(() => null),
+  ]);
 
   const openIncidents = incidents.filter(
     (incident) =>
       incident.status === "open" || incident.status === "investigating",
   ).length;
 
-  const canSeeManagerSchedule = canManageSchedule(membership.role);
+  const boxData: DashboardBoxDataContext = {
+    openIncidents,
+    totalIncidents: incidents.length,
+    unacknowledgedEvents: unackedEvents,
+    certificationsExpiring: certCounts.expiring_soon,
+    certificationsExpired: certCounts.expired,
+    schedule,
+  };
 
-  const stats = [
-    {
-      label: "Active Incidents",
-      value: String(openIncidents),
-      description: `${incidents.length} total on record`,
-      href: "/incidents",
-      tone: "red" as const,
-    },
-    {
-      label: "Unacknowledged Events",
-      value: String(unackedEvents),
-      description: "Device alerts needing review",
-      href: "/events",
-      tone: "orange" as const,
-    },
-    {
-      label: "Camera Events",
-      value: "—",
-      description: "Placeholder — camera feed alerts coming soon",
-      href: "/cameras",
-      tone: "silver" as const,
-      placeholder: true,
-    },
-    {
-      label: "Security Alarm Events",
-      value: "—",
-      description: "Placeholder — alarm monitoring coming soon",
-      href: "/sensors",
-      tone: "bright-red" as const,
-      placeholder: true,
-    },
-    {
-      label: "Expiring Certifications",
-      value: String(certCounts.expiring_soon),
-      description: "Expiring within 60 days (church-wide)",
-      href: "/certifications",
-      tone: "blue" as const,
-    },
-    {
-      label: "Expired Certifications",
-      value: String(certCounts.expired),
-      description: "Need renewal (church-wide)",
-      href: "/certifications",
-      tone: "yellow" as const,
-    },
-  ];
-
-  const scheduleStats =
-    schedule?.tablesAvailable
-      ? [
-          {
-            label: "Upcoming Events",
-            value: String(schedule.upcomingEvents),
-            description: "Next 7 days",
-            href: "/schedule/events",
-            tone: "blue" as const,
-          },
-          {
-            label: "Today's Shifts",
-            value: String(schedule.todaysShifts),
-            description: "Coverage windows today",
-            href: "/schedule/shifts",
-            tone: "orange" as const,
-          },
-          ...(canSeeManagerSchedule
-            ? [
-                {
-                  label: "Unfilled Shifts",
-                  value: String(schedule.unfilledShifts),
-                  description: "Next 7 days needing staff",
-                  href: "/schedule/shifts?unfilled=1",
-                  tone: "red" as const,
-                },
-                {
-                  label: "Pending Responses",
-                  value: String(schedule.pendingResponses),
-                  description: "Invites awaiting accept/decline",
-                  href: "/schedule/shifts",
-                  tone: "yellow" as const,
-                },
-                {
-                  label: "Unavailable Today",
-                  value: String(schedule.unavailableToday),
-                  description: "Active unavailability blocks",
-                  href: "/schedule/availability?view=team",
-                  tone: "silver" as const,
-                },
-              ]
-            : []),
-          {
-            label: "Upcoming Training",
-            value: String(schedule.upcomingTraining),
-            description: "Training events in 7 days",
-            href: "/schedule/events?eventType=training",
-            tone: "blue" as const,
-          },
-        ]
-      : [];
+  const scheduleTablesAvailable = Boolean(schedule?.tablesAvailable);
+  const displayBoxes = resolvedBoxes.filter(
+    (box) => box.category !== "schedule" || scheduleTablesAvailable,
+  );
 
   return (
     <>
@@ -329,66 +221,72 @@ async function DashboardContent() {
         </CardContent>
       </Card>
 
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="mt-1 text-muted-foreground">
-          Overview for {church.name} · {filterLabel}
-          {campusFilter.mode === "all" &&
-          !campusFilter.implicitAllAccess &&
-          campusFilter.accessibleCampusIds.length > 0
-            ? ` (${campusFilter.accessibleCampusIds.length} authorized)`
-            : ""}
-          .
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <p className="mt-1 text-muted-foreground">
+            Overview for {church.name} · {filterLabel}
+            {campusFilter.mode === "all" &&
+            !campusFilter.implicitAllAccess &&
+            campusFilter.accessibleCampusIds.length > 0
+              ? ` (${campusFilter.accessibleCampusIds.length} authorized)`
+              : ""}
+            .
+          </p>
+        </div>
+        {canCustomize ? (
+          <Button asChild variant="outline" className="h-11">
+            <Link href="/settings/dashboard">Customize boxes</Link>
+          </Button>
+        ) : null}
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-        {stats.map((stat) => {
-          const tone = DASHBOARD_STAT_TONES[stat.tone];
+      {displayBoxes.length > 0 ? (
+        <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+          {displayBoxes.map((box) => {
+            const { value, description } = getDashboardBoxValue(
+              box.key as DashboardBoxKey,
+              boxData,
+            );
+            return (
+              <DashboardStatBox
+                key={box.key}
+                box={box}
+                value={value}
+                description={description}
+              />
+            );
+          })}
+        </div>
+      ) : (
+        <Card>
+          <CardContent className="py-6 text-sm text-muted-foreground">
+            No dashboard boxes are visible
+            {canCustomize ? (
+              <>
+                .{" "}
+                <Link
+                  href="/settings/dashboard"
+                  className="underline underline-offset-2"
+                >
+                  Customize boxes
+                </Link>{" "}
+                to show summary tiles again.
+              </>
+            ) : (
+              "."
+            )}
+          </CardContent>
+        </Card>
+      )}
 
-          return (
-            <Link
-              key={stat.label}
-              href={stat.href}
-              className="block"
-              aria-disabled={stat.placeholder ? true : undefined}
-            >
-              <Card
-                className="h-full border shadow-none transition-opacity hover:opacity-90"
-                style={tone.card}
-              >
-                <CardHeader className="space-y-1 p-3 pb-1">
-                  <CardDescription
-                    className={`text-xs leading-snug ${tone.mutedTextClass}`}
-                  >
-                    {stat.label}
-                  </CardDescription>
-                  <CardTitle
-                    className={`text-xl font-semibold tabular-nums ${tone.textClass}`}
-                  >
-                    {stat.value}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-3 pt-0">
-                  <p
-                    className={`text-xs leading-snug ${tone.mutedTextClass}`}
-                  >
-                    {stat.description}
-                  </p>
-                </CardContent>
-              </Card>
-            </Link>
-          );
-        })}
-      </div>
-
-      {schedule?.tablesAvailable ? (
+      {scheduleTablesAvailable ? (
         <div className="space-y-3">
           <div className="flex flex-wrap items-end justify-between gap-2">
             <div>
               <h2 className="text-xl font-semibold tracking-tight">Scheduling</h2>
               <p className="text-sm text-muted-foreground">
-                Live coverage and staffing signals
+                Your upcoming coverage
                 {campusFilter.mode === "campus"
                   ? ` for ${filterLabel}`
                   : " across authorized campuses"}
@@ -400,7 +298,7 @@ async function DashboardContent() {
             </Button>
           </div>
 
-          {schedule.myNextShift ? (
+          {schedule?.myNextShift ? (
             <Card>
               <CardHeader className="pb-2">
                 <CardDescription>My next shift</CardDescription>
@@ -438,40 +336,6 @@ async function DashboardContent() {
               </CardContent>
             </Card>
           )}
-
-          <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-            {scheduleStats.map((stat) => {
-              const tone = DASHBOARD_STAT_TONES[stat.tone];
-              return (
-                <Link key={stat.label} href={stat.href} className="block">
-                  <Card
-                    className="h-full border shadow-none transition-opacity hover:opacity-90"
-                    style={tone.card}
-                  >
-                    <CardHeader className="space-y-1 p-3 pb-1">
-                      <CardDescription
-                        className={`text-xs leading-snug ${tone.mutedTextClass}`}
-                      >
-                        {stat.label}
-                      </CardDescription>
-                      <CardTitle
-                        className={`text-xl font-semibold tabular-nums ${tone.textClass}`}
-                      >
-                        {stat.value}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-3 pt-0">
-                      <p
-                        className={`text-xs leading-snug ${tone.mutedTextClass}`}
-                      >
-                        {stat.description}
-                      </p>
-                    </CardContent>
-                  </Card>
-                </Link>
-              );
-            })}
-          </div>
         </div>
       ) : null}
     </>

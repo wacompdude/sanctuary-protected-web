@@ -61,6 +61,7 @@ const NAV_ICONS: Partial<Record<NavItemId, LucideIcon>> = {
   "schedule-notifications": Bell,
   "schedule-templates": CalendarDays,
   "scheduling-settings": CalendarDays,
+  "dashboard-settings": LayoutDashboard,
   notifications: Bell,
   "notification-inbox": Inbox,
   "notification-groups": Layers,

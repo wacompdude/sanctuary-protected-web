@@ -46,6 +46,7 @@ export type NavItemId =
   | "schedule-notifications"
   | "schedule-templates"
   | "scheduling-settings"
+  | "dashboard-settings"
   | "settings"
   | "church-settings"
   | "security-settings"
@@ -302,6 +303,13 @@ export const APP_NAV_SECTIONS: NavSection[] = [
             href: "/settings/scheduling",
             minRole: "administrator",
             label: "Scheduling",
+          },
+          {
+            kind: "link",
+            id: "dashboard-settings",
+            href: "/settings/dashboard",
+            minRole: "administrator",
+            label: "Dashboard",
           },
           {
             kind: "link",

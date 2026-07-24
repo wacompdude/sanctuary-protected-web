@@ -4,7 +4,12 @@ import type {
   NotificationSendResult,
 } from "@/lib/notifications/types";
 
-/** Placeholder until SMS consent + provider are configured. */
+/**
+ * Placeholder until SMS consent + provider are configured.
+ * When a real provider succeeds, call
+ * `recordSmsSegmentsConsumed({ churchId, deliveryId, segments })`
+ * from the dispatch path (idempotent by delivery id).
+ */
 export class SmsProviderPlaceholder implements NotificationProvider {
   channel = "sms" as const;
   name = "sms_placeholder";

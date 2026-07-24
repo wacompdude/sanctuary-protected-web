@@ -15,6 +15,8 @@ import {
 import { validateScheduleSettingsForm } from "@/lib/schedule/settings-validation";
 import type { ScheduleActionState } from "@/lib/schedule/types";
 import { createClient } from "@/lib/supabase/server";
+import { FEATURE_KEYS } from "@/lib/subscriptions/feature-keys";
+import { requireFeature } from "@/lib/subscriptions/resolver";
 
 export async function updateScheduleSettingsAction(
   _prev: ScheduleActionState,
@@ -27,6 +29,11 @@ export async function updateScheduleSettingsAction(
         "You do not have permission to manage scheduling settings.",
       );
     }
+
+    await requireFeature({
+      churchId: church.id,
+      featureKey: FEATURE_KEYS.TEAM_SCHEDULING,
+    });
 
     const validated = validateScheduleSettingsForm(formData);
     if (!validated.data) {

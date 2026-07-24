@@ -40,6 +40,10 @@ export function NewIncidentForm({
   timeZone,
   campuses = [],
   defaultCampusId = "",
+  photosEnabled = true,
+  photoMaxCount = 2,
+  photoMaxBytes = 10 * 1024 * 1024,
+  medicalUsageEnabled = true,
 }: {
   requireLocation?: boolean;
   requireSeverity?: boolean;
@@ -48,6 +52,10 @@ export function NewIncidentForm({
   timeZone?: string | null;
   campuses?: CampusScopeOption[];
   defaultCampusId?: string;
+  photosEnabled?: boolean;
+  photoMaxCount?: number;
+  photoMaxBytes?: number;
+  medicalUsageEnabled?: boolean;
 }) {
   const router = useRouter();
   const [occurredAt, setOccurredAt] = useState("");
@@ -235,8 +243,13 @@ export function NewIncidentForm({
             </p>
           )}
 
-          {incidentType === "medical" && (
+          {incidentType === "medical" && medicalUsageEnabled && (
             <MedicalSuppliesUsedFields supplies={medicalSupplies} />
+          )}
+          {incidentType === "medical" && !medicalUsageEnabled && (
+            <p className="text-sm text-muted-foreground">
+              Recording medical supply usage is not included in your plan.
+            </p>
           )}
           {state.fieldErrors?.medical_supplies && (
             <p className="text-sm text-destructive">
@@ -244,7 +257,21 @@ export function NewIncidentForm({
             </p>
           )}
 
-          <IncidentPhotoPicker error={state.fieldErrors?.photos} />
+          {photosEnabled ? (
+            <IncidentPhotoPicker
+              error={state.fieldErrors?.photos}
+              maxCount={photoMaxCount}
+              maxBytes={photoMaxBytes}
+              remainingSlots={photoMaxCount}
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Incident photo uploads are not included in your plan.
+            </p>
+          )}
+          {state.fieldErrors?.photos && !photosEnabled && (
+            <p className="text-sm text-destructive">{state.fieldErrors.photos}</p>
+          )}
 
           <div className="flex gap-3">
             <Button type="submit" disabled={pending}>

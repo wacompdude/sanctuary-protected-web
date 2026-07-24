@@ -13,10 +13,20 @@ import {
   defaultCampusIdForForm,
   resolveCampusFilter,
 } from "@/lib/campuses/filter";
+import { FEATURE_KEYS } from "@/lib/subscriptions/feature-keys";
+import { getIncidentPhotoEntitlements } from "@/lib/subscriptions/enforcement";
+import { hasFeature } from "@/lib/subscriptions/resolver";
 
 async function NewIncidentContent() {
   const { supabase, church, user, membership } = await getOperationalChurchContext();
-  const [campusFilter, { data }, medicalSupplies, teamMembers] = await Promise.all([
+  const [
+    campusFilter,
+    { data },
+    medicalSupplies,
+    teamMembers,
+    photoEntitlements,
+    medicalUsage,
+  ] = await Promise.all([
     resolveCampusFilter({
       churchId: church.id,
       userId: user.id,
@@ -31,6 +41,11 @@ async function NewIncidentContent() {
       .maybeSingle(),
     listAvailableSuppliesForIncident(church.id).catch(() => []),
     listActiveIncidentTeamMembers(church.id).catch(() => []),
+    getIncidentPhotoEntitlements(church.id),
+    hasFeature({
+      churchId: church.id,
+      featureKey: FEATURE_KEYS.MEDICAL_INCIDENT_USAGE,
+    }),
   ]);
 
   return (
@@ -51,11 +66,15 @@ async function NewIncidentContent() {
       <NewIncidentForm
         requireLocation={data?.require_incident_location ?? true}
         requireSeverity={data?.require_incident_severity ?? true}
-        medicalSupplies={medicalSupplies}
+        medicalSupplies={medicalUsage.allowed ? medicalSupplies : []}
         teamMembers={teamMembers}
         timeZone={church.timezone}
         campuses={campusFilter.accessibleCampuses}
         defaultCampusId={defaultCampusIdForForm(campusFilter)}
+        photosEnabled={photoEntitlements.enabled}
+        photoMaxCount={photoEntitlements.maxCount}
+        photoMaxBytes={photoEntitlements.maxBytes}
+        medicalUsageEnabled={medicalUsage.allowed}
       />
     </>
   );

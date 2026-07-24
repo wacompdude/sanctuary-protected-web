@@ -28,6 +28,8 @@ import {
   canManageSecurityEquipment,
   canOperateSecurityEquipment,
 } from "@/lib/security-hardware/types";
+import { FEATURE_KEYS } from "@/lib/subscriptions/feature-keys";
+import { requireFeature } from "@/lib/subscriptions/resolver";
 
 function text(formData: FormData, key: string, max = 2000): string | null {
   const value = String(formData.get(key) ?? "").trim();
@@ -77,6 +79,11 @@ export async function uploadEquipmentAttachments(
       return { error: "You do not have permission to upload attachments." };
     }
 
+    await requireFeature({
+      churchId: church.id,
+      featureKey: FEATURE_KEYS.HARDWARE_INVENTORY,
+    });
+
     const equipment = await getSecurityEquipmentById(equipmentId, church.id);
     if (!equipment) return { error: "Equipment not found." };
 
@@ -94,6 +101,16 @@ export async function uploadEquipmentAttachments(
     const files = collectAttachmentFiles(formData);
     if (files.length === 0) {
       return { fieldErrors: { files: "Choose at least one file to upload." } };
+    }
+
+    const includesPhoto = files.some((file) =>
+      file.type.startsWith("image/"),
+    ) || kind === "photo";
+    if (includesPhoto) {
+      await requireFeature({
+        churchId: church.id,
+        featureKey: FEATURE_KEYS.HARDWARE_PHOTOS,
+      });
     }
 
     const existing = await countAttachments(supabase, equipmentId);

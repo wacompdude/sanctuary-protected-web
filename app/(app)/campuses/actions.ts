@@ -20,6 +20,7 @@ import { canManageCampuses } from "@/lib/campuses/permissions";
 import type { CampusActionState } from "@/lib/campuses/types";
 import { validateCampusForm } from "@/lib/campuses/validation";
 import { createClient } from "@/lib/supabase/server";
+import { requireCampusCreateCapacity } from "@/lib/subscriptions/enforcement";
 
 function isRedirectError(error: unknown): boolean {
   return Boolean(
@@ -78,6 +79,11 @@ export async function createCampusAction(
         fieldErrors: validated.fieldErrors,
       };
     }
+
+    await requireCampusCreateCapacity({
+      churchId: church.id,
+      willBeActive: validated.data.status === "active",
+    });
 
     const supabase = await createClient();
 
@@ -319,6 +325,13 @@ export async function updateCampusStatusAction(
 
     if (existing.status === status) {
       return { success: true, campusId };
+    }
+
+    if (status === "active" && existing.status !== "active") {
+      await requireCampusCreateCapacity({
+        churchId: church.id,
+        willBeActive: true,
+      });
     }
 
     const { error } = await supabase

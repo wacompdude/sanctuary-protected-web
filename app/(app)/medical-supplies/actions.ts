@@ -14,6 +14,8 @@ import {
   type MedicalSupplyActionState,
 } from "@/lib/medical-supplies/types";
 import { validateMedicalSupplyForm } from "@/lib/medical-supplies/validation";
+import { FEATURE_KEYS } from "@/lib/subscriptions/feature-keys";
+import { requireFeature } from "@/lib/subscriptions/resolver";
 
 function revalidateMedicalPaths(supplyId?: string) {
   revalidatePath("/medical-supplies");
@@ -37,6 +39,11 @@ export async function createMedicalSupply(
     if (!canManageMedicalSupplies(membership.role)) {
       return { error: "You do not have permission to add medical supplies." };
     }
+
+    await requireFeature({
+      churchId: church.id,
+      featureKey: FEATURE_KEYS.MEDICAL_INVENTORY,
+    });
 
     const validation = validateMedicalSupplyForm(formData);
     if (validation.fieldErrors || !validation.data) {
@@ -97,6 +104,11 @@ export async function updateMedicalSupply(
     if (!canManageMedicalSupplies(membership.role)) {
       return { error: "You do not have permission to edit medical supplies." };
     }
+
+    await requireFeature({
+      churchId: church.id,
+      featureKey: FEATURE_KEYS.MEDICAL_INVENTORY,
+    });
 
     const existing = await getMedicalSupplyById(supplyId, church.id);
     if (!existing) return { error: "Supply not found." };
@@ -192,6 +204,11 @@ export async function restoreMedicalSupply(
       return { error: "You do not have permission to restore supplies." };
     }
 
+    await requireFeature({
+      churchId: church.id,
+      featureKey: FEATURE_KEYS.MEDICAL_INVENTORY,
+    });
+
     const { error } = await supabase
       .from("medical_supplies")
       .update({
@@ -234,6 +251,11 @@ export async function recordMedicalSupplyUsage(
     if (!canRecordMedicalSupplyUsage(membership.role)) {
       return { error: "You do not have permission to record supply usage." };
     }
+
+    await requireFeature({
+      churchId: church.id,
+      featureKey: FEATURE_KEYS.MEDICAL_INCIDENT_USAGE,
+    });
 
     const supplyId = String(formData.get("medical_supply_id") ?? "").trim();
     const quantityRaw = String(formData.get("quantity_used") ?? "").trim();

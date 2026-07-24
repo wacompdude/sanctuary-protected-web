@@ -264,9 +264,28 @@ export async function updateChurchNotificationSettingsAction(
 
     // From / reply-to are controlled by the platform sender registry (lib/email).
     // Do not accept arbitrary sender addresses from church settings forms.
+    const smsEnabled = readCheckbox(formData, "sms_notifications_enabled");
+    if (smsEnabled) {
+      const { FEATURE_KEYS } = await import("@/lib/subscriptions/feature-keys");
+      const { requireFeature } = await import("@/lib/subscriptions/resolver");
+      await requireFeature({
+        churchId: church.id,
+        featureKey: FEATURE_KEYS.SMS,
+      });
+    }
+    const emailEnabled = readCheckbox(formData, "email_notifications_enabled");
+    if (emailEnabled) {
+      const { FEATURE_KEYS } = await import("@/lib/subscriptions/feature-keys");
+      const { requireFeature } = await import("@/lib/subscriptions/resolver");
+      await requireFeature({
+        churchId: church.id,
+        featureKey: FEATURE_KEYS.EMAIL,
+      });
+    }
+
     const patch = {
-      email_notifications_enabled: readCheckbox(formData, "email_notifications_enabled"),
-      sms_notifications_enabled: readCheckbox(formData, "sms_notifications_enabled"),
+      email_notifications_enabled: emailEnabled,
+      sms_notifications_enabled: smsEnabled,
       push_notifications_enabled: readCheckbox(formData, "push_notifications_enabled"),
       critical_alert_override_enabled: readCheckbox(
         formData,

@@ -58,12 +58,16 @@ export function IncidentPhotosCard({
   canUpload,
   currentUserId,
   canManageAll,
+  maxCount = INCIDENT_PHOTO_MAX_COUNT,
+  maxBytes,
 }: {
   incidentId: string;
   attachments: IncidentAttachment[];
   canUpload: boolean;
   currentUserId: string;
   canManageAll: boolean;
+  maxCount?: number;
+  maxBytes?: number;
 }) {
   const boundUpload = uploadIncidentPhotos.bind(null, incidentId);
   const [state, formAction, pending] = useActionState(boundUpload, initialState);
@@ -77,14 +81,19 @@ export function IncidentPhotosCard({
     }
   }, [state.success, incidentId]);
 
-  const remaining = Math.max(0, INCIDENT_PHOTO_MAX_COUNT - attachments.length);
+  const remaining = Math.max(0, maxCount - attachments.length);
+  const photosEnabled = maxCount > 0;
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Photos</CardTitle>
         <CardDescription>
-          {attachments.length} of {INCIDENT_PHOTO_MAX_COUNT} photos attached.
+          {photosEnabled
+            ? `${attachments.length} of ${maxCount} photos attached.`
+            : attachments.length > 0
+              ? `${attachments.length} photo(s) on file. Uploads are not included in your plan.`
+              : "Incident photo uploads are not included in your plan."}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -128,7 +137,7 @@ export function IncidentPhotosCard({
           </ul>
         )}
 
-        {canUpload && remaining > 0 && (
+        {canUpload && photosEnabled && remaining > 0 && (
           <form
             id={`incident-photos-form-${incidentId}`}
             action={formAction}
@@ -148,6 +157,8 @@ export function IncidentPhotosCard({
               id={`photos-${incidentId}`}
               error={state.fieldErrors?.photos}
               remainingSlots={remaining}
+              maxCount={maxCount}
+              maxBytes={maxBytes}
             />
             <Button type="submit" disabled={pending}>
               {pending ? "Uploading…" : "Upload photos"}
@@ -155,10 +166,9 @@ export function IncidentPhotosCard({
           </form>
         )}
 
-        {canUpload && remaining === 0 && (
+        {canUpload && photosEnabled && remaining === 0 && (
           <p className="text-sm text-muted-foreground">
-            This incident has reached the maximum of {INCIDENT_PHOTO_MAX_COUNT}{" "}
-            photos.
+            This incident has reached the maximum of {maxCount} photos.
           </p>
         )}
       </CardContent>

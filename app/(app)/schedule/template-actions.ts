@@ -21,6 +21,15 @@ import { getScheduleTemplate } from "@/lib/schedule/settings-queries";
 import { validateScheduleTemplateForm } from "@/lib/schedule/template-validation";
 import type { ScheduleActionState } from "@/lib/schedule/types";
 import { createClient } from "@/lib/supabase/server";
+import { FEATURE_KEYS } from "@/lib/subscriptions/feature-keys";
+import { requireFeature } from "@/lib/subscriptions/resolver";
+
+async function requireSchedulingFeature(churchId: string) {
+  await requireFeature({
+    churchId,
+    featureKey: FEATURE_KEYS.TEAM_SCHEDULING,
+  });
+}
 
 async function requireTemplateAdmin() {
   const ctx = await getAuthenticatedUserWithChurch();
@@ -29,6 +38,7 @@ async function requireTemplateAdmin() {
       "You do not have permission to manage schedule templates.",
     );
   }
+  await requireSchedulingFeature(ctx.church.id);
   return ctx;
 }
 
@@ -39,6 +49,7 @@ async function requireScheduleManager() {
       "You do not have permission to apply schedule templates.",
     );
   }
+  await requireSchedulingFeature(ctx.church.id);
   return ctx;
 }
 

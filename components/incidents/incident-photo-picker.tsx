@@ -18,13 +18,18 @@ export function IncidentPhotoPicker({
   id = "photos",
   error,
   remainingSlots = INCIDENT_PHOTO_MAX_COUNT,
+  maxCount = INCIDENT_PHOTO_MAX_COUNT,
+  maxBytes = INCIDENT_PHOTO_MAX_BYTES,
 }: {
   id?: string;
   error?: string;
   remainingSlots?: number;
+  maxCount?: number;
+  maxBytes?: number;
 }) {
   const [previews, setPreviews] = useState<Preview[]>([]);
-  const maxSelectable = Math.max(0, Math.min(INCIDENT_PHOTO_MAX_COUNT, remainingSlots));
+  const maxSelectable = Math.max(0, Math.min(maxCount, remainingSlots));
+  const maxMb = Math.max(1, Math.round(maxBytes / (1024 * 1024)));
 
   useEffect(() => {
     return () => {
@@ -63,8 +68,7 @@ export function IncidentPhotoPicker({
         }}
       />
       <p className="text-xs text-muted-foreground">
-        Up to {maxSelectable} photos · PNG, JPEG, WebP, or GIF ·{" "}
-        {Math.round(INCIDENT_PHOTO_MAX_BYTES / (1024 * 1024))} MB each
+        Up to {maxSelectable} photos · PNG, JPEG, WebP, or GIF · {maxMb} MB each
       </p>
       {error && <p className="text-sm text-destructive">{error}</p>}
       {previews.length > 0 && (

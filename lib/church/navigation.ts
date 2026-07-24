@@ -1,4 +1,5 @@
 import type { MembershipRole } from "@/lib/church/types";
+import { NAV_FEATURE_REQUIREMENTS } from "@/lib/subscriptions/nav-features";
 
 /** Higher number = more privileged. Used for cumulative nav visibility. */
 export const MEMBERSHIP_ROLE_RANK: Record<MembershipRole, number> = {
@@ -408,6 +409,10 @@ function filterEntry(entry: NavEntry, role: MembershipRole): NavEntry | null {
 
 export function getNavSectionsForRole(
   role: MembershipRole | null,
+  options?: {
+    /** Feature keys the church currently has enabled (from entitlements). */
+    enabledFeatures?: ReadonlySet<string>;
+  },
 ): NavSection[] {
   if (!role) {
     return [
@@ -427,11 +432,45 @@ export function getNavSectionsForRole(
     ];
   }
 
+  const membershipRole = role;
+  const enabledFeatures = options?.enabledFeatures;
+
+  function isFeatureAllowed(id: NavItemId): boolean {
+    if (!enabledFeatures) return true;
+    const required = NAV_FEATURE_REQUIREMENTS[id];
+    if (!required) return true;
+    return enabledFeatures.has(required);
+  }
+
+  function filterEntryWithFeatures(entry: NavEntry): NavEntry | null {
+    const filtered = filterEntry(entry, membershipRole);
+    if (!filtered) return null;
+    if (filtered.kind === "link") {
+      return isFeatureAllowed(filtered.id) ? filtered : null;
+    }
+    if (!isFeatureAllowed(filtered.id)) return null;
+    const children = filtered.children.filter((child) =>
+      isFeatureAllowed(child.id),
+    );
+    if (children.length === 0) return null;
+    if (children.length === 1) {
+      const only = children[0]!;
+      return {
+        kind: "link",
+        id: filtered.id,
+        href: only.href,
+        label: filtered.label,
+        minRole: filtered.minRole,
+      };
+    }
+    return { ...filtered, children };
+  }
+
   return APP_NAV_SECTIONS.map((section) => {
-    if (!hasMinRole(role, section.minRole)) return null;
+    if (!hasMinRole(membershipRole, section.minRole)) return null;
 
     const items = section.items
-      .map((entry) => filterEntry(entry, role))
+      .map((entry) => filterEntryWithFeatures(entry))
       .filter((entry): entry is NavEntry => entry != null);
 
     if (items.length === 0) return null;

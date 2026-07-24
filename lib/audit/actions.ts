@@ -147,6 +147,13 @@ export const AuditAction = {
   DASHBOARD_BOX_SETTINGS_UPDATED: "dashboard.box_settings_updated",
   DASHBOARD_BOX_SETTING_RESET: "dashboard.box_setting_reset",
   DASHBOARD_BOX_SETTINGS_RESET_ALL: "dashboard.box_settings_reset_all",
+  SUBSCRIPTION_CREATED: "subscription.created",
+  SUBSCRIPTION_ACTIVATED: "subscription.activated",
+  SUBSCRIPTION_PLAN_CHANGED: "subscription.plan_changed",
+  SUBSCRIPTION_STATUS_CHANGED: "subscription.status_changed",
+  SUBSCRIPTION_TRIAL_STARTED: "subscription.trial_started",
+  SUBSCRIPTION_CANCELLED: "subscription.cancelled",
+  SUBSCRIPTION_REACTIVATED: "subscription.reactivated",
 } as const;
 
 export type AuditActionName = (typeof AuditAction)[keyof typeof AuditAction];
@@ -191,6 +198,8 @@ export const AuditEntityType = {
   SCHEDULE_SETTINGS: "schedule_settings",
   SCHEDULE_TEMPLATE: "schedule_template",
   DASHBOARD_BOX_SETTINGS: "dashboard_box_settings",
+  CHURCH_SUBSCRIPTION: "church_subscription",
+  SUBSCRIPTION_PLAN: "subscription_plan",
 } as const;
 
 export type AuditEntityTypeName =
@@ -361,6 +370,13 @@ export function labelForAuditAction(action: string): string {
     [AuditAction.DASHBOARD_BOX_SETTING_RESET]: "Dashboard box setting reset",
     [AuditAction.DASHBOARD_BOX_SETTINGS_RESET_ALL]:
       "Dashboard box settings reset to defaults",
+    [AuditAction.SUBSCRIPTION_CREATED]: "Subscription created",
+    [AuditAction.SUBSCRIPTION_ACTIVATED]: "Subscription activated",
+    [AuditAction.SUBSCRIPTION_PLAN_CHANGED]: "Subscription plan changed",
+    [AuditAction.SUBSCRIPTION_STATUS_CHANGED]: "Subscription status changed",
+    [AuditAction.SUBSCRIPTION_TRIAL_STARTED]: "Subscription trial started",
+    [AuditAction.SUBSCRIPTION_CANCELLED]: "Subscription cancelled",
+    [AuditAction.SUBSCRIPTION_REACTIVATED]: "Subscription reactivated",
     // Legacy rows from earlier phases
     "membership.invitation_created": "Member invited",
     "membership.invitation_accepted": "Invitation accepted",

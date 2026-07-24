@@ -7,6 +7,8 @@ import { writeActiveChurchCookie } from "@/lib/church/cookie";
 import { setActiveChurchForUser } from "@/lib/church/context";
 import type { ActionState } from "@/lib/church/types";
 import { validateChurchOnboarding } from "@/lib/church/onboarding";
+import { isServiceRoleConfigured } from "@/lib/supabase/admin";
+import { ensureChurchSubscription } from "@/lib/subscriptions/mutations";
 
 export async function createChurchOnboarding(
   _prev: ActionState,
@@ -81,6 +83,24 @@ export async function createChurchOnboarding(
       await setActiveChurchForUser(payload.church_id);
     } catch {
       await writeActiveChurchCookie(payload.church_id);
+    }
+
+    if (isServiceRoleConfigured()) {
+      try {
+        await ensureChurchSubscription({
+          churchId: payload.church_id,
+          status: "trialing",
+          periodDays: 30,
+          userId: user.id,
+          source: "church_onboarding",
+          reason: "Default trial subscription for new church",
+        });
+      } catch (subscriptionError) {
+        console.error(
+          "Failed to assign default church subscription during onboarding:",
+          subscriptionError,
+        );
+      }
     }
   }
 

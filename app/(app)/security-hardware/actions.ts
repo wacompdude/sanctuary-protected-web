@@ -25,6 +25,8 @@ import {
   uploadEquipmentPhotoFiles,
   validateEquipmentPhotoFile,
 } from "@/lib/security-hardware/attachment-storage";
+import { FEATURE_KEYS } from "@/lib/subscriptions/feature-keys";
+import { requireFeature } from "@/lib/subscriptions/resolver";
 
 async function assertCampusBelongsToChurch(
   churchId: string,
@@ -58,12 +60,23 @@ export async function createSecurityEquipment(
       };
     }
 
+    await requireFeature({
+      churchId: church.id,
+      featureKey: FEATURE_KEYS.HARDWARE_INVENTORY,
+    });
+
     const validation = validateEquipmentForm(formData);
     if (validation.fieldErrors || !validation.data) {
       return { fieldErrors: validation.fieldErrors };
     }
 
     const photoFiles = collectEquipmentPhotoFiles(formData);
+    if (photoFiles.length > 0) {
+      await requireFeature({
+        churchId: church.id,
+        featureKey: FEATURE_KEYS.HARDWARE_PHOTOS,
+      });
+    }
     if (photoFiles.length > EQUIPMENT_PHOTO_MAX_COUNT) {
       return {
         fieldErrors: {
@@ -245,6 +258,11 @@ export async function updateSecurityEquipment(
         error: "You do not have permission to update security equipment.",
       };
     }
+
+    await requireFeature({
+      churchId: church.id,
+      featureKey: FEATURE_KEYS.HARDWARE_INVENTORY,
+    });
 
     const existing = await getSecurityEquipmentById(equipmentId, church.id);
     if (!existing) {
@@ -432,6 +450,11 @@ export async function restoreSecurityEquipment(
     if (!canManageSecurityEquipment(membership.role)) {
       return { error: "You do not have permission to restore equipment." };
     }
+
+    await requireFeature({
+      churchId: church.id,
+      featureKey: FEATURE_KEYS.HARDWARE_INVENTORY,
+    });
 
     const existing = await getSecurityEquipmentById(equipmentId, church.id);
     if (!existing) {

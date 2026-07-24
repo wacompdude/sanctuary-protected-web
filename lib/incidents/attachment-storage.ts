@@ -1,8 +1,9 @@
 import { randomUUID } from "crypto";
 
 export const INCIDENT_MEDIA_BUCKET = "incident-media";
+/** Fallback defaults when entitlements are unavailable — prefer plan limits. */
 export const INCIDENT_PHOTO_MAX_BYTES = 10 * 1024 * 1024;
-export const INCIDENT_PHOTO_MAX_COUNT = 5;
+export const INCIDENT_PHOTO_MAX_COUNT = 2;
 export const INCIDENT_SIGNED_URL_SECONDS = 60 * 60;
 
 export const INCIDENT_PHOTO_ALLOWED_MIME = new Set([
@@ -53,12 +54,16 @@ export function collectPhotoFiles(formData: FormData): File[] {
   return files;
 }
 
-export function validateIncidentPhotoFile(file: File): string | null {
+export function validateIncidentPhotoFile(
+  file: File,
+  maxBytes: number = INCIDENT_PHOTO_MAX_BYTES,
+): string | null {
   if (!INCIDENT_PHOTO_ALLOWED_MIME.has(file.type)) {
     return "Use PNG, JPEG, WebP, or GIF images.";
   }
-  if (file.size > INCIDENT_PHOTO_MAX_BYTES) {
-    return "Each photo must be 10 MB or smaller.";
+  if (file.size > maxBytes) {
+    const mb = Math.max(1, Math.round(maxBytes / (1024 * 1024)));
+    return `Each photo must be ${mb} MB or smaller.`;
   }
   return null;
 }

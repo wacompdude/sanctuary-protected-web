@@ -37,6 +37,8 @@ import {
   validateWorkflowNotes,
   type PolicyFormInput,
 } from "@/lib/policies/validation";
+import { FEATURE_KEYS } from "@/lib/subscriptions/feature-keys";
+import { requireFeature } from "@/lib/subscriptions/resolver";
 import {
   countWords,
   formatVersionLabel,
@@ -265,6 +267,11 @@ export async function createPolicy(
       return { error: "You do not have permission to create policies." };
     }
 
+    await requireFeature({
+      churchId: church.id,
+      featureKey: FEATURE_KEYS.POLICIES,
+    });
+
     const validation = validatePolicyForm(formData);
     if (validation.fieldErrors || !validation.data) {
       return { fieldErrors: validation.fieldErrors };
@@ -437,6 +444,11 @@ export async function updatePolicy(
       return { error: "You do not have permission to update policies." };
     }
 
+    await requireFeature({
+      churchId: church.id,
+      featureKey: FEATURE_KEYS.POLICIES,
+    });
+
     const existing = await getPolicyById(church.id, policyId);
     if (!existing) {
       return { error: "Policy not found." };
@@ -569,6 +581,11 @@ async function runWorkflowAction(params: {
     if (!canManagePolicyDocuments(membership.role)) {
       return { error: "You do not have permission to manage policies." };
     }
+
+    await requireFeature({
+      churchId: church.id,
+      featureKey: FEATURE_KEYS.POLICIES,
+    });
 
     const existing = await getPolicyById(church.id, policyId);
     if (!existing) return { error: "Policy not found." };

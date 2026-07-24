@@ -43,6 +43,9 @@ import {
   listAvailableSuppliesForIncident,
   listUsageForIncident,
 } from "@/lib/medical-supplies/queries";
+import { FEATURE_KEYS } from "@/lib/subscriptions/feature-keys";
+import { getIncidentPhotoEntitlements } from "@/lib/subscriptions/enforcement";
+import { hasFeature } from "@/lib/subscriptions/resolver";
 import { ArrowLeft } from "lucide-react";
 
 async function IncidentDetailContent({
@@ -67,18 +70,31 @@ async function IncidentDetailContent({
   const canManageAll = hasMinRole(membership.role, "security_leader");
   const canResendAlert = canCreateOperationalNotifications(membership.role);
   const isMedical = incident.type === "medical";
-  const canRecordSupplies = canRecordMedicalSupplyUsage(membership.role);
   const canManageSupplies = canManageMedicalSupplies(membership.role);
 
-  const [involvedMembers, availableTeamMembers, supplyUsages, availableSupplies] =
-    await Promise.all([
-      listIncidentInvolvedMembers(church.id, incident.id),
-      listActiveIncidentTeamMembers(church.id).catch(() => []),
-      isMedical ? listUsageForIncident(church.id, incident.id) : Promise.resolve([]),
-      isMedical
-        ? listAvailableSuppliesForIncident(church.id)
-        : Promise.resolve([]),
-    ]);
+  const [
+    involvedMembers,
+    availableTeamMembers,
+    supplyUsages,
+    availableSupplies,
+    photoEntitlements,
+    medicalUsage,
+  ] = await Promise.all([
+    listIncidentInvolvedMembers(church.id, incident.id),
+    listActiveIncidentTeamMembers(church.id).catch(() => []),
+    isMedical ? listUsageForIncident(church.id, incident.id) : Promise.resolve([]),
+    isMedical
+      ? listAvailableSuppliesForIncident(church.id)
+      : Promise.resolve([]),
+    getIncidentPhotoEntitlements(church.id),
+    hasFeature({
+      churchId: church.id,
+      featureKey: FEATURE_KEYS.MEDICAL_INCIDENT_USAGE,
+    }),
+  ]);
+
+  const canRecordSupplies =
+    canRecordMedicalSupplyUsage(membership.role) && medicalUsage.allowed;
 
   return (
     <>
@@ -196,6 +212,8 @@ async function IncidentDetailContent({
         canUpload={canUpload}
         currentUserId={user.id}
         canManageAll={canManageAll}
+        maxCount={photoEntitlements.maxCount}
+        maxBytes={photoEntitlements.maxBytes}
       />
 
       <IncidentTeamMembersCard

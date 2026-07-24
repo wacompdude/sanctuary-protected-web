@@ -196,6 +196,13 @@ export async function updateTeamMemberStatus(
       };
     }
 
+    if (nextStatus === "active" && target.status !== "active") {
+      const { requireActiveSeatCapacity } = await import(
+        "@/lib/subscriptions/enforcement"
+      );
+      await requireActiveSeatCapacity({ churchId: church.id });
+    }
+
     const { error: updateError } = await supabase
       .from("church_memberships")
       .update({

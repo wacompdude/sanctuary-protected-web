@@ -4,8 +4,19 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { writeActiveChurchCookie } from "@/lib/church/cookie";
 import { setActiveChurchForUser } from "@/lib/church/context";
-import type { InviteActionState } from "@/lib/church/invitations";
+import {
+  hashInvitationToken,
+  type InviteActionState,
+} from "@/lib/church/invitations";
+import {
+  createAdminClient,
+  isServiceRoleConfigured,
+} from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import {
+  entitlementErrorMessage,
+  requireActiveSeatCapacity,
+} from "@/lib/subscriptions/enforcement";
 
 export async function acceptChurchInvitation(
   _prev: InviteActionState,
@@ -24,6 +35,35 @@ export async function acceptChurchInvitation(
 
   if (!user) {
     redirect(`/login?next=${encodeURIComponent(nextPath)}`);
+  }
+
+  if (isServiceRoleConfigured()) {
+    try {
+      const admin = createAdminClient();
+      const tokenHash = hashInvitationToken(token);
+      const { data: invitation } = await admin
+        .from("church_invitations")
+        .select("church_id, accepted_at, revoked_at, expires_at")
+        .eq("token_hash", tokenHash)
+        .maybeSingle();
+
+      if (
+        invitation?.church_id &&
+        !invitation.accepted_at &&
+        !invitation.revoked_at &&
+        (!invitation.expires_at ||
+          new Date(invitation.expires_at).getTime() >= Date.now())
+      ) {
+        await requireActiveSeatCapacity({
+          churchId: String(invitation.church_id),
+          client: admin,
+        });
+      }
+    } catch (error) {
+      const message = entitlementErrorMessage(error);
+      if (message) return { error: message };
+      throw error;
+    }
   }
 
   const { data, error } = await supabase.rpc("accept_church_invitation", {

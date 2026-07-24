@@ -340,6 +340,43 @@ export async function updateChurchPreferenceSettings(
   );
   if (loaded.error || !loaded.row) return { error: loaded.error };
 
+  try {
+    const { FEATURE_KEYS } = await import("@/lib/subscriptions/feature-keys");
+    const { requireFeature } = await import("@/lib/subscriptions/resolver");
+    const prefs = validation.data.preferences;
+    if (prefs.enable_sms_notifications) {
+      await requireFeature({
+        churchId: editor.context.church.id,
+        featureKey: FEATURE_KEYS.SMS,
+      });
+    }
+    if (prefs.enable_email_notifications) {
+      await requireFeature({
+        churchId: editor.context.church.id,
+        featureKey: FEATURE_KEYS.EMAIL,
+      });
+    }
+    if (prefs.enable_camera_integration) {
+      await requireFeature({
+        churchId: editor.context.church.id,
+        featureKey: FEATURE_KEYS.CAMERAS,
+      });
+    }
+    if (prefs.enable_iot_sensors) {
+      await requireFeature({
+        churchId: editor.context.church.id,
+        featureKey: FEATURE_KEYS.SENSORS,
+      });
+    }
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unable to update preference settings.",
+    };
+  }
+
   const patch = {
     certification_warning_days: validation.data.certification_warning_days,
     settings: validation.data.preferences,

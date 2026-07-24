@@ -17,7 +17,6 @@ import {
 } from "@/lib/incidents/validation";
 import {
   INCIDENT_MEDIA_BUCKET,
-  INCIDENT_PHOTO_MAX_COUNT,
   collectPhotoFiles,
   incidentPhotoObjectPath,
   isIncidentMediaStoragePath,
@@ -31,6 +30,12 @@ import { createNotification } from "@/lib/notifications/create-notification";
 import { mapIncidentSeverityToNotification } from "@/lib/notifications/constants";
 import { canCreateOperationalNotifications } from "@/lib/notifications/permissions";
 import { auditNotificationCreated } from "@/lib/audit/notification-events";
+import { FEATURE_KEYS } from "@/lib/subscriptions/feature-keys";
+import {
+  entitlementErrorMessage,
+  requireIncidentPhotoUpload,
+} from "@/lib/subscriptions/enforcement";
+import { requireFeature } from "@/lib/subscriptions/resolver";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 function parseMedicalSupplyUsages(formData: FormData): {
@@ -217,15 +222,26 @@ async function uploadIncidentPhotoFiles(params: {
   if (files.length === 0) return { uploaded: 0 };
 
   const existing = await countIncidentPhotos(supabase, incidentId);
-  if (existing + files.length > INCIDENT_PHOTO_MAX_COUNT) {
+  let maxBytes = 10 * 1024 * 1024;
+  try {
+    const limits = await requireIncidentPhotoUpload({
+      churchId,
+      existingCount: existing,
+      newCount: files.length,
+      files,
+    });
+    maxBytes = limits.maxBytes;
+  } catch (error) {
     return {
       uploaded: 0,
-      error: `Incidents can have at most ${INCIDENT_PHOTO_MAX_COUNT} photos (${existing} already attached).`,
+      error:
+        entitlementErrorMessage(error) ??
+        (error instanceof Error ? error.message : "Unable to upload photos."),
     };
   }
 
   for (const file of files) {
-    const fileError = validateIncidentPhotoFile(file);
+    const fileError = validateIncidentPhotoFile(file, maxBytes);
     if (fileError) {
       return { uploaded: 0, error: fileError };
     }
@@ -335,6 +351,11 @@ export async function createIncident(
       return { error: "Viewers cannot create incidents." };
     }
 
+    await requireFeature({
+      churchId: context.church.id,
+      featureKey: FEATURE_KEYS.INCIDENT_LOGGING,
+    });
+
     const validation = validateCreateIncidentInput(formData, {
       requireLocation: policy.requireLocation,
       requireSeverity: policy.requireSeverity,
@@ -345,17 +366,25 @@ export async function createIncident(
     }
 
     const photoFiles = collectPhotoFiles(formData);
-    if (photoFiles.length > INCIDENT_PHOTO_MAX_COUNT) {
-      return {
-        fieldErrors: {
-          photos: `You can attach at most ${INCIDENT_PHOTO_MAX_COUNT} photos.`,
-        },
-      };
-    }
-    for (const file of photoFiles) {
-      const fileError = validateIncidentPhotoFile(file);
-      if (fileError) {
-        return { fieldErrors: { photos: fileError } };
+    if (photoFiles.length > 0) {
+      try {
+        await requireIncidentPhotoUpload({
+          churchId: context.church.id,
+          existingCount: 0,
+          newCount: photoFiles.length,
+          files: photoFiles,
+        });
+      } catch (error) {
+        return {
+          fieldErrors: {
+            photos:
+              entitlementErrorMessage(error) ??
+              (error instanceof Error
+                ? error.message
+                : "Unable to attach photos."),
+          },
+          error: "Please fix the highlighted fields.",
+        };
       }
     }
 
@@ -386,13 +415,19 @@ export async function createIncident(
       }
     }
 
-    if (medicalUsages.length > 0 && !canRecordMedicalSupplyUsage(context.membership.role)) {
-      return {
-        fieldErrors: {
-          medical_supplies:
-            "You do not have permission to record medical supply usage.",
-        },
-      };
+    if (medicalUsages.length > 0) {
+      if (!canRecordMedicalSupplyUsage(context.membership.role)) {
+        return {
+          fieldErrors: {
+            medical_supplies:
+              "You do not have permission to record medical supply usage.",
+          },
+        };
+      }
+      await requireFeature({
+        churchId: context.church.id,
+        featureKey: FEATURE_KEYS.MEDICAL_INCIDENT_USAGE,
+      });
     }
 
     const { data: incident, error: incidentError } = await supabase

@@ -4,11 +4,16 @@ import { ChurchAccessError } from "@/lib/church/errors";
 import { isNextControlFlowError } from "@/lib/church/access-guard";
 import { getNavSectionsForRole } from "@/lib/church/navigation";
 import type { MembershipRole } from "@/lib/church/types";
+import {
+  getEnabledFeatureKeys,
+} from "@/lib/subscriptions/enforcement";
+import { NAV_ENTITLEMENT_FEATURE_KEYS } from "@/lib/subscriptions/nav-features";
 
 export async function AppSidebar() {
   let churches: { id: string; name: string; role: string }[] = [];
   let activeChurchId: string | null = null;
   let role: MembershipRole | null = null;
+  let enabledFeatures: Set<string> | undefined;
 
   try {
     const { church, memberships, membership } = await requireChurchMembership();
@@ -19,6 +24,10 @@ export async function AppSidebar() {
       name: item.church.name,
       role: item.role,
     }));
+    enabledFeatures = await getEnabledFeatureKeys(
+      church.id,
+      NAV_ENTITLEMENT_FEATURE_KEYS,
+    );
   } catch (error) {
     if (isNextControlFlowError(error)) {
       throw error;
@@ -30,7 +39,7 @@ export async function AppSidebar() {
     }
   }
 
-  const navSections = getNavSectionsForRole(role);
+  const navSections = getNavSectionsForRole(role, { enabledFeatures });
 
   return (
     <AppSidebarNav

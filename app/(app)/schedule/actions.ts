@@ -17,6 +17,9 @@ import { canManageSchedule } from "@/lib/schedule/permissions";
 import { notifyEventCancelled } from "@/lib/schedule/notify";
 import type { ScheduleActionState } from "@/lib/schedule/types";
 import { validateScheduleEventForm } from "@/lib/schedule/validation";
+import { entitlementErrorMessage } from "@/lib/subscriptions/enforcement";
+import { FEATURE_KEYS } from "@/lib/subscriptions/feature-keys";
+import { requireFeature } from "@/lib/subscriptions/resolver";
 
 async function requireScheduleManager() {
   const ctx = await getAuthenticatedUserWithChurch();
@@ -25,6 +28,10 @@ async function requireScheduleManager() {
       "You do not have permission to manage the schedule.",
     );
   }
+  await requireFeature({
+    churchId: ctx.church.id,
+    featureKey: FEATURE_KEYS.TEAM_SCHEDULING,
+  });
   return ctx;
 }
 
@@ -138,6 +145,8 @@ export async function createScheduleEventAction(
     if (error instanceof ChurchAccessError) {
       return { error: error.message };
     }
+    const entitlementMessage = entitlementErrorMessage(error);
+    if (entitlementMessage) return { error: entitlementMessage };
     return { error: "Unable to create the event. Please try again." };
   }
 }

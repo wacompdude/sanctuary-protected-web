@@ -7,7 +7,8 @@ import { sanitizeAuditMetadata } from "@/lib/audit/sanitize";
 
 export type WriteAuditLogInput = {
   churchId?: string | null;
-  userId: string;
+  /** Nullable for trusted system/migration writers. */
+  userId?: string | null;
   action: AuditActionName | string;
   entityType?: AuditEntityTypeName | string | null;
   entityId?: string | null;
@@ -28,7 +29,7 @@ export async function writeAuditLog(
 
   const { error } = await supabase.from("audit_logs").insert({
     church_id: input.churchId ?? null,
-    user_id: input.userId,
+    user_id: input.userId ?? null,
     action: input.action,
     entity_type: input.entityType ?? null,
     entity_id: input.entityId ?? null,

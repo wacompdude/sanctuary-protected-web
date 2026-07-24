@@ -21,6 +21,15 @@ import {
   canManageSecurityEquipment,
   canOperateSecurityEquipment,
 } from "@/lib/security-hardware/types";
+import { FEATURE_KEYS } from "@/lib/subscriptions/feature-keys";
+import { requireFeature } from "@/lib/subscriptions/resolver";
+
+async function requireHardwareInventory(churchId: string) {
+  await requireFeature({
+    churchId,
+    featureKey: FEATURE_KEYS.HARDWARE_INVENTORY,
+  });
+}
 
 function text(formData: FormData, key: string, max = 2000): string | null {
   const value = String(formData.get(key) ?? "").trim();
@@ -53,6 +62,7 @@ export async function scheduleEquipmentMaintenance(
     if (!canOperateSecurityEquipment(membership.role)) {
       return { error: "You do not have permission to schedule maintenance." };
     }
+    await requireHardwareInventory(church.id);
 
     const equipment = await getSecurityEquipmentById(equipmentId, church.id);
     if (!equipment) return { error: "Equipment not found." };
@@ -144,6 +154,7 @@ export async function completeEquipmentMaintenance(
     if (!canOperateSecurityEquipment(membership.role)) {
       return { error: "You do not have permission to complete maintenance." };
     }
+    await requireHardwareInventory(church.id);
 
     const { data: record, error: loadError } = await supabase
       .from("equipment_maintenance")
@@ -268,6 +279,7 @@ export async function assignEquipment(
     if (!canOperateSecurityEquipment(membership.role)) {
       return { error: "You do not have permission to assign equipment." };
     }
+    await requireHardwareInventory(church.id);
 
     const equipment = await getSecurityEquipmentById(equipmentId, church.id);
     if (!equipment) return { error: "Equipment not found." };
@@ -358,6 +370,7 @@ export async function returnEquipmentAssignment(
     if (!canOperateSecurityEquipment(membership.role)) {
       return { error: "You do not have permission to return equipment." };
     }
+    await requireHardwareInventory(church.id);
 
     const { data: assignment, error: loadError } = await supabase
       .from("equipment_assignments")
@@ -453,6 +466,7 @@ export async function reportEquipmentLostOrStolen(
           "Only security leaders and above can report equipment lost or stolen.",
       };
     }
+    await requireHardwareInventory(church.id);
 
     const equipment = await getSecurityEquipmentById(equipmentId, church.id);
     if (!equipment) return { error: "Equipment not found." };

@@ -13,6 +13,10 @@ import {
 } from "@/lib/supabase/admin";
 import { AuditAction, AuditEntityType } from "@/lib/audit/actions";
 import { getRequestIpAddress, writeAuditLog } from "@/lib/audit/log";
+import {
+  entitlementErrorMessage,
+  requireActiveSeatCapacity,
+} from "@/lib/subscriptions/enforcement";
 
 function isAlreadyRegisteredError(message: string | undefined): boolean {
   if (!message) return false;
@@ -59,6 +63,8 @@ export async function provisionChurchMember(
         fieldErrors: { role: "That role is not available for your account." },
       };
     }
+
+    await requireActiveSeatCapacity({ churchId: church.id });
 
     const { data: emailTaken, error: emailCheckError } = await supabase.rpc(
       "church_has_active_member_email",
@@ -238,6 +244,10 @@ export async function provisionChurchMember(
 
     return state;
   } catch (error) {
+    const entitlementMessage = entitlementErrorMessage(error);
+    if (entitlementMessage) {
+      return { error: entitlementMessage };
+    }
     const message =
       error instanceof Error ? error.message : "Unable to add member.";
     if (message.includes("SUPABASE_SERVICE_ROLE_KEY")) {

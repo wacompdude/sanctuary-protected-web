@@ -34,6 +34,8 @@ import {
   validateScheduleShiftForm,
 } from "@/lib/schedule/shift-validation";
 import type { ScheduleActionState, ScheduleShift } from "@/lib/schedule/types";
+import { FEATURE_KEYS } from "@/lib/subscriptions/feature-keys";
+import { requireFeature } from "@/lib/subscriptions/resolver";
 
 function isNextRedirect(error: unknown): boolean {
   return Boolean(
@@ -52,6 +54,10 @@ async function requireScheduleManager() {
       "You do not have permission to manage schedule shifts.",
     );
   }
+  await requireFeature({
+    churchId: ctx.church.id,
+    featureKey: FEATURE_KEYS.TEAM_SCHEDULING,
+  });
   return ctx;
 }
 
@@ -471,6 +477,10 @@ export async function respondToAssignmentAction(
 ): Promise<ScheduleActionState> {
   try {
     const { user, church } = await getAuthenticatedUserWithChurch();
+    await requireFeature({
+      churchId: church.id,
+      featureKey: FEATURE_KEYS.TEAM_SCHEDULING,
+    });
     const validated = validateAssignmentResponseForm(formData);
     if (!validated.data) {
       return {

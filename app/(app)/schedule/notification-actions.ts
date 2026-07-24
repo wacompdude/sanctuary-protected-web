@@ -122,6 +122,17 @@ export async function sendScheduleCustomNotificationAction(
       return { error: "You do not have permission to send schedule notifications." };
     }
 
+    const { FEATURE_KEYS } = await import("@/lib/subscriptions/feature-keys");
+    const { requireFeature } = await import("@/lib/subscriptions/resolver");
+    await requireFeature({
+      churchId: church.id,
+      featureKey: FEATURE_KEYS.TEAM_SCHEDULING,
+    });
+    await requireFeature({
+      churchId: church.id,
+      featureKey: FEATURE_KEYS.EMAIL,
+    });
+
     const subject = String(formData.get("subject") ?? "").trim();
     const message = String(formData.get("message") ?? "").trim();
     if (!subject || subject.length > 200) {

@@ -20,6 +20,8 @@ import {
   isNotificationSeverity,
 } from "@/lib/notifications/constants";
 import type { NotificationChannel } from "@/lib/notifications/types";
+import { FEATURE_KEYS } from "@/lib/subscriptions/feature-keys";
+import { requireFeature } from "@/lib/subscriptions/resolver";
 
 export type AudiencePreviewResult = {
   error?: string;
@@ -57,7 +59,7 @@ function parseComposerTargets(formData: FormData): NotificationTargetInput {
   return { groupIds, membershipIds };
 }
 
-function parseChannels(formData: FormData): NotificationChannel[] {
+function parseRequestedChannels(formData: FormData): NotificationChannel[] {
   const selected = formData
     .getAll("channels")
     .map((value) => String(value).trim())
@@ -65,8 +67,12 @@ function parseChannels(formData: FormData): NotificationChannel[] {
       isNotificationChannel(value),
     );
   if (selected.length === 0) return ["in_app", "email"];
-  // Composer never actually sends SMS/push yet.
-  return selected.filter(
+  return selected;
+}
+
+/** Channels that createNotification will actually queue today. */
+function parseDeliverableChannels(formData: FormData): NotificationChannel[] {
+  return parseRequestedChannels(formData).filter(
     (channel) => channel === "in_app" || channel === "email",
   );
 }
@@ -114,7 +120,7 @@ export async function previewNotificationAudienceAction(
     const notificationType =
       String(formData.get("notification_type") ?? "general.announcement").trim() ||
       "general.announcement";
-    const channels = parseChannels(formData);
+    const channels = parseRequestedChannels(formData);
     const settings = await getChurchNotificationSettings(supabase, church.id);
 
     const audience = await resolveNotificationAudience({
@@ -219,7 +225,52 @@ export async function sendComposedNotificationAction(
       String(formData.get("notification_type") ?? "general.announcement").trim() ||
       "general.announcement";
     const actionUrl = String(formData.get("action_url") ?? "").trim() || null;
-    const channels = parseChannels(formData);
+    const requestedChannels = parseRequestedChannels(formData);
+    const channels = parseDeliverableChannels(formData);
+    if (requestedChannels.includes("email")) {
+      await requireFeature({
+        churchId: church.id,
+        featureKey: FEATURE_KEYS.EMAIL,
+      });
+    }
+    if (requestedChannels.includes("sms")) {
+      await requireFeature({
+        churchId: church.id,
+        featureKey: FEATURE_KEYS.SMS,
+      });
+      const settings = await getChurchNotificationSettings(supabase, church.id);
+      const audience = await resolveNotificationAudience({
+        supabase,
+        churchId: church.id,
+        notificationType,
+        severity: severityRaw,
+        settings,
+        channels: ["sms"],
+        targets,
+      });
+      const { estimateSmsSegmentsForRecipients } = await import(
+        "@/lib/subscriptions/sms-segments"
+      );
+      const { requireSmsSegmentCapacity } = await import(
+        "@/lib/subscriptions/usage"
+      );
+      const estimatedSegments = estimateSmsSegmentsForRecipients({
+        body,
+        recipientCount: audience.members.length,
+      });
+      if (estimatedSegments > 0) {
+        await requireSmsSegmentCapacity({
+          churchId: church.id,
+          estimatedSegments,
+        });
+      }
+    }
+    if (targets.groupIds?.length) {
+      await requireFeature({
+        churchId: church.id,
+        featureKey: FEATURE_KEYS.GROUP_EMAIL,
+      });
+    }
     const scheduledRaw = String(formData.get("scheduled_for") ?? "").trim();
     const scheduledFor = scheduledRaw
       ? new Date(scheduledRaw).toISOString()

@@ -20,6 +20,8 @@ import {
 } from "@/lib/schedule/permissions";
 import { getChurchScheduleSettings } from "@/lib/schedule/shift-queries";
 import type { ScheduleActionState } from "@/lib/schedule/types";
+import { FEATURE_KEYS } from "@/lib/subscriptions/feature-keys";
+import { requireFeature } from "@/lib/subscriptions/resolver";
 
 function isNextRedirect(error: unknown): boolean {
   return Boolean(
@@ -44,6 +46,10 @@ export async function createUnavailabilityAction(
 ): Promise<ScheduleActionState> {
   try {
     const { user, church, membership } = await getAuthenticatedUserWithChurch();
+    await requireFeature({
+      churchId: church.id,
+      featureKey: FEATURE_KEYS.TEAM_SCHEDULING,
+    });
     const settings = await getChurchScheduleSettings(church.id);
     const canManage = canManageSchedule(membership.role);
     const membersMayCreate =
@@ -150,6 +156,10 @@ export async function updateUnavailabilityAction(
 ): Promise<ScheduleActionState> {
   try {
     const { user, church, membership } = await getAuthenticatedUserWithChurch();
+    await requireFeature({
+      churchId: church.id,
+      featureKey: FEATURE_KEYS.TEAM_SCHEDULING,
+    });
     const settings = await getChurchScheduleSettings(church.id);
     const canManage = canManageSchedule(membership.role);
     const membersMayEdit =
@@ -245,6 +255,10 @@ export async function cancelUnavailabilityAction(
 ): Promise<ScheduleActionState> {
   try {
     const { user, church, membership } = await getAuthenticatedUserWithChurch();
+    await requireFeature({
+      churchId: church.id,
+      featureKey: FEATURE_KEYS.TEAM_SCHEDULING,
+    });
     const canManage = canManageSchedule(membership.role);
     const supabase = await createClient();
 

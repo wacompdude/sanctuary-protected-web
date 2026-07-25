@@ -53,6 +53,7 @@ export {
 export {
   getDashboardBoxValue,
   dashboardBoxNeedsIncidents,
+  dashboardBoxNeedsSafetyConcerns,
   dashboardBoxNeedsEvents,
   dashboardBoxNeedsCertifications,
   dashboardBoxNeedsSchedule,

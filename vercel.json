@@ -5,6 +5,10 @@
       "schedule": "0 9 * * *"
     },
     {
+      "path": "/api/notifications/safety-concerns/scan",
+      "schedule": "30 9 * * *"
+    },
+    {
       "path": "/api/notifications/schedule/scan",
       "schedule": "0 8 * * *"
     },

@@ -79,6 +79,10 @@ export async function getPlatformProviderConfigStatus(): Promise<PlatformProvide
         path: "/api/notifications/certifications/scan",
         purpose: "Daily certification expiration warnings",
       },
+      {
+        path: "/api/notifications/safety-concerns/scan",
+        purpose: "Daily Safety Concern review/expiration reminders",
+      },
     ],
   };
 }

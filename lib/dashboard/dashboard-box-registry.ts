@@ -7,7 +7,7 @@ import { getAccessibleTextColor } from "@/lib/dashboard/colors";
 
 /**
  * Authoritative system defaults for dashboard summary boxes.
- * Keep box_key allowlist in sync with migration 040_dashboard_box_settings.sql.
+ * Keep box_key allowlist in sync with migrations 040 + 049 (dashboard box keys).
  */
 export const DASHBOARD_BOX_REGISTRY: readonly DashboardBoxDefinition[] = [
   {
@@ -20,6 +20,20 @@ export const DASHBOARD_BOX_REGISTRY: readonly DashboardBoxDefinition[] = [
     defaultTextColor: "#111827",
     category: "operations",
     route: "/incidents",
+    supportsCampusFilter: true,
+    requiresScheduleManager: false,
+    isPlaceholder: false,
+  },
+  {
+    key: "active_safety_concerns",
+    title: "Known Safety Concerns",
+    description: "Authorized active profiles",
+    defaultVisible: true,
+    defaultOrder: 15,
+    defaultBackgroundColor: "#FDE68A",
+    defaultTextColor: "#111827",
+    category: "operations",
+    route: "/safety-concerns",
     supportsCampusFilter: true,
     requiresScheduleManager: false,
     isPlaceholder: false,

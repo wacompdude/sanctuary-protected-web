@@ -120,6 +120,9 @@ export const NOTIFICATION_SENDER_CATEGORY_MAP: Record<string, EmailSenderCategor
     "certification.expired": "info",
     "certification.renewed": "info",
     "certification.missing_required": "info",
+    "safety_concern.review_due": "info",
+    "safety_concern.review_overdue": "info",
+    "safety_concern.expired": "info",
     "admin.daily_summary": "info",
     "admin.weekly_summary": "info",
 

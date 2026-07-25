@@ -2,6 +2,7 @@ import type { MembershipRole } from "@/lib/church/types";
 
 export const DASHBOARD_BOX_KEYS = [
   "active_incidents",
+  "active_safety_concerns",
   "unacknowledged_events",
   "camera_events",
   "security_alarm_events",

@@ -212,3 +212,16 @@ export async function requireIncidentPhotoUpload(params: {
     maxSizeMb: limits.maxSizeMb,
   };
 }
+
+export {
+  evaluateSafetyConcernAccess,
+  getSafetyConcernAccess,
+  resolveSafetyConcernRouteAccess,
+  requireSafetyConcernWrite,
+  requireSafetyConcernPhotoUpload,
+  requireSafetyConcernProfileCapacity,
+} from "@/lib/safety-concerns/entitlements";
+export type {
+  SafetyConcernAccess,
+  SafetyConcernRouteMode,
+} from "@/lib/safety-concerns/entitlements";

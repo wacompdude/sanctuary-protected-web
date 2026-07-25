@@ -43,10 +43,16 @@ import {
   dashboardBoxNeedsCertifications,
   dashboardBoxNeedsEvents,
   dashboardBoxNeedsIncidents,
+  dashboardBoxNeedsSafetyConcerns,
   getDashboardBoxValue,
   type DashboardBoxDataContext,
 } from "@/lib/dashboard/box-values";
 import type { DashboardBoxKey } from "@/lib/dashboard/types";
+import {
+  countActiveSafetyConcernProfiles,
+  getSafetyConcernAccess,
+  getSafetyConcernChurchSettings,
+} from "@/lib/safety-concerns";
 
 async function DashboardContent() {
   const { church, membership, user } = await getAuthenticatedUserWithChurch();
@@ -60,6 +66,13 @@ async function DashboardContent() {
   const canSeeManagerSchedule = canManageSchedule(membership.role);
   const canCustomize = canManageDashboardCustomization(membership.role);
 
+  const safetyConcernSettings = await getSafetyConcernChurchSettings(church.id);
+  const safetyConcernAccess = await getSafetyConcernAccess({
+    churchId: church.id,
+    role: membership.role,
+    allowSecurityMemberView: safetyConcernSettings.allow_security_member_view,
+  });
+
   const resolvedBoxes = await resolveDashboardBoxSettings({
     churchId: church.id,
     userRole: membership.role,
@@ -67,10 +80,17 @@ async function DashboardContent() {
     includeHidden: false,
   });
 
-  const visibleKeys = resolvedBoxes.map((box) => box.key);
+  const authorizedBoxes = safetyConcernAccess.canRead
+    ? resolvedBoxes
+    : resolvedBoxes.filter((box) => box.key !== "active_safety_concerns");
+
+  const visibleKeys = authorizedBoxes.map((box) => box.key);
   const needsIncidents = dashboardBoxNeedsIncidents(visibleKeys);
   const needsEvents = dashboardBoxNeedsEvents(visibleKeys);
   const needsCertifications = dashboardBoxNeedsCertifications(visibleKeys);
+  const needsSafetyConcerns =
+    safetyConcernAccess.canRead &&
+    dashboardBoxNeedsSafetyConcerns(visibleKeys);
 
   const [
     certCounts,
@@ -78,6 +98,7 @@ async function DashboardContent() {
     unackedEvents,
     currentThreatLevel,
     schedule,
+    activeSafetyConcerns,
   ] = await Promise.all([
     needsCertifications
       ? getCertificationCounts(church.id)
@@ -100,6 +121,11 @@ async function DashboardContent() {
       church.timezone ?? "America/Los_Angeles",
       { campusFilterOr: campusOr },
     ).catch(() => null),
+    needsSafetyConcerns
+      ? countActiveSafetyConcernProfiles(church.id, {
+          campusId: campusFilter.mode === "campus" ? campusFilter.campusId : null,
+        }).catch(() => 0)
+      : Promise.resolve(0),
   ]);
 
   const openIncidents = incidents.filter(
@@ -110,6 +136,7 @@ async function DashboardContent() {
   const boxData: DashboardBoxDataContext = {
     openIncidents,
     totalIncidents: incidents.length,
+    activeSafetyConcerns,
     unacknowledgedEvents: unackedEvents,
     certificationsExpiring: certCounts.expiring_soon,
     certificationsExpired: certCounts.expired,
@@ -117,7 +144,7 @@ async function DashboardContent() {
   };
 
   const scheduleTablesAvailable = Boolean(schedule?.tablesAvailable);
-  const displayBoxes = resolvedBoxes.filter(
+  const displayBoxes = authorizedBoxes.filter(
     (box) => box.category !== "schedule" || scheduleTablesAvailable,
   );
 

@@ -33,6 +33,8 @@ export type NavItemId =
   | "notification-preferences"
   | "security-hardware"
   | "medical-supplies"
+  | "safety-concerns"
+  | "safety-concerns-settings"
   | "team"
   | "team-members"
   | "invitations"
@@ -167,6 +169,13 @@ export const APP_NAV_SECTIONS: NavSection[] = [
         href: "/medical-supplies",
         minRole: "viewer",
         label: "Medical supplies",
+      },
+      {
+        kind: "link",
+        id: "safety-concerns",
+        href: "/safety-concerns",
+        minRole: "security_member",
+        label: "Known Safety Concerns",
       },
     ],
   },
@@ -304,6 +313,13 @@ export const APP_NAV_SECTIONS: NavSection[] = [
             href: "/settings/scheduling",
             minRole: "administrator",
             label: "Scheduling",
+          },
+          {
+            kind: "link",
+            id: "safety-concerns-settings",
+            href: "/settings/safety-concerns",
+            minRole: "administrator",
+            label: "Safety Concerns",
           },
           {
             kind: "link",

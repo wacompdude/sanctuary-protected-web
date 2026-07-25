@@ -5,6 +5,8 @@ export const NAV_FEATURE_REQUIREMENTS: Partial<Record<string, FeatureKey>> = {
   policies: FEATURE_KEYS.POLICIES,
   "medical-supplies": FEATURE_KEYS.MEDICAL_INVENTORY,
   "security-hardware": FEATURE_KEYS.HARDWARE_INVENTORY,
+  "safety-concerns": FEATURE_KEYS.SAFETY_CONCERN_PROFILES,
+  "safety-concerns-settings": FEATURE_KEYS.SAFETY_CONCERN_PROFILES,
   schedule: FEATURE_KEYS.TEAM_SCHEDULING,
   "schedule-calendar": FEATURE_KEYS.TEAM_SCHEDULING,
   "schedule-events": FEATURE_KEYS.TEAM_SCHEDULING,

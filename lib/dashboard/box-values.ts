@@ -9,6 +9,7 @@ export type DashboardBoxValue = {
 export type DashboardBoxDataContext = {
   openIncidents: number;
   totalIncidents: number;
+  activeSafetyConcerns: number;
   unacknowledgedEvents: number;
   certificationsExpiring: number;
   certificationsExpired: number;
@@ -28,6 +29,11 @@ export function getDashboardBoxValue(
           data.totalIncidents > 0
             ? `${data.totalIncidents} total on record`
             : "Open or investigating incidents",
+      };
+    case "active_safety_concerns":
+      return {
+        value: String(data.activeSafetyConcerns),
+        description: "Authorized active profiles",
       };
     case "unacknowledged_events":
       return {
@@ -93,6 +99,12 @@ export function getDashboardBoxValue(
 
 export function dashboardBoxNeedsIncidents(keys: Iterable<DashboardBoxKey>): boolean {
   return [...keys].includes("active_incidents");
+}
+
+export function dashboardBoxNeedsSafetyConcerns(
+  keys: Iterable<DashboardBoxKey>,
+): boolean {
+  return [...keys].includes("active_safety_concerns");
 }
 
 export function dashboardBoxNeedsEvents(keys: Iterable<DashboardBoxKey>): boolean {

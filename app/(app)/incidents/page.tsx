@@ -26,12 +26,14 @@ import {
   IncidentSeverityText,
   IncidentStatusBadge,
 } from "@/components/incidents/incident-badges";
-import { Plus } from "lucide-react";
+import { BarChart3, Plus } from "lucide-react";
 import {
   campusFilterLabel,
   campusFilterOrClause,
   resolveCampusFilter,
 } from "@/lib/campuses/filter";
+import { FEATURE_KEYS } from "@/lib/subscriptions/feature-keys";
+import { hasFeature } from "@/lib/subscriptions/resolver";
 
 const CLOSED_STATUSES = new Set(["closed", "resolved"]);
 
@@ -85,6 +87,10 @@ async function IncidentsList({ showAll }: { showAll: boolean }) {
     : incidents.filter((incident) => !CLOSED_STATUSES.has(incident.status));
 
   const filterLabel = campusFilterLabel(campusFilter);
+  const analyticsAccess = await hasFeature({
+    churchId: church.id,
+    featureKey: FEATURE_KEYS.INCIDENT_ANALYTICS,
+  });
 
   return (
     <>
@@ -101,9 +107,19 @@ async function IncidentsList({ showAll }: { showAll: boolean }) {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {showAll ? (
-            <Button asChild variant="outline" className="h-11">
-              <Link href="/incidents">Active incidents</Link>
-            </Button>
+            <>
+              {analyticsAccess.allowed ? (
+                <Button asChild variant="outline" className="h-11">
+                  <Link href="/incidents/analytics">
+                    <BarChart3 className="h-4 w-4" />
+                    Analytics
+                  </Link>
+                </Button>
+              ) : null}
+              <Button asChild variant="outline" className="h-11">
+                <Link href="/incidents">Active incidents</Link>
+              </Button>
+            </>
           ) : (
             <Button asChild variant="outline" className="h-11">
               <Link href="/incidents?view=all">View all incidents</Link>

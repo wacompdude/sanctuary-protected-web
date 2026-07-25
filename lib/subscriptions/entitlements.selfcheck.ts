@@ -17,7 +17,7 @@ function assert(condition: boolean, message: string) {
   if (!condition) throw new Error(message);
 }
 
-assert(FEATURE_KEY_LIST.length === 22, "expected 22 feature keys");
+assert(FEATURE_KEY_LIST.length === 27, "expected 27 feature keys");
 assert(PLAN_KEY_LIST.length === 4, "expected 4 plan keys");
 
 function assignment(
@@ -63,6 +63,15 @@ for (const planKey of PLAN_KEY_LIST) {
       "Servant Standard cannot use incident photos",
     );
     assert(
+      readBooleanEntitlement(values, FEATURE_KEYS.INCIDENT_ANALYTICS) === false,
+      "Servant Standard cannot use incident analytics",
+    );
+    assert(
+      readBooleanEntitlement(values, FEATURE_KEYS.SAFETY_CONCERN_PROFILES) ===
+        false,
+      "Servant Standard cannot use Known Safety Concerns",
+    );
+    assert(
       readBooleanEntitlement(values, FEATURE_KEYS.MEDICAL_INVENTORY) === false,
       "Servant Standard cannot use medical inventory",
     );
@@ -77,6 +86,20 @@ for (const planKey of PLAN_KEY_LIST) {
     assert(
       readBooleanEntitlement(values, FEATURE_KEYS.INCIDENT_PHOTOS) === true,
       "Steward Pro can use incident photos",
+    );
+    assert(
+      readBooleanEntitlement(values, FEATURE_KEYS.INCIDENT_ANALYTICS) === true,
+      "Steward Pro can use incident analytics",
+    );
+    assert(
+      readBooleanEntitlement(values, FEATURE_KEYS.SAFETY_CONCERN_PROFILES) ===
+        true,
+      "Steward Pro can use Known Safety Concerns",
+    );
+    assert(
+      readIntegerEntitlement(values, FEATURE_KEYS.SAFETY_CONCERN_PHOTO_LIMIT)
+        .limit === 3,
+      "Steward Pro safety concern photo limit is 3",
     );
     assert(
       readIntegerEntitlement(values, FEATURE_KEYS.INCIDENT_PHOTO_COUNT_LIMIT)
@@ -113,6 +136,11 @@ for (const planKey of PLAN_KEY_LIST) {
   }
 
   if (planKey === PLAN_KEYS.OMNI_ENTERPRISE) {
+    assert(
+      readIntegerEntitlement(values, FEATURE_KEYS.SAFETY_CONCERN_PROFILE_LIMIT)
+        .unlimited === true,
+      "Omni Enterprise unlimited active safety profiles",
+    );
     assert(
       readBooleanEntitlement(values, FEATURE_KEYS.CAMERAS) === true,
       "Omni Enterprise has cameras",

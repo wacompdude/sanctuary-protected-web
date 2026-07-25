@@ -6,7 +6,8 @@
     "start": "next start",
     "lint": "eslint .",
     "bootstrap:super-admin": "npx --yes tsx scripts/bootstrap-super-admin.ts",
-    "selfcheck:platform": "npx --yes tsx lib/platform/foundation.selfcheck.ts && npx --yes tsx lib/platform/bootstrap.selfcheck.ts"
+    "selfcheck:platform": "npx --yes tsx lib/platform/foundation.selfcheck.ts && npx --yes tsx lib/platform/bootstrap.selfcheck.ts",
+    "selfcheck:safety-concerns": "npx --yes tsx lib/safety-concerns/entitlements.selfcheck.ts && npx --yes tsx lib/safety-concerns/storage.selfcheck.ts && npx --yes tsx lib/safety-concerns/mobile.selfcheck.ts"
   },
   "dependencies": {
     "@radix-ui/react-checkbox": "^1.3.1",

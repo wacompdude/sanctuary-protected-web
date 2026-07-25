@@ -114,6 +114,16 @@ export {
   requireIncidentPhotoUpload,
   getEnabledFeatureKeys,
   NAV_FEATURE_REQUIREMENTS,
+  evaluateSafetyConcernAccess,
+  getSafetyConcernAccess,
+  resolveSafetyConcernRouteAccess,
+  requireSafetyConcernWrite,
+  requireSafetyConcernPhotoUpload,
+  requireSafetyConcernProfileCapacity,
+} from "@/lib/subscriptions/enforcement";
+export type {
+  SafetyConcernAccess,
+  SafetyConcernRouteMode,
 } from "@/lib/subscriptions/enforcement";
 
 export { NAV_ENTITLEMENT_FEATURE_KEYS } from "@/lib/subscriptions/nav-features";

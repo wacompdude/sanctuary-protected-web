@@ -15,6 +15,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
+import { SignOutFormButton } from "@/components/sign-out-form-button";
 import {
   validateEmail,
   validatePassword,
@@ -35,6 +36,8 @@ export function LoginForm({
   const [isLoading, setIsLoading] = useState(false);
   const searchParams = useSearchParams();
   const nextPath = searchParams.get("next");
+  const switchAccount =
+    searchParams.get("switch") === "1" || searchParams.get("switch") === "true";
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,10 +96,23 @@ export function LoginForm({
             wordmarkClassName="text-2xl font-semibold"
           />
           <CardDescription>
-            Sign in with your email and password to continue
+            {switchAccount
+              ? "Sign out of your current session, then sign in with another account."
+              : "Sign in with your email and password to continue"}
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {switchAccount ? (
+            <div className="mb-6 space-y-3 rounded-md border border-amber-700/30 bg-amber-50/70 p-3 text-sm dark:bg-amber-950/20">
+              <p className="text-muted-foreground">
+                You still have an active session. Sign out first so you are not
+                sent back into the app as that user.
+              </p>
+              <SignOutFormButton className="w-full" variant="outline">
+                Sign out to continue
+              </SignOutFormButton>
+            </div>
+          ) : null}
           <form onSubmit={handleLogin} noValidate>
             <div className="flex flex-col gap-6">
               <div className="grid gap-2">

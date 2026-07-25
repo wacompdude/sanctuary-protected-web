@@ -96,6 +96,7 @@ export function ScheduleSettingsForm({
               defaultValue={String(settings.week_starts_on)}
               options={WEEKDAY_OPTIONS}
               error={state.fieldErrors?.week_starts_on}
+              hint="Also used for weekly threat levels. Synced with Church → General settings."
             />
             <LabeledInput
               id="timezone"

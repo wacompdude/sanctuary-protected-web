@@ -39,6 +39,7 @@ type ChurchQueryRow = {
   status: string | null;
   slug: string | null;
   timezone: string | null;
+  week_starts_on?: number | null;
 };
 
 export type CurrentUser = {
@@ -205,20 +206,71 @@ export async function getUserMemberships(
   const churchIds = [...new Set(rows.map((row) => row.church_id))];
   const { data: churches, error: churchError } = await supabase
     .from("churches")
-    .select("id, name, status, slug, timezone")
+    .select("id, name, status, slug, timezone, week_starts_on")
     .in("id", churchIds);
 
   if (churchError) {
-    console.error("[getUserMemberships] churches select failed", {
-      code: churchError.code,
-      message: churchError.message,
-      details: churchError.details,
-      hint: churchError.hint,
-    });
-    throw new ChurchAccessError(
-      `Unable to load your churches. (${churchError.message})`,
-      "LOAD_FAILED",
+    // Older DBs without week_starts_on still load; default Sunday in mapping.
+    const missingWeekStarts =
+      /week_starts_on/i.test(churchError.message) &&
+      /does not exist|column/i.test(churchError.message);
+    if (!missingWeekStarts) {
+      console.error("[getUserMemberships] churches select failed", {
+        code: churchError.code,
+        message: churchError.message,
+        details: churchError.details,
+        hint: churchError.hint,
+      });
+      throw new ChurchAccessError(
+        `Unable to load your churches. (${churchError.message})`,
+        "LOAD_FAILED",
+      );
+    }
+
+    const fallback = await supabase
+      .from("churches")
+      .select("id, name, status, slug, timezone")
+      .in("id", churchIds);
+    if (fallback.error) {
+      throw new ChurchAccessError(
+        `Unable to load your churches. (${fallback.error.message})`,
+        "LOAD_FAILED",
+      );
+    }
+    const churchByIdFallback = new Map(
+      ((fallback.data ?? []) as ChurchQueryRow[]).map((church) => [
+        church.id,
+        church,
+      ]),
     );
+    const resultFallback: ChurchMembershipWithChurch[] = [];
+    for (const row of rows) {
+      const church = churchByIdFallback.get(row.church_id);
+      if (!church) continue;
+      const role = normalizeMembershipRole(row.role);
+      const usable = isUsableChurchStatus(church.status);
+      const ownerRecovery =
+        isOwnerRecoveryChurchStatus(church.status) && isOwnershipRole(role);
+      if (!usable && !ownerRecovery) continue;
+      resultFallback.push({
+        id: row.id,
+        church_id: row.church_id,
+        user_id: row.user_id,
+        role,
+        status: "active",
+        joined_at: row.joined_at,
+        created_at: row.created_at,
+        church: {
+          id: church.id,
+          name: church.name,
+          status: church.status as Church["status"],
+          slug: church.slug,
+          timezone: church.timezone,
+          week_starts_on: 0,
+        },
+      });
+    }
+    return sortMemberships(resultFallback);
   }
 
   const churchById = new Map(
@@ -251,6 +303,8 @@ export async function getUserMemberships(
         status: church.status as Church["status"],
         slug: church.slug,
         timezone: church.timezone,
+        week_starts_on:
+          typeof church.week_starts_on === "number" ? church.week_starts_on : 0,
       },
     });
   }

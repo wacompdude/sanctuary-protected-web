@@ -11,6 +11,7 @@ import {
   SETTINGS_TIMEZONES,
   type ChurchSettingsRecord,
 } from "@/lib/church/settings";
+import { WEEK_STARTS_ON_OPTIONS } from "@/lib/church/threat-levels";
 
 const LANGUAGE_OPTIONS = [
   { value: "en", label: "English" },
@@ -104,6 +105,18 @@ export function ChurchGeneralForm({
             error={fieldErrors?.timezone}
             options={timezoneOptions}
             hint="All timestamps in the app (dashboard, incidents, notifications, and more) use this time zone."
+          />
+          <LabeledSelect
+            id="week_starts_on"
+            name="week_starts_on"
+            label="Week starts on"
+            defaultValue={String(church.week_starts_on ?? 0)}
+            error={fieldErrors?.week_starts_on}
+            options={WEEK_STARTS_ON_OPTIONS.map((option) => ({
+              value: String(option.value),
+              label: option.label,
+            }))}
+            hint="Used for weekly threat levels and other week-based views. Default is Sunday–Saturday. Change for traditions that begin the week on another day."
           />
           <LabeledTextarea
             id="description"

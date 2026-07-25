@@ -29,6 +29,11 @@ export interface Church {
   slug?: string | null;
   /** IANA timezone used for all church-scoped timestamps (e.g. America/Chicago). */
   timezone?: string | null;
+  /**
+   * First day of the church calendar week: 0=Sunday … 6=Saturday.
+   * Used by weekly threat levels and other week-scoped features.
+   */
+  week_starts_on?: number | null;
 }
 
 export interface Profile {

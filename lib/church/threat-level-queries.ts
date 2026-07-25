@@ -14,6 +14,8 @@ type ThreatLevelRow = {
   notes: string | null;
   changed_by: string;
   created_at: string;
+  updated_at?: string | null;
+  updated_by?: string | null;
 };
 
 async function mapThreatLevelHistory(
@@ -44,7 +46,7 @@ export async function listChurchThreatLevels(
   const { data, error } = await supabase
     .from("church_threat_levels")
     .select(
-      "id, church_id, week_start, threat_level, notes, changed_by, created_at",
+      "id, church_id, week_start, threat_level, notes, changed_by, created_at, updated_at, updated_by",
     )
     .eq("church_id", churchId)
     .order("week_start", { ascending: false })
@@ -52,17 +54,52 @@ export async function listChurchThreatLevels(
     .limit(limit);
 
   if (error) {
-    // Older DBs may have migration 025 without notes yet.
-    if (/notes/i.test(error.message) && /column|does not exist/i.test(error.message)) {
+    // Older DBs may lack notes / updated_* columns.
+    if (
+      /(notes|updated_at|updated_by)/i.test(error.message) &&
+      /column|does not exist/i.test(error.message)
+    ) {
       const legacy = await supabase
         .from("church_threat_levels")
-        .select("id, church_id, week_start, threat_level, changed_by, created_at")
+        .select("id, church_id, week_start, threat_level, notes, changed_by, created_at")
         .eq("church_id", churchId)
         .order("week_start", { ascending: false })
         .order("created_at", { ascending: false })
         .limit(limit);
 
       if (legacy.error) {
+        // Fall further back without notes.
+        if (/notes/i.test(legacy.error.message)) {
+          const older = await supabase
+            .from("church_threat_levels")
+            .select(
+              "id, church_id, week_start, threat_level, changed_by, created_at",
+            )
+            .eq("church_id", churchId)
+            .order("week_start", { ascending: false })
+            .order("created_at", { ascending: false })
+            .limit(limit);
+
+          if (older.error) {
+            throw new Error(
+              threatLevelMigrationHintFromError(older.error.message) ??
+                older.error.message,
+            );
+          }
+
+          return mapThreatLevelHistory(
+            churchId,
+            ((older.data ?? []) as Omit<ThreatLevelRow, "notes">[]).map(
+              (row) => ({
+                ...row,
+                notes: null,
+                updated_at: null,
+                updated_by: null,
+              }),
+            ),
+          );
+        }
+
         throw new Error(
           threatLevelMigrationHintFromError(legacy.error.message) ??
             legacy.error.message,
@@ -71,9 +108,11 @@ export async function listChurchThreatLevels(
 
       return mapThreatLevelHistory(
         churchId,
-        ((legacy.data ?? []) as Omit<ThreatLevelRow, "notes">[]).map((row) => ({
+        ((legacy.data ?? []) as ThreatLevelRow[]).map((row) => ({
           ...row,
-          notes: null,
+          notes: row.notes ?? null,
+          updated_at: null,
+          updated_by: null,
         })),
       );
     }

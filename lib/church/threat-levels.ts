@@ -22,6 +22,8 @@ export type ChurchThreatLevelRecord = {
   notes: string | null;
   changed_by: string;
   created_at: string;
+  updated_at?: string | null;
+  updated_by?: string | null;
 };
 
 export type ChurchThreatLevelHistoryEntry = ChurchThreatLevelRecord & {
@@ -140,18 +142,49 @@ export function threatLevelBadgeStyle(
   }
 }
 
-export function startOfThreatWeek(date = new Date()): string {
-  const local = new Date(date);
-  const day = local.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  local.setHours(0, 0, 0, 0);
-  local.setDate(local.getDate() + diff);
-  const offset = local.getTimezoneOffset();
-  const normalized = new Date(local.getTime() - offset * 60_000);
-  return normalized.toISOString().slice(0, 10);
+export function startOfThreatWeek(
+  date = new Date(),
+  weekStartsOn: number = 0,
+): string {
+  const starts = normalizeWeekStartsOn(weekStartsOn);
+  const local = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const day = local.getDay(); // 0=Sunday … 6=Saturday
+  const diff = (day - starts + 7) % 7;
+  local.setDate(local.getDate() - diff);
+  const year = local.getFullYear();
+  const month = String(local.getMonth() + 1).padStart(2, "0");
+  const dayOfMonth = String(local.getDate()).padStart(2, "0");
+  return `${year}-${month}-${dayOfMonth}`;
 }
 
-export function normalizeThreatWeekInput(value: string): string | null {
+/** Clamp week-start preference to 0 (Sunday) … 6 (Saturday). */
+export function normalizeWeekStartsOn(value: unknown): number {
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 0 || n > 6) return 0;
+  return n;
+}
+
+export const WEEK_STARTS_ON_OPTIONS = [
+  { value: 0, label: "Sunday" },
+  { value: 1, label: "Monday" },
+  { value: 2, label: "Tuesday" },
+  { value: 3, label: "Wednesday" },
+  { value: 4, label: "Thursday" },
+  { value: 5, label: "Friday" },
+  { value: 6, label: "Saturday" },
+] as const;
+
+export function labelForWeekStartsOn(value: number): string {
+  return (
+    WEEK_STARTS_ON_OPTIONS.find((option) => option.value === value)?.label ??
+    "Sunday"
+  );
+}
+
+export function normalizeThreatWeekInput(
+  value: string,
+  weekStartsOn: number = 0,
+): string | null {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
   if (!match) return null;
   const year = Number(match[1]);
@@ -159,7 +192,7 @@ export function normalizeThreatWeekInput(value: string): string | null {
   const day = Number(match[3]);
   const parsed = new Date(year, month, day);
   if (Number.isNaN(parsed.getTime())) return null;
-  return startOfThreatWeek(parsed);
+  return startOfThreatWeek(parsed, weekStartsOn);
 }
 
 export function formatThreatWeek(
@@ -177,6 +210,12 @@ export function threatLevelMigrationHintFromError(
   }
   if (/church_threat_levels|does not exist|PGRST205|42P01/i.test(message)) {
     return "Threat level tracking is not configured yet. Run supabase/migrations/025_church_threat_levels.sql (and 026_church_threat_level_notes.sql) in the Supabase SQL Editor.";
+  }
+  if (
+    /permission denied|42501|row-level security/i.test(message) &&
+    /church_threat_levels|update|delete/i.test(message)
+  ) {
+    return "Threat level edit/delete is not enabled yet. Run supabase/migrations/046_church_threat_level_edit_delete.sql in the Supabase SQL Editor.";
   }
   return null;
 }

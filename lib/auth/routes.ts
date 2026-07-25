@@ -9,6 +9,7 @@ export const PUBLIC_PATHS = [
   "/auth/update-password",
   "/auth/error",
   "/auth/confirm",
+  "/platform/invitations/accept",
 ];
 
 /** Path prefixes that remain public (e.g. email confirmation callbacks). */
@@ -48,6 +49,7 @@ export const PROTECTED_PATH_PREFIXES = [
   "/onboarding",
   "/invitations",
   "/protected",
+  "/platform",
 ];
 
 export function isPublicPath(pathname: string): boolean {
@@ -58,6 +60,7 @@ export function isPublicPath(pathname: string): boolean {
 }
 
 export function isProtectedPath(pathname: string): boolean {
+  if (pathname === "/platform/invitations/accept") return false;
   return PROTECTED_PATH_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );

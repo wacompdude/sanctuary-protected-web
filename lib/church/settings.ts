@@ -101,6 +101,7 @@ export type ChurchSettingsRecord = {
   postal_code: string | null;
   country: string | null;
   timezone: string | null;
+  week_starts_on: number | null;
   logo_path: string | null;
   primary_brand_color: string | null;
   secondary_brand_color: string | null;
@@ -149,6 +150,7 @@ export const CHURCH_SETTINGS_SELECT = [
   "postal_code",
   "country",
   "timezone",
+  "week_starts_on",
   "logo_path",
   "primary_brand_color",
   "secondary_brand_color",
@@ -321,6 +323,7 @@ export function validateGeneralSettings(
   description: string | null;
   primary_language: string | null;
   timezone: string;
+  week_starts_on: number;
 }> {
   const fieldErrors: Record<string, string> = {};
   const name = readString(formData, "name").trim();
@@ -332,6 +335,8 @@ export function validateGeneralSettings(
     emptyToNull(readString(formData, "primary_language")) ?? "en";
   const yearRaw = readString(formData, "year_established").trim();
   const timezone = parseTimezoneField(formData, fieldErrors);
+  const weekStartsRaw = readString(formData, "week_starts_on").trim();
+  const week_starts_on = Number(weekStartsRaw === "" ? 0 : weekStartsRaw);
 
   if (!name) fieldErrors.name = "Church name is required.";
   else if (name.length > 200) fieldErrors.name = "Church name is too long.";
@@ -346,6 +351,15 @@ export function validateGeneralSettings(
 
   if (description && description.length > 4000) {
     fieldErrors.description = "Description must be 4000 characters or fewer.";
+  }
+
+  if (
+    !Number.isInteger(week_starts_on) ||
+    week_starts_on < 0 ||
+    week_starts_on > 6
+  ) {
+    fieldErrors.week_starts_on =
+      "Choose a valid week start day (Sunday through Saturday).";
   }
 
   let year_established: number | null = null;
@@ -371,6 +385,7 @@ export function validateGeneralSettings(
       description,
       primary_language,
       timezone,
+      week_starts_on,
     },
   };
 }
@@ -720,6 +735,9 @@ export function changedKeys(
 }
 
 export function migrationHintFromError(message: string): string | null {
+  if (/week_starts_on/i.test(message) && /does not exist|column/i.test(message)) {
+    return "Church week-start settings are missing. Run supabase/migrations/045_church_week_starts_on.sql in the Supabase SQL Editor.";
+  }
   if (
     /does not exist/i.test(message) &&
     /(column|relation).*churches|display_name|settings|plan_name|trial_ends_at/i.test(

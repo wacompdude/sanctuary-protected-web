@@ -7,6 +7,8 @@ import {
   canManageThreatLevels,
   formatThreatWeek,
   labelForThreatLevel,
+  labelForWeekStartsOn,
+  normalizeWeekStartsOn,
   rankLabelForThreatLevel,
   startOfThreatWeek,
   threatLevelBadgeClassName,
@@ -16,7 +18,7 @@ import {
   getCurrentChurchThreatLevel,
   listChurchThreatLevels,
 } from "@/lib/church/threat-level-queries";
-import { ThreatLevelForm } from "@/components/dashboard/threat-level-form";
+import { ThreatLevelManagePanel } from "@/components/dashboard/threat-level-form";
 import { ThreatLevelHistoryList } from "@/components/dashboard/threat-level-history-list";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,6 +43,9 @@ async function ThreatLevelPageContent() {
     getCurrentChurchThreatLevel(church.id),
     listChurchThreatLevels(church.id, 12),
   ]);
+  const weekStartsOn = normalizeWeekStartsOn(church.week_starts_on);
+  const weekStartsLabel = labelForWeekStartsOn(weekStartsOn);
+  const weekEndsLabel = labelForWeekStartsOn((weekStartsOn + 6) % 7);
 
   return (
     <div className="space-y-8">
@@ -61,6 +66,8 @@ async function ThreatLevelPageContent() {
         </h1>
         <p className="mt-1 text-muted-foreground">
           Update and review the current weekly threat posture for {church.name}.
+          Weeks begin on {weekStartsLabel} (change under Settings → Church →
+          General).
         </p>
       </div>
 
@@ -122,10 +129,16 @@ async function ThreatLevelPageContent() {
       </Card>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-        <ThreatLevelForm
-          defaultWeekStart={startOfThreatWeek()}
+        <ThreatLevelManagePanel
+          defaultWeekStart={startOfThreatWeek(new Date(), weekStartsOn)}
           defaultThreatLevel={currentThreatLevel?.threat_level ?? "green"}
           defaultNotes={currentThreatLevel?.notes ?? ""}
+          weekStartsOnLabel={weekStartsLabel}
+          weekEndsOnLabel={weekEndsLabel}
+          currentEntryId={currentThreatLevel?.id ?? null}
+          currentWeekStart={currentThreatLevel?.week_start ?? null}
+          currentThreatLevel={currentThreatLevel?.threat_level ?? "green"}
+          currentNotes={currentThreatLevel?.notes ?? ""}
         />
 
         <Card>
@@ -134,6 +147,7 @@ async function ThreatLevelPageContent() {
               <CardTitle>Recent history</CardTitle>
               <CardDescription>
                 Weekly threat level changes, notes, and who recorded them.
+                Leaders can edit or delete entries.
               </CardDescription>
             </div>
             <Button asChild variant="outline" size="sm" className="h-10 shrink-0">
@@ -144,6 +158,9 @@ async function ThreatLevelPageContent() {
             <ThreatLevelHistoryList
               entries={history}
               timeZone={church.timezone ?? "America/Los_Angeles"}
+              canManage
+              weekStartsOnLabel={weekStartsLabel}
+              weekEndsOnLabel={weekEndsLabel}
             />
           </CardContent>
         </Card>

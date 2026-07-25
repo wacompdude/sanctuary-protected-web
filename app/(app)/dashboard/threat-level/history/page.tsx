@@ -6,7 +6,11 @@ import {
   getAuthenticatedUserWithChurch,
 } from "@/lib/church/auth";
 import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
-import { canManageThreatLevels } from "@/lib/church/threat-levels";
+import {
+  canManageThreatLevels,
+  labelForWeekStartsOn,
+  normalizeWeekStartsOn,
+} from "@/lib/church/threat-levels";
 import { listChurchThreatLevels } from "@/lib/church/threat-level-queries";
 import { ThreatLevelHistoryList } from "@/components/dashboard/threat-level-history-list";
 import { Button } from "@/components/ui/button";
@@ -22,6 +26,9 @@ async function ThreatLevelHistoryContent() {
   const { church, membership } = await getAuthenticatedUserWithChurch();
   const history = await listChurchThreatLevels(church.id, 100);
   const canManage = canManageThreatLevels(membership.role);
+  const weekStartsOn = normalizeWeekStartsOn(church.week_starts_on);
+  const weekStartsLabel = labelForWeekStartsOn(weekStartsOn);
+  const weekEndsLabel = labelForWeekStartsOn((weekStartsOn + 6) % 7);
 
   return (
     <div className="space-y-8">
@@ -79,6 +86,9 @@ async function ThreatLevelHistoryContent() {
           <ThreatLevelHistoryList
             entries={history}
             timeZone={church.timezone ?? "America/Los_Angeles"}
+            canManage={canManage}
+            weekStartsOnLabel={weekStartsLabel}
+            weekEndsOnLabel={weekEndsLabel}
           />
         </CardContent>
       </Card>

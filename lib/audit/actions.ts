@@ -15,6 +15,8 @@ export const AuditAction = {
   CHURCH_SETTINGS_SECURITY_UPDATED: "church.settings.security_updated",
   CHURCH_SETTINGS_PREFERENCES_UPDATED: "church.settings.preferences_updated",
   CHURCH_THREAT_LEVEL_UPDATED: "church.threat_level_updated",
+  CHURCH_THREAT_LEVEL_EDITED: "church.threat_level_edited",
+  CHURCH_THREAT_LEVEL_DELETED: "church.threat_level_deleted",
   CHURCH_LOGO_UPDATED: "church.logo_updated",
   CHURCH_ACCOUNT_SUSPENDED: "church.account_suspended",
   CHURCH_ACCOUNT_REACTIVATED: "church.account_reactivated",
@@ -154,6 +156,36 @@ export const AuditAction = {
   SUBSCRIPTION_TRIAL_STARTED: "subscription.trial_started",
   SUBSCRIPTION_CANCELLED: "subscription.cancelled",
   SUBSCRIPTION_REACTIVATED: "subscription.reactivated",
+  PLATFORM_BOOTSTRAP_SUPER_ADMIN_CREATED: "platform.bootstrap_super_admin_created",
+  PLATFORM_ACCOUNT_INVITED: "platform.account_invited",
+  PLATFORM_ACCOUNT_CREATED: "platform.account_created",
+  PLATFORM_ACCOUNT_UPDATED: "platform.account_updated",
+  PLATFORM_ACCOUNT_DISABLED: "platform.account_disabled",
+  PLATFORM_ACCOUNT_RESTORED: "platform.account_restored",
+  PLATFORM_ROLE_ASSIGNED: "platform.role_assigned",
+  PLATFORM_ROLE_REVOKED: "platform.role_revoked",
+  PLATFORM_SUPER_ADMIN_CREATED: "platform.super_admin_created",
+  PLATFORM_SUPER_ADMIN_REMOVED: "platform.super_admin_removed",
+  PLATFORM_PASSWORD_RESET_REQUIRED: "platform.password_reset_required",
+  PLATFORM_MFA_REQUIRED: "platform.mfa_required",
+  PLATFORM_MFA_ENROLLED: "platform.mfa_enrolled",
+  PLATFORM_LOGIN_SUCCEEDED: "platform.login_succeeded",
+  PLATFORM_LOGIN_FAILED: "platform.login_failed",
+  PLATFORM_CHURCH_VIEWED: "platform.church_viewed",
+  PLATFORM_CHURCH_UPDATED: "platform.church_updated",
+  PLATFORM_CHURCH_SUSPENDED: "platform.church_suspended",
+  PLATFORM_CHURCH_RESTORED: "platform.church_restored",
+  PLATFORM_SUPPORT_SESSION_STARTED: "platform.support_session_started",
+  PLATFORM_SUPPORT_SESSION_ENDED: "platform.support_session_ended",
+  PLATFORM_SUBSCRIPTION_PLAN_CHANGED: "platform.subscription_plan_changed",
+  PLATFORM_SUBSCRIPTION_CANCELLED: "platform.subscription_cancelled",
+  PLATFORM_SUBSCRIPTION_RESTORED: "platform.subscription_restored",
+  PLATFORM_ENTITLEMENT_OVERRIDE_CREATED: "platform.entitlement_override_created",
+  PLATFORM_ENTITLEMENT_OVERRIDE_REVOKED: "platform.entitlement_override_revoked",
+  PLATFORM_JOB_RETRIED: "platform.job_retried",
+  PLATFORM_WEBHOOK_RETRIED: "platform.webhook_retried",
+  PLATFORM_TEST_EMAIL_SENT: "platform.test_email_sent",
+  PLATFORM_TEST_SMS_SENT: "platform.test_sms_sent",
 } as const;
 
 export type AuditActionName = (typeof AuditAction)[keyof typeof AuditAction];
@@ -200,6 +232,10 @@ export const AuditEntityType = {
   DASHBOARD_BOX_SETTINGS: "dashboard_box_settings",
   CHURCH_SUBSCRIPTION: "church_subscription",
   SUBSCRIPTION_PLAN: "subscription_plan",
+  PLATFORM_ACCOUNT: "platform_account",
+  PLATFORM_ROLE: "platform_role",
+  PLATFORM_ACCESS_SESSION: "platform_access_session",
+  PLATFORM_INVITATION: "platform_invitation",
 } as const;
 
 export type AuditEntityTypeName =
@@ -220,6 +256,8 @@ export function labelForAuditAction(action: string): string {
     [AuditAction.CHURCH_SETTINGS_PREFERENCES_UPDATED]:
       "Application preferences updated",
     [AuditAction.CHURCH_THREAT_LEVEL_UPDATED]: "Threat level updated",
+    [AuditAction.CHURCH_THREAT_LEVEL_EDITED]: "Threat level entry edited",
+    [AuditAction.CHURCH_THREAT_LEVEL_DELETED]: "Threat level entry deleted",
     [AuditAction.CHURCH_LOGO_UPDATED]: "Church logo updated",
     [AuditAction.CHURCH_ACCOUNT_SUSPENDED]: "Church account suspended",
     [AuditAction.CHURCH_ACCOUNT_REACTIVATED]: "Church account reactivated",
@@ -377,6 +415,45 @@ export function labelForAuditAction(action: string): string {
     [AuditAction.SUBSCRIPTION_TRIAL_STARTED]: "Subscription trial started",
     [AuditAction.SUBSCRIPTION_CANCELLED]: "Subscription cancelled",
     [AuditAction.SUBSCRIPTION_REACTIVATED]: "Subscription reactivated",
+    [AuditAction.PLATFORM_BOOTSTRAP_SUPER_ADMIN_CREATED]:
+      "Platform super admin bootstrapped",
+    [AuditAction.PLATFORM_ACCOUNT_INVITED]: "Platform account invited",
+    [AuditAction.PLATFORM_ACCOUNT_CREATED]: "Platform account created",
+    [AuditAction.PLATFORM_ACCOUNT_UPDATED]: "Platform account updated",
+    [AuditAction.PLATFORM_ACCOUNT_DISABLED]: "Platform account disabled",
+    [AuditAction.PLATFORM_ACCOUNT_RESTORED]: "Platform account restored",
+    [AuditAction.PLATFORM_ROLE_ASSIGNED]: "Platform role assigned",
+    [AuditAction.PLATFORM_ROLE_REVOKED]: "Platform role revoked",
+    [AuditAction.PLATFORM_SUPER_ADMIN_CREATED]: "Platform super admin created",
+    [AuditAction.PLATFORM_SUPER_ADMIN_REMOVED]: "Platform super admin removed",
+    [AuditAction.PLATFORM_PASSWORD_RESET_REQUIRED]:
+      "Platform password reset required",
+    [AuditAction.PLATFORM_MFA_REQUIRED]: "Platform MFA required",
+    [AuditAction.PLATFORM_MFA_ENROLLED]: "Platform MFA enrolled",
+    [AuditAction.PLATFORM_LOGIN_SUCCEEDED]: "Platform login succeeded",
+    [AuditAction.PLATFORM_LOGIN_FAILED]: "Platform login failed",
+    [AuditAction.PLATFORM_CHURCH_VIEWED]: "Platform church viewed",
+    [AuditAction.PLATFORM_CHURCH_UPDATED]: "Platform church updated",
+    [AuditAction.PLATFORM_CHURCH_SUSPENDED]: "Platform church suspended",
+    [AuditAction.PLATFORM_CHURCH_RESTORED]: "Platform church restored",
+    [AuditAction.PLATFORM_SUPPORT_SESSION_STARTED]:
+      "Platform support session started",
+    [AuditAction.PLATFORM_SUPPORT_SESSION_ENDED]:
+      "Platform support session ended",
+    [AuditAction.PLATFORM_SUBSCRIPTION_PLAN_CHANGED]:
+      "Platform subscription plan changed",
+    [AuditAction.PLATFORM_SUBSCRIPTION_CANCELLED]:
+      "Platform subscription cancelled",
+    [AuditAction.PLATFORM_SUBSCRIPTION_RESTORED]:
+      "Platform subscription restored",
+    [AuditAction.PLATFORM_ENTITLEMENT_OVERRIDE_CREATED]:
+      "Platform entitlement override created",
+    [AuditAction.PLATFORM_ENTITLEMENT_OVERRIDE_REVOKED]:
+      "Platform entitlement override revoked",
+    [AuditAction.PLATFORM_JOB_RETRIED]: "Platform job retried",
+    [AuditAction.PLATFORM_WEBHOOK_RETRIED]: "Platform webhook retried",
+    [AuditAction.PLATFORM_TEST_EMAIL_SENT]: "Platform test email sent",
+    [AuditAction.PLATFORM_TEST_SMS_SENT]: "Platform test SMS sent",
     // Legacy rows from earlier phases
     "membership.invitation_created": "Member invited",
     "membership.invitation_accepted": "Invitation accepted",

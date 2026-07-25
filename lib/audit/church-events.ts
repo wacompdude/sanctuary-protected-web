@@ -90,6 +90,62 @@ export async function auditChurchThreatLevelUpdated(
   });
 }
 
+export async function auditChurchThreatLevelEdited(
+  supabase: SupabaseClient,
+  params: {
+    churchId: string;
+    userId: string;
+    threatLevelId: string;
+    weekStart: string;
+    previousLevel: string | null;
+    nextLevel: string;
+    previousWeekStart?: string | null;
+    previousNotes?: string | null;
+    nextNotes?: string | null;
+  },
+) {
+  return writeAuditLog(supabase, {
+    churchId: params.churchId,
+    userId: params.userId,
+    action: AuditAction.CHURCH_THREAT_LEVEL_EDITED,
+    entityType: AuditEntityType.CHURCH_THREAT_LEVEL,
+    entityId: params.threatLevelId,
+    metadata: {
+      week_start: params.weekStart,
+      previous_week_start: params.previousWeekStart ?? null,
+      previous_level: params.previousLevel,
+      next_level: params.nextLevel,
+      notes_changed:
+        (params.previousNotes ?? null) !== (params.nextNotes ?? null),
+    },
+    ipAddress: await getRequestIpAddress(),
+  });
+}
+
+export async function auditChurchThreatLevelDeleted(
+  supabase: SupabaseClient,
+  params: {
+    churchId: string;
+    userId: string;
+    threatLevelId: string;
+    weekStart: string;
+    threatLevel: string;
+  },
+) {
+  return writeAuditLog(supabase, {
+    churchId: params.churchId,
+    userId: params.userId,
+    action: AuditAction.CHURCH_THREAT_LEVEL_DELETED,
+    entityType: AuditEntityType.CHURCH_THREAT_LEVEL,
+    entityId: params.threatLevelId,
+    metadata: {
+      week_start: params.weekStart,
+      threat_level: params.threatLevel,
+    },
+    ipAddress: await getRequestIpAddress(),
+  });
+}
+
 export async function auditCampusCreated(
   supabase: SupabaseClient,
   params: { churchId: string; userId: string; campusId: string; name: string },

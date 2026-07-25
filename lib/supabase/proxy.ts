@@ -8,8 +8,13 @@ import {
 import { getSupabaseAnonKey, getSupabaseUrl, hasEnvVars } from "./env";
 
 export async function updateSession(request: NextRequest) {
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-pathname", request.nextUrl.pathname);
+
   let supabaseResponse = NextResponse.next({
-    request,
+    request: {
+      headers: requestHeaders,
+    },
   });
 
   if (!hasEnvVars) {
@@ -27,7 +32,9 @@ export async function updateSession(request: NextRequest) {
             request.cookies.set(name, value),
           );
           supabaseResponse = NextResponse.next({
-            request,
+            request: {
+              headers: requestHeaders,
+            },
           });
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options),
@@ -43,9 +50,16 @@ export async function updateSession(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
     if (user && isAuthEntryPath(pathname)) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/home";
-      return NextResponse.redirect(url);
+      // Allow account switching without bouncing back into the app.
+      const switchAccount =
+        request.nextUrl.searchParams.get("switch") === "1" ||
+        request.nextUrl.searchParams.get("switch") === "true";
+      if (!switchAccount) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/home";
+        url.search = "";
+        return NextResponse.redirect(url);
+      }
     }
 
     if (!user && isProtectedPath(pathname)) {

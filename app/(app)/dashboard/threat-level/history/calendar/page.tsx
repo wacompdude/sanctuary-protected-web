@@ -7,6 +7,7 @@ import {
 } from "@/lib/church/auth";
 import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
 import { listChurchThreatLevels } from "@/lib/church/threat-level-queries";
+import { normalizeWeekStartsOn } from "@/lib/church/threat-levels";
 import { ThreatLevelHistoryCalendar } from "@/components/dashboard/threat-level-history-calendar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -41,6 +42,7 @@ async function ThreatLevelCalendarContent() {
       <ThreatLevelHistoryCalendar
         entries={history}
         timeZone={church.timezone ?? "America/Los_Angeles"}
+        weekStartsOn={normalizeWeekStartsOn(church.week_starts_on)}
       />
     </div>
   );

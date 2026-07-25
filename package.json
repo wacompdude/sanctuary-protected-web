@@ -4,7 +4,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "bootstrap:super-admin": "npx --yes tsx scripts/bootstrap-super-admin.ts",
+    "selfcheck:platform": "npx --yes tsx lib/platform/foundation.selfcheck.ts && npx --yes tsx lib/platform/bootstrap.selfcheck.ts"
   },
   "dependencies": {
     "@radix-ui/react-checkbox": "^1.3.1",

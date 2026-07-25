@@ -23,7 +23,23 @@ import {
 import { formatDateTime } from "@/lib/incidents/format";
 import { resolveChurchTimeZone } from "@/lib/datetime/format";
 
-const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const WEEKDAY_LABELS_SUN_FIRST = [
+  "Sun",
+  "Mon",
+  "Tue",
+  "Wed",
+  "Thu",
+  "Fri",
+  "Sat",
+];
+
+function weekdayLabels(weekStartsOn: number): string[] {
+  const starts = ((weekStartsOn % 7) + 7) % 7;
+  return [
+    ...WEEKDAY_LABELS_SUN_FIRST.slice(starts),
+    ...WEEKDAY_LABELS_SUN_FIRST.slice(0, starts),
+  ];
+}
 
 function ymdLocal(date: Date): string {
   const y = date.getFullYear();
@@ -52,11 +68,12 @@ function churchLocalYmd(iso: string, timeZone: string): string {
   return `${get("year")}-${get("month")}-${get("day")}`;
 }
 
-function buildMonthGrid(anchor: Date): Date[] {
+function buildMonthGrid(anchor: Date, weekStartsOn: number): Date[] {
   const first = startOfMonth(anchor);
-  const mondayOffset = (first.getDay() + 6) % 7; // Monday = 0
+  const starts = ((weekStartsOn % 7) + 7) % 7;
+  const offset = (first.getDay() - starts + 7) % 7;
   const gridStart = new Date(first);
-  gridStart.setDate(first.getDate() - mondayOffset);
+  gridStart.setDate(first.getDate() - offset);
 
   return Array.from({ length: 42 }, (_, i) => {
     const day = new Date(gridStart);
@@ -68,12 +85,18 @@ function buildMonthGrid(anchor: Date): Date[] {
 export function ThreatLevelHistoryCalendar({
   entries,
   timeZone,
+  weekStartsOn = 0,
 }: {
   entries: ChurchThreatLevelHistoryEntry[];
   timeZone: string;
+  weekStartsOn?: number;
 }) {
   const tz = resolveChurchTimeZone(timeZone);
   const [anchor, setAnchor] = useState(() => startOfMonth(new Date()));
+  const labels = useMemo(
+    () => weekdayLabels(weekStartsOn),
+    [weekStartsOn],
+  );
 
   const latestByWeekStart = useMemo(() => {
     const map = new Map<string, ChurchThreatLevelHistoryEntry>();
@@ -107,7 +130,10 @@ export function ThreatLevelHistoryCalendar({
     return map;
   }, [entries, tz]);
 
-  const monthGrid = useMemo(() => buildMonthGrid(anchor), [anchor]);
+  const monthGrid = useMemo(
+    () => buildMonthGrid(anchor, weekStartsOn),
+    [anchor, weekStartsOn],
+  );
   const monthLabel = anchor.toLocaleDateString("en-US", {
     month: "long",
     year: "numeric",
@@ -167,7 +193,7 @@ export function ThreatLevelHistoryCalendar({
 
       <div className="overflow-x-auto rounded-lg border border-border">
         <div className="grid min-w-[640px] grid-cols-7 border-b border-border bg-muted/40 text-center text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          {WEEKDAY_LABELS.map((label) => (
+          {labels.map((label) => (
             <div key={label} className="px-2 py-2">
               {label}
             </div>
@@ -177,7 +203,7 @@ export function ThreatLevelHistoryCalendar({
           {monthGrid.map((day) => {
             const inMonth = day.getMonth() === anchor.getMonth();
             const dayKey = ymdLocal(day);
-            const weekKey = startOfThreatWeek(day);
+            const weekKey = startOfThreatWeek(day, weekStartsOn);
             const weekLevel = latestByWeekStart.get(weekKey);
             const dayChanges = changesByDay.get(dayKey) ?? [];
             const fill = weekLevel

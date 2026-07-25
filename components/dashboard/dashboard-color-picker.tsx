@@ -1,9 +1,12 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { DASHBOARD_COLOR_PRESETS, normalizeHexColor } from "@/lib/dashboard/colors";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+
+const FALLBACK_HEX = "#E5E7EB";
 
 export function DashboardColorPicker({
   id,
@@ -11,14 +14,25 @@ export function DashboardColorPicker({
   value,
   disabled,
   onChange,
+  allowEmpty = false,
+  error,
 }: {
   id: string;
   label: string;
   value: string;
   disabled?: boolean;
   onChange: (hex: string) => void;
+  /** When true, empty values are allowed (clearable optional colors). */
+  allowEmpty?: boolean;
+  error?: string;
 }) {
-  const normalized = normalizeHexColor(value) ?? "#E5E7EB";
+  const normalized = normalizeHexColor(value);
+  const previewHex = normalized ?? FALLBACK_HEX;
+  const [hexDraft, setHexDraft] = useState(normalized ?? (allowEmpty ? "" : FALLBACK_HEX));
+
+  useEffect(() => {
+    setHexDraft(normalized ?? (allowEmpty ? "" : FALLBACK_HEX));
+  }, [normalized, allowEmpty]);
 
   return (
     <div className="space-y-2">
@@ -27,7 +41,7 @@ export function DashboardColorPicker({
         <input
           id={id}
           type="color"
-          value={normalized.toLowerCase()}
+          value={previewHex.toLowerCase()}
           disabled={disabled}
           onChange={(event) => {
             const next = normalizeHexColor(event.target.value);
@@ -38,26 +52,69 @@ export function DashboardColorPicker({
         />
         <Input
           id={`${id}-hex`}
-          value={normalized}
+          value={hexDraft}
           disabled={disabled}
           maxLength={7}
+          placeholder="#1A6B4A"
           className="h-11 w-28 font-mono uppercase"
           aria-label={`${label} hex value`}
+          aria-invalid={!!error}
+          aria-describedby={error ? `${id}-error` : undefined}
           onChange={(event) => {
-            const raw = event.target.value.trim();
-            if (raw === "") return;
+            const raw = event.target.value.trim().toUpperCase();
+            setHexDraft(raw);
+
+            if (raw === "") {
+              if (allowEmpty) onChange("");
+              return;
+            }
+
             const withHash = raw.startsWith("#") ? raw : `#${raw}`;
             const next = normalizeHexColor(withHash);
             if (next) onChange(next);
           }}
+          onBlur={() => {
+            if (allowEmpty && hexDraft.trim() === "") {
+              setHexDraft("");
+              onChange("");
+              return;
+            }
+            const withHash = hexDraft.startsWith("#")
+              ? hexDraft
+              : `#${hexDraft}`;
+            const next = normalizeHexColor(withHash);
+            if (next) {
+              setHexDraft(next);
+              onChange(next);
+            } else {
+              setHexDraft(normalized ?? (allowEmpty ? "" : FALLBACK_HEX));
+            }
+          }}
         />
         <span
           className="inline-flex h-11 min-w-16 items-center justify-center rounded-md border px-3 text-xs font-medium"
-          style={{ backgroundColor: normalized, color: "#111827" }}
+          style={{
+            backgroundColor: previewHex,
+            color: "#111827",
+            opacity: normalized || !allowEmpty ? 1 : 0.45,
+          }}
           aria-hidden
         >
           Preview
         </span>
+        {allowEmpty && normalized ? (
+          <button
+            type="button"
+            disabled={disabled}
+            className="text-xs text-muted-foreground underline-offset-2 hover:underline disabled:opacity-50"
+            onClick={() => {
+              setHexDraft("");
+              onChange("");
+            }}
+          >
+            Clear
+          </button>
+        ) : null}
       </div>
       <div className="flex flex-wrap gap-2 pt-1">
         {DASHBOARD_COLOR_PRESETS.map((preset) => {
@@ -80,6 +137,11 @@ export function DashboardColorPicker({
           );
         })}
       </div>
+      {error ? (
+        <p id={`${id}-error`} className="text-sm text-destructive" role="alert">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

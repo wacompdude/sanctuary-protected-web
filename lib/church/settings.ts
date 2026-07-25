@@ -1,6 +1,7 @@
 import type { ActionState, ChurchStatus, MembershipRole } from "@/lib/church/types";
 import { isOwnershipRole } from "@/lib/church/types";
 import { ONBOARDING_TIMEZONES } from "@/lib/church/onboarding";
+import { normalizeHexColor } from "@/lib/dashboard/colors";
 
 export const CHURCH_SETTINGS_VIEW_ROLES: MembershipRole[] = [
   "owner",
@@ -178,7 +179,6 @@ export const CHURCH_SETTINGS_SELECT = [
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const URL_PATTERN = /^https?:\/\/.+/i;
-const HEX_COLOR_PATTERN = /^#[0-9A-Fa-f]{6}$/;
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const PHONE_MAX = 40;
 
@@ -477,6 +477,15 @@ export function validateAddressSettings(
   };
 }
 
+function normalizeOptionalBrandColor(
+  value: string | null,
+): { ok: true; value: string | null } | { ok: false } {
+  if (!value) return { ok: true, value: null };
+  const normalized = normalizeHexColor(value);
+  if (!normalized) return { ok: false };
+  return { ok: true, value: normalized };
+}
+
 export function validateBrandingSettings(
   formData: FormData,
 ): ValidationResult<{
@@ -486,12 +495,12 @@ export function validateBrandingSettings(
 }> {
   const fieldErrors: Record<string, string> = {};
   const logo_path = emptyToNull(readString(formData, "logo_path"));
-  const primary_brand_color = emptyToNull(
-    readString(formData, "primary_brand_color"),
-  );
-  const secondary_brand_color = emptyToNull(
+  const primaryRaw = emptyToNull(readString(formData, "primary_brand_color"));
+  const secondaryRaw = emptyToNull(
     readString(formData, "secondary_brand_color"),
   );
+  const primaryResult = normalizeOptionalBrandColor(primaryRaw);
+  const secondaryResult = normalizeOptionalBrandColor(secondaryRaw);
 
   if (logo_path && logo_path.length > 500) {
     fieldErrors.logo_path = "Logo path or URL is too long.";
@@ -499,10 +508,10 @@ export function validateBrandingSettings(
   if (logo_path && logo_path.includes("://") && !URL_PATTERN.test(logo_path)) {
     fieldErrors.logo_path = "Logo URL must start with http:// or https://.";
   }
-  if (primary_brand_color && !HEX_COLOR_PATTERN.test(primary_brand_color)) {
+  if (!primaryResult.ok) {
     fieldErrors.primary_brand_color = "Use a hex color like #1A6B4A.";
   }
-  if (secondary_brand_color && !HEX_COLOR_PATTERN.test(secondary_brand_color)) {
+  if (!secondaryResult.ok) {
     fieldErrors.secondary_brand_color = "Use a hex color like #1A6B4A.";
   }
 
@@ -511,8 +520,8 @@ export function validateBrandingSettings(
   return {
     data: {
       logo_path,
-      primary_brand_color,
-      secondary_brand_color,
+      primary_brand_color: primaryResult.value,
+      secondary_brand_color: secondaryResult.value,
     },
   };
 }

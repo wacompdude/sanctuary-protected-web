@@ -7,10 +7,8 @@ import {
   updateChurchBrandingSettings,
   uploadChurchLogo,
 } from "@/app/(app)/settings/church/actions";
-import {
-  LabeledInput,
-  SettingsSectionCard,
-} from "@/components/settings/settings-form-shell";
+import { DashboardColorPicker } from "@/components/dashboard/dashboard-color-picker";
+import { SettingsSectionCard } from "@/components/settings/settings-form-shell";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -42,6 +40,17 @@ export function ChurchBrandingForm({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [localPreview, setLocalPreview] = useState<string | null>(null);
   const [clientError, setClientError] = useState<string | null>(null);
+  const [primaryBrandColor, setPrimaryBrandColor] = useState(
+    church.primary_brand_color ?? "",
+  );
+  const [secondaryBrandColor, setSecondaryBrandColor] = useState(
+    church.secondary_brand_color ?? "",
+  );
+
+  useEffect(() => {
+    setPrimaryBrandColor(church.primary_brand_color ?? "");
+    setSecondaryBrandColor(church.secondary_brand_color ?? "");
+  }, [church.primary_brand_color, church.secondary_brand_color]);
 
   const [uploadState, uploadAction, uploadPending] = useActionState(
     uploadChurchLogo,
@@ -210,7 +219,7 @@ export function ChurchBrandingForm({
 
       <SettingsSectionCard
         title="Brand colors"
-        description="Optional hex colors for your organization."
+        description="Optional hex colors for your organization. Enter a hex code or use the color picker."
         action={updateChurchBrandingSettings}
         canEdit={canEdit}
         submitLabel="Save colors"
@@ -222,21 +231,31 @@ export function ChurchBrandingForm({
               name="logo_path"
               value={church.logo_path ?? ""}
             />
-            <div className="grid gap-4 sm:grid-cols-2">
-              <LabeledInput
+            <input
+              type="hidden"
+              name="primary_brand_color"
+              value={primaryBrandColor}
+            />
+            <input
+              type="hidden"
+              name="secondary_brand_color"
+              value={secondaryBrandColor}
+            />
+            <div className="grid gap-6 lg:grid-cols-2">
+              <DashboardColorPicker
                 id="primary_brand_color"
-                name="primary_brand_color"
                 label="Primary brand color"
-                placeholder="#1A6B4A"
-                defaultValue={church.primary_brand_color}
+                value={primaryBrandColor}
+                allowEmpty
+                onChange={setPrimaryBrandColor}
                 error={fieldErrors?.primary_brand_color}
               />
-              <LabeledInput
+              <DashboardColorPicker
                 id="secondary_brand_color"
-                name="secondary_brand_color"
                 label="Secondary brand color"
-                placeholder="#0F3D2E"
-                defaultValue={church.secondary_brand_color}
+                value={secondaryBrandColor}
+                allowEmpty
+                onChange={setSecondaryBrandColor}
                 error={fieldErrors?.secondary_brand_color}
               />
             </div>
@@ -245,24 +264,6 @@ export function ChurchBrandingForm({
               submenus), and focus rings. Secondary tints submenu shells and
               hover surfaces; if omitted, a soft tint of the primary is used.
             </p>
-            {(church.primary_brand_color || church.secondary_brand_color) && (
-              <div className="flex gap-3">
-                {church.primary_brand_color && (
-                  <div
-                    className="h-10 w-10 rounded-md border"
-                    style={{ backgroundColor: church.primary_brand_color }}
-                    title="Primary"
-                  />
-                )}
-                {church.secondary_brand_color && (
-                  <div
-                    className="h-10 w-10 rounded-md border"
-                    style={{ backgroundColor: church.secondary_brand_color }}
-                    title="Secondary"
-                  />
-                )}
-              </div>
-            )}
           </>
         )}
       </SettingsSectionCard>

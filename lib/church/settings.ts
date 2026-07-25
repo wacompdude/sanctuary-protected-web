@@ -516,7 +516,10 @@ export function validateBrandingSettings(
   }
 
   if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
-  if (!primaryResult.ok || !secondaryResult.ok) return { fieldErrors };
+
+  // Separate guards so TypeScript narrows each discriminated union.
+  if (!primaryResult.ok) return { fieldErrors };
+  if (!secondaryResult.ok) return { fieldErrors };
 
   return {
     data: {

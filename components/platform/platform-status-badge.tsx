@@ -19,6 +19,9 @@ const STATUS_STYLES: Record<string, string> = {
   failed: "border-rose-700/60 bg-rose-950/50 text-rose-300",
   processed: "border-emerald-700/60 bg-emerald-950/50 text-emerald-300",
   received: "border-slate-600 bg-slate-900 text-slate-300",
+  draft: "border-slate-600 bg-slate-900 text-slate-300",
+  in_review: "border-sky-700/60 bg-sky-950/50 text-sky-300",
+  published: "border-emerald-700/60 bg-emerald-950/50 text-emerald-300",
 };
 
 export function PlatformStatusBadge({

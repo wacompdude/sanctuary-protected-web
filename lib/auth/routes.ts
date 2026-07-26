@@ -46,6 +46,7 @@ export const PROTECTED_PATH_PREFIXES = [
   "/select-church",
   "/churches",
   "/profile",
+  "/help",
   "/onboarding",
   "/invitations",
   "/protected",

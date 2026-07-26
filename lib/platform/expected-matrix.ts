@@ -4,7 +4,7 @@ import { PLATFORM_ROLE_KEYS } from "@/lib/platform/role-keys";
 import type { PlatformRoleKey } from "@/lib/platform/role-keys";
 
 /**
- * Expected role → permission matrix (mirrors migration 044 seed).
+ * Expected role → permission matrix (mirrors migrations 044 + 052 seeds).
  * Used by foundation selfcheck; runtime still reads DB assignments.
  */
 export const EXPECTED_PLATFORM_ROLE_PERMISSIONS: Record<
@@ -44,6 +44,16 @@ export const EXPECTED_PLATFORM_ROLE_PERMISSIONS: Record<
     "system.jobs.read",
     "system.webhooks.read",
     "developer.config_status.read",
+    "help.console.access",
+    "help.manage",
+    "help.read_drafts",
+    "help.create",
+    "help.update",
+    "help.publish",
+    "help.archive",
+    "help.categories.manage",
+    "help.versions.read",
+    "help.analytics.read",
   ],
 
   [PLATFORM_ROLE_KEYS.DEVELOPER]: [
@@ -57,6 +67,9 @@ export const EXPECTED_PLATFORM_ROLE_PERMISSIONS: Record<
     "developer.tools.access",
     "developer.logs.read",
     "developer.config_status.read",
+    "help.console.access",
+    "help.read_drafts",
+    "help.versions.read",
   ],
 
   [PLATFORM_ROLE_KEYS.SUPPORT]: [
@@ -69,6 +82,10 @@ export const EXPECTED_PLATFORM_ROLE_PERMISSIONS: Record<
     "features.read",
     "audit.church.read_all",
     "system.health.read",
+    "help.console.access",
+    "help.read_drafts",
+    "help.versions.read",
+    "help.analytics.read",
   ],
 
   [PLATFORM_ROLE_KEYS.BILLING_ADMIN]: [
@@ -101,6 +118,10 @@ export const EXPECTED_PLATFORM_ROLE_PERMISSIONS: Record<
     "audit.church.read_all",
     "system.health.read",
     "developer.config_status.read",
+    "help.console.access",
+    "help.read_drafts",
+    "help.versions.read",
+    "help.analytics.read",
   ],
 };
 

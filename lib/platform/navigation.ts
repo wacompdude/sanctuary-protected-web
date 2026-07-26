@@ -108,6 +108,27 @@ export const PLATFORM_NAV_SECTIONS: PlatformNavSection[] = [
     ],
   },
   {
+    id: "help",
+    label: "Help Center",
+    links: [
+      {
+        href: "/platform/help",
+        label: "Articles",
+        permission: "help.console.access",
+      },
+      {
+        href: "/platform/help/categories",
+        label: "Categories",
+        permission: "help.console.access",
+      },
+      {
+        href: "/platform/help/analytics",
+        label: "Analytics",
+        permission: "help.analytics.read",
+      },
+    ],
+  },
+  {
     id: "audit",
     label: "Audit",
     links: [

@@ -197,6 +197,22 @@ export const AuditAction = {
   PLATFORM_WEBHOOK_RETRIED: "platform.webhook_retried",
   PLATFORM_TEST_EMAIL_SENT: "platform.test_email_sent",
   PLATFORM_TEST_SMS_SENT: "platform.test_sms_sent",
+  HELP_CATEGORY_CREATED: "help.category_created",
+  HELP_CATEGORY_UPDATED: "help.category_updated",
+  HELP_CATEGORY_ARCHIVED: "help.category_archived",
+  HELP_CATEGORY_DELETED: "help.category_deleted",
+  HELP_ARTICLE_CREATED: "help.article_created",
+  HELP_ARTICLE_UPDATED: "help.article_updated",
+  HELP_ARTICLE_SUBMITTED: "help.article_submitted",
+  HELP_ARTICLE_PUBLISHED: "help.article_published",
+  HELP_ARTICLE_ARCHIVED: "help.article_archived",
+  HELP_ARTICLE_RESTORED: "help.article_restored",
+  HELP_ARTICLE_DELETED: "help.article_deleted",
+  HELP_ARTICLE_VERSION_RESTORED: "help.article_version_restored",
+  HELP_ARTICLE_REVIEW_DUE_SET: "help.article_review_due_set",
+  HELP_STEP_CREATED: "help.step_created",
+  HELP_STEP_UPDATED: "help.step_updated",
+  HELP_STEP_DELETED: "help.step_deleted",
 } as const;
 
 export type AuditActionName = (typeof AuditAction)[keyof typeof AuditAction];
@@ -252,6 +268,10 @@ export const AuditEntityType = {
   PLATFORM_ROLE: "platform_role",
   PLATFORM_ACCESS_SESSION: "platform_access_session",
   PLATFORM_INVITATION: "platform_invitation",
+  HELP_CATEGORY: "help_category",
+  HELP_ARTICLE: "help_article",
+  HELP_ARTICLE_STEP: "help_article_step",
+  HELP_ARTICLE_VERSION: "help_article_version",
 } as const;
 
 export type AuditEntityTypeName =
@@ -483,6 +503,23 @@ export function labelForAuditAction(action: string): string {
     [AuditAction.PLATFORM_WEBHOOK_RETRIED]: "Platform webhook retried",
     [AuditAction.PLATFORM_TEST_EMAIL_SENT]: "Platform test email sent",
     [AuditAction.PLATFORM_TEST_SMS_SENT]: "Platform test SMS sent",
+    [AuditAction.HELP_CATEGORY_CREATED]: "Help category created",
+    [AuditAction.HELP_CATEGORY_UPDATED]: "Help category updated",
+    [AuditAction.HELP_CATEGORY_ARCHIVED]: "Help category archived",
+    [AuditAction.HELP_CATEGORY_DELETED]: "Help category deleted",
+    [AuditAction.HELP_ARTICLE_CREATED]: "Help article created",
+    [AuditAction.HELP_ARTICLE_UPDATED]: "Help article updated",
+    [AuditAction.HELP_ARTICLE_SUBMITTED]: "Help article submitted for review",
+    [AuditAction.HELP_ARTICLE_PUBLISHED]: "Help article published",
+    [AuditAction.HELP_ARTICLE_ARCHIVED]: "Help article archived",
+    [AuditAction.HELP_ARTICLE_RESTORED]: "Help article restored",
+    [AuditAction.HELP_ARTICLE_DELETED]: "Help article deleted",
+    [AuditAction.HELP_ARTICLE_VERSION_RESTORED]:
+      "Help article version restored to draft",
+    [AuditAction.HELP_ARTICLE_REVIEW_DUE_SET]: "Help article review due date set",
+    [AuditAction.HELP_STEP_CREATED]: "Help step created",
+    [AuditAction.HELP_STEP_UPDATED]: "Help step updated",
+    [AuditAction.HELP_STEP_DELETED]: "Help step deleted",
     // Legacy rows from earlier phases
     "membership.invitation_created": "Member invited",
     "membership.invitation_accepted": "Invitation accepted",

@@ -11,6 +11,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Church,
+  CircleHelp,
   CreditCard,
   Crown,
   Cross,
@@ -83,6 +84,7 @@ const NAV_ICONS: Partial<Record<NavItemId, LucideIcon>> = {
   billing: CreditCard,
   "account-status": Activity,
   audit: ScrollText,
+  help: CircleHelp,
   profile: UserRound,
 };
 

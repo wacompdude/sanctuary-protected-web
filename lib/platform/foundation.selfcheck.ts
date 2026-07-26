@@ -76,6 +76,14 @@ assert(
   hasPermissionInSet(developerPerms, "churches.support_access"),
   "developer may use support sessions",
 );
+assert(
+  hasPermissionInSet(developerPerms, "help.read_drafts"),
+  "developer may read help drafts",
+);
+assert(
+  !hasPermissionInSet(developerPerms, "help.publish"),
+  "developer cannot publish help by default",
+);
 
 const supportPerms = resolvePermissionsFromRoleKeys([
   PLATFORM_ROLE_KEYS.SUPPORT,
@@ -107,6 +115,18 @@ assert(
 assert(
   !hasPermissionInSet(platformAdminPerms, "subscriptions.override_entitlements"),
   "platform_admin cannot override entitlements by default",
+);
+assert(
+  hasPermissionInSet(platformAdminPerms, "help.manage"),
+  "platform_admin can manage help center",
+);
+assert(
+  hasPermissionInSet(platformAdminPerms, "help.publish"),
+  "platform_admin can publish help",
+);
+assert(
+  PLATFORM_PERMISSIONS.includes("help.manage"),
+  "help.manage is a known platform permission",
 );
 
 const combined = resolvePermissionsFromRoleKeys([

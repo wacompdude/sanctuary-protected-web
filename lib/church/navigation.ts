@@ -57,6 +57,7 @@ export type NavItemId =
   | "billing"
   | "account-status"
   | "audit"
+  | "help"
   | "profile"
   // Legacy ids kept so older references compile during transition
   | "select-church";
@@ -367,6 +368,13 @@ export const APP_NAV_SECTIONS: NavSection[] = [
     items: [
       {
         kind: "link",
+        id: "help",
+        href: "/help",
+        minRole: "viewer",
+        label: "Help Center",
+      },
+      {
+        kind: "link",
         id: "profile",
         href: "/profile",
         minRole: "viewer",
@@ -435,6 +443,13 @@ export function getNavSectionsForRole(
       {
         id: "account",
         items: [
+          {
+            kind: "link",
+            id: "help",
+            href: "/help",
+            minRole: "viewer",
+            label: "Help Center",
+          },
           {
             kind: "link",
             id: "profile",

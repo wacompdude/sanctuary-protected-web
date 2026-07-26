@@ -53,6 +53,17 @@ export const PLATFORM_PERMISSIONS = [
   "developer.tools.access",
   "developer.logs.read",
   "developer.config_status.read",
+
+  "help.console.access",
+  "help.manage",
+  "help.read_drafts",
+  "help.create",
+  "help.update",
+  "help.publish",
+  "help.archive",
+  "help.categories.manage",
+  "help.versions.read",
+  "help.analytics.read",
 ] as const;
 
 export type PlatformPermissionKey = (typeof PLATFORM_PERMISSIONS)[number];

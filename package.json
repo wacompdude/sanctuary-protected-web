@@ -6,6 +6,9 @@
     "start": "next start",
     "lint": "eslint .",
     "bootstrap:super-admin": "npx --yes tsx scripts/bootstrap-super-admin.ts",
+    "seed:first-church-demo": "npx --yes tsx scripts/seed-first-church-demo.ts",
+    "seed:first-church-demo:cleanup": "npx --yes tsx scripts/cleanup-first-church-demo.ts",
+    "selfcheck:demo-seed": "npx --yes tsx lib/demo-seed/foundation.selfcheck.ts",
     "selfcheck:platform": "npx --yes tsx lib/platform/foundation.selfcheck.ts && npx --yes tsx lib/platform/bootstrap.selfcheck.ts",
     "selfcheck:safety-concerns": "npx --yes tsx lib/safety-concerns/entitlements.selfcheck.ts && npx --yes tsx lib/safety-concerns/storage.selfcheck.ts && npx --yes tsx lib/safety-concerns/mobile.selfcheck.ts",
     "selfcheck:help": "npx --yes tsx lib/help/foundation.selfcheck.ts && npx --yes tsx lib/help/mobile.selfcheck.ts"

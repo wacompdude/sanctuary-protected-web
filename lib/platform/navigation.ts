@@ -105,6 +105,11 @@ export const PLATFORM_NAV_SECTIONS: PlatformNavSection[] = [
         label: "Provider config",
         permission: "developer.config_status.read",
       },
+      {
+        href: "/platform/system/demo-seed",
+        label: "Demo seed",
+        permission: "developer.tools.access",
+      },
     ],
   },
   {

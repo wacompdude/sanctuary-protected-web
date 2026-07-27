@@ -25,8 +25,11 @@ import {
 import {
   IncidentSeverityText,
   IncidentStatusBadge,
+  incidentSeveritySurfaceClass,
 } from "@/components/incidents/incident-badges";
 import { BarChart3, Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { IncidentSeverity } from "@/lib/incidents/types";
 import {
   campusFilterLabel,
   campusFilterOrClause,
@@ -198,7 +201,12 @@ async function IncidentsList({ showAll }: { showAll: boolean }) {
                   {visibleIncidents.map((incident) => (
                     <tr
                       key={incident.id}
-                      className="border-b border-border last:border-0"
+                      className={cn(
+                        "border-b border-border/60 last:border-0 transition-colors",
+                        incidentSeveritySurfaceClass[
+                          incident.severity as IncidentSeverity
+                        ] ?? "",
+                      )}
                     >
                       <td className="py-3 pr-4 font-mono text-xs">
                         <Link

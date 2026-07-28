@@ -16,6 +16,15 @@ export const NAV_FEATURE_REQUIREMENTS: Partial<Record<string, FeatureKey>> = {
   "schedule-notifications": FEATURE_KEYS.TEAM_SCHEDULING,
   "schedule-templates": FEATURE_KEYS.TEAM_SCHEDULING,
   "scheduling-settings": FEATURE_KEYS.TEAM_SCHEDULING,
+  training: FEATURE_KEYS.TRAINING_MANAGEMENT,
+  "training-dashboard": FEATURE_KEYS.TRAINING_MANAGEMENT,
+  "training-events": FEATURE_KEYS.TRAINING_MANAGEMENT,
+  "training-courses": FEATURE_KEYS.TRAINING_MANAGEMENT,
+  "training-calendar": FEATURE_KEYS.TRAINING_MANAGEMENT,
+  "training-records": FEATURE_KEYS.TRAINING_MANAGEMENT,
+  "training-required": FEATURE_KEYS.TRAINING_MANAGEMENT,
+  "training-reports": FEATURE_KEYS.TRAINING_MANAGEMENT,
+  "training-settings": FEATURE_KEYS.TRAINING_MANAGEMENT,
 };
 
 export const NAV_ENTITLEMENT_FEATURE_KEYS: FeatureKey[] = [

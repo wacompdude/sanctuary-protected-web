@@ -15,6 +15,15 @@ export const PUBLIC_PATHS = [
 /** Path prefixes that remain public (e.g. email confirmation callbacks). */
 export const PUBLIC_PATH_PREFIXES = ["/auth", "/api"];
 
+/**
+ * Provider webhooks — must never redirect to HTML login (that turns POST into
+ * a 405 on /login). Kept explicit even though /api is already public.
+ */
+export const WEBHOOK_PATH_PREFIXES = [
+  "/api/notifications/webhooks",
+  "/api/billing/webhooks",
+];
+
 /** Auth entry pages — signed-in users are redirected to the dashboard. */
 export const AUTH_ENTRY_PATHS = [
   "/login",
@@ -33,6 +42,7 @@ export const PROTECTED_PATH_PREFIXES = [
   "/incidents",
   "/events",
   "/certifications",
+  "/training",
   "/team",
   "/campuses",
   "/security-hardware",
@@ -55,13 +65,21 @@ export const PROTECTED_PATH_PREFIXES = [
 
 export function isPublicPath(pathname: string): boolean {
   if (PUBLIC_PATHS.includes(pathname)) return true;
+  if (isWebhookPath(pathname)) return true;
   return PUBLIC_PATH_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
+export function isWebhookPath(pathname: string): boolean {
+  return WEBHOOK_PATH_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
 }
 
 export function isProtectedPath(pathname: string): boolean {
   if (pathname === "/platform/invitations/accept") return false;
+  if (isWebhookPath(pathname)) return false;
   return PROTECTED_PATH_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );

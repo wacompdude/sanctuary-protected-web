@@ -4,8 +4,13 @@ import {
   isAuthEntryPath,
   isProtectedPath,
   isPublicPath,
+  isWebhookPath,
 } from "@/lib/auth/routes";
 import { getSupabaseAnonKey, getSupabaseUrl, hasEnvVars } from "./env";
+
+function isSafeMethod(method: string): boolean {
+  return method === "GET" || method === "HEAD" || method === "OPTIONS";
+}
 
 export async function updateSession(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
@@ -16,6 +21,14 @@ export async function updateSession(request: NextRequest) {
       headers: requestHeaders,
     },
   });
+
+  const { pathname } = request.nextUrl;
+
+  // Provider webhooks must reach the route handler as POST. Never redirect them
+  // to /login (307 preserves POST → page routes answer with 405).
+  if (isWebhookPath(pathname)) {
+    return supabaseResponse;
+  }
 
   if (!hasEnvVars) {
     return supabaseResponse;
@@ -47,7 +60,6 @@ export async function updateSession(request: NextRequest) {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    const { pathname } = request.nextUrl;
 
     if (user && isAuthEntryPath(pathname)) {
       // Allow account switching without bouncing back into the app.
@@ -63,6 +75,10 @@ export async function updateSession(request: NextRequest) {
     }
 
     if (!user && isProtectedPath(pathname)) {
+      // Avoid 307 POST → /login → 405 on the login page.
+      if (!isSafeMethod(request.method)) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
       const url = request.nextUrl.clone();
       url.pathname = "/login";
       const next = `${pathname}${request.nextUrl.search}`;
@@ -71,6 +87,9 @@ export async function updateSession(request: NextRequest) {
     }
 
     if (!user && !isPublicPath(pathname) && !isProtectedPath(pathname)) {
+      if (!isSafeMethod(request.method)) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
       const url = request.nextUrl.clone();
       url.pathname = "/login";
       return NextResponse.redirect(url);
@@ -78,8 +97,10 @@ export async function updateSession(request: NextRequest) {
   } catch (error) {
     console.error("Supabase proxy session update failed:", error);
     // Fail open for public pages so a misconfigured env does not 500 the site.
-    const { pathname } = request.nextUrl;
     if (isProtectedPath(pathname)) {
+      if (!isSafeMethod(request.method)) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
       const url = request.nextUrl.clone();
       url.pathname = "/login";
       return NextResponse.redirect(url);

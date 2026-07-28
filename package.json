@@ -11,7 +11,8 @@
     "selfcheck:demo-seed": "npx --yes tsx lib/demo-seed/foundation.selfcheck.ts",
     "selfcheck:platform": "npx --yes tsx lib/platform/foundation.selfcheck.ts && npx --yes tsx lib/platform/bootstrap.selfcheck.ts",
     "selfcheck:safety-concerns": "npx --yes tsx lib/safety-concerns/entitlements.selfcheck.ts && npx --yes tsx lib/safety-concerns/storage.selfcheck.ts && npx --yes tsx lib/safety-concerns/mobile.selfcheck.ts",
-    "selfcheck:help": "npx --yes tsx lib/help/foundation.selfcheck.ts && npx --yes tsx lib/help/mobile.selfcheck.ts"
+    "selfcheck:help": "npx --yes tsx lib/help/foundation.selfcheck.ts && npx --yes tsx lib/help/mobile.selfcheck.ts",
+    "selfcheck:training": "npx --yes tsx lib/training/foundation.selfcheck.ts"
   },
   "dependencies": {
     "@radix-ui/react-checkbox": "^1.3.1",

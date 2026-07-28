@@ -213,6 +213,12 @@ export const AuditAction = {
   HELP_STEP_CREATED: "help.step_created",
   HELP_STEP_UPDATED: "help.step_updated",
   HELP_STEP_DELETED: "help.step_deleted",
+  TRAINING_EVENT_CREATED: "training.event_created",
+  TRAINING_EVENT_UPDATED: "training.event_updated",
+  TRAINING_EVENT_CANCELLED: "training.event_cancelled",
+  TRAINING_COMPLETION_RECORDED: "training.completion_recorded",
+  TRAINING_SETTINGS_UPDATED: "training.settings_updated",
+  TRAINING_EXTERNAL_VERIFIED: "training.external_verified",
 } as const;
 
 export type AuditActionName = (typeof AuditAction)[keyof typeof AuditAction];
@@ -272,6 +278,10 @@ export const AuditEntityType = {
   HELP_ARTICLE: "help_article",
   HELP_ARTICLE_STEP: "help_article_step",
   HELP_ARTICLE_VERSION: "help_article_version",
+  TRAINING_EVENT: "training_event",
+  TRAINING_COMPLETION_RECORD: "training_completion_record",
+  TRAINING_EXTERNAL_RECORD: "training_external_record",
+  TRAINING_SETTINGS: "training_settings",
 } as const;
 
 export type AuditEntityTypeName =
@@ -520,6 +530,12 @@ export function labelForAuditAction(action: string): string {
     [AuditAction.HELP_STEP_CREATED]: "Help step created",
     [AuditAction.HELP_STEP_UPDATED]: "Help step updated",
     [AuditAction.HELP_STEP_DELETED]: "Help step deleted",
+    [AuditAction.TRAINING_EVENT_CREATED]: "Training event created",
+    [AuditAction.TRAINING_EVENT_UPDATED]: "Training event updated",
+    [AuditAction.TRAINING_EVENT_CANCELLED]: "Training event cancelled",
+    [AuditAction.TRAINING_COMPLETION_RECORDED]: "Training completion recorded",
+    [AuditAction.TRAINING_SETTINGS_UPDATED]: "Training settings updated",
+    [AuditAction.TRAINING_EXTERNAL_VERIFIED]: "External training verified",
     // Legacy rows from earlier phases
     "membership.invitation_created": "Member invited",
     "membership.invitation_accepted": "Invitation accepted",

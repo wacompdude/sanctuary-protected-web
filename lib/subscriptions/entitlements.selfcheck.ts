@@ -17,7 +17,7 @@ function assert(condition: boolean, message: string) {
   if (!condition) throw new Error(message);
 }
 
-assert(FEATURE_KEY_LIST.length === 27, "expected 27 feature keys");
+assert(FEATURE_KEY_LIST.length === 28, "expected 28 feature keys");
 assert(PLAN_KEY_LIST.length === 4, "expected 4 plan keys");
 
 function assignment(

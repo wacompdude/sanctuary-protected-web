@@ -1,0 +1,25 @@
+import { listChurchTeamMemberships } from "@/lib/church/team-queries";
+import type { MembershipRole } from "@/lib/church/types";
+import { isRequiredTrainingAudienceRole } from "@/lib/training/compliance-shared";
+
+export {
+  collectRequiredCourseIds,
+  countMembersMissingRequiredTraining,
+  isRequiredTrainingAudienceRole,
+} from "@/lib/training/compliance-shared";
+
+export async function loadRequiredTrainingAudience(
+  churchId: string,
+): Promise<Array<{ userId: string; name: string; role: MembershipRole }>> {
+  const team = await listChurchTeamMemberships(churchId).catch(() => []);
+  return team
+    .filter(
+      (row) =>
+        row.status === "active" && isRequiredTrainingAudienceRole(row.role),
+    )
+    .map((row) => ({
+      userId: row.userId,
+      name: row.name,
+      role: row.role,
+    }));
+}

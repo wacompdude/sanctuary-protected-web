@@ -187,7 +187,7 @@ export const DASHBOARD_BOX_REGISTRY: readonly DashboardBoxDefinition[] = [
     defaultBackgroundColor: "#93C5FD",
     defaultTextColor: "#111827",
     category: "schedule",
-    route: "/schedule/events?eventType=training",
+    route: "/training",
     supportsCampusFilter: true,
     requiresScheduleManager: false,
     isPlaceholder: false,

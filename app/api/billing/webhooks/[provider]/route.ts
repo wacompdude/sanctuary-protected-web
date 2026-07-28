@@ -9,6 +9,40 @@ import { processBillingWebhook } from "@/lib/billing/webhooks";
  * verifies them; when an adapter is added, persistence is idempotent via
  * billing_events.provider_event_id.
  */
+
+export async function GET(
+  _request: Request,
+  context: { params: Promise<{ provider: string }> },
+) {
+  const { provider } = await context.params;
+  return NextResponse.json(
+    {
+      ok: true,
+      service: "billing-webhook",
+      provider,
+      methods: ["POST"],
+    },
+    {
+      status: 200,
+      headers: { Allow: "GET, HEAD, POST, OPTIONS" },
+    },
+  );
+}
+
+export async function HEAD() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: { Allow: "GET, HEAD, POST, OPTIONS" },
+  });
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: { Allow: "GET, HEAD, POST, OPTIONS" },
+  });
+}
+
 export async function POST(
   request: Request,
   context: { params: Promise<{ provider: string }> },

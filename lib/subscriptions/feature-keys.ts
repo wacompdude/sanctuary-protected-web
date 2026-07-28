@@ -41,6 +41,8 @@ export const FEATURE_KEYS = {
   CAMERAS: "cameras.enabled",
   SENSORS: "sensors.enabled",
   SENSOR_ALARMS: "sensor_alarms.enabled",
+
+  TRAINING_MANAGEMENT: "training.management.enabled",
 } as const;
 
 export type FeatureKey = (typeof FEATURE_KEYS)[keyof typeof FEATURE_KEYS];
@@ -82,4 +84,5 @@ export const FEATURE_DISPLAY_NAMES: Record<FeatureKey, string> = {
   [FEATURE_KEYS.CAMERAS]: "Cameras",
   [FEATURE_KEYS.SENSORS]: "Sensors",
   [FEATURE_KEYS.SENSOR_ALARMS]: "Sensor alarms",
+  [FEATURE_KEYS.TRAINING_MANAGEMENT]: "Training Management",
 };

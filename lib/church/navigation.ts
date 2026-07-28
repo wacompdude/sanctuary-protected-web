@@ -39,6 +39,15 @@ export type NavItemId =
   | "team-members"
   | "invitations"
   | "certifications"
+  | "training"
+  | "training-dashboard"
+  | "training-events"
+  | "training-courses"
+  | "training-calendar"
+  | "training-records"
+  | "training-required"
+  | "training-reports"
+  | "training-settings"
   | "campuses"
   | "schedule"
   | "schedule-calendar"
@@ -212,6 +221,71 @@ export const APP_NAV_SECTIONS: NavSection[] = [
             href: "/certifications",
             minRole: "security_member",
             label: "Certifications",
+          },
+        ],
+      },
+      {
+        kind: "group",
+        id: "training",
+        href: "/training",
+        minRole: "security_member",
+        label: "Training",
+        children: [
+          {
+            kind: "link",
+            id: "training-dashboard",
+            href: "/training",
+            minRole: "security_member",
+            label: "Dashboard",
+          },
+          {
+            kind: "link",
+            id: "training-events",
+            href: "/training/events",
+            minRole: "security_member",
+            label: "Events",
+          },
+          {
+            kind: "link",
+            id: "training-courses",
+            href: "/training/courses",
+            minRole: "security_member",
+            label: "Courses",
+          },
+          {
+            kind: "link",
+            id: "training-calendar",
+            href: "/training/calendar",
+            minRole: "security_member",
+            label: "Calendar",
+          },
+          {
+            kind: "link",
+            id: "training-records",
+            href: "/training/records",
+            minRole: "security_member",
+            label: "Records",
+          },
+          {
+            kind: "link",
+            id: "training-required",
+            href: "/training/required",
+            minRole: "security_leader",
+            label: "Required",
+          },
+          {
+            kind: "link",
+            id: "training-reports",
+            href: "/training/reports",
+            minRole: "security_leader",
+            label: "Reports",
+          },
+          {
+            kind: "link",
+            id: "training-settings",
+            href: "/training/settings",
+            minRole: "administrator",
+            label: "Settings",
           },
         ],
       },

@@ -7,6 +7,8 @@ import {
 import { validateDemoSeedEnv } from "@/lib/demo-seed/env";
 import { seedChurchCore } from "@/lib/demo-seed/seed-core";
 import { seedChurchOperations } from "@/lib/demo-seed/seed-operations";
+import { seedChurchSecurity } from "@/lib/demo-seed/seed-security";
+import { seedChurchTraining } from "@/lib/demo-seed/seed-training";
 import type { DemoSeedSummary } from "@/lib/demo-seed/types";
 import { emptyBucket, log } from "@/lib/demo-seed/types";
 
@@ -60,6 +62,8 @@ export async function runFirstChurchDemoSeed(): Promise<DemoSeedSummary> {
     });
 
     await seedChurchOperations(ctx);
+    await seedChurchSecurity(ctx);
+    await seedChurchTraining(ctx);
 
     summary.ok = summary.errors.length === 0;
     log(

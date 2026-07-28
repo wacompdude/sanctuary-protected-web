@@ -83,6 +83,20 @@ assert(
     DEMO_CLEANUP_TABLE_ORDER.indexOf("churches"),
   "cleanup deletes memberships before church",
 );
+assert(
+  DEMO_CLEANUP_TABLE_ORDER.includes("training_events"),
+  "cleanup includes training events",
+);
+assert(
+  DEMO_CLEANUP_TABLE_ORDER.indexOf("training_participants") <
+    DEMO_CLEANUP_TABLE_ORDER.indexOf("training_events"),
+  "cleanup deletes participants before events",
+);
+assert(
+  DEMO_CLEANUP_TABLE_ORDER.indexOf("training_completion_records") <
+    DEMO_CLEANUP_TABLE_ORDER.indexOf("training_courses"),
+  "cleanup deletes completions before courses",
+);
 
 assert(
   isDemoSeedEnvironmentAllowed({

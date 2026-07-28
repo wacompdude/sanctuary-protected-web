@@ -40,7 +40,7 @@ export function TabsList({ children, className }: TabsListProps) {
   return (
     <div
       className={cn(
-        "inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
+        "inline-flex min-h-10 h-auto flex-wrap items-center justify-center gap-1 rounded-md bg-muted p-1 text-muted-foreground",
         className,
       )}
       role="tablist"
@@ -88,7 +88,12 @@ export function TabsContent({ value, children, className }: TabsContentProps) {
   if (selectedValue !== value) return null;
 
   return (
-    <div className={cn("mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2", className)}>
+    <div
+      className={cn(
+        "mt-4 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        className,
+      )}
+    >
       {children}
     </div>
   );

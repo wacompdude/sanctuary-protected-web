@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useCallback, useMemo } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Shield, BarChart3, Users, Key, MapPin, Clock, FileText, Settings as SettingsIcon } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SecurityOverviewTab } from "@/components/security/security-overview-tab";
@@ -11,9 +12,35 @@ import { CampusAccessTab } from "@/components/security/campus-access-tab";
 import { TemporaryAccessTab } from "@/components/security/temporary-access-tab";
 import { AuditLogTab } from "@/components/security/audit-log-tab";
 import { SettingsTab } from "@/components/security/settings-tab";
+import {
+  isSecurityTab,
+  type SecurityTabValue,
+} from "@/components/security/security-tabs";
 
-export default function SecuritySettingsPage() {
-  const [activeTab, setActiveTab] = useState("overview");
+function SecuritySettingsPageInner() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const activeTab: SecurityTabValue = useMemo(() => {
+    const tab = searchParams.get("tab");
+    return isSecurityTab(tab) ? tab : "overview";
+  }, [searchParams]);
+
+  const setActiveTab = useCallback(
+    (value: string) => {
+      const tab = isSecurityTab(value) ? value : "overview";
+      const params = new URLSearchParams(searchParams.toString());
+      if (tab === "overview") {
+        params.delete("tab");
+      } else {
+        params.set("tab", tab);
+      }
+      const query = params.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
 
   return (
     <div className="space-y-6">
@@ -29,38 +56,38 @@ export default function SecuritySettingsPage() {
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8">
-          <TabsTrigger value="overview" className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-4">
+        <TabsList className="grid h-auto w-full grid-cols-4 gap-1 lg:grid-cols-8">
+          <TabsTrigger value="overview" className="flex min-h-9 items-center justify-center gap-2">
+            <BarChart3 className="h-4 w-4 shrink-0" />
             <span className="hidden sm:inline">Overview</span>
           </TabsTrigger>
-          <TabsTrigger value="groups" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
+          <TabsTrigger value="groups" className="flex min-h-9 items-center justify-center gap-2">
+            <Users className="h-4 w-4 shrink-0" />
             <span className="hidden sm:inline">Groups</span>
           </TabsTrigger>
-          <TabsTrigger value="users" className="flex items-center gap-2">
-            <Key className="h-4 w-4" />
+          <TabsTrigger value="users" className="flex min-h-9 items-center justify-center gap-2">
+            <Key className="h-4 w-4 shrink-0" />
             <span className="hidden sm:inline">Users</span>
           </TabsTrigger>
-          <TabsTrigger value="permissions" className="flex items-center gap-2">
-            <Shield className="h-4 w-4" />
+          <TabsTrigger value="permissions" className="flex min-h-9 items-center justify-center gap-2">
+            <Shield className="h-4 w-4 shrink-0" />
             <span className="hidden sm:inline">Perms</span>
           </TabsTrigger>
-          <TabsTrigger value="campus" className="flex items-center gap-2">
-            <MapPin className="h-4 w-4" />
+          <TabsTrigger value="campus" className="flex min-h-9 items-center justify-center gap-2">
+            <MapPin className="h-4 w-4 shrink-0" />
             <span className="hidden sm:inline">Campus</span>
           </TabsTrigger>
-          <TabsTrigger value="temporary" className="flex items-center gap-2">
-            <Clock className="h-4 w-4" />
+          <TabsTrigger value="temporary" className="flex min-h-9 items-center justify-center gap-2">
+            <Clock className="h-4 w-4 shrink-0" />
             <span className="hidden sm:inline">Temp</span>
           </TabsTrigger>
-          <TabsTrigger value="audit" className="flex items-center gap-2">
-            <FileText className="h-4 w-4" />
+          <TabsTrigger value="audit" className="flex min-h-9 items-center justify-center gap-2">
+            <FileText className="h-4 w-4 shrink-0" />
             <span className="hidden sm:inline">Audit</span>
           </TabsTrigger>
-          <TabsTrigger value="settings" className="flex items-center gap-2">
-            <SettingsIcon className="h-4 w-4" />
+          <TabsTrigger value="settings" className="flex min-h-9 items-center justify-center gap-2">
+            <SettingsIcon className="h-4 w-4 shrink-0" />
             <span className="hidden sm:inline">Settings</span>
           </TabsTrigger>
         </TabsList>
@@ -98,5 +125,17 @@ export default function SecuritySettingsPage() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+export default function SecuritySettingsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="text-sm text-muted-foreground">Loading security…</div>
+      }
+    >
+      <SecuritySettingsPageInner />
+    </Suspense>
   );
 }

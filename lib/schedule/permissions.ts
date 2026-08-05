@@ -2,7 +2,9 @@ import { hasMinRole } from "@/lib/church/navigation";
 import type { MembershipRole } from "@/lib/church/types";
 
 export function canManageSchedule(role: MembershipRole): boolean {
-  return hasMinRole(role, "security_leader");
+  return (
+    hasMinRole(role, "security_leader") || role === "event_coordinator"
+  );
 }
 
 export function canOverrideScheduleConflicts(role: MembershipRole): boolean {

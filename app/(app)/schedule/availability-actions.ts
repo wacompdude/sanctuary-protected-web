@@ -84,7 +84,7 @@ export async function createUnavailabilityAction(
       }
       const supabaseCheck = await createClient();
       const { data: target } = await supabaseCheck
-        .from("church_memberships")
+        .from("organization_memberships")
         .select("id, user_id, status")
         .eq("id", validated.data.membership_id)
         .eq("church_id", church.id)

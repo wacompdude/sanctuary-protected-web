@@ -21,7 +21,7 @@ export async function notifyChurchOwnersOfPlanChange(params: {
 }): Promise<NotifyChurchOwnersResult> {
   const admin = requirePlatformAdminClient();
   const { data: memberships, error } = await admin
-    .from("church_memberships")
+    .from("organization_memberships")
     .select("user_id, role")
     .eq("church_id", params.churchId)
     .eq("status", "active")

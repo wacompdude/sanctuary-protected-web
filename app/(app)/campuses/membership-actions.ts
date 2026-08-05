@@ -80,7 +80,7 @@ export async function addCampusMembersAction(
       formData.get("is_primary_campus") === "1";
 
     const { data: churchMembers, error: memberError } = await supabase
-      .from("church_memberships")
+      .from("organization_memberships")
       .select("id, user_id, role, status")
       .eq("church_id", church.id)
       .eq("status", "active")

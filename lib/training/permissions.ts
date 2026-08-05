@@ -3,15 +3,15 @@ import type { MembershipRole } from "@/lib/church/types";
 import { PERMISSION_KEYS, type PermissionKey } from "@/lib/security/permission-keys";
 
 export function canViewTraining(role: MembershipRole): boolean {
-  return hasMinRole(role, "security_member");
+  return hasMinRole(role, "security_member") || role === "training_coordinator";
 }
 
 export function canManageEvents(role: MembershipRole): boolean {
-  return hasMinRole(role, "security_leader");
+  return hasMinRole(role, "security_leader") || role === "training_coordinator";
 }
 
 export function canRecordAttendance(role: MembershipRole): boolean {
-  return hasMinRole(role, "security_leader");
+  return hasMinRole(role, "security_leader") || role === "training_coordinator";
 }
 
 export function canManageSettings(role: MembershipRole): boolean {
@@ -27,15 +27,15 @@ export function canViewCosts(role: MembershipRole): boolean {
 }
 
 export function canRunReports(role: MembershipRole): boolean {
-  return hasMinRole(role, "security_leader");
+  return hasMinRole(role, "security_leader") || role === "training_coordinator";
 }
 
 export function canManageCourses(role: MembershipRole): boolean {
-  return hasMinRole(role, "administrator");
+  return hasMinRole(role, "administrator") || role === "training_coordinator";
 }
 
 export function canManageRequirements(role: MembershipRole): boolean {
-  return hasMinRole(role, "administrator");
+  return hasMinRole(role, "administrator") || role === "training_coordinator";
 }
 
 export function canVerifyExternalTraining(role: MembershipRole): boolean {
@@ -43,7 +43,7 @@ export function canVerifyExternalTraining(role: MembershipRole): boolean {
 }
 
 export function canSubmitExternalTraining(role: MembershipRole): boolean {
-  return hasMinRole(role, "security_leader");
+  return hasMinRole(role, "security_leader") || role === "training_coordinator";
 }
 
 /** Permission keys conceptually required for common training actions. */

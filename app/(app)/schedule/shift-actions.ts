@@ -288,7 +288,7 @@ export async function assignMemberToShiftAction(
     }
 
     const { data: targetMembership, error: membershipError } = await supabase
-      .from("church_memberships")
+      .from("organization_memberships")
       .select("id, user_id, status, church_id")
       .eq("id", validated.data.membership_id)
       .eq("church_id", church.id)
@@ -556,7 +556,7 @@ export async function respondToAssignmentAction(
 
     const shift = await getScheduleShiftById(assignment.shift_id, church.id);
     const { data: managers } = await supabase
-      .from("church_memberships")
+      .from("organization_memberships")
       .select("user_id")
       .eq("church_id", church.id)
       .eq("status", "active")

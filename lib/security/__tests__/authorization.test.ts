@@ -77,7 +77,7 @@ describe("Authorization Service", () => {
       });
 
       vi.mocked(mockSupabase.from).mockImplementation((table: string) => {
-        if (table === "churches") return churchQuery() as any;
+        if (table === "organizations") return churchQuery() as any;
         return {} as any;
       });
 

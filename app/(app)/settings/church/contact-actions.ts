@@ -70,7 +70,7 @@ export async function upsertChurchContact(
 
     if (contactId) {
       const { data, error } = await supabase
-        .from("church_contacts")
+        .from("organization_contacts")
         .update(payload)
         .eq("id", contactId)
         .eq("church_id", church.id)
@@ -94,7 +94,7 @@ export async function upsertChurchContact(
       });
     } else if (!isMultiContactType(input.contactType)) {
       const { data: existing } = await supabase
-        .from("church_contacts")
+        .from("organization_contacts")
         .select("id")
         .eq("church_id", church.id)
         .eq("contact_type", input.contactType)
@@ -102,7 +102,7 @@ export async function upsertChurchContact(
 
       if (existing?.id) {
         const { error } = await supabase
-          .from("church_contacts")
+          .from("organization_contacts")
           .update(payload)
           .eq("id", existing.id)
           .eq("church_id", church.id);
@@ -123,7 +123,7 @@ export async function upsertChurchContact(
         });
       } else {
         const { data, error } = await supabase
-          .from("church_contacts")
+          .from("organization_contacts")
           .insert({ ...payload, created_by: user.id })
           .select("id")
           .single();
@@ -151,7 +151,7 @@ export async function upsertChurchContact(
       }
     } else {
       const { data, error } = await supabase
-        .from("church_contacts")
+        .from("organization_contacts")
         .insert({ ...payload, created_by: user.id })
         .select("id")
         .single();
@@ -201,7 +201,7 @@ export async function deleteChurchContact(
 
     const { supabase, user, church } = editor.context;
     const { data: existing, error: loadError } = await supabase
-      .from("church_contacts")
+      .from("organization_contacts")
       .select("id, contact_type")
       .eq("id", contactId)
       .eq("church_id", church.id)
@@ -211,7 +211,7 @@ export async function deleteChurchContact(
     if (!existing) return { error: "Contact not found." };
 
     const { error } = await supabase
-      .from("church_contacts")
+      .from("organization_contacts")
       .delete()
       .eq("id", contactId)
       .eq("church_id", church.id);

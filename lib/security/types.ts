@@ -4,7 +4,10 @@
  * Type definitions for the security permissions and access-control system.
  */
 
-export type MembershipRole = "owner" | "co_owner" | "administrator" | "security_leader" | "security_member" | "viewer";
+import type { MembershipRole as ChurchMembershipRole } from "@/lib/church/types";
+
+/** @deprecated Prefer MembershipRole from @/lib/church/types */
+export type MembershipRole = ChurchMembershipRole;
 
 export type PermissionEffect = "grant" | "deny";
 
@@ -34,11 +37,49 @@ export type SecurityAuditEventType =
   | "user_permission.granted"
   | "user_permission.denied"
   | "user_permission.revoked"
+  | "user_permission.updated"
   | "user_permission.expired"
   | "security_audit_log.viewed"
   | "security.preview_access_used"
   | "tier.changed"
-  | "tier.downgrade";
+  | "tier.downgrade"
+  | "role.created"
+  | "role.updated"
+  | "role.deactivated"
+  | "membership_role.assigned"
+  | "membership_role.removed"
+  | "membership_role.primary_changed"
+  | "membership.status_changed"
+  | "campus_assignment.changed"
+  | "permission_override.changed";
+
+export type ChurchMembershipRoleStatus = "active" | "removed";
+
+export type RoleTemplateKind = "church" | "campus";
+
+export interface ChurchMembershipRoleRow {
+  id: string;
+  church_id: string;
+  church_membership_id: string;
+  user_id: string;
+  role: MembershipRole;
+  is_primary: boolean;
+  status: ChurchMembershipRoleStatus;
+  assigned_by: string | null;
+  assigned_at: string;
+  removed_by: string | null;
+  removed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RolePermissionTemplate {
+  id: string;
+  role_kind: RoleTemplateKind;
+  role_key: string;
+  permission_key: string;
+  created_at: string;
+}
 
 export type SecurityAuditResult = "success" | "failure";
 

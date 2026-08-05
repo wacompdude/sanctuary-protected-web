@@ -16,7 +16,8 @@ export const NAV_FEATURE_REQUIREMENTS: Partial<Record<string, FeatureKey>> = {
   "schedule-notifications": FEATURE_KEYS.TEAM_SCHEDULING,
   "schedule-templates": FEATURE_KEYS.TEAM_SCHEDULING,
   "scheduling-settings": FEATURE_KEYS.TEAM_SCHEDULING,
-  training: FEATURE_KEYS.TRAINING_MANAGEMENT,
+  // Gate Training module pages, not the whole group — Certifications lives under
+  // Training but remains available when Training Management is not entitled.
   "training-dashboard": FEATURE_KEYS.TRAINING_MANAGEMENT,
   "training-events": FEATURE_KEYS.TRAINING_MANAGEMENT,
   "training-courses": FEATURE_KEYS.TRAINING_MANAGEMENT,

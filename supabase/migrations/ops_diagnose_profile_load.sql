@@ -17,7 +17,7 @@ SELECT c.relname AS table_name, c.relrowsecurity AS rls_enabled
 FROM pg_class c
 JOIN pg_namespace n ON n.oid = c.relnamespace
 WHERE n.nspname = 'public'
-  AND c.relname IN ('profiles', 'church_memberships', 'churches');
+  AND c.relname IN ('profiles', 'organization_memberships', 'organizations');
 
 -- 3) Profiles policies (co-member policy can break SELECT if helpers/tables missing)
 SELECT pol.polname AS policy_name,
@@ -47,8 +47,8 @@ WHERE n.nspname = 'public'
   )
 ORDER BY p.proname;
 
--- 5) church_memberships present?
-SELECT to_regclass('public.church_memberships') AS church_memberships;
+-- 5) organization_memberships present?
+SELECT to_regclass('public.organization_memberships') AS organization_memberships;
 
 -- 6) As a quick auth-user check (replace email):
 -- SELECT id, email FROM auth.users WHERE lower(email) = lower('you@example.com');

@@ -197,7 +197,7 @@ export async function listNotificationGroupMembers(
 
 /**
  * Members shown on the group detail member list.
- * System/dynamic groups expand from church_memberships.
+ * System/dynamic groups expand from organization_memberships.
  * Custom groups return direct members only (nested expansion is
  * listEffectiveGroupUsersWithSources / getEffectiveGroupUsers).
  */
@@ -259,7 +259,7 @@ async function enrichGroupMembers(
 
   const [{ data: memberships }, { data: profiles }] = await Promise.all([
     supabase
-      .from("church_memberships")
+      .from("organization_memberships")
       .select("id, role")
       .eq("church_id", churchId)
       .in("id", membershipIds),

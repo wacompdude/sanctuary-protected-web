@@ -56,7 +56,7 @@ export async function updateScheduleSettingsAction(
 
     const supabase = await createClient();
     const { error } = await supabase
-      .from("church_schedule_settings")
+      .from("organization_schedule_settings")
       .update({
         ...validated.data,
         updated_by: user.id,

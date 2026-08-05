@@ -61,7 +61,7 @@ export async function cleanupFirstChurchDemoSeed(): Promise<DemoCleanupSummary> 
     summary.logs.push(`Starting demo cleanup (${DEMO_SEED_SOURCE})`);
 
     const { data: church } = await admin
-      .from("churches")
+      .from("organizations")
       .select("id")
       .eq("seed_source", DEMO_SEED_SOURCE)
       .maybeSingle();
@@ -103,7 +103,7 @@ export async function cleanupFirstChurchDemoSeed(): Promise<DemoCleanupSummary> 
       if (rows.length === 0) continue;
 
       // Membership/church deletes need trigger bypass via service-role RPCs.
-      if (table === "church_memberships" || table === "churches") {
+      if (table === "organization_memberships" || table === "organizations") {
         continue;
       }
 
@@ -122,7 +122,7 @@ export async function cleanupFirstChurchDemoSeed(): Promise<DemoCleanupSummary> 
     }
 
     // Memberships require bypass; delete via RPC then purge church (cascades rest).
-    const membershipRows = byTable.get("church_memberships") ?? [];
+    const membershipRows = byTable.get("organization_memberships") ?? [];
     for (const row of membershipRows) {
       const { data: deleted, error } = await admin.rpc(
         "demo_seed_delete_membership",
@@ -137,11 +137,11 @@ export async function cleanupFirstChurchDemoSeed(): Promise<DemoCleanupSummary> 
         );
         continue;
       }
-      if (deleted) bumpDeleted(summary, "church_memberships");
+      if (deleted) bumpDeleted(summary, "organization_memberships");
       await admin.from("demo_seed_records").delete().eq("id", row.id);
     }
 
-    if (summary.churchId || byTable.has("churches")) {
+    if (summary.churchId || byTable.has("organizations")) {
       const { data: deletedChurchId, error: churchDeleteError } = await admin.rpc(
         "demo_seed_delete_church",
         { p_seed_source: DEMO_SEED_SOURCE },
@@ -149,9 +149,9 @@ export async function cleanupFirstChurchDemoSeed(): Promise<DemoCleanupSummary> 
       if (churchDeleteError) {
         summary.warnings.push(`Church delete: ${churchDeleteError.message}`);
       } else if (deletedChurchId) {
-        bumpDeleted(summary, "churches");
+        bumpDeleted(summary, "organizations");
         summary.logs.push("Deleted demo church via service-role RPC");
-        for (const row of byTable.get("churches") ?? []) {
+        for (const row of byTable.get("organizations") ?? []) {
           await admin.from("demo_seed_records").delete().eq("id", row.id);
         }
       }

@@ -543,7 +543,7 @@ async function loadChurchName(
   churchId: string,
 ): Promise<string | null> {
   const { data } = await supabase
-    .from("churches")
+    .from("organizations")
     .select("name, display_name")
     .eq("id", churchId)
     .maybeSingle();

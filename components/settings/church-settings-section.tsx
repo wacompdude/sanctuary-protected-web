@@ -35,7 +35,7 @@ async function loadChurchSettingsPage(): Promise<
   const isOwner = canManageChurchAccountStatus(context.membership.role);
 
   const { data, error } = await context.supabase
-    .from("churches")
+    .from("organizations")
     .select(CHURCH_SETTINGS_SELECT)
     .eq("id", context.church.id)
     .maybeSingle();

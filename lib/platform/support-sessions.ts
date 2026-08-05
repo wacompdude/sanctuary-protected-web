@@ -111,7 +111,7 @@ export async function startPlatformSupportSession(params: {
 
   const admin = requirePlatformAdminClient();
   const { data: church, error: churchError } = await admin
-    .from("churches")
+    .from("organizations")
     .select("id, name")
     .eq("id", params.churchId)
     .maybeSingle();
@@ -318,7 +318,7 @@ export async function getActivePlatformSupportSession(
   }
 
   const { data: church } = await admin
-    .from("churches")
+    .from("organizations")
     .select("name")
     .eq("id", session.church_id)
     .maybeSingle();
@@ -383,7 +383,7 @@ export async function lookupChurchesForSupportAccess(params: {
 
   if (uuidLike) {
     const { data } = await admin
-      .from("churches")
+      .from("organizations")
       .select("id, name, slug, status")
       .eq("id", q)
       .maybeSingle();
@@ -400,7 +400,7 @@ export async function lookupChurchesForSupportAccess(params: {
   }
 
   const { data, error } = await admin
-    .from("churches")
+    .from("organizations")
     .select("id, name, slug, status")
     .or(
       `name.ilike.%${q.replaceAll(",", " ")}%,slug.ilike.%${q.replaceAll(",", " ")}%`,
@@ -441,7 +441,7 @@ export async function listRecentSupportSessionsForAccount(
   const nameById = new Map<string, string>();
   if (churchIds.length) {
     const { data: churches } = await admin
-      .from("churches")
+      .from("organizations")
       .select("id, name")
       .in("id", churchIds);
     for (const church of churches ?? []) {

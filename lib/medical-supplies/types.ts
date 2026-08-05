@@ -59,6 +59,7 @@ export const MEDICAL_SUPPLY_MANAGEMENT_ROLES: MembershipRole[] = [
   "owner",
   "administrator",
   "security_leader",
+  "medical_coordinator",
 ];
 
 export const MEDICAL_SUPPLY_USAGE_ROLES: MembershipRole[] = [
@@ -66,6 +67,7 @@ export const MEDICAL_SUPPLY_USAGE_ROLES: MembershipRole[] = [
   "administrator",
   "security_leader",
   "security_member",
+  "medical_coordinator",
 ];
 
 export function canManageMedicalSupplies(role: MembershipRole): boolean {

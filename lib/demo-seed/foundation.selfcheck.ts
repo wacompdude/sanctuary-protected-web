@@ -70,7 +70,7 @@ assert(
 assert(PLAN_KEYS.OMNI_ENTERPRISE === "omni_enterprise", "omni plan key");
 
 assert(
-  DEMO_CLEANUP_TABLE_ORDER.includes("churches"),
+  DEMO_CLEANUP_TABLE_ORDER.includes("organizations"),
   "cleanup includes churches",
 );
 assert(
@@ -79,8 +79,8 @@ assert(
   "cleanup deletes assignments before shifts",
 );
 assert(
-  DEMO_CLEANUP_TABLE_ORDER.indexOf("church_memberships") <
-    DEMO_CLEANUP_TABLE_ORDER.indexOf("churches"),
+  DEMO_CLEANUP_TABLE_ORDER.indexOf("organization_memberships") <
+    DEMO_CLEANUP_TABLE_ORDER.indexOf("organizations"),
   "cleanup deletes memberships before church",
 );
 assert(

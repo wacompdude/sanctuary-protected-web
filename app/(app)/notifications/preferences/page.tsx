@@ -60,7 +60,7 @@ async function NotificationPreferencesContent() {
 
   const emailStatus = getEmailProviderStatus();
   const { data: churchSettings } = await supabase
-    .from("church_notification_settings")
+    .from("organization_notification_settings")
     .select(
       "critical_alert_override_enabled, allow_email_override, allow_sms_override, sms_notifications_enabled, push_notifications_enabled",
     )

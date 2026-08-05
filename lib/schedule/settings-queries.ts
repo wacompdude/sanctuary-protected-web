@@ -53,7 +53,7 @@ export async function ensureChurchScheduleSettings(
   try {
     const supabase = await createClient();
     const { data, error } = await supabase
-      .from("church_schedule_settings")
+      .from("organization_schedule_settings")
       .upsert(
         {
           church_id: churchId,
@@ -81,7 +81,7 @@ export async function getTypedChurchScheduleSettings(
   try {
     const supabase = await createClient();
     const { data, error } = await supabase
-      .from("church_schedule_settings")
+      .from("organization_schedule_settings")
       .select("*")
       .eq("church_id", churchId)
       .maybeSingle();

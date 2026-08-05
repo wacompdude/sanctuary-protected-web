@@ -13,7 +13,7 @@ export async function listChurchContactsForTypes(
 
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("church_contacts")
+    .from("organization_contacts")
     .select(
       "id, church_id, contact_type, organization_name, full_name, phone, email, notes, sort_order, created_at, updated_at",
     )

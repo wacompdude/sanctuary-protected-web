@@ -44,7 +44,7 @@ export async function listChurchThreatLevels(
 ): Promise<ChurchThreatLevelHistoryEntry[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("church_threat_levels")
+    .from("organization_threat_levels")
     .select(
       "id, church_id, week_start, threat_level, notes, changed_by, created_at, updated_at, updated_by",
     )
@@ -60,7 +60,7 @@ export async function listChurchThreatLevels(
       /column|does not exist/i.test(error.message)
     ) {
       const legacy = await supabase
-        .from("church_threat_levels")
+        .from("organization_threat_levels")
         .select("id, church_id, week_start, threat_level, notes, changed_by, created_at")
         .eq("church_id", churchId)
         .order("week_start", { ascending: false })
@@ -71,7 +71,7 @@ export async function listChurchThreatLevels(
         // Fall further back without notes.
         if (/notes/i.test(legacy.error.message)) {
           const older = await supabase
-            .from("church_threat_levels")
+            .from("organization_threat_levels")
             .select(
               "id, church_id, week_start, threat_level, changed_by, created_at",
             )

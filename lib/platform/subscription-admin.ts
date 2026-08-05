@@ -52,7 +52,7 @@ export async function applyPlatformPlanChange(params: {
 
   const admin = requirePlatformAdminClient();
   const { data: church, error: churchError } = await admin
-    .from("churches")
+    .from("organizations")
     .select("id, name")
     .eq("id", params.churchId)
     .maybeSingle();
@@ -179,7 +179,7 @@ export async function cancelPlatformChurchSubscription(params: {
 
   const admin = requirePlatformAdminClient();
   const { data: church } = await admin
-    .from("churches")
+    .from("organizations")
     .select("id, name")
     .eq("id", params.churchId)
     .maybeSingle();

@@ -54,7 +54,7 @@ export async function migrateAllChurchSubscriptions(options?: {
   const source = "migrate_all_church_subscriptions";
 
   let churchQuery = admin
-    .from("churches")
+    .from("organizations")
     .select("id")
     .order("created_at", { ascending: true });
 

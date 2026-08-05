@@ -84,6 +84,58 @@ export async function getSecurityGroupMembers(
 }
 
 /**
+ * Get security groups a user is a member of, including membership timing.
+ */
+export async function getUserSecurityGroupMemberships(
+  admin: SupabaseClient,
+  userId: string,
+  churchId: string,
+): Promise<
+  Array<{
+    group: SecurityGroup;
+    membership: SecurityGroupMember;
+  }>
+> {
+  const { data, error } = await admin
+    .from("security_group_members")
+    .select("*, security_groups(*)")
+    .eq("user_id", userId)
+    .eq("status", "active");
+
+  if (error) {
+    console.error("Failed to fetch user security group memberships:", error);
+    return [];
+  }
+
+  return (data || [])
+    .map((item: Record<string, unknown>) => {
+      const group = item.security_groups as SecurityGroup | null;
+      if (!group || group.church_id !== churchId) return null;
+      const membership: SecurityGroupMember = {
+        id: String(item.id),
+        security_group_id: String(item.security_group_id),
+        user_id: String(item.user_id),
+        effective_at: (item.effective_at as string | null) ?? null,
+        expires_at: (item.expires_at as string | null) ?? null,
+        status: item.status as SecurityGroupMember["status"],
+        assigned_by: String(item.assigned_by),
+        assigned_at: String(item.assigned_at),
+        removed_by: (item.removed_by as string | null) ?? null,
+        removed_at: (item.removed_at as string | null) ?? null,
+      };
+      return { group, membership };
+    })
+    .filter(
+      (
+        row,
+      ): row is {
+        group: SecurityGroup;
+        membership: SecurityGroupMember;
+      } => Boolean(row),
+    );
+}
+
+/**
  * Get security groups a user is a member of.
  */
 export async function getUserSecurityGroups(
@@ -91,20 +143,138 @@ export async function getUserSecurityGroups(
   userId: string,
   churchId: string,
 ): Promise<SecurityGroup[]> {
-  const { data, error } = await admin
-    .from("security_group_members")
-    .select("security_groups(*)")
-    .eq("user_id", userId)
-    .eq("status", "active");
+  const rows = await getUserSecurityGroupMemberships(admin, userId, churchId);
+  return rows.map((row) => row.group);
+}
 
-  if (error) {
-    console.error("Failed to fetch user security groups:", error);
-    return [];
+/**
+ * List holders of a permission within a church (direct + via security groups).
+ */
+export async function listPermissionGrantHolders(
+  admin: SupabaseClient,
+  churchId: string,
+  permissionDefinitionId: string,
+): Promise<{
+  direct: Array<{
+    userId: string;
+    effect: string;
+    status: string;
+    expiresAt: string | null;
+    assignedAt: string;
+    reason: string | null;
+  }>;
+  groups: Array<{
+    groupId: string;
+    groupName: string;
+    effect: string;
+    expiresAt: string | null;
+    members: Array<{
+      userId: string;
+      membershipExpiresAt: string | null;
+      membershipStatus: string;
+    }>;
+  }>;
+}> {
+  const [{ data: directRows, error: directError }, { data: groupPermRows, error: groupPermError }] =
+    await Promise.all([
+      admin
+        .from("user_permissions")
+        .select(
+          "user_id, permission_effect, status, expires_at, assigned_at, reason",
+        )
+        .eq("church_id", churchId)
+        .eq("permission_definition_id", permissionDefinitionId)
+        .neq("status", "revoked"),
+      admin
+        .from("security_group_permissions")
+        .select(
+          "security_group_id, permission_effect, expires_at, security_groups!inner(id, name, church_id, status)",
+        )
+        .eq("permission_definition_id", permissionDefinitionId),
+    ]);
+
+  if (directError) {
+    console.error("Failed to list direct permission holders:", directError);
+  }
+  if (groupPermError) {
+    console.error("Failed to list group permission holders:", groupPermError);
   }
 
-  return (data || [])
-    .map((item: any) => item.security_groups)
-    .filter((group: SecurityGroup | null) => group && group.church_id === churchId) as SecurityGroup[];
+  const direct = ((directRows ?? []) as Array<{
+    user_id: string;
+    permission_effect: string;
+    status: string;
+    expires_at: string | null;
+    assigned_at: string;
+    reason: string | null;
+  }>).map((row) => ({
+    userId: row.user_id,
+    effect: row.permission_effect,
+    status: row.status,
+    expiresAt: row.expires_at,
+    assignedAt: row.assigned_at,
+    reason: row.reason,
+  }));
+
+  const churchGroups = ((groupPermRows ?? []) as Array<{
+    security_group_id: string;
+    permission_effect: string;
+    expires_at: string | null;
+    security_groups:
+      | {
+          id: string;
+          name: string;
+          church_id: string;
+          status: string;
+        }
+      | {
+          id: string;
+          name: string;
+          church_id: string;
+          status: string;
+        }[]
+      | null;
+  }>)
+    .map((row) => {
+      const group = Array.isArray(row.security_groups)
+        ? row.security_groups[0]
+        : row.security_groups;
+      if (!group || group.church_id !== churchId || group.status !== "active") {
+        return null;
+      }
+      return {
+        groupId: group.id,
+        groupName: group.name,
+        effect: row.permission_effect,
+        expiresAt: row.expires_at,
+      };
+    })
+    .filter(
+      (
+        row,
+      ): row is {
+        groupId: string;
+        groupName: string;
+        effect: string;
+        expiresAt: string | null;
+      } => Boolean(row),
+    );
+
+  const groups = await Promise.all(
+    churchGroups.map(async (group) => {
+      const members = await getSecurityGroupMembers(admin, group.groupId, true);
+      return {
+        ...group,
+        members: members.map((member) => ({
+          userId: member.user_id,
+          membershipExpiresAt: member.expires_at,
+          membershipStatus: member.status,
+        })),
+      };
+    }),
+  );
+
+  return { direct, groups };
 }
 
 /**
@@ -454,6 +624,85 @@ export async function denyUserPermission(
   }
 
   return (data?.[0] as unknown as UserPermission) || null;
+}
+
+/**
+ * Update a direct user permission (dates, reason, permission, effect).
+ * Status is recalculated by the DB expiry trigger (except revoked).
+ */
+export async function updateUserPermission(
+  admin: SupabaseClient,
+  permissionId: string,
+  updates: {
+    permissionDefinitionId?: string;
+    permissionEffect?: "grant" | "deny";
+    effectiveAt?: string | null;
+    expiresAt?: string | null;
+    reason?: string | null;
+    notes?: string | null;
+  },
+): Promise<UserPermission | null> {
+  const payload: Record<string, unknown> = {};
+  if (updates.permissionDefinitionId !== undefined) {
+    payload.permission_definition_id = updates.permissionDefinitionId;
+  }
+  if (updates.permissionEffect !== undefined) {
+    payload.permission_effect = updates.permissionEffect;
+  }
+  if (updates.effectiveAt !== undefined) {
+    payload.effective_at = updates.effectiveAt;
+  }
+  if (updates.expiresAt !== undefined) {
+    payload.expires_at = updates.expiresAt;
+  }
+  if (updates.reason !== undefined) {
+    payload.reason = updates.reason;
+  }
+  if (updates.notes !== undefined) {
+    payload.notes = updates.notes;
+  }
+
+  if (Object.keys(payload).length === 0) {
+    return null;
+  }
+
+  const { data, error } = await admin
+    .from("user_permissions")
+    .update(payload)
+    .eq("id", permissionId)
+    .neq("status", "revoked")
+    .select("*")
+    .maybeSingle();
+
+  if (error) {
+    console.error("Failed to update user permission:", error);
+    return null;
+  }
+
+  return (data as UserPermission | null) ?? null;
+}
+
+/**
+ * Load one user permission by id (church-scoped).
+ */
+export async function getUserPermissionById(
+  admin: SupabaseClient,
+  permissionId: string,
+  churchId: string,
+): Promise<UserPermission | null> {
+  const { data, error } = await admin
+    .from("user_permissions")
+    .select("*")
+    .eq("id", permissionId)
+    .eq("church_id", churchId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Failed to load user permission:", error);
+    return null;
+  }
+
+  return (data as UserPermission | null) ?? null;
 }
 
 /**

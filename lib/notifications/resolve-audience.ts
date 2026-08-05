@@ -459,7 +459,7 @@ export async function resolveNotificationAudience(params: {
 
   if (targets.membershipIds?.length) {
     const { data: rows } = await supabase
-      .from("church_memberships")
+      .from("organization_memberships")
       .select("id, user_id, role, status")
       .eq("church_id", churchId)
       .eq("status", "active")

@@ -11,7 +11,7 @@ import type {
 } from "@/lib/subscriptions/types";
 
 function isMissingRelation(message: string): boolean {
-  return /subscription_plans|features|plan_features|church_subscriptions|does not exist|schema cache|Could not find the table/i.test(
+  return /subscription_plans|features|plan_features|organization_subscriptions|church_subscriptions|does not exist|schema cache|Could not find the table/i.test(
     message,
   );
 }
@@ -218,7 +218,7 @@ export async function getChurchSubscription(
 ): Promise<ChurchSubscriptionRecord | null> {
   const supabase = client ?? (await createClient());
   const { data, error } = await supabase
-    .from("church_subscriptions")
+    .from("organization_subscriptions")
     .select(
       `
       id,

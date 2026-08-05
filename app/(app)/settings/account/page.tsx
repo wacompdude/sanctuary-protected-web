@@ -19,7 +19,7 @@ import { formatChurchDateTime } from "@/lib/datetime/format";
 async function AccountContent() {
   const { supabase, church } = await requireMinChurchRole("owner");
   const { data } = await supabase
-    .from("churches")
+    .from("organizations")
     .select("status, plan_name, trial_ends_at, created_at, updated_at")
     .eq("id", church.id)
     .maybeSingle();

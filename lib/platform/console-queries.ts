@@ -96,13 +96,13 @@ export async function getPlatformDashboardStats(): Promise<PlatformDashboardStat
     platformAccountsRes,
     actionsRes,
   ] = await Promise.all([
-    admin.from("churches").select("id, status"),
+    admin.from("organizations").select("id, status"),
     admin
-      .from("church_subscriptions")
+      .from("organization_subscriptions")
       .select("id, status")
       .in("status", [...CURRENT_SUBSCRIPTION_STATUSES]),
     admin
-      .from("church_memberships")
+      .from("organization_memberships")
       .select("id", { count: "exact", head: true })
       .eq("status", "active"),
     admin
@@ -184,7 +184,7 @@ export async function listPlatformChurches(input: {
       return { items: [], total: 0, page, pageSize };
     }
     const { data: subRows } = await admin
-      .from("church_subscriptions")
+      .from("organization_subscriptions")
       .select("church_id")
       .eq("plan_id", planRow.id)
       .in("status", [...CURRENT_SUBSCRIPTION_STATUSES]);
@@ -197,7 +197,7 @@ export async function listPlatformChurches(input: {
   }
 
   let query = admin
-    .from("churches")
+    .from("organizations")
     .select("id, name, status, slug, created_at", { count: "exact" })
     .order("name", { ascending: true })
     .range(from, to);
@@ -230,14 +230,14 @@ export async function listPlatformChurches(input: {
       : Promise.resolve({ data: [] as Array<{ id: string; church_id: string }> }),
     churchIds.length
       ? admin
-          .from("church_memberships")
+          .from("organization_memberships")
           .select("id, church_id")
           .in("church_id", churchIds)
           .eq("status", "active")
       : Promise.resolve({ data: [] as Array<{ id: string; church_id: string }> }),
     churchIds.length
       ? admin
-          .from("church_subscriptions")
+          .from("organization_subscriptions")
           .select(
             "church_id, status, subscription_plans ( plan_key, display_name )",
           )
@@ -313,7 +313,7 @@ export async function getPlatformChurchDetail(
   const admin = requirePlatformAdminClient();
 
   const { data: church, error } = await admin
-    .from("churches")
+    .from("organizations")
     .select("id, name, status, slug, timezone, created_at")
     .eq("id", churchId)
     .maybeSingle();
@@ -330,14 +330,14 @@ export async function getPlatformChurchDetail(
       .eq("church_id", churchId)
       .order("name", { ascending: true }),
     admin
-      .from("church_memberships")
+      .from("organization_memberships")
       .select("id, user_id, role, status")
       .eq("church_id", churchId)
       .eq("status", "active")
       .order("role", { ascending: true })
       .limit(100),
     admin
-      .from("church_subscriptions")
+      .from("organization_subscriptions")
       .select(
         "id, status, trial_end, current_period_end, cancel_at_period_end, subscription_plans ( plan_key, display_name )",
       )
@@ -606,7 +606,7 @@ export async function listCurrentSubscriptions(input: {
   const to = from + pageSize - 1;
 
   const { data, error, count } = await admin
-    .from("church_subscriptions")
+    .from("organization_subscriptions")
     .select(
       "id, church_id, status, churches ( name ), subscription_plans ( plan_key, display_name )",
       { count: "exact" },
@@ -671,7 +671,7 @@ export async function listSubscriptionPlansForPlatform(): Promise<
       )
       .order("sort_order", { ascending: true }),
     admin
-      .from("church_subscriptions")
+      .from("organization_subscriptions")
       .select("plan_id")
       .in("status", [...CURRENT_SUBSCRIPTION_STATUSES]),
   ]);

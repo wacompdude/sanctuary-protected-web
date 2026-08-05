@@ -24,7 +24,7 @@ export async function countActiveChurchMembers(
 ): Promise<number> {
   const supabase = client ?? (await createClient());
   const { count, error } = await supabase
-    .from("church_memberships")
+    .from("organization_memberships")
     .select("id", { count: "exact", head: true })
     .eq("church_id", churchId)
     .eq("status", "active");

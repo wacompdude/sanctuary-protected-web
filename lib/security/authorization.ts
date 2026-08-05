@@ -27,14 +27,14 @@ import type {
   UserPermission,
   SecurityGroupPermission,
 } from "./types";
-import { ROLE_PERMISSION_MAPPING } from "./permission-keys";
+import { ROLE_PERMISSION_MAPPING, unionRolePermissions } from "./permission-keys";
 import { hasFeature } from "@/lib/subscriptions/resolver";
 
 /**
  * Local helper: get a church by ID.
  */
 async function getChurch(admin: SupabaseClient, churchId: string) {
-  const { data } = await admin.from("churches").select("id, status").eq("id", churchId).maybeSingle();
+  const { data } = await admin.from("organizations").select("id, status").eq("id", churchId).maybeSingle();
   return data;
 }
 
@@ -43,12 +43,34 @@ async function getChurch(admin: SupabaseClient, churchId: string) {
  */
 async function getChurchMembership(admin: SupabaseClient, userId: string, churchId: string) {
   const { data } = await admin
-    .from("church_memberships")
+    .from("organization_memberships")
     .select("id, user_id, church_id, role, status")
     .eq("user_id", userId)
     .eq("church_id", churchId)
     .maybeSingle();
   return data;
+}
+
+/**
+ * Active church roles for a membership (primary + secondary).
+ * Falls back to the membership.role column when junction rows are unavailable.
+ */
+async function getActiveMembershipRoles(
+  admin: SupabaseClient,
+  membershipId: string,
+  fallbackRole: string,
+): Promise<string[]> {
+  const { data, error } = await admin
+    .from("organization_membership_roles")
+    .select("role")
+    .eq("church_membership_id", membershipId)
+    .eq("status", "active");
+
+  if (error || !data?.length) {
+    return [fallbackRole];
+  }
+
+  return [...new Set(data.map((row: { role: string }) => row.role).filter(Boolean))];
 }
 
 /**
@@ -85,28 +107,29 @@ function isCampusInScope(grant: PermissionGrant | UserPermission | SecurityGroup
 }
 
 /**
- * Get role-based permissions for a user's current role.
- * Returns an array of permission grants derived from the role.
+ * Get role-based permissions for one or more church roles (union / dedupe).
  */
-function getRolePermissions(role: string, permissionKey: string): PermissionGrant[] {
-  const rolePerms = ROLE_PERMISSION_MAPPING[role as keyof typeof ROLE_PERMISSION_MAPPING] || [];
+function getRolePermissions(roles: string[], permissionKey: string): PermissionGrant[] {
+  const rolePerms = unionRolePermissions(roles);
 
   if (!rolePerms.includes(permissionKey as any)) {
     return [];
   }
 
-  return [
-    {
-      id: `role-${role}-${permissionKey}`,
-      permission_key: permissionKey,
-      permission_effect: "grant",
-      scope_type: "all_current_future_campuses",
-      campus_id: null,
-      effective_at: null,
-      expires_at: null,
-      source: "ROLE",
-    },
-  ];
+  const matchedRoles = roles.filter((role) =>
+    (ROLE_PERMISSION_MAPPING[role] ?? []).includes(permissionKey as any),
+  );
+
+  return matchedRoles.map((role) => ({
+    id: `role-${role}-${permissionKey}`,
+    permission_key: permissionKey,
+    permission_effect: "grant" as const,
+    scope_type: "all_current_future_campuses" as const,
+    campus_id: null,
+    effective_at: null,
+    expires_at: null,
+    source: "ROLE" as const,
+  }));
 }
 
 /**
@@ -327,8 +350,13 @@ export async function canUserPerform(
     // 7. Collect all potential grants (role-based, group-based, direct)
     const grants: PermissionGrant[] = [];
 
-    // 7a. Role-based grants
-    const roleGrants = getRolePermissions(membership.role, permissionKey);
+    // 7a. Role-based grants (primary + secondary union)
+    const membershipRoles = await getActiveMembershipRoles(
+      admin,
+      membership.id,
+      membership.role,
+    );
+    const roleGrants = getRolePermissions(membershipRoles, permissionKey);
     grants.push(...roleGrants);
 
     // 7b. Group-based grants

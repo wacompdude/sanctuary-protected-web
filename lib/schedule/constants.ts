@@ -129,6 +129,7 @@ export const SCHEDULE_MANAGER_ROLES: MembershipRole[] = [
   "co_owner",
   "administrator",
   "security_leader",
+  "event_coordinator",
 ];
 
 export function labelForScheduleEventType(value: string): string {

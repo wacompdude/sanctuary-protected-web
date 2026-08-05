@@ -1053,7 +1053,7 @@ export async function updateTrainingSettings(
     };
 
     const { error } = await supabase
-      .from("training_church_settings")
+      .from("training_organization_settings")
       .update(payload)
       .eq("church_id", church.id);
 

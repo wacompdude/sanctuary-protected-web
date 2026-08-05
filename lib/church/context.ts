@@ -182,13 +182,13 @@ export async function getUserMemberships(
     : await getCurrentUser();
 
   const { data: memberships, error: membershipError } = await supabase
-    .from("church_memberships")
+    .from("organization_memberships")
     .select("id, church_id, user_id, role, status, joined_at, created_at")
     .eq("user_id", user.id)
     .eq("status", "active");
 
   if (membershipError) {
-    console.error("[getUserMemberships] church_memberships select failed", {
+    console.error("[getUserMemberships] organization_memberships select failed", {
       code: membershipError.code,
       message: membershipError.message,
       details: membershipError.details,
@@ -205,7 +205,7 @@ export async function getUserMemberships(
 
   const churchIds = [...new Set(rows.map((row) => row.church_id))];
   const { data: churches, error: churchError } = await supabase
-    .from("churches")
+    .from("organizations")
     .select("id, name, status, slug, timezone, week_starts_on")
     .in("id", churchIds);
 
@@ -228,7 +228,7 @@ export async function getUserMemberships(
     }
 
     const fallback = await supabase
-      .from("churches")
+      .from("organizations")
       .select("id, name, status, slug, timezone")
       .in("id", churchIds);
     if (fallback.error) {

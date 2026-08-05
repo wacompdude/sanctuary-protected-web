@@ -64,7 +64,7 @@ export async function getChurchNotificationSettings(
   churchId: string,
 ): Promise<ChurchNotificationSettings> {
   const { data, error } = await supabase
-    .from("church_notification_settings")
+    .from("organization_notification_settings")
     .select("*")
     .eq("church_id", churchId)
     .maybeSingle();
@@ -82,7 +82,7 @@ export async function getChurchNotificationSettings(
   }
 
   const { data: inserted, error: insertError } = await supabase
-    .from("church_notification_settings")
+    .from("organization_notification_settings")
     .insert({ church_id: churchId })
     .select("*")
     .single();

@@ -85,7 +85,7 @@ function UsageMeterRow({
 async function BillingContent() {
   const { supabase, church } = await requireMinChurchRole("owner");
   const { data } = await supabase
-    .from("churches")
+    .from("organizations")
     .select("plan_name, trial_ends_at, status")
     .eq("id", church.id)
     .maybeSingle();

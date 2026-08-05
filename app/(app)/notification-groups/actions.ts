@@ -266,7 +266,7 @@ export async function addNotificationGroupMembersAction(
     }
 
     const { data: members, error: memberError } = await supabase
-      .from("church_memberships")
+      .from("organization_memberships")
       .select("id, user_id, status")
       .eq("church_id", church.id)
       .eq("status", "active")
@@ -348,7 +348,7 @@ export async function addNotificationGroupMembersByRoleAction(
     }
 
     const { data: members, error } = await supabase
-      .from("church_memberships")
+      .from("organization_memberships")
       .select("id")
       .eq("church_id", church.id)
       .eq("status", "active")

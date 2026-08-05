@@ -315,7 +315,7 @@ export async function getChurchScheduleSettings(churchId: string) {
   try {
     const supabase = await createClient();
     const { data, error } = await supabase
-      .from("church_schedule_settings")
+      .from("organization_schedule_settings")
       .select("*")
       .eq("church_id", churchId)
       .maybeSingle();

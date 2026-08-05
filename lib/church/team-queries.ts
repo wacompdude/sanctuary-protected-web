@@ -5,6 +5,10 @@ import {
   parseMembershipStatus,
   type TeamMemberRow,
 } from "@/lib/church/team";
+import {
+  filterVisibleChurchMembers,
+  loadHiddenPlatformOperatorUserIds,
+} from "@/lib/platform/hidden-from-church";
 
 type RpcRow = {
   membership_id: string;
@@ -38,7 +42,8 @@ export async function listChurchTeamMemberships(
     );
   }
 
-  return ((data ?? []) as RpcRow[]).map((row) => ({
+  const hiddenUserIds = await loadHiddenPlatformOperatorUserIds();
+  const mapped = ((data ?? []) as RpcRow[]).map((row) => ({
     membershipId: row.membership_id,
     userId: row.user_id,
     name: displayMemberName({
@@ -54,4 +59,7 @@ export async function listChurchTeamMemberships(
     isLastActiveOwner: Boolean(row.is_last_active_owner),
     avatarUrl: row.avatar_url ?? null,
   }));
+
+  // Defense in depth: RPC also excludes platform_accounts after migration 066.
+  return filterVisibleChurchMembers(mapped, hiddenUserIds);
 }

@@ -12,7 +12,7 @@ async function DemoSeedContent() {
   try {
     const admin = createAdminClient();
     const { data } = await admin
-      .from("churches")
+      .from("organizations")
       .select("id")
       .eq("seed_source", DEMO_SEED_SOURCE)
       .maybeSingle();

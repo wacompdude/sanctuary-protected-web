@@ -33,7 +33,7 @@ async function NewIncidentContent() {
       role: membership.role,
     }),
     supabase
-      .from("churches")
+      .from("organizations")
       .select(
         "require_incident_location, require_incident_severity, allow_security_members_create_incidents",
       )

@@ -42,7 +42,7 @@ export async function acceptChurchInvitation(
       const admin = createAdminClient();
       const tokenHash = hashInvitationToken(token);
       const { data: invitation } = await admin
-        .from("church_invitations")
+        .from("organization_invitations")
         .select("church_id, accepted_at, revoked_at, expires_at")
         .eq("token_hash", tokenHash)
         .maybeSingle();

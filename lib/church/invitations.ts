@@ -19,6 +19,11 @@ export const OWNERSHIP_INVITE_ROLES: InvitableRole[] = [
   "administrator",
   "security_leader",
   "security_member",
+  "training_coordinator",
+  "medical_coordinator",
+  "hardware_manager",
+  "event_coordinator",
+  "pastor",
   "viewer",
 ];
 
@@ -26,6 +31,11 @@ export const OWNER_ADMIN_INVITE_ROLES: InvitableRole[] = [
   "administrator",
   "security_leader",
   "security_member",
+  "training_coordinator",
+  "medical_coordinator",
+  "hardware_manager",
+  "event_coordinator",
+  "pastor",
   "viewer",
 ];
 
@@ -155,6 +165,16 @@ export function labelForMembershipRole(role: string): string {
       return "Security member";
     case "viewer":
       return "Viewer";
+    case "training_coordinator":
+      return "Training coordinator";
+    case "medical_coordinator":
+      return "Medical coordinator";
+    case "hardware_manager":
+      return "Hardware manager";
+    case "event_coordinator":
+      return "Event coordinator";
+    case "pastor":
+      return "Pastor / Church leadership";
     default:
       return role;
   }

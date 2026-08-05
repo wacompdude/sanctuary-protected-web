@@ -81,7 +81,7 @@ export async function resolveUsersByChurchRole(
   if (roles.length === 0) return [];
 
   const { data: memberships, error } = await supabase
-    .from("church_memberships")
+    .from("organization_memberships")
     .select("id, user_id, role, status")
     .eq("church_id", churchId)
     .eq("status", "active")
@@ -103,7 +103,7 @@ export async function resolveUsersByIds(
   if (unique.length === 0) return [];
 
   const { data: memberships, error } = await supabase
-    .from("church_memberships")
+    .from("organization_memberships")
     .select("id, user_id, role, status")
     .eq("church_id", churchId)
     .eq("status", "active")
@@ -122,7 +122,16 @@ async function hydrateRecipients(
 ): Promise<ResolvedRecipient[]> {
   if (memberships.length === 0) return [];
 
-  const userIds = memberships.map((row) => row.user_id);
+  const { loadHiddenPlatformOperatorUserIds, isHiddenPlatformOperatorEmail } =
+    await import("@/lib/platform/hidden-from-church");
+  const hiddenUserIds = await loadHiddenPlatformOperatorUserIds();
+
+  const visibleMemberships = memberships.filter(
+    (row) => !hiddenUserIds.has(row.user_id),
+  );
+  if (visibleMemberships.length === 0) return [];
+
+  const userIds = visibleMemberships.map((row) => row.user_id);
   const { data: profiles } = await supabase
     .from("profiles")
     .select("id, first_name, last_name, full_name")
@@ -136,8 +145,9 @@ async function hydrateRecipients(
   const emailByUserId = await lookupEmails(userIds);
 
   const recipients: ResolvedRecipient[] = [];
-  for (const membership of memberships) {
+  for (const membership of visibleMemberships) {
     const emailInfo = emailByUserId.get(membership.user_id);
+    if (isHiddenPlatformOperatorEmail(emailInfo?.email)) continue;
     recipients.push({
       userId: membership.user_id,
       membershipId: membership.id,

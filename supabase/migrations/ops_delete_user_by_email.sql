@@ -14,7 +14,7 @@
 --   3. Delete invitations they sent or that were sent to their email.
 --   4. Reassign or delete rows that reference the user with RESTRICT / NOT NULL.
 --   5. Soft-clean nullable SET NULL references (optional hygiene).
---   6. Delete campus_memberships (036+), then church_memberships
+--   6. Delete campus_memberships (036+), then organization_memberships
 --      (bypassing membership mutation guards).
 --   7. Delete public.profiles + storage avatar objects.
 --   8. Delete auth.users (cascades / SET NULL remaining FKs).
@@ -25,7 +25,7 @@
 -- are left in place when rows are reassigned; orphaned when rows are deleted.
 --
 -- Campus note (036_campus_management.sql):
---   campus_memberships CASCADE from church_memberships / campuses / auth.users,
+--   campus_memberships CASCADE from organization_memberships / campuses / auth.users,
 --   but authenticated clients cannot DELETE those rows (REVOKE DELETE). This
 --   script clears them explicitly so ops deletes stay reliable and auditable.
 -- =============================================================================
@@ -35,7 +35,7 @@ DECLARE
   -- >>> EDIT THIS <<<
   v_email text := 'REPLACE_WITH_USER_EMAIL';
 
-  -- When true, churches where this user is the sole active owner are deleted.
+  -- When true, organizations where this user is the sole active owner are deleted.
   v_force_delete_owned_churches boolean := false;
 
   v_user_id uuid;
@@ -72,14 +72,14 @@ BEGIN
   -- ---------------------------------------------------------------------------
   FOR v_sole_owner_church IN
     SELECT m.church_id, c.name AS church_name
-    FROM public.church_memberships m
-    JOIN public.churches c ON c.id = m.church_id
+    FROM public.organization_memberships m
+    JOIN public.organizations c ON c.id = m.church_id
     WHERE m.user_id = v_user_id
       AND m.role = 'owner'::public.membership_role
       AND m.status = 'active'::public.membership_status
       AND (
         SELECT COUNT(*)::integer
-        FROM public.church_memberships o
+        FROM public.organization_memberships o
         WHERE o.church_id = m.church_id
           AND o.role = 'owner'::public.membership_role
           AND o.status = 'active'::public.membership_status
@@ -97,7 +97,7 @@ BEGIN
       v_sole_owner_church.church_id;
 
     -- Clear RESTRICT parents before deleting the church.
-    -- Newer church-scoped tables mostly CASCADE from churches; these do not.
+    -- Newer church-scoped tables mostly CASCADE from organizations; these do not.
 
     DELETE FROM public.incident_updates
     WHERE church_id = v_sole_owner_church.church_id;
@@ -121,7 +121,7 @@ BEGIN
       WHERE church_id = v_sole_owner_church.church_id;
     END IF;
 
-    DELETE FROM public.church_invitations
+    DELETE FROM public.organization_invitations
     WHERE church_id = v_sole_owner_church.church_id;
 
     -- Campus memberships / locations (036+) before campuses / church memberships
@@ -138,7 +138,7 @@ BEGIN
     DELETE FROM public.campuses
     WHERE church_id = v_sole_owner_church.church_id;
 
-    DELETE FROM public.church_memberships
+    DELETE FROM public.organization_memberships
     WHERE church_id = v_sole_owner_church.church_id;
 
     ALTER TABLE public.audit_logs DISABLE TRIGGER USER;
@@ -147,21 +147,21 @@ BEGIN
     ALTER TABLE public.audit_logs ENABLE TRIGGER USER;
 
     -- Remaining church-scoped rows (notifications, equipment, policies,
-    -- threat levels, contacts, medical supplies, etc.) CASCADE from churches.
-    DELETE FROM public.churches
+    -- threat levels, contacts, medical supplies, etc.) CASCADE from organizations.
+    DELETE FROM public.organizations
     WHERE id = v_sole_owner_church.church_id;
   END LOOP;
 
   -- ---------------------------------------------------------------------------
   -- Invitations (invited_by is NOT NULL + ON DELETE RESTRICT)
   -- ---------------------------------------------------------------------------
-  DELETE FROM public.church_invitations
+  DELETE FROM public.organization_invitations
   WHERE invited_by = v_user_id
      OR lower(trim(both from email)) = v_normalized_email;
 
   -- ---------------------------------------------------------------------------
   -- Incident team members
-  --   membership_id → church_memberships ON DELETE RESTRICT
+  --   membership_id → organization_memberships ON DELETE RESTRICT
   --   added_by → auth.users ON DELETE RESTRICT
   -- Must clear before membership / auth delete.
   -- ---------------------------------------------------------------------------
@@ -169,7 +169,7 @@ BEGIN
     DELETE FROM public.incident_team_members
     WHERE membership_id IN (
       SELECT m.id
-      FROM public.church_memberships m
+      FROM public.organization_memberships m
       WHERE m.user_id = v_user_id
     );
 
@@ -182,7 +182,7 @@ BEGIN
       v_reassign_to := NULL;
       SELECT m.user_id
       INTO v_reassign_to
-      FROM public.church_memberships m
+      FROM public.organization_memberships m
       WHERE m.church_id = v_church_id
         AND m.user_id <> v_user_id
         AND m.status = 'active'::public.membership_status
@@ -221,7 +221,7 @@ BEGIN
     v_reassign_to := NULL;
     SELECT m.user_id
     INTO v_reassign_to
-    FROM public.church_memberships m
+    FROM public.organization_memberships m
     WHERE m.church_id = v_incident.church_id
       AND m.user_id <> v_user_id
       AND m.status = 'active'::public.membership_status
@@ -283,7 +283,7 @@ BEGIN
       v_reassign_to := NULL;
       SELECT m.user_id
       INTO v_reassign_to
-      FROM public.church_memberships m
+      FROM public.organization_memberships m
       WHERE m.church_id = v_church_id
         AND m.user_id <> v_user_id
         AND m.status = 'active'::public.membership_status
@@ -313,16 +313,16 @@ BEGIN
   -- ---------------------------------------------------------------------------
   -- Church threat levels (changed_by NOT NULL + ON DELETE RESTRICT)
   -- ---------------------------------------------------------------------------
-  IF to_regclass('public.church_threat_levels') IS NOT NULL THEN
+  IF to_regclass('public.organization_threat_levels') IS NOT NULL THEN
     FOR v_church_id IN
       SELECT DISTINCT church_id
-      FROM public.church_threat_levels
+      FROM public.organization_threat_levels
       WHERE changed_by = v_user_id
     LOOP
       v_reassign_to := NULL;
       SELECT m.user_id
       INTO v_reassign_to
-      FROM public.church_memberships m
+      FROM public.organization_memberships m
       WHERE m.church_id = v_church_id
         AND m.user_id <> v_user_id
         AND m.status = 'active'::public.membership_status
@@ -337,12 +337,12 @@ BEGIN
       LIMIT 1;
 
       IF v_reassign_to IS NOT NULL THEN
-        UPDATE public.church_threat_levels
+        UPDATE public.organization_threat_levels
         SET changed_by = v_reassign_to
         WHERE changed_by = v_user_id
           AND church_id = v_church_id;
       ELSE
-        DELETE FROM public.church_threat_levels
+        DELETE FROM public.organization_threat_levels
         WHERE changed_by = v_user_id
           AND church_id = v_church_id;
       END IF;
@@ -361,7 +361,7 @@ BEGIN
       v_reassign_to := NULL;
       SELECT m.user_id
       INTO v_reassign_to
-      FROM public.church_memberships m
+      FROM public.organization_memberships m
       WHERE m.church_id = v_church_id
         AND m.user_id <> v_user_id
         AND m.status = 'active'::public.membership_status
@@ -400,7 +400,7 @@ BEGIN
       v_reassign_to := NULL;
       SELECT m.user_id
       INTO v_reassign_to
-      FROM public.church_memberships m
+      FROM public.organization_memberships m
       WHERE m.church_id = v_church_id
         AND m.user_id <> v_user_id
         AND m.status = 'active'::public.membership_status
@@ -436,7 +436,7 @@ BEGIN
       v_reassign_to := NULL;
       SELECT m.user_id
       INTO v_reassign_to
-      FROM public.church_memberships m
+      FROM public.organization_memberships m
       WHERE m.church_id = v_church_id
         AND m.user_id <> v_user_id
         AND m.status = 'active'::public.membership_status
@@ -492,18 +492,18 @@ BEGIN
 
   -- ---------------------------------------------------------------------------
   -- Campus memberships (036+)
-  --   church_membership_id → church_memberships ON DELETE CASCADE
+  --   church_membership_id → organization_memberships ON DELETE CASCADE
   --   user_id → auth.users ON DELETE CASCADE
   --   assigned_by → auth.users ON DELETE SET NULL
   -- Explicit delete: authenticated role cannot DELETE these rows; keep ops path
-  -- clear before church_memberships / auth.users removal.
+  -- clear before organization_memberships / auth.users removal.
   -- ---------------------------------------------------------------------------
   IF to_regclass('public.campus_memberships') IS NOT NULL THEN
     DELETE FROM public.campus_memberships
     WHERE user_id = v_user_id
        OR church_membership_id IN (
             SELECT m.id
-            FROM public.church_memberships m
+            FROM public.organization_memberships m
             WHERE m.user_id = v_user_id
           )
        OR assigned_by = v_user_id;
@@ -512,7 +512,7 @@ BEGIN
   -- ---------------------------------------------------------------------------
   -- Memberships (CASCADE from auth.users also removes these; explicit for clarity)
   -- ---------------------------------------------------------------------------
-  DELETE FROM public.church_memberships
+  DELETE FROM public.organization_memberships
   WHERE user_id = v_user_id;
 
   -- ---------------------------------------------------------------------------
@@ -541,4 +541,4 @@ END $$;
 -- Verify (should return 0 rows):
 -- SELECT id, email FROM auth.users WHERE lower(email) = lower('REPLACE_WITH_USER_EMAIL');
 -- SELECT * FROM public.profiles WHERE id = 'PASTE_USER_ID_IF_NEEDED';
--- SELECT * FROM public.church_memberships WHERE user_id = 'PASTE_USER_ID_IF_NEEDED';
+-- SELECT * FROM public.organization_memberships WHERE user_id = 'PASTE_USER_ID_IF_NEEDED';

@@ -98,7 +98,7 @@ async function IncidentAnalyticsContent() {
   }
 
   const { data: settingsRow } = await supabase
-    .from("churches")
+    .from("organizations")
     .select("settings")
     .eq("id", church.id)
     .maybeSingle();

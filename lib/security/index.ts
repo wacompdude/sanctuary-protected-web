@@ -4,6 +4,14 @@
  * Public API for the security permissions and access-control system.
  */
 
+export { PERMISSION_KEYS, ROLE_PERMISSION_MAPPING, CAMPUS_ROLE_PERMISSION_MAPPING, unionRolePermissions, isPermissionKey } from "./permission-keys";
+export { getSystemRoleCatalog, getSystemRoleEntry, CHURCH_SYSTEM_ROLE_KEYS } from "./role-catalog";
+export {
+  listActiveMembershipRolesForUser,
+  setMembershipRoles,
+  listChurchRoleSettings,
+} from "./membership-roles";
+
 export type {
   MembershipRole,
   PermissionEffect,
@@ -27,9 +35,11 @@ export type {
   PermissionGrant,
   AccessPreviewRequest,
   AccessPreviewResult,
+  ChurchMembershipRoleRow,
+  RolePermissionTemplate,
+  RoleTemplateKind,
+  ChurchMembershipRoleStatus,
 } from "./types";
-
-export { PERMISSION_KEYS, ROLE_PERMISSION_MAPPING, isPermissionKey } from "./permission-keys";
 
 export { canUserPerform, isUserAuthorized, requirePermission } from "./authorization";
 
@@ -41,6 +51,7 @@ export {
   logUserPermissionGranted,
   logUserPermissionDenied,
   logUserPermissionRevoked,
+  logUserPermissionUpdated,
   logSecurityGroupMemberAdded,
   logSecurityGroupMemberRemoved,
   logSecurityAuditLogViewed,
@@ -52,6 +63,7 @@ export {
   listSecurityGroups,
   getSecurityGroupMembers,
   getUserSecurityGroups,
+  getUserSecurityGroupMemberships,
   getSecurityGroupPermissions,
   getUserDirectPermissions,
   getPermissionDefinitionByKey,
@@ -65,7 +77,10 @@ export {
   removePermissionFromSecurityGroup,
   grantUserPermission,
   denyUserPermission,
+  updateUserPermission,
+  getUserPermissionById,
   revokeUserPermission,
   listChurchUserPermissions,
+  listPermissionGrantHolders,
 } from "./repository";
 

@@ -273,6 +273,10 @@ async function attachMemberNames<T extends { user_id: string }>(
     string,
     { name: string | null; email: string | null }
   >();
+  const { isHiddenPlatformOperatorEmail, loadHiddenPlatformOperatorUserIds } =
+    await import("@/lib/platform/hidden-from-church");
+  const hiddenUserIds = await loadHiddenPlatformOperatorUserIds();
+
   for (const row of (data ?? []) as Array<{
     user_id: string;
     full_name: string | null;
@@ -281,6 +285,8 @@ async function attachMemberNames<T extends { user_id: string }>(
     email: string | null;
   }>) {
     if (!userIds.includes(row.user_id)) continue;
+    if (hiddenUserIds.has(row.user_id)) continue;
+    if (isHiddenPlatformOperatorEmail(row.email)) continue;
     const name =
       row.full_name?.trim() ||
       [row.first_name, row.last_name].filter(Boolean).join(" ").trim() ||
@@ -476,7 +482,7 @@ export async function getSettings(
 ): Promise<TrainingChurchSettings> {
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("training_church_settings")
+    .from("training_organization_settings")
     .select("*")
     .eq("church_id", churchId)
     .maybeSingle();
@@ -517,7 +523,7 @@ export async function ensureSettingsRow(
 ): Promise<TrainingChurchSettings> {
   const supabase = await createClient();
   const { data: existing } = await supabase
-    .from("training_church_settings")
+    .from("training_organization_settings")
     .select("*")
     .eq("church_id", churchId)
     .maybeSingle();
@@ -526,7 +532,7 @@ export async function ensureSettingsRow(
 
   const defaults = await getSettings(churchId);
   const { data, error } = await supabase
-    .from("training_church_settings")
+    .from("training_organization_settings")
     .upsert(
       {
         church_id: churchId,

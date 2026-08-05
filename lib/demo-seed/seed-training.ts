@@ -571,7 +571,7 @@ export async function seedChurchTraining(ctx: DemoSeedContext): Promise<void> {
     const existingId = await getRegisteredId(ctx.admin, ctx.seedSource, seedKey);
     if (existingId) {
       const { error } = await ctx.admin
-        .from("training_church_settings")
+        .from("training_organization_settings")
         .update({ ...payload, updated_at: new Date().toISOString() })
         .eq("church_id", ctx.churchId);
       if (error) {
@@ -580,7 +580,7 @@ export async function seedChurchTraining(ctx: DemoSeedContext): Promise<void> {
       await track(ctx.summary, "training_settings", "updated", "Updated training church settings");
     } else {
       const { error } = await ctx.admin
-        .from("training_church_settings")
+        .from("training_organization_settings")
         .upsert(payload, { onConflict: "church_id" });
       if (error) {
         throw new Error(`training_church_settings insert: ${error.message}`);
@@ -588,7 +588,7 @@ export async function seedChurchTraining(ctx: DemoSeedContext): Promise<void> {
       await registerSeedRecord({
         admin: ctx.admin,
         seedSource: ctx.seedSource,
-        entityTable: "training_church_settings",
+        entityTable: "training_organization_settings",
         entityId: ctx.churchId,
         seedKey,
       });

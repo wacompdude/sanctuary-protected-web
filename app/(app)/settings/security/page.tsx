@@ -2,9 +2,20 @@
 
 import { Suspense, useCallback, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Shield, BarChart3, Users, Key, MapPin, Clock, FileText, Settings as SettingsIcon } from "lucide-react";
+import {
+  Shield,
+  BarChart3,
+  Users,
+  Key,
+  MapPin,
+  Clock,
+  FileText,
+  Settings as SettingsIcon,
+  BadgeCheck,
+} from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SecurityOverviewTab } from "@/components/security/security-overview-tab";
+import { RolesTab } from "@/components/security/roles-tab";
 import { SecurityGroupsTab } from "@/components/security/security-groups-tab";
 import { UsersAccessTab } from "@/components/security/users-access-tab";
 import { PermissionCatalogTab } from "@/components/security/permission-catalog-tab";
@@ -50,17 +61,21 @@ function SecuritySettingsPageInner() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Security</h1>
             <p className="text-sm text-muted-foreground">
-              Manage security groups, permissions, and access control for your church
+              Manage roles, security groups, permissions, and access control for your church
             </p>
           </div>
         </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-4">
-        <TabsList className="grid h-auto w-full grid-cols-4 gap-1 lg:grid-cols-8">
+        <TabsList className="grid h-auto w-full grid-cols-3 gap-1 sm:grid-cols-5 lg:grid-cols-9">
           <TabsTrigger value="overview" className="flex min-h-9 items-center justify-center gap-2">
             <BarChart3 className="h-4 w-4 shrink-0" />
             <span className="hidden sm:inline">Overview</span>
+          </TabsTrigger>
+          <TabsTrigger value="roles" className="flex min-h-9 items-center justify-center gap-2">
+            <BadgeCheck className="h-4 w-4 shrink-0" />
+            <span className="hidden sm:inline">Roles</span>
           </TabsTrigger>
           <TabsTrigger value="groups" className="flex min-h-9 items-center justify-center gap-2">
             <Users className="h-4 w-4 shrink-0" />
@@ -94,6 +109,10 @@ function SecuritySettingsPageInner() {
 
         <TabsContent value="overview" className="space-y-6">
           <SecurityOverviewTab />
+        </TabsContent>
+
+        <TabsContent value="roles" className="space-y-6">
+          <RolesTab />
         </TabsContent>
 
         <TabsContent value="groups" className="space-y-6">

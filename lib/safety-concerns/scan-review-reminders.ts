@@ -39,7 +39,7 @@ export async function scanSafetyConcernReviewReminders(options?: {
   const todayStr = now.toISOString().slice(0, 10);
 
   const churchQuery = admin
-    .from("churches")
+    .from("organizations")
     .select("id, name")
     .eq("is_active", true);
   if (options?.churchId) {

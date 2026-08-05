@@ -163,37 +163,37 @@ async function seedThreatLevels(ctx: DemoSeedContext): Promise<void> {
 
     const registered = await getRegisteredId(ctx.admin, ctx.seedSource, seedKey);
     if (registered) {
-      const { error } = await ctx.admin.from("church_threat_levels").update(payload).eq("id", registered);
+      const { error } = await ctx.admin.from("organization_threat_levels").update(payload).eq("id", registered);
       if (error) throw new Error(`Threat update: ${error.message}`);
       ctx.ids.set(seedKey, registered);
-      await track(ctx.summary, "church_threat_levels", "updated", `Updated threat ${weekStart}=${level}`);
+      await track(ctx.summary, "organization_threat_levels", "updated", `Updated threat ${weekStart}=${level}`);
       continue;
     }
 
     const { data: existing } = await ctx.admin
-      .from("church_threat_levels")
+      .from("organization_threat_levels")
       .select("id")
       .eq("church_id", ctx.churchId)
       .eq("week_start", weekStart)
       .maybeSingle();
 
     if (existing?.id) {
-      const { error } = await ctx.admin.from("church_threat_levels").update(payload).eq("id", existing.id);
+      const { error } = await ctx.admin.from("organization_threat_levels").update(payload).eq("id", existing.id);
       if (error) throw new Error(`Threat link-update: ${error.message}`);
       await registerSeedRecord({
         admin: ctx.admin,
         seedSource: ctx.seedSource,
-        entityTable: "church_threat_levels",
+        entityTable: "organization_threat_levels",
         entityId: String(existing.id),
         seedKey,
       });
       ctx.ids.set(seedKey, String(existing.id));
-      await track(ctx.summary, "church_threat_levels", "updated", `Linked threat ${weekStart}=${level}`);
+      await track(ctx.summary, "organization_threat_levels", "updated", `Linked threat ${weekStart}=${level}`);
       continue;
     }
 
     const { data, error } = await ctx.admin
-      .from("church_threat_levels")
+      .from("organization_threat_levels")
       .insert({
         church_id: ctx.churchId,
         week_start: weekStart,
@@ -207,12 +207,12 @@ async function seedThreatLevels(ctx: DemoSeedContext): Promise<void> {
     await registerSeedRecord({
       admin: ctx.admin,
       seedSource: ctx.seedSource,
-      entityTable: "church_threat_levels",
+      entityTable: "organization_threat_levels",
       entityId: String(data.id),
       seedKey,
     });
     ctx.ids.set(seedKey, String(data.id));
-    await track(ctx.summary, "church_threat_levels", "created", `Created threat ${weekStart}=${level}`);
+    await track(ctx.summary, "organization_threat_levels", "created", `Created threat ${weekStart}=${level}`);
   }
 }
 

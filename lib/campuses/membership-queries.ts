@@ -85,12 +85,22 @@ export async function listCampusMembers(
   );
   if (members.length === 0) return members;
 
-  const membershipIds = members.map((m) => m.church_membership_id);
-  const userIds = [...new Set(members.map((m) => m.user_id))];
+  const { loadHiddenPlatformOperatorUserIds } = await import(
+    "@/lib/platform/hidden-from-church"
+  );
+  const hiddenUserIds = await loadHiddenPlatformOperatorUserIds();
+  const visibleMembers =
+    hiddenUserIds.size === 0
+      ? members
+      : members.filter((member) => !hiddenUserIds.has(member.user_id));
+  if (visibleMembers.length === 0) return [];
+
+  const membershipIds = visibleMembers.map((m) => m.church_membership_id);
+  const userIds = [...new Set(visibleMembers.map((m) => m.user_id))];
 
   const [{ data: churchMemberships }, { data: profiles }] = await Promise.all([
     supabase
-      .from("church_memberships")
+      .from("organization_memberships")
       .select("id, role, user_id")
       .eq("church_id", churchId)
       .in("id", membershipIds),
@@ -110,7 +120,7 @@ export async function listCampusMembers(
     (profiles ?? []).map((row) => [String(row.id), row]),
   );
 
-  return members.map((member) => {
+  return visibleMembers.map((member) => {
     const profile = profileByUserId.get(member.user_id);
     return {
       ...member,
@@ -173,7 +183,7 @@ export async function listOwnCampusMemberships(
   const supabase = await createClient();
 
   const { data: churchMemberships, error: membershipError } = await supabase
-    .from("church_memberships")
+    .from("organization_memberships")
     .select("id, church_id, role, status, churches(id, name)")
     .eq("user_id", userId)
     .eq("status", "active");

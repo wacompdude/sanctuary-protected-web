@@ -20,7 +20,7 @@ async function loadTargetMembership(
   membershipId: string,
 ) {
   const { data, error } = await supabase
-    .from("church_memberships")
+    .from("organization_memberships")
     .select("id, church_id, user_id, role, status")
     .eq("id", membershipId)
     .eq("church_id", churchId)
@@ -46,7 +46,7 @@ async function countActiveOwners(
   churchId: string,
 ): Promise<number> {
   const { count } = await supabase
-    .from("church_memberships")
+    .from("organization_memberships")
     .select("id", { count: "exact", head: true })
     .eq("church_id", churchId)
     .eq("role", "owner")
@@ -103,7 +103,7 @@ export async function updateTeamMemberRole(
       return { success: true };
     }
     const { error: updateError } = await supabase
-      .from("church_memberships")
+      .from("organization_memberships")
       .update({
         role: nextRole,
         updated_at: new Date().toISOString(),
@@ -204,7 +204,7 @@ export async function updateTeamMemberStatus(
     }
 
     const { error: updateError } = await supabase
-      .from("church_memberships")
+      .from("organization_memberships")
       .update({
         status: nextStatus,
         updated_at: new Date().toISOString(),

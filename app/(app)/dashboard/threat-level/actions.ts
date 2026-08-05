@@ -69,7 +69,7 @@ export async function updateChurchThreatLevel(
     const resolvedWeekStart = weekStart as string;
 
     const { data: previousRow, error: previousError } = await supabase
-      .from("church_threat_levels")
+      .from("organization_threat_levels")
       .select("threat_level")
       .eq("church_id", church.id)
       .eq("week_start", resolvedWeekStart)
@@ -86,7 +86,7 @@ export async function updateChurchThreatLevel(
     }
 
     const { data: inserted, error: insertError } = await supabase
-      .from("church_threat_levels")
+      .from("organization_threat_levels")
       .insert({
         church_id: church.id,
         week_start: resolvedWeekStart,
@@ -174,7 +174,7 @@ export async function editChurchThreatLevelEntry(
     }
 
     const { data: existing, error: loadError } = await supabase
-      .from("church_threat_levels")
+      .from("organization_threat_levels")
       .select("id, week_start, threat_level, notes")
       .eq("id", entryId)
       .eq("church_id", church.id)
@@ -193,7 +193,7 @@ export async function editChurchThreatLevelEntry(
 
     const resolvedWeekStart = weekStart as string;
     const { error: updateError } = await supabase
-      .from("church_threat_levels")
+      .from("organization_threat_levels")
       .update({
         week_start: resolvedWeekStart,
         threat_level: threatLevel,
@@ -258,7 +258,7 @@ export async function deleteChurchThreatLevelEntry(
     }
 
     const { data: existing, error: loadError } = await supabase
-      .from("church_threat_levels")
+      .from("organization_threat_levels")
       .select("id, week_start, threat_level")
       .eq("id", entryId)
       .eq("church_id", church.id)
@@ -276,7 +276,7 @@ export async function deleteChurchThreatLevelEntry(
     }
 
     const { error: deleteError } = await supabase
-      .from("church_threat_levels")
+      .from("organization_threat_levels")
       .delete()
       .eq("id", entryId)
       .eq("church_id", church.id);

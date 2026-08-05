@@ -680,7 +680,7 @@ export async function getDefaultReviewPeriodDays(
   if (!available) return 365;
 
   const { data, error } = await supabase
-    .from("church_policy_settings")
+    .from("organization_policy_settings")
     .select("default_review_period_days")
     .eq("church_id", churchId)
     .maybeSingle();

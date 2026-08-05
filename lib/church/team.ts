@@ -25,6 +25,14 @@ export function canManageTeamMemberships(role: MembershipRole): boolean {
   );
 }
 
+const SPECIALIST_ASSIGNABLE: ManageableRole[] = [
+  "training_coordinator",
+  "medical_coordinator",
+  "hardware_manager",
+  "event_coordinator",
+  "pastor",
+];
+
 /** Roles the actor may assign when changing another member's role. */
 export function rolesActorMayAssign(actorRole: MembershipRole): ManageableRole[] {
   if (isOwnershipRole(actorRole)) {
@@ -33,15 +41,16 @@ export function rolesActorMayAssign(actorRole: MembershipRole): ManageableRole[]
       "administrator",
       "security_leader",
       "security_member",
+      ...SPECIALIST_ASSIGNABLE,
       "viewer",
     ];
   }
   if (actorRole === "administrator") {
-    // Admins may manage peer admins and lower roles; never ownership tier.
     return [
       "administrator",
       "security_leader",
       "security_member",
+      ...SPECIALIST_ASSIGNABLE,
       "viewer",
     ];
   }
@@ -59,6 +68,7 @@ export function rolesActorMayManage(actorRole: MembershipRole): MembershipRole[]
       "administrator",
       "security_leader",
       "security_member",
+      ...SPECIALIST_ASSIGNABLE,
       "viewer",
     ];
   }
@@ -67,6 +77,7 @@ export function rolesActorMayManage(actorRole: MembershipRole): MembershipRole[]
       "administrator",
       "security_leader",
       "security_member",
+      ...SPECIALIST_ASSIGNABLE,
       "viewer",
     ];
   }
@@ -120,7 +131,12 @@ export function canChangeRole(params: {
   ) {
     return false;
   }
-  if (params.targetStatus !== "active" && params.targetStatus !== "suspended") {
+  if (
+    params.targetStatus !== "active" &&
+    params.targetStatus !== "suspended" &&
+    params.targetStatus !== "on_leave" &&
+    params.targetStatus !== "inactive"
+  ) {
     return false;
   }
   if (params.nextRole === "owner") return false;
@@ -155,20 +171,49 @@ export function canChangeStatus(params: {
   const { targetStatus, nextStatus, targetRole, isLastActiveOwner } = params;
 
   if (targetRole === "owner" && isLastActiveOwner) {
-    if (nextStatus === "suspended" || nextStatus === "removed") return false;
+    if (
+      nextStatus === "suspended" ||
+      nextStatus === "removed" ||
+      nextStatus === "inactive" ||
+      nextStatus === "archived"
+    ) {
+      return false;
+    }
   }
 
+  const adminOrOwner =
+    isOwnershipRole(params.actorRole) || params.actorRole === "administrator";
+
   if (targetStatus === "active") {
-    return nextStatus === "suspended" || nextStatus === "removed";
+    return (
+      nextStatus === "suspended" ||
+      nextStatus === "removed" ||
+      nextStatus === "inactive" ||
+      nextStatus === "on_leave" ||
+      nextStatus === "archived"
+    );
+  }
+  if (targetStatus === "on_leave" || targetStatus === "inactive") {
+    return (
+      nextStatus === "active" ||
+      nextStatus === "suspended" ||
+      nextStatus === "removed" ||
+      nextStatus === "archived"
+    );
   }
   if (targetStatus === "suspended") {
-    return nextStatus === "active" || nextStatus === "removed";
-  }
-  if (targetStatus === "removed") {
     return (
-      nextStatus === "active" &&
-      (isOwnershipRole(params.actorRole) || params.actorRole === "administrator")
+      nextStatus === "active" ||
+      nextStatus === "removed" ||
+      nextStatus === "archived" ||
+      nextStatus === "inactive"
     );
+  }
+  if (targetStatus === "pending_approval" || targetStatus === "invited") {
+    return nextStatus === "active" || nextStatus === "removed" || nextStatus === "archived";
+  }
+  if (targetStatus === "archived" || targetStatus === "removed") {
+    return nextStatus === "active" && adminOrOwner;
   }
   return false;
 }
@@ -182,7 +227,15 @@ export function labelForMembershipStatus(status: string): string {
     case "removed":
       return "Removed";
     case "invited":
-      return "Invited";
+      return "Pending Invitation";
+    case "inactive":
+      return "Inactive";
+    case "pending_approval":
+      return "Pending Approval";
+    case "on_leave":
+      return "On Leave";
+    case "archived":
+      return "Archived";
     default:
       return status;
   }
@@ -217,6 +270,10 @@ export function parseMembershipStatus(
     case "active":
     case "suspended":
     case "removed":
+    case "inactive":
+    case "pending_approval":
+    case "on_leave":
+    case "archived":
       return value;
     default:
       return "active";

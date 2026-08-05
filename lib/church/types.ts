@@ -4,7 +4,21 @@ export type MembershipRole =
   | "administrator"
   | "security_leader"
   | "security_member"
-  | "viewer";
+  | "viewer"
+  | "training_coordinator"
+  | "medical_coordinator"
+  | "hardware_manager"
+  | "event_coordinator"
+  | "pastor";
+
+/** Specialist church roles (not in the linear security ladder). */
+export const SPECIALIST_MEMBERSHIP_ROLES: MembershipRole[] = [
+  "training_coordinator",
+  "medical_coordinator",
+  "hardware_manager",
+  "event_coordinator",
+  "pastor",
+];
 
 /** Primary owner or co-owner — shared administrative ownership tier. */
 export function isOwnershipRole(role: MembershipRole | null | undefined): boolean {
@@ -14,11 +28,33 @@ export function isOwnershipRole(role: MembershipRole | null | undefined): boolea
 /** @deprecated Use MembershipRole — kept for gradual migration */
 export type AppRole = MembershipRole | "member";
 
+/**
+ * Membership status controls login / assignment eligibility — not privileges.
+ * `invited` displays as "Pending Invitation". `removed` retained for legacy.
+ */
 export type MembershipStatus =
   | "invited"
   | "active"
   | "suspended"
-  | "removed";
+  | "removed"
+  | "inactive"
+  | "pending_approval"
+  | "on_leave"
+  | "archived";
+
+/** Status values that allow app login / active church context. */
+export function membershipStatusAllowsLogin(
+  status: MembershipStatus | string | null | undefined,
+): boolean {
+  return status === "active";
+}
+
+/** Status values eligible for schedule/event assignment (login still required separately). */
+export function membershipStatusAllowsAssignment(
+  status: MembershipStatus | string | null | undefined,
+): boolean {
+  return status === "active" || status === "on_leave";
+}
 
 export type ChurchStatus = "trial" | "active" | "suspended" | "closed";
 
@@ -91,6 +127,11 @@ export function normalizeMembershipRole(
     case "security_leader":
     case "security_member":
     case "viewer":
+    case "training_coordinator":
+    case "medical_coordinator":
+    case "hardware_manager":
+    case "event_coordinator":
+    case "pastor":
       return role;
     case "member":
       return "security_member";

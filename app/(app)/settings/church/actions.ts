@@ -48,7 +48,7 @@ async function loadChurchRow(
   churchId: string,
 ): Promise<{ row?: ChurchSettingsRecord; error?: string }> {
   const { data, error } = await supabase
-    .from("churches")
+    .from("organizations")
     .select(CHURCH_SETTINGS_SELECT)
     .eq("id", churchId)
     .maybeSingle();
@@ -109,7 +109,7 @@ async function updateChurchSection(params: {
     }
 
     const { error } = await supabase
-      .from("churches")
+      .from("organizations")
       .update(params.patch)
       .eq("id", church.id);
 
@@ -176,7 +176,7 @@ export async function updateChurchGeneralSettings(
     validation.data.timezone !== loaded.row.timezone
   ) {
     await editor.context.supabase
-      .from("church_notification_settings")
+      .from("organization_notification_settings")
       .update({ timezone: validation.data.timezone })
       .eq("church_id", editor.context.church.id);
   }
@@ -419,7 +419,7 @@ export async function changeChurchAccountStatus(
     }
 
     const { error } = await context.supabase
-      .from("churches")
+      .from("organizations")
       .update({ status: validation.data.nextStatus })
       .eq("id", context.church.id);
 
@@ -498,7 +498,7 @@ export async function uploadChurchLogo(
     }
 
     const { error: updateError } = await supabase
-      .from("churches")
+      .from("organizations")
       .update({ logo_path: objectPath })
       .eq("id", church.id);
 
@@ -545,7 +545,7 @@ export async function removeChurchLogo(
     }
 
     const { error: updateError } = await supabase
-      .from("churches")
+      .from("organizations")
       .update({ logo_path: null })
       .eq("id", church.id);
 

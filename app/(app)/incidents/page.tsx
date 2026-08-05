@@ -44,7 +44,7 @@ async function IncidentsList({ showAll }: { showAll: boolean }) {
   const { church, membership, user, supabase } =
     await getAuthenticatedUserWithChurch();
   const { data: settingsRow } = await supabase
-    .from("churches")
+    .from("organizations")
     .select("settings")
     .eq("id", church.id)
     .maybeSingle();

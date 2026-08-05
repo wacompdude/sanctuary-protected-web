@@ -60,7 +60,7 @@ export async function scanScheduleReminders(options?: {
   const now = options?.now ?? new Date();
 
   let churchQuery = admin
-    .from("churches")
+    .from("organizations")
     .select("id, name, timezone")
     .in("status", ["trial", "active"]);
   if (options?.churchId) {
@@ -77,7 +77,7 @@ export async function scanScheduleReminders(options?: {
     result.churchesScanned += 1;
 
     const { data: settings } = await admin
-      .from("church_schedule_settings")
+      .from("organization_schedule_settings")
       .select(
         "default_first_reminder_minutes, default_second_reminder_minutes, unfilled_shift_warning_minutes, assignment_invitation_email_enabled, timezone",
       )
@@ -240,7 +240,7 @@ export async function scanScheduleReminders(options?: {
         }
 
         const { data: managers } = await admin
-          .from("church_memberships")
+          .from("organization_memberships")
           .select("user_id")
           .eq("church_id", church.id)
           .eq("status", "active")

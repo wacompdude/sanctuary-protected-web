@@ -154,7 +154,7 @@ async function collectMembersFromGroups(
 
     if (membershipIds.length > 0) {
       const { data: memberships, error: membershipError } = await supabase
-        .from("church_memberships")
+        .from("organization_memberships")
         .select("id, user_id, role, status")
         .eq("church_id", churchId)
         .eq("status", "active")
@@ -191,7 +191,7 @@ async function collectMembersFromGroups(
 
   for (const group of systemGroups) {
     let query = supabase
-      .from("church_memberships")
+      .from("organization_memberships")
       .select("id, user_id, role, status")
       .eq("church_id", churchId)
       .eq("status", "active");
@@ -224,7 +224,12 @@ async function collectMembersFromGroups(
     }
   }
 
-  return hits;
+  const { loadHiddenPlatformOperatorUserIds } = await import(
+    "@/lib/platform/hidden-from-church"
+  );
+  const hiddenUserIds = await loadHiddenPlatformOperatorUserIds();
+  if (hiddenUserIds.size === 0) return hits;
+  return hits.filter((hit) => !hiddenUserIds.has(hit.userId));
 }
 
 /**

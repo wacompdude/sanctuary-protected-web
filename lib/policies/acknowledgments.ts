@@ -348,7 +348,7 @@ export async function listPolicyAssignments(
 export async function listActiveChurchMembersForPolicies(churchId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("church_memberships")
+    .from("organization_memberships")
     .select("id, user_id, role")
     .eq("church_id", churchId)
     .eq("status", "active")

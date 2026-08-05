@@ -158,7 +158,7 @@ async function getCurrentSubscription(
   churchId: string,
 ): Promise<ChurchSubscriptionRecord | null> {
   const { data, error } = await admin
-    .from("church_subscriptions")
+    .from("organization_subscriptions")
     .select(
       `
       id,
@@ -251,7 +251,7 @@ async function syncChurchDisplayFields(
       : null) ?? params.planDisplayName;
 
   const { error } = await admin
-    .from("churches")
+    .from("organizations")
     .update({
       plan_name: planName,
       trial_ends_at:
@@ -283,7 +283,7 @@ async function createSubscriptionRow(
   const trialing = params.status === "trialing";
 
   const { data, error } = await admin
-    .from("church_subscriptions")
+    .from("organization_subscriptions")
     .insert({
       church_id: params.churchId,
       plan_id: params.plan.id,
@@ -495,7 +495,7 @@ export async function changeChurchSubscriptionPlan(params: {
 
   const nextStatus = params.status ?? existing.status;
   const { data, error } = await admin
-    .from("church_subscriptions")
+    .from("organization_subscriptions")
     .update({
       plan_id: newPlan.id,
       status: nextStatus,
@@ -626,7 +626,7 @@ export async function scheduleChurchSubscriptionCancellation(params: {
   }
 
   const { data, error } = await admin
-    .from("church_subscriptions")
+    .from("organization_subscriptions")
     .update({
       cancel_at_period_end: true,
     })
@@ -737,7 +737,7 @@ export async function updateChurchSubscriptionStatus(params: {
   }
 
   const { data, error } = await admin
-    .from("church_subscriptions")
+    .from("organization_subscriptions")
     .update(patch)
     .eq("id", existing.id)
     .select(

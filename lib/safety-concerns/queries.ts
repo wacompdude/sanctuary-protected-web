@@ -38,7 +38,7 @@ export async function getSafetyConcernChurchSettings(
 ): Promise<SafetyConcernChurchSettings> {
   const supabase = client ?? (await getServerSupabaseClient());
   const { data, error } = await supabase
-    .from("churches")
+    .from("organizations")
     .select(
       "safety_concerns_allow_security_member_view, safety_concerns_review_interval_days, safety_concerns_require_linked_incident, safety_concerns_require_photo_to_activate",
     )
@@ -77,7 +77,7 @@ export async function updateSafetyConcernChurchSettings(
 ): Promise<{ error: string | null }> {
   const supabase = client ?? (await getServerSupabaseClient());
   const { error } = await supabase
-    .from("churches")
+    .from("organizations")
     .update({
       safety_concerns_allow_security_member_view:
         settings.allow_security_member_view,

@@ -39,7 +39,7 @@ export async function scanCertificationExpirations(options?: {
   const now = options?.now ?? new Date();
 
   // Load all churches (or a single one when testing).
-  const churchQuery = admin.from("churches").select("id, name").eq("is_active", true);
+  const churchQuery = admin.from("organizations").select("id, name").eq("is_active", true);
   if (options?.churchId) {
     churchQuery.eq("id", options.churchId);
   }

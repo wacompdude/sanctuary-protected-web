@@ -7,6 +7,7 @@ export const HARDWARE_MANAGEMENT_ROLES: MembershipRole[] = [
   "co_owner",
   "administrator",
   "security_leader",
+  "hardware_manager",
 ];
 
 /** Roles that can schedule maintenance, complete inspections, and assign gear. */
@@ -16,6 +17,7 @@ export const HARDWARE_OPERATION_ROLES: MembershipRole[] = [
   "administrator",
   "security_leader",
   "security_member",
+  "hardware_manager",
 ];
 
 export type EquipmentCategory =

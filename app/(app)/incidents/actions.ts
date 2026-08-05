@@ -166,7 +166,7 @@ async function recordUsagesForIncident(params: {
 async function loadIncidentPolicy(churchId: string) {
   const { supabase, membership } = await getOperationalChurchContext();
   const { data } = await supabase
-    .from("churches")
+    .from("organizations")
     .select(
       "require_incident_location, require_incident_severity, require_incident_follow_up, allow_security_members_create_incidents, allow_security_members_close_incidents",
     )

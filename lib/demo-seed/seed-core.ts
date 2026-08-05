@@ -111,7 +111,7 @@ async function ensureMembership(params: {
   role: string;
   seedSource: string;
 }): Promise<{ membershipId: string; created: boolean }> {
-  // Direct church_memberships writes fail without auth.uid(); the trigger
+  // Direct organization_memberships writes fail without auth.uid(); the trigger
   // allows mutations only when app.bypass_membership_guards is set.
   // demo_seed_upsert_membership is service_role-only and sets that flag.
   const { data, error } = await params.admin.rpc("demo_seed_upsert_membership", {
@@ -175,7 +175,7 @@ export async function seedChurchCore(params: {
   // Church upsert by seed_source
   let churchId = (
     await admin
-      .from("churches")
+      .from("organizations")
       .select("id")
       .eq("seed_source", seedSource)
       .maybeSingle()
@@ -207,14 +207,14 @@ export async function seedChurchCore(params: {
 
   if (churchId) {
     const { error } = await admin
-      .from("churches")
+      .from("organizations")
       .update(churchPayload)
       .eq("id", churchId);
     if (error) throw new Error(`Church update failed: ${error.message}`);
     await track(summary, "church", "updated", `Updated church ${DEMO_CHURCH_NAME}`);
   } else {
     const { data, error } = await admin
-      .from("churches")
+      .from("organizations")
       .insert({
         ...churchPayload,
         created_at: new Date().toISOString(),
@@ -231,7 +231,7 @@ export async function seedChurchCore(params: {
   await registerSeedRecord({
     admin,
     seedSource,
-    entityTable: "churches",
+    entityTable: "organizations",
     entityId: churchId,
     seedKey: "church.root",
     metadata: { slug: DEMO_CHURCH_SLUG },
@@ -347,7 +347,7 @@ export async function seedChurchCore(params: {
   await registerSeedRecord({
     admin,
     seedSource,
-    entityTable: "church_memberships",
+    entityTable: "organization_memberships",
     entityId: ownerMembership.membershipId,
     seedKey: "membership.owner",
   });
@@ -407,7 +407,7 @@ export async function seedChurchCore(params: {
     await registerSeedRecord({
       admin,
       seedSource,
-      entityTable: "church_memberships",
+      entityTable: "organization_memberships",
       entityId: membership.membershipId,
       seedKey: `membership.${person.seedKey}`,
     });
@@ -538,7 +538,7 @@ export async function seedChurchCore(params: {
     await registerSeedRecord({
       admin,
       seedSource,
-      entityTable: "church_memberships",
+      entityTable: "organization_memberships",
       entityId: membership.membershipId,
       seedKey: `membership.${person.seedKey}`,
     });
@@ -574,13 +574,13 @@ export async function seedChurchCore(params: {
   };
   if (existingContact) {
     await admin
-      .from("church_contacts")
+      .from("organization_contacts")
       .update(contactPayload)
       .eq("id", existingContact);
     await track(summary, "contacts", "updated", "Primary emergency contact");
   } else {
     const { data, error } = await admin
-      .from("church_contacts")
+      .from("organization_contacts")
       .insert(contactPayload)
       .select("id")
       .single();
@@ -588,7 +588,7 @@ export async function seedChurchCore(params: {
       await registerSeedRecord({
         admin,
         seedSource,
-        entityTable: "church_contacts",
+        entityTable: "organization_contacts",
         entityId: String(data.id),
         seedKey: contactKey,
       });

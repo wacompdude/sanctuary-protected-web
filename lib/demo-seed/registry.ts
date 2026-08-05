@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { DemoSeedSummary } from "@/lib/demo-seed/types";
 import { bump, log } from "@/lib/demo-seed/types";
+import { TABLES } from "@/lib/db/tables";
 
 export async function getRegisteredId(
   admin: SupabaseClient,
@@ -106,8 +107,8 @@ export const DEMO_CLEANUP_TABLE_ORDER = [
   "training_courses",
   "training_category_church_state",
   "training_categories",
-  "training_church_settings",
-  "church_threat_levels",
+  TABLES.trainingOrganizationSettings,
+  TABLES.organizationThreatLevels,
   "notification_preferences",
   "security_group_permissions",
   "security_group_members",
@@ -116,8 +117,10 @@ export const DEMO_CLEANUP_TABLE_ORDER = [
   "campus_locations",
   "campus_memberships",
   "campuses",
-  "church_contacts",
-  "church_memberships",
-  "church_subscriptions",
-  "churches",
+  TABLES.organizationContacts,
+  TABLES.organizationMembershipRoles,
+  TABLES.organizationRoleSettings,
+  TABLES.organizationMemberships,
+  TABLES.organizationSubscriptions,
+  TABLES.organizations,
 ] as const;

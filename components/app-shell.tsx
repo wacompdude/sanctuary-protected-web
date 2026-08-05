@@ -24,7 +24,7 @@ async function loadBrandStyle() {
   try {
     const { supabase, church } = await requireChurchMembership();
     const { data } = await supabase
-      .from("churches")
+      .from("organizations")
       .select("primary_brand_color, secondary_brand_color")
       .eq("id", church.id)
       .maybeSingle();

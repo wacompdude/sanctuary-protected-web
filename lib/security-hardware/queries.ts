@@ -65,7 +65,7 @@ export async function getChurchEquipmentWarningDays(churchId: string): Promise<{
 }> {
   const supabase = await createClient();
   const { data } = await supabase
-    .from("churches")
+    .from("organizations")
     .select(
       "equipment_warranty_warning_days, equipment_replacement_warning_days, equipment_asset_tag_prefix",
     )

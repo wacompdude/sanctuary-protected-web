@@ -59,7 +59,7 @@ export async function createChurchInvitation(
     }
 
     const { data: pendingInvite } = await supabase
-      .from("church_invitations")
+      .from("organization_invitations")
       .select("id")
       .eq("church_id", church.id)
       .ilike("email", input.email)
@@ -80,7 +80,7 @@ export async function createChurchInvitation(
     expiresAt.setUTCDate(expiresAt.getUTCDate() + input.expiresInDays);
 
     const { data: invitation, error: insertError } = await supabase
-      .from("church_invitations")
+      .from("organization_invitations")
       .insert({
         church_id: church.id,
         email: input.email,
@@ -189,7 +189,7 @@ export async function resendChurchInvitation(
     }
 
     const { data: invite, error: loadError } = await supabase
-      .from("church_invitations")
+      .from("organization_invitations")
       .select("id, email, role, accepted_at, revoked_at, expires_at")
       .eq("id", invitationId)
       .eq("church_id", church.id)
@@ -220,7 +220,7 @@ export async function resendChurchInvitation(
     expiresAt.setUTCDate(expiresAt.getUTCDate() + RESEND_EXPIRATION_DAYS);
 
     const { error: updateError } = await supabase
-      .from("church_invitations")
+      .from("organization_invitations")
       .update({
         token_hash: tokenHash,
         expires_at: expiresAt.toISOString(),
@@ -317,7 +317,7 @@ export async function revokeChurchInvitation(
     }
 
     const { data: invite, error: loadError } = await supabase
-      .from("church_invitations")
+      .from("organization_invitations")
       .select("id, email, role, accepted_at, revoked_at")
       .eq("id", invitationId)
       .eq("church_id", church.id)
@@ -335,7 +335,7 @@ export async function revokeChurchInvitation(
 
     const revokedAt = new Date().toISOString();
     const { error: updateError } = await supabase
-      .from("church_invitations")
+      .from("organization_invitations")
       .update({ revoked_at: revokedAt })
       .eq("id", invitationId)
       .eq("church_id", church.id);

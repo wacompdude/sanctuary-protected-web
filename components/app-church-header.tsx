@@ -27,7 +27,7 @@ export async function AppChurchHeader() {
     } = await requireChurchMembership();
 
     const { data: branding } = await supabase
-      .from("churches")
+      .from("organizations")
       .select("logo_path")
       .eq("id", church.id)
       .maybeSingle();

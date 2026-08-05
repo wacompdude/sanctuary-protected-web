@@ -1,5 +1,6 @@
 export const SECURITY_TABS = [
   "overview",
+  "roles",
   "groups",
   "users",
   "permissions",

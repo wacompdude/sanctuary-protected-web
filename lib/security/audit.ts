@@ -251,6 +251,27 @@ export async function logUserPermissionRevoked(
   });
 }
 
+export async function logUserPermissionUpdated(
+  admin: SupabaseClient,
+  churchId: string,
+  targetUserId: string,
+  permissionKey: string,
+  actorUserId: string,
+  previousValue: Record<string, unknown>,
+  newValue: Record<string, unknown>,
+  reason?: string,
+) {
+  return writeSecurityAuditLog(admin, {
+    churchId,
+    actorUserId,
+    targetUserId,
+    eventType: "user_permission.updated",
+    previousValue,
+    newValue: { permission: permissionKey, ...newValue },
+    reason: reason || `Updated temporary permission: ${permissionKey}`,
+  });
+}
+
 export async function logSecurityGroupMemberAdded(
   admin: SupabaseClient,
   churchId: string,

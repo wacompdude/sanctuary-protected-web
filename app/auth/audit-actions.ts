@@ -17,7 +17,7 @@ export async function recordLoginSecurityEvent(): Promise<void> {
 
   // Prefer logging against the user's oldest active church when available.
   const { data: membership } = await supabase
-    .from("church_memberships")
+    .from("organization_memberships")
     .select("church_id")
     .eq("user_id", user.id)
     .eq("status", "active")

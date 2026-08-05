@@ -42,7 +42,7 @@ export async function transferOwnershipToCoOwnerAction(
     }
 
     const { data: target, error: targetError } = await supabase
-      .from("church_memberships")
+      .from("organization_memberships")
       .select("id, user_id, role, status")
       .eq("id", membershipId)
       .eq("church_id", church.id)

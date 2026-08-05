@@ -309,7 +309,7 @@ export async function updateChurchNotificationSettingsAction(
     };
 
     const { error } = await supabase
-      .from("church_notification_settings")
+      .from("organization_notification_settings")
       .upsert({ church_id: church.id, ...patch }, { onConflict: "church_id" });
     if (error) return { error: error.message };
 

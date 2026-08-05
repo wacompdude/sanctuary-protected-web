@@ -4,6 +4,11 @@ import { NAV_FEATURE_REQUIREMENTS } from "@/lib/subscriptions/nav-features";
 /** Higher number = more privileged. Used for cumulative nav visibility. */
 export const MEMBERSHIP_ROLE_RANK: Record<MembershipRole, number> = {
   viewer: 10,
+  pastor: 10,
+  event_coordinator: 15,
+  training_coordinator: 16,
+  medical_coordinator: 16,
+  hardware_manager: 16,
   security_member: 20,
   security_leader: 30,
   administrator: 40,
@@ -104,10 +109,11 @@ export type NavSection = {
  * Visibility is UX only — every destination must still enforce server-side auth.
  *
  * Organization principles:
- * - Task-based top-level items (ops first)
- * - Related admin destinations nest under groups
+ * - Ops work first (incidents, alerts, assets, coverage)
+ * - People & readiness next (team, training)
+ * - Admin / account last
+ * - Related destinations nest under groups; short labels under a clear parent
  * - Church switcher lives in the sidebar header (not a nav row)
- * - Invite lives under Team (not a duplicate top-level item)
  */
 export const APP_NAV_SECTIONS: NavSection[] = [
   {
@@ -130,13 +136,6 @@ export const APP_NAV_SECTIONS: NavSection[] = [
         label: "Incidents",
       },
       {
-        kind: "link",
-        id: "policies",
-        href: "/policies",
-        minRole: "viewer",
-        label: "Policies & Procedures",
-      },
-      {
         kind: "group",
         id: "notifications",
         href: "/notifications",
@@ -152,17 +151,75 @@ export const APP_NAV_SECTIONS: NavSection[] = [
           },
           {
             kind: "link",
+            id: "notification-preferences",
+            href: "/notifications/preferences",
+            minRole: "viewer",
+            label: "Preferences",
+          },
+          {
+            kind: "link",
             id: "notification-groups",
             href: "/notification-groups",
             minRole: "security_leader",
             label: "Groups",
           },
+        ],
+      },
+      {
+        kind: "group",
+        id: "schedule",
+        href: "/schedule/calendar",
+        minRole: "viewer",
+        label: "Scheduling",
+        children: [
           {
             kind: "link",
-            id: "notification-preferences",
-            href: "/notifications/preferences",
+            id: "schedule-my",
+            href: "/schedule/my-schedule",
             minRole: "viewer",
-            label: "Preferences",
+            label: "My Schedule",
+          },
+          {
+            kind: "link",
+            id: "schedule-calendar",
+            href: "/schedule/calendar",
+            minRole: "viewer",
+            label: "Calendar",
+          },
+          {
+            kind: "link",
+            id: "schedule-events",
+            href: "/schedule/events",
+            minRole: "viewer",
+            label: "Events",
+          },
+          {
+            kind: "link",
+            id: "schedule-shifts",
+            href: "/schedule/shifts",
+            minRole: "viewer",
+            label: "Team Shifts",
+          },
+          {
+            kind: "link",
+            id: "schedule-availability",
+            href: "/schedule/availability",
+            minRole: "viewer",
+            label: "Availability",
+          },
+          {
+            kind: "link",
+            id: "schedule-notifications",
+            href: "/schedule/notifications",
+            minRole: "security_leader",
+            label: "Notifications",
+          },
+          {
+            kind: "link",
+            id: "schedule-templates",
+            href: "/schedule/templates",
+            minRole: "security_leader",
+            label: "Templates",
           },
         ],
       },
@@ -178,14 +235,21 @@ export const APP_NAV_SECTIONS: NavSection[] = [
         id: "medical-supplies",
         href: "/medical-supplies",
         minRole: "viewer",
-        label: "Medical supplies",
+        label: "Medical Supplies",
       },
       {
         kind: "link",
         id: "safety-concerns",
         href: "/safety-concerns",
         minRole: "security_member",
-        label: "Known Safety Concerns",
+        label: "Safety Concerns",
+      },
+      {
+        kind: "link",
+        id: "policies",
+        href: "/policies",
+        minRole: "viewer",
+        label: "Policies & Procedures",
       },
     ],
   },
@@ -215,13 +279,6 @@ export const APP_NAV_SECTIONS: NavSection[] = [
             minRole: "administrator",
             label: "Invite",
           },
-          {
-            kind: "link",
-            id: "certifications",
-            href: "/certifications",
-            minRole: "security_member",
-            label: "Certifications",
-          },
         ],
       },
       {
@@ -240,6 +297,13 @@ export const APP_NAV_SECTIONS: NavSection[] = [
           },
           {
             kind: "link",
+            id: "training-calendar",
+            href: "/training/calendar",
+            minRole: "security_member",
+            label: "Calendar",
+          },
+          {
+            kind: "link",
             id: "training-events",
             href: "/training/events",
             minRole: "security_member",
@@ -254,17 +318,17 @@ export const APP_NAV_SECTIONS: NavSection[] = [
           },
           {
             kind: "link",
-            id: "training-calendar",
-            href: "/training/calendar",
-            minRole: "security_member",
-            label: "Calendar",
-          },
-          {
-            kind: "link",
             id: "training-records",
             href: "/training/records",
             minRole: "security_member",
             label: "Records",
+          },
+          {
+            kind: "link",
+            id: "certifications",
+            href: "/certifications",
+            minRole: "security_member",
+            label: "Certifications",
           },
           {
             kind: "link",
@@ -286,64 +350,6 @@ export const APP_NAV_SECTIONS: NavSection[] = [
             href: "/training/settings",
             minRole: "administrator",
             label: "Settings",
-          },
-        ],
-      },
-      {
-        kind: "group",
-        id: "schedule",
-        href: "/schedule/calendar",
-        minRole: "viewer",
-        label: "Scheduling",
-        children: [
-          {
-            kind: "link",
-            id: "schedule-calendar",
-            href: "/schedule/calendar",
-            minRole: "viewer",
-            label: "Calendar",
-          },
-          {
-            kind: "link",
-            id: "schedule-my",
-            href: "/schedule/my-schedule",
-            minRole: "viewer",
-            label: "My Schedule",
-          },
-          {
-            kind: "link",
-            id: "schedule-events",
-            href: "/schedule/events",
-            minRole: "viewer",
-            label: "Events",
-          },
-          {
-            kind: "link",
-            id: "schedule-shifts",
-            href: "/schedule/shifts",
-            minRole: "viewer",
-            label: "Team Shifts",
-          },
-          {
-            kind: "link",
-            id: "schedule-availability",
-            href: "/schedule/availability",
-            minRole: "viewer",
-            label: "Availability",
-          },
-          {
-            kind: "link",
-            id: "schedule-notifications",
-            href: "/schedule/notifications",
-            minRole: "security_leader",
-            label: "Schedule Notifications",
-          },
-          {
-            kind: "link",
-            id: "schedule-templates",
-            href: "/schedule/templates",
-            minRole: "security_leader",
-            label: "Schedule Templates",
           },
         ],
       },
@@ -488,8 +494,14 @@ function filterEntry(entry: NavEntry, role: MembershipRole): NavEntry | null {
   if (children.length === 0) return null;
 
   // Single-child groups collapse to a direct link to reduce nesting noise.
+  // Keep the group label when the only child is the group's landing page
+  // (e.g. Team → Members at /team). Otherwise expose the child's own label
+  // (e.g. Training with only Certifications → "Certifications").
   if (children.length === 1) {
     const only = children[0]!;
+    if (only.href !== entry.href) {
+      return only;
+    }
     return {
       kind: "link",
       id: entry.id,
@@ -560,6 +572,9 @@ export function getNavSectionsForRole(
     if (children.length === 0) return null;
     if (children.length === 1) {
       const only = children[0]!;
+      if (only.href !== filtered.href) {
+        return only;
+      }
       return {
         kind: "link",
         id: filtered.id,

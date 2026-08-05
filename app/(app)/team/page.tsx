@@ -46,7 +46,7 @@ async function TeamContent({ created }: { created?: string }) {
   let pendingInvites: PendingInvitation[] = [];
   if (canInvite) {
     const { data: invites } = await supabase
-      .from("church_invitations")
+      .from("organization_invitations")
       .select("id, email, role, expires_at, created_at")
       .eq("church_id", church.id)
       .is("accepted_at", null)

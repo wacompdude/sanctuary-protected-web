@@ -18,7 +18,7 @@ async function HomeLandingContent(): Promise<React.ReactNode> {
     }
 
     const { data } = await supabase
-      .from("churches")
+      .from("organizations")
       .select("settings")
       .eq("id", church.id)
       .maybeSingle();

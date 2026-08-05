@@ -86,9 +86,14 @@ export default async function DemoOrganizationDetailPage({
               </div>
             </div>
             <div>
-              <div className="text-slate-400">Coming next</div>
+              <div className="text-slate-400">Snapshots</div>
               <div className="text-slate-300">
-                Snapshots &amp; restore (Phases 4–5)
+                <Link
+                  href={`/platform/demo-organizations/${organizationId}/snapshots`}
+                  className="text-sky-300 hover:text-sky-200"
+                >
+                  View &amp; create versions
+                </Link>
               </div>
             </div>
           </div>

@@ -1,6 +1,6 @@
 # Demo Organization Snapshot & Restore — Phase 2 Architecture
 
-Status: **Phase 2 approved · Phase 3 complete (apply 080→081 in Supabase, then smoke-test UI)**  
+Status: **Phase 4 complete (snapshot create + list/detail). Apply 080→081 if not already; create private bucket `demo-organization-snapshots`.**  
 UI terminology remains **Church / Demo Church**. Internal code uses **organization**.
 
 Related artifacts:
@@ -8,7 +8,8 @@ Related artifacts:
 - Registry: `lib/platform/demo-snapshots/snapshot-table-registry.ts`
 - Migrations: `080_demo_environments_permission_category.sql`, `081_demo_organization_snapshots.sql`
 - Guardrails: `lib/platform/demo-snapshots/guardrails.ts`, `locks.ts`
-- Console: `/platform/demo-organizations`
+- Snapshot create: `lib/platform/demo-snapshots/create-snapshot.ts`, `export.ts`, `queries.ts`
+- Console: `/platform/demo-organizations` (+ `/snapshots`)
 
 ---
 
@@ -221,13 +222,23 @@ Nav label: **Demo Environments** (platform console only).
 | Console list/detail + mark-demo / flag / lock actions | Done |
 | `npm run selfcheck:demo-snapshots` | Passed |
 | Apply `080` then `081` in Supabase | **Your step** |
-| Create private bucket `demo-organization-snapshots` | Optional now (required by Phase 4) |
+| Create private bucket `demo-organization-snapshots` | Auto-create on first snapshot; create in dashboard if API blocked |
 | Mark First Church demo via UI | After migrations |
 | Wire `assertNotInDemoMaintenance` on church write paths | Deferred to restore phase |
 
-## Phase 4 (next)
+## Phase 4 checklist
 
-Snapshot creation: export registry tables → Storage, checksums, list/detail UI.
+| Item | Status |
+|------|--------|
+| Manifest + data.json export from registry | Done |
+| Storage file copy + checksums | Done |
+| Snapshot list / new / detail UI | Done |
+| Default + protect + archive controls | Done |
+| Self-check | Done |
+
+## Phase 5 (next)
+
+Dry-run preview, typed confirmation, safety snapshot, restore transaction, file restore, verification.
 
 ---
 

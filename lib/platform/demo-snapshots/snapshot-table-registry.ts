@@ -37,7 +37,7 @@ export const DEMO_SNAPSHOT_FORMAT_VERSION = 1;
  * App-facing schema version stamp for compatibility checks.
  * Align with latest applied migration number when Phase 3 lands.
  */
-export const DEMO_DATABASE_SCHEMA_VERSION = "080";
+export const DEMO_DATABASE_SCHEMA_VERSION = "081";
 
 export const DEMO_SNAPSHOT_STORAGE_BUCKET = "demo-organization-snapshots";
 
@@ -1022,6 +1022,17 @@ export function tablesForStrategy(strategy: SnapshotRestoreStrategy) {
   return SNAPSHOT_TABLE_REGISTRY.filter((t) => t.restoreStrategy === strategy);
 }
 
+/** Tables written into data.json (exclude + preserve stay out of payload). */
+export function exportPayloadOrder() {
+  return [...SNAPSHOT_TABLE_REGISTRY]
+    .filter(
+      (t) =>
+        t.restoreStrategy === "replace" || t.restoreStrategy === "merge",
+    )
+    .sort((a, b) => a.dependencyOrder - b.dependencyOrder);
+}
+
+/** Insert order for restore (includes preserve for dependency awareness). */
 export function exportInsertOrder() {
   return [...SNAPSHOT_TABLE_REGISTRY]
     .filter((t) => t.restoreStrategy !== "exclude")
@@ -1029,5 +1040,7 @@ export function exportInsertOrder() {
 }
 
 export function deleteOrder() {
-  return [...exportInsertOrder()].reverse();
+  return [...exportInsertOrder()]
+    .filter((t) => t.restoreStrategy === "replace")
+    .reverse();
 }

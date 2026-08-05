@@ -63,7 +63,7 @@ export async function requireDemoOrganization(
 ): Promise<DemoOrganizationRecord> {
   const org = await getDemoOrganizationById(organizationId);
   if (!org) {
-    throw new PlatformAccessError("Organization not found.", "NOT_FOUND");
+    throw new PlatformAccessError("Organization not found.", "LOAD_FAILED");
   }
   if (!org.is_demo_organization) {
     throw new PlatformAccessError(

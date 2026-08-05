@@ -69,7 +69,7 @@ export async function transferOwnershipToCoOwnerAction(
       toUserId: target.user_id as string,
     });
 
-    const { data, error } = await supabase.rpc("transfer_church_ownership", {
+    const { data, error } = await supabase.rpc("transfer_organization_ownership", {
       p_church_id: church.id,
       p_to_membership_id: membershipId,
     });

@@ -30,7 +30,7 @@ export async function listChurchTeamMemberships(
 ): Promise<TeamMemberRow[]> {
   const { supabase } = await getAuthenticatedUserWithChurch();
 
-  const { data, error } = await supabase.rpc("list_church_team_memberships", {
+  const { data, error } = await supabase.rpc("list_organization_team_memberships", {
     p_church_id: organizationId,
   });
 

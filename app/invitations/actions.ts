@@ -66,7 +66,7 @@ export async function acceptChurchInvitation(
     }
   }
 
-  const { data, error } = await supabase.rpc("accept_church_invitation", {
+  const { data, error } = await supabase.rpc("accept_organization_invitation", {
     p_token: token,
   });
 
@@ -95,7 +95,7 @@ export async function acceptChurchInvitation(
     }
     if (
       /function\s+[\w.]+\s*\([^)]*\)\s+does not exist/i.test(message) &&
-      message.includes("accept_church_invitation")
+      message.includes("accept_organization_invitation")
     ) {
       return {
         error:

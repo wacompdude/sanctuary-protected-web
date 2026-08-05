@@ -10,6 +10,9 @@
 -- Strategy:
 --   ALTER FUNCTION … RENAME TO …
 --   CREATE wrapper with the previous church_* name that delegates to the new one
+--   Exception: RETURNS trigger — rename only (no wrapper). SQL cannot return
+--   trigger, and a plpgsql wrapper would not receive NEW/OLD. Existing triggers
+--   keep working because they bind the function by OID, not name.
 --
 -- Result:
 --   - Backend / new code can call organization_* function names
@@ -103,6 +106,14 @@ BEGIN
       r.identity_args,
       new_name
     );
+
+    -- Trigger functions: rename only (see header). Triggers keep working via OID.
+    IF lower(r.result_type) = 'trigger' THEN
+      renamed := renamed + 1;
+      RAISE NOTICE '073 renamed %(%) → % (trigger; no wrapper)',
+        old_name, r.identity_args, new_name;
+      CONTINUE;
+    END IF;
 
     -- Build positional call list $1, $2, …
     arg_count := r.pronargs;

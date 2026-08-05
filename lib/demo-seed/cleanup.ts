@@ -143,7 +143,7 @@ export async function cleanupFirstChurchDemoSeed(): Promise<DemoCleanupSummary> 
 
     if (summary.organizationId || byTable.has("organizations")) {
       const { data: deletedOrganizationId, error: churchDeleteError } = await admin.rpc(
-        "demo_seed_delete_church",
+        "demo_seed_delete_organization",
         { p_seed_source: DEMO_SEED_SOURCE },
       );
       if (churchDeleteError) {

@@ -30,7 +30,7 @@ export async function createChurchOnboarding(
     return { error: "You must be signed in to create a church." };
   }
 
-  const { data, error } = await supabase.rpc("create_church_with_owner", {
+  const { data, error } = await supabase.rpc("create_organization_with_owner", {
     p_name: input.name,
     p_primary_email: input.primary_email,
     p_phone: input.phone,

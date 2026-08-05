@@ -67,7 +67,7 @@ export async function provisionChurchMember(
     await requireActiveSeatCapacity({ organizationId: church.id });
 
     const { data: emailTaken, error: emailCheckError } = await supabase.rpc(
-      "church_has_active_member_email",
+      "organization_has_active_member_email",
       {
         p_church_id: church.id,
         p_email: input.email,
@@ -169,7 +169,7 @@ export async function provisionChurchMember(
       );
 
     const { data: attachResult, error: attachError } = await supabase.rpc(
-      "attach_church_membership",
+      "attach_organization_membership",
       {
         p_church_id: church.id,
         p_user_id: targetUserId,

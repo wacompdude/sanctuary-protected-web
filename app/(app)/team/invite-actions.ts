@@ -44,7 +44,7 @@ export async function createChurchInvitation(
     }
 
     const { data: emailTaken, error: emailCheckError } = await supabase.rpc(
-      "church_has_active_member_email",
+      "organization_has_active_member_email",
       {
         p_church_id: church.id,
         p_email: input.email,

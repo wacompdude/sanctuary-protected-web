@@ -166,6 +166,12 @@ async function updateDbPathsForMove(
   return updated;
 }
 
+function readStringColumn(row: unknown, column: string): string | null {
+  if (!row || typeof row !== "object") return null;
+  const value = (row as Record<string, unknown>)[column];
+  return typeof value === "string" ? value : null;
+}
+
 async function rewriteLingeringDbPaths(admin: SupabaseClient): Promise<number> {
   let updated = 0;
 
@@ -191,7 +197,7 @@ async function rewriteLingeringDbPaths(admin: SupabaseClient): Promise<number> {
     }
 
     for (const row of lingering ?? []) {
-      const oldPath = (row as Record<string, string | null>)[target.column];
+      const oldPath = readStringColumn(row, target.column);
       if (!oldPath?.startsWith(FROM_PREFIX)) continue;
       const newPath = toOrganizationPath(oldPath);
       const { error: updateError } = await admin

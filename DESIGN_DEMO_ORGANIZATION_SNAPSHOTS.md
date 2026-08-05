@@ -1,6 +1,6 @@
 # Demo Organization Snapshot & Restore — Phase 2 Architecture
 
-Status: **Phase 7 complete (version management: badges, filters, retention, metadata edit).**  
+Status: **Phases 1–8 complete.** See `PHASE_8_DEMO_SNAPSHOTS_VALIDATION.md` for the final validation report.  
 UI terminology remains **Church / Demo Church**. Internal code uses **organization**.
 
 Related artifacts:
@@ -277,9 +277,16 @@ Nav label: **Demo Environments** (platform console only).
 | Safety snapshot retention rules | Done |
 | Delete with baseline/protected/history safeguards | Done |
 
-## Phase 8 (next)
+## Phase 8 checklist
 
-Final validation report: demo config, restore/rollback tests, remaining risks, operating procedure.
+| Item | Status |
+|------|--------|
+| Final validation report | Done — `PHASE_8_DEMO_SNAPSHOTS_VALIDATION.md` |
+| Self-check | Passed |
+| Operator smoke tests (live First Church restore) | **Your environment** |
+| Full-repo lint clean | Blocked by unrelated `lib/security/*` debt |
+
+---
 
 ---
 

@@ -1,12 +1,11 @@
 /**
  * Storage object prefix for new tenant-scoped uploads.
- * Keep `churches/` until objects are moved with the Storage move/copy API.
- * (SQL UPDATE on storage.objects.name does not rename the underlying blob.)
+ * Dual-read validators still accept the legacy `churches/` prefix.
  */
-export const STORAGE_TENANT_PREFIX = "churches";
+export const STORAGE_TENANT_PREFIX = "organizations";
 
-/** Also accepted by validators / RLS dual-read helpers. */
-export const STORAGE_TENANT_PREFIX_LEGACY = "organizations";
+/** Legacy prefix — still accepted by validators / RLS dual-read helpers. */
+export const STORAGE_TENANT_PREFIX_LEGACY = "churches";
 
 export function storageTenantObjectPath(
   organizationId: string,

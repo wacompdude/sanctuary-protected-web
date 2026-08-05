@@ -31,10 +31,19 @@ Goal: Backend, schema, and service APIs use **Organization** terminology. The Sa
 ### Storage prefix note
 
 `078` updated `storage.objects.name` in SQL only — that does **not** rename S3
-blobs, so logos 404’d. **Run `079`** to revert metadata to `churches/`.
+blobs (repaired by `079`).
 
-New uploads stay on `churches/` until a Storage **move/copy API** migration exists.
-Dual-read helpers from `077` remain (both prefixes accepted).
+**Proper move (now):**
+
+1. Ensure `077` dual-read helpers are applied
+2. Deploy app that writes `organizations/` (dual-accepts `churches/`)
+3. Dry-run: `npm run migrate:storage-tenant-prefix`
+4. Execute: `npm run migrate:storage-tenant-prefix:execute`
+   - Uses Storage `move` API, then updates DB path columns
+5. Smoke-test logos / attachments (especially WPC)
+
+Optional phased:  
+`npx tsx scripts/migrate-storage-tenant-prefix.ts --execute --bucket=church-branding`
 
 Bucket id `church-branding` is unchanged.
 

@@ -8,6 +8,8 @@
     "bootstrap:super-admin": "npx --yes tsx scripts/bootstrap-super-admin.ts",
     "seed:first-church-demo": "npx --yes tsx scripts/seed-first-church-demo.ts",
     "seed:first-church-demo:cleanup": "npx --yes tsx scripts/cleanup-first-church-demo.ts",
+    "migrate:storage-tenant-prefix": "npx --yes tsx scripts/migrate-storage-tenant-prefix.ts",
+    "migrate:storage-tenant-prefix:execute": "npx --yes tsx scripts/migrate-storage-tenant-prefix.ts --execute",
     "selfcheck:demo-seed": "npx --yes tsx lib/demo-seed/foundation.selfcheck.ts",
     "selfcheck:platform": "npx --yes tsx lib/platform/foundation.selfcheck.ts && npx --yes tsx lib/platform/bootstrap.selfcheck.ts",
     "selfcheck:safety-concerns": "npx --yes tsx lib/safety-concerns/entitlements.selfcheck.ts && npx --yes tsx lib/safety-concerns/storage.selfcheck.ts && npx --yes tsx lib/safety-concerns/mobile.selfcheck.ts",

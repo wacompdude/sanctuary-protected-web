@@ -82,6 +82,17 @@ export const PLATFORM_NAV_SECTIONS: PlatformNavSection[] = [
     ],
   },
   {
+    id: "demo",
+    label: "Demo Environments",
+    links: [
+      {
+        href: "/platform/demo-organizations",
+        label: "Demo Churches",
+        permission: "demo_organizations.read",
+      },
+    ],
+  },
+  {
     id: "system",
     label: "System",
     links: [

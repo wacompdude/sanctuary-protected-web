@@ -54,6 +54,18 @@ export const PLATFORM_PERMISSIONS = [
   "developer.logs.read",
   "developer.config_status.read",
 
+  "demo_organizations.read",
+  "demo_organizations.manage",
+  "demo_snapshots.read",
+  "demo_snapshots.create",
+  "demo_snapshots.restore",
+  "demo_snapshots.archive",
+  "demo_snapshots.delete",
+  "demo_snapshots.protect",
+  "demo_snapshots.set_default",
+  "demo_restores.rollback",
+  "demo_restores.unlock",
+
   "help.console.access",
   "help.manage",
   "help.read_drafts",

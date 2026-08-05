@@ -197,3 +197,60 @@ export async function archiveDemoSnapshot(params: {
     throw new PlatformAccessError(error.message, "LOAD_FAILED");
   }
 }
+
+export type DemoRestoreOperationRecord = {
+  id: string;
+  organization_id: string;
+  snapshot_id: string;
+  pre_restore_snapshot_id: string | null;
+  operation_type: string;
+  status: string;
+  reason: string;
+  dry_run_summary: Record<string, unknown>;
+  records_deleted: number;
+  records_inserted: number;
+  records_preserved: number;
+  files_deleted: number;
+  files_restored: number;
+  warnings: unknown;
+  safe_error_summary: string | null;
+  started_by_platform_account_id: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  rolled_back_at: string | null;
+  rollback_snapshot_id: string | null;
+  created_at: string;
+};
+
+export async function listDemoRestoreOperations(
+  organizationId: string,
+  limit = 50,
+): Promise<DemoRestoreOperationRecord[]> {
+  const admin = requirePlatformAdminClient();
+  const { data, error } = await admin
+    .from("demo_organization_restore_operations")
+    .select(
+      `id, organization_id, snapshot_id, pre_restore_snapshot_id, operation_type, status,
+       reason, dry_run_summary, records_deleted, records_inserted, records_preserved,
+       files_deleted, files_restored, warnings, safe_error_summary,
+       started_by_platform_account_id, started_at, completed_at, rolled_back_at,
+       rollback_snapshot_id, created_at`,
+    )
+    .eq("organization_id", organizationId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    if (/demo_organization_restore_operations|does not exist|schema cache/i.test(
+      error.message,
+    )) {
+      throw new PlatformAccessError(
+        "Demo restore tables are not available. Apply migrations 080 and 081.",
+        "LOAD_FAILED",
+      );
+    }
+    throw new PlatformAccessError(error.message, "LOAD_FAILED");
+  }
+
+  return (data ?? []) as DemoRestoreOperationRecord[];
+}

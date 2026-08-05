@@ -81,6 +81,50 @@ export async function createNotification(
       input.organizationId,
     );
 
+    // Demo restore / maintenance must never enqueue or send notifications.
+    const { isDemoRestoreOperationActive } = await import(
+      "@/lib/platform/demo-snapshots/operation-context"
+    );
+    if (isDemoRestoreOperationActive(input.organizationId)) {
+      return {
+        notificationId: null,
+        status: "skipped",
+        recipientCount: 0,
+        deliveryCount: 0,
+        error: "Notifications suppressed during demo restore.",
+      };
+    }
+    if (
+      input.metadata &&
+      (input.metadata.operation_context === "demo_restore" ||
+        input.metadata.operation_context === "demo_rollback")
+    ) {
+      return {
+        notificationId: null,
+        status: "skipped",
+        recipientCount: 0,
+        deliveryCount: 0,
+        error: "Notifications suppressed for demo restore context.",
+      };
+    }
+    try {
+      const { assertNotInDemoMaintenance } = await import(
+        "@/lib/platform/demo-snapshots/guardrails"
+      );
+      await assertNotInDemoMaintenance(input.organizationId);
+    } catch (maintenanceError) {
+      return {
+        notificationId: null,
+        status: "skipped",
+        recipientCount: 0,
+        deliveryCount: 0,
+        error:
+          maintenanceError instanceof Error
+            ? maintenanceError.message
+            : "Demo maintenance mode active.",
+      };
+    }
+
     const templateKey =
       input.templateKey ??
       templateKeyForNotificationType(input.notificationType);

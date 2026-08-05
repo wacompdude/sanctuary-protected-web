@@ -87,13 +87,30 @@ export default async function DemoOrganizationDetailPage({
             </div>
             <div>
               <div className="text-slate-400">Snapshots</div>
-              <div className="text-slate-300">
-                <Link
-                  href={`/platform/demo-organizations/${organizationId}/snapshots`}
-                  className="text-sky-300 hover:text-sky-200"
-                >
-                  View &amp; create versions
-                </Link>
+              <div className="space-y-1 text-slate-300">
+                <div>
+                  <Link
+                    href={`/platform/demo-organizations/${organizationId}/snapshots`}
+                    className="text-sky-300 hover:text-sky-200"
+                  >
+                    View &amp; create versions
+                  </Link>
+                </div>
+                <div>
+                  <Link
+                    href={`/platform/demo-organizations/${organizationId}/restore`}
+                    className="text-sky-300 hover:text-sky-200"
+                  >
+                    Restore
+                  </Link>
+                  {" · "}
+                  <Link
+                    href={`/platform/demo-organizations/${organizationId}/restore-history`}
+                    className="text-sky-300 hover:text-sky-200"
+                  >
+                    History
+                  </Link>
+                </div>
               </div>
             </div>
           </div>

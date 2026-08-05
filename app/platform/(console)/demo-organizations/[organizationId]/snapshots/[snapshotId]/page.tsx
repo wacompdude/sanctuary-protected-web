@@ -167,6 +167,17 @@ export default async function DemoSnapshotDetailPage({
             canProtect={canProtect}
             canArchive={canArchive}
           />
+
+          {snapshot.snapshot_status === "ready" && !snapshot.archived_at ? (
+            <div>
+              <Link
+                href={`/platform/demo-organizations/${organizationId}/restore?snapshotId=${snapshot.id}`}
+                className="text-sm text-sky-300 hover:text-sky-200"
+              >
+                Restore this snapshot →
+              </Link>
+            </div>
+          ) : null}
         </>
       ) : null}
     </div>

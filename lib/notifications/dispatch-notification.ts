@@ -134,7 +134,29 @@ export async function dispatchPendingDeliveries(options?: {
   let failed = 0;
   let skipped = 0;
 
+  const maintenanceCache = new Map<string, boolean>();
+
+  async function isOrgInDemoMaintenance(organizationId: string): Promise<boolean> {
+    if (maintenanceCache.has(organizationId)) {
+      return maintenanceCache.get(organizationId)!;
+    }
+    const { data } = await admin
+      .from("organizations")
+      .select("is_demo_organization, demo_maintenance_mode")
+      .eq("id", organizationId)
+      .maybeSingle();
+    const blocked = Boolean(
+      data?.is_demo_organization && data?.demo_maintenance_mode,
+    );
+    maintenanceCache.set(organizationId, blocked);
+    return blocked;
+  }
+
   for (const delivery of due) {
+    if (await isOrgInDemoMaintenance(delivery.organization_id)) {
+      skipped += 1;
+      continue;
+    }
     const result = await sendEmailDelivery(admin, delivery);
     if (result === "sent") sent += 1;
     else if (result === "failed") failed += 1;

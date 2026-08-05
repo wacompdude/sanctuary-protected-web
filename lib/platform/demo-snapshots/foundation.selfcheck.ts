@@ -137,4 +137,9 @@ assert(
 );
 assert(sha256Prefixed("demo").startsWith("sha256:"), "checksum prefix");
 
-console.log("demo-snapshots Phase 4 foundation self-check passed");
+assert(
+  DEMO_RESTORE_CONFIRMATION_PHRASE.length > 10,
+  "confirmation phrase length",
+);
+
+console.log("demo-snapshots Phase 5 foundation self-check passed");

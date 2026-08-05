@@ -1,6 +1,6 @@
 # Demo Organization Snapshot & Restore — Phase 2 Architecture
 
-Status: **Phase 4 complete (snapshot create + list/detail). Apply 080→081 if not already; create private bucket `demo-organization-snapshots`.**  
+Status: **Phase 5 complete (dry-run + restore + auto-rollback). Apply 080→081 if needed; create a ready snapshot before testing restore.**  
 UI terminology remains **Church / Demo Church**. Internal code uses **organization**.
 
 Related artifacts:
@@ -9,7 +9,8 @@ Related artifacts:
 - Migrations: `080_demo_environments_permission_category.sql`, `081_demo_organization_snapshots.sql`
 - Guardrails: `lib/platform/demo-snapshots/guardrails.ts`, `locks.ts`
 - Snapshot create: `lib/platform/demo-snapshots/create-snapshot.ts`, `export.ts`, `queries.ts`
-- Console: `/platform/demo-organizations` (+ `/snapshots`)
+- Restore: `lib/platform/demo-snapshots/restore.ts`, `dry-run.ts`, `verify.ts`
+- Console: `/platform/demo-organizations` (+ `/snapshots`, `/restore`, `/restore-history`)
 
 ---
 
@@ -236,9 +237,24 @@ Nav label: **Demo Environments** (platform console only).
 | Default + protect + archive controls | Done |
 | Self-check | Done |
 
-## Phase 5 (next)
+## Phase 5 checklist
 
-Dry-run preview, typed confirmation, safety snapshot, restore transaction, file restore, verification.
+| Item | Status |
+|------|--------|
+| Dry-run preview (counts, plan, files) | Done |
+| Typed confirmation + MFA + 15m reauth | Done |
+| Automatic safety snapshot | Done |
+| Lock + maintenance mode | Done |
+| DB restore (replace + merge + scrub billing) | Done |
+| File restore from snapshot Storage | Done |
+| Verification gate | Done |
+| Auto-rollback on failure | Done |
+| Notification suppression (create + dispatch) | Done |
+| Restore + history UI | Done |
+
+## Phase 6 (next)
+
+Manual rollback UX, emergency unlock, lock expiry recovery, platform alerts.
 
 ---
 

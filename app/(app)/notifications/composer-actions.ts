@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getAuthenticatedUserWithChurch } from "@/lib/church/auth";
+import { getAuthenticatedUserWithChurch } from "@/lib/organization/auth";
 import { writeAuditLog } from "@/lib/audit/log";
 import { AuditAction, AuditEntityType } from "@/lib/audit/actions";
 import {

@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { TrainingCalendarClient } from "@/components/training/training-calendar-client";
-import { getAuthenticatedUserWithChurch } from "@/lib/church/auth";
+import { getAuthenticatedUserWithChurch } from "@/lib/organization/auth";
 import { resolveCampusFilter } from "@/lib/campuses/filter";
 import { getTrainingAccess } from "@/lib/training/access";
 import {

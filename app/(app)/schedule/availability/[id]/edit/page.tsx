@@ -5,11 +5,11 @@ import { ArrowLeft } from "lucide-react";
 import { UnavailabilityForm } from "@/components/schedule/unavailability-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
 import {
   ChurchAccessError,
   getAuthenticatedUserWithChurch,
-} from "@/lib/church/auth";
+} from "@/lib/organization/auth";
 import { getUnavailabilityById } from "@/lib/schedule/availability-queries";
 import { canManageSchedule } from "@/lib/schedule/permissions";
 import { getChurchScheduleSettings } from "@/lib/schedule/shift-queries";

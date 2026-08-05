@@ -5,7 +5,7 @@ import {
   getAuthenticatedUserWithChurch,
   listIncidentsForChurch,
 } from "@/lib/incidents/queries";
-import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
 import {
   formatDateTime,
   formatIncidentId,
@@ -13,7 +13,7 @@ import {
   resolveIncidentListSort,
 } from "@/lib/incidents/format";
 import { INCIDENT_TYPES } from "@/lib/incidents/constants";
-import { parseAppPreferences } from "@/lib/church/settings";
+import { parseAppPreferences } from "@/lib/organization/settings";
 import { Button } from "@/components/ui/button";
 import {
   Card,

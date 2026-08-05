@@ -19,8 +19,8 @@ import {
 } from "@/lib/profile/memberships";
 import { listOwnCampusMemberships } from "@/lib/campuses/membership-queries";
 import { labelForCampusRole } from "@/lib/campuses/constants";
-import { labelForMembershipRole } from "@/lib/church/invitations";
-import { labelForMembershipStatus } from "@/lib/church/team";
+import { labelForMembershipRole } from "@/lib/organization/invitations";
+import { labelForMembershipStatus } from "@/lib/organization/team";
 import { formatChurchDate } from "@/lib/datetime/format";
 import { createClient } from "@/lib/supabase/server";
 import { ArrowLeftRight } from "lucide-react";

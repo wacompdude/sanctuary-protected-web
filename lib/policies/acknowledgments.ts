@@ -7,7 +7,7 @@ import type {
   PolicyAssignment,
   PolicyAssignmentType,
 } from "@/lib/policies/types";
-import type { MembershipRole } from "@/lib/church/types";
+import type { MembershipRole } from "@/lib/organization/types";
 
 function isMissing(message: string) {
   return Boolean(policyMigrationHintFromError(message));

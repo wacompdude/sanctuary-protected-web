@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getOperationalChurchContext } from "@/lib/church/auth";
+import { getOperationalChurchContext } from "@/lib/organization/auth";
 import {
   canManageThreatLevels,
   isThreatLevel,
@@ -9,8 +9,8 @@ import {
   normalizeWeekStartsOn,
   THREAT_LEVEL_NOTES_MAX_LENGTH,
   threatLevelMigrationHintFromError,
-} from "@/lib/church/threat-levels";
-import type { ActionState } from "@/lib/church/types";
+} from "@/lib/organization/threat-levels";
+import type { ActionState } from "@/lib/organization/types";
 import {
   auditChurchThreatLevelDeleted,
   auditChurchThreatLevelEdited,

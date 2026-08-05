@@ -1,4 +1,4 @@
-import type { MembershipRole } from "@/lib/church/types";
+import type { MembershipRole } from "@/lib/organization/types";
 
 export const DASHBOARD_BOX_KEYS = [
   "active_incidents",

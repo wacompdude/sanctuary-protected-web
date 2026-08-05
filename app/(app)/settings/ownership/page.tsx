@@ -12,9 +12,9 @@ import { Button } from "@/components/ui/button";
 import {
   ChurchAccessError,
   requireMinChurchRole,
-} from "@/lib/church/auth";
-import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
-import { listChurchTeamMemberships } from "@/lib/church/team-queries";
+} from "@/lib/organization/auth";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
+import { listChurchTeamMemberships } from "@/lib/organization/team-queries";
 import { OwnershipTransferForm } from "@/components/settings/ownership-transfer-form";
 
 async function OwnershipContent() {

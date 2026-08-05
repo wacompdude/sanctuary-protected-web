@@ -13,7 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { EVENT_SEVERITIES, EVENT_TYPES } from "@/lib/events/types";
-import type { ActionState } from "@/lib/church/types";
+import type { ActionState } from "@/lib/organization/types";
 import { selectClassName } from "@/components/incidents/incident-badges";
 import {
   CampusScopeField,

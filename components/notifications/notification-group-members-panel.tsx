@@ -11,9 +11,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { selectClassName } from "@/components/incidents/incident-badges";
-import type { ActionState } from "@/lib/church/types";
+import type { ActionState } from "@/lib/organization/types";
 import type { NotificationGroupMember } from "@/lib/notifications/groups/types";
-import { labelForMembershipRole } from "@/lib/church/invitations";
+import { labelForMembershipRole } from "@/lib/organization/invitations";
 
 type MemberOption = {
   membershipId: string;

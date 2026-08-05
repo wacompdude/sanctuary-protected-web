@@ -8,7 +8,7 @@ import type {
   PolicyAudienceScope,
   PolicyDocumentType,
 } from "@/lib/policies/types";
-import type { MembershipRole } from "@/lib/church/types";
+import type { MembershipRole } from "@/lib/organization/types";
 
 function text(formData: FormData, key: string, max: number): string | null {
   const raw = String(formData.get(key) ?? "").trim();

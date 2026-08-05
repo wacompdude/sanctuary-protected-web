@@ -9,7 +9,7 @@ export {
   ChurchAccessError,
   getAuthenticatedUserWithChurch,
   getOperationalChurchContext,
-} from "@/lib/church/auth";
+} from "@/lib/organization/auth";
 
 const SUPPLY_SELECT = `
   id, organization_id, name, category, unit, quantity_on_hand, minimum_quantity,

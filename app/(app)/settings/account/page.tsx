@@ -12,8 +12,8 @@ import { Button } from "@/components/ui/button";
 import {
   ChurchAccessError,
   requireMinChurchRole,
-} from "@/lib/church/auth";
-import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
+} from "@/lib/organization/auth";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
 import { formatChurchDateTime } from "@/lib/datetime/format";
 
 async function AccountContent() {

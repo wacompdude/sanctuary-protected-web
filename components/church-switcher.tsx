@@ -4,7 +4,7 @@ import { useActionState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Building2, ChevronDown } from "lucide-react";
 import { switchActiveChurch } from "@/app/(app)/church/actions";
-import type { ActionState } from "@/lib/church/types";
+import type { ActionState } from "@/lib/organization/types";
 import { cn } from "@/lib/utils";
 
 export type ChurchOption = {

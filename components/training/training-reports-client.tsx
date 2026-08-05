@@ -16,7 +16,7 @@ import {
   collectRequiredCourseIds,
   isRequiredTrainingAudienceRole,
 } from "@/lib/training/compliance-shared";
-import type { MembershipRole } from "@/lib/church/types";
+import type { MembershipRole } from "@/lib/organization/types";
 import type {
   TrainingCategoryWithState,
   TrainingCompletionRecord,

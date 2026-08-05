@@ -10,8 +10,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { auditDashboardObsoleteKeysPurged } from "@/lib/audit/dashboard-events";
-import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
-import { getAuthenticatedUserWithChurch } from "@/lib/church/auth";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
+import { getAuthenticatedUserWithChurch } from "@/lib/organization/auth";
 import {
   areDashboardBoxSettingsAvailable,
   canManageDashboardCustomization,

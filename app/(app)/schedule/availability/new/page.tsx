@@ -4,12 +4,12 @@ import { ArrowLeft } from "lucide-react";
 import { UnavailabilityForm } from "@/components/schedule/unavailability-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
 import {
   ChurchAccessError,
   getAuthenticatedUserWithChurch,
-} from "@/lib/church/auth";
-import { listChurchTeamMemberships } from "@/lib/church/team-queries";
+} from "@/lib/organization/auth";
+import { listChurchTeamMemberships } from "@/lib/organization/team-queries";
 import { canManageSchedule } from "@/lib/schedule/permissions";
 import { getChurchScheduleSettings } from "@/lib/schedule/shift-queries";
 

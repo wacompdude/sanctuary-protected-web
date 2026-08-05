@@ -21,9 +21,9 @@ import {
   THREAT_LEVEL_NOTES_MAX_LENGTH,
   THREAT_LEVEL_OPTIONS,
   type ThreatLevel,
-} from "@/lib/church/threat-levels";
+} from "@/lib/organization/threat-levels";
 import { selectClassName, textareaClassName } from "@/components/incidents/incident-badges";
-import type { ActionState } from "@/lib/church/types";
+import type { ActionState } from "@/lib/organization/types";
 
 const initialState: ActionState = {};
 

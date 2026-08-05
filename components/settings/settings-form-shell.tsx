@@ -16,7 +16,7 @@ import {
   selectClassName,
   textareaClassName,
 } from "@/components/incidents/incident-badges";
-import type { ActionState } from "@/lib/church/types";
+import type { ActionState } from "@/lib/organization/types";
 
 export function SettingsSectionCard({
   title,

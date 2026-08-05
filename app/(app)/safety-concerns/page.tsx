@@ -17,9 +17,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { listAccessibleCampuses } from "@/lib/campuses/filter";
-import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
-import { getAuthenticatedUserWithChurch } from "@/lib/church/auth";
-import { hasMinRole } from "@/lib/church/navigation";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
+import { getAuthenticatedUserWithChurch } from "@/lib/organization/auth";
+import { hasMinRole } from "@/lib/organization/navigation";
 import {
   canManageSafetyConcerns,
   getSafetyConcernAccess,

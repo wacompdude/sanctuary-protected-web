@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { resendChurchInvitation } from "@/app/(app)/team/invite-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { InviteActionState } from "@/lib/church/invitations";
+import type { InviteActionState } from "@/lib/organization/invitations";
 
 const initialState: InviteActionState = {};
 

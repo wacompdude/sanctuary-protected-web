@@ -29,7 +29,7 @@ import type {
   PolicyVersionStatus,
 } from "@/lib/policies/types";
 
-export { ChurchAccessError } from "@/lib/church/errors";
+export { ChurchAccessError } from "@/lib/organization/errors";
 
 type DocumentRow = {
   id: string;
@@ -231,7 +231,7 @@ export async function listPolicyCategories(
 
   try {
     await supabase.rpc("ensure_default_policy_categories", {
-      p_church_id: organizationId,
+      p_organization_id: organizationId,
     });
   } catch {
     // Seed is best-effort when RPC is unavailable.

@@ -1,5 +1,5 @@
-import type { MembershipRole } from "@/lib/church/types";
-import { canManageChurchSettings } from "@/lib/church/settings";
+import type { MembershipRole } from "@/lib/organization/types";
+import { canManageChurchSettings } from "@/lib/organization/settings";
 import { canManageSchedule } from "@/lib/schedule/permissions";
 
 export function canViewDashboardCustomization(role: MembershipRole): boolean {

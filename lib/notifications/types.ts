@@ -1,5 +1,5 @@
 import type { EmailSenderCategory } from "@/lib/email/email-sender-types";
-import type { MembershipRole } from "@/lib/church/types";
+import type { MembershipRole } from "@/lib/organization/types";
 
 export const NOTIFICATION_CHANNELS = ["email", "sms", "push", "in_app"] as const;
 export type NotificationChannel = (typeof NOTIFICATION_CHANNELS)[number];

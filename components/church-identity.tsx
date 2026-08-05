@@ -1,4 +1,4 @@
-import { publicUrlForLogoPath } from "@/lib/church/logo-storage";
+import { publicUrlForLogoPath } from "@/lib/organization/logo-storage";
 
 export function OrganizationIdentity({
   name,

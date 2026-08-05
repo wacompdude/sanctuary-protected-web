@@ -1,5 +1,5 @@
-import type { MembershipRole } from "@/lib/church/types";
-import { hasMinRole } from "@/lib/church/navigation";
+import type { MembershipRole } from "@/lib/organization/types";
+import { hasMinRole } from "@/lib/organization/navigation";
 import { OPERATIONAL_GROUP_TYPES } from "@/lib/notifications/groups/constants";
 import type { NotificationGroupType } from "@/lib/notifications/groups/types";
 

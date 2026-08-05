@@ -4,10 +4,10 @@ import { ArrowLeft } from "lucide-react";
 import {
   ChurchAccessError,
   getAuthenticatedUserWithChurch,
-} from "@/lib/church/auth";
-import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
-import { listChurchThreatLevels } from "@/lib/church/threat-level-queries";
-import { normalizeWeekStartsOn } from "@/lib/church/threat-levels";
+} from "@/lib/organization/auth";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
+import { listChurchThreatLevels } from "@/lib/organization/threat-level-queries";
+import { normalizeWeekStartsOn } from "@/lib/organization/threat-levels";
 import { ThreatLevelHistoryCalendar } from "@/components/dashboard/threat-level-history-calendar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";

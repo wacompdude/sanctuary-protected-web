@@ -18,13 +18,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import type { ChurchSettingsRecord } from "@/lib/church/settings";
+import type { ChurchSettingsRecord } from "@/lib/organization/settings";
 import {
   LOGO_ALLOWED_MIME,
   LOGO_MAX_BYTES,
   publicUrlForLogoPath,
-} from "@/lib/church/logo-storage";
-import type { ActionState } from "@/lib/church/types";
+} from "@/lib/organization/logo-storage";
+import type { ActionState } from "@/lib/organization/types";
 import { Upload } from "lucide-react";
 
 export function ChurchBrandingForm({

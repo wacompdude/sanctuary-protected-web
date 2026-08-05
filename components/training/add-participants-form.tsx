@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { addParticipants } from "@/app/(app)/training/actions";
-import type { TeamMemberRow } from "@/lib/church/team";
+import type { TeamMemberRow } from "@/lib/organization/team";
 import { cn } from "@/lib/utils";
 
 export function AddParticipantsForm({

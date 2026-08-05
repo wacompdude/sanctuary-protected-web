@@ -9,9 +9,9 @@ import {
 } from "@/app/(app)/team/manage-actions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import type { ActionState } from "@/lib/church/types";
-import type { MembershipRole } from "@/lib/church/types";
-import { labelForMembershipRole } from "@/lib/church/invitations";
+import type { ActionState } from "@/lib/organization/types";
+import type { MembershipRole } from "@/lib/organization/types";
+import { labelForMembershipRole } from "@/lib/organization/invitations";
 import {
   canChangeRole,
   canChangeStatus,
@@ -20,7 +20,7 @@ import {
   labelForMembershipStatus,
   rolesActorMayAssign,
   type TeamMemberRow,
-} from "@/lib/church/team";
+} from "@/lib/organization/team";
 import { MemberAvatar } from "@/components/profile/member-avatar";
 import { MemberPhotoButton } from "@/components/team/member-photo-button";
 import { cn } from "@/lib/utils";

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { isNextControlFlowError } from "@/lib/church/access-guard";
+import { isNextControlFlowError } from "@/lib/organization/access-guard";
 import { PlatformAccessError } from "@/lib/platform/errors";
 import {
   PLATFORM_SETUP_MFA_PATH,

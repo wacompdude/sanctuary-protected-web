@@ -9,11 +9,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
 import {
   ChurchAccessError,
   getAuthenticatedUserWithChurch,
-} from "@/lib/church/auth";
+} from "@/lib/organization/auth";
 import { formatChurchDateTime } from "@/lib/datetime/format";
 import { listMyPendingPolicyAcknowledgments } from "@/lib/policies/acknowledgments";
 import { labelForPolicyAcknowledgmentStatus } from "@/lib/policies/constants";

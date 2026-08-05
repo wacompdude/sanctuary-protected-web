@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { selectClassName } from "@/components/incidents/incident-badges";
-import type { ActionState } from "@/lib/church/types";
+import type { ActionState } from "@/lib/organization/types";
 import type { NotificationGroupDefault } from "@/lib/notifications/groups/types";
 
 export function NotificationGroupDefaultsForm({

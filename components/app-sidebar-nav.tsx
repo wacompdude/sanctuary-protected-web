@@ -46,8 +46,8 @@ import type {
   NavEntry,
   NavItemId,
   NavSection,
-} from "@/lib/church/navigation";
-import type { MembershipRole } from "@/lib/church/types";
+} from "@/lib/organization/navigation";
+import type { MembershipRole } from "@/lib/organization/types";
 
 const STORAGE_KEY = "sp-sidebar-collapsed";
 

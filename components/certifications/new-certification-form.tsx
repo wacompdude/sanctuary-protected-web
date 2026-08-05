@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/card";
 import { CERTIFICATION_TYPE_OPTIONS } from "@/lib/certifications/types";
 import type { TeamMember } from "@/lib/certifications/types";
-import type { ActionState } from "@/lib/church/types";
+import type { ActionState } from "@/lib/organization/types";
 import { selectClassName } from "@/components/incidents/incident-badges";
 
 const initialState: ActionState = {};

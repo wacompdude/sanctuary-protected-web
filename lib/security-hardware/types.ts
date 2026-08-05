@@ -1,5 +1,5 @@
-import type { MembershipRole } from "@/lib/church/types";
-import { hasMinRole } from "@/lib/church/navigation";
+import type { MembershipRole } from "@/lib/organization/types";
+import { hasMinRole } from "@/lib/organization/navigation";
 
 /** Roles that can create, edit, archive, and manage equipment relationships. */
 export const HARDWARE_MANAGEMENT_ROLES: MembershipRole[] = [

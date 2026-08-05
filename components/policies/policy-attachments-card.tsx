@@ -25,7 +25,7 @@ import {
   POLICY_ATTACHMENT_MAX_COUNT,
 } from "@/lib/policies/attachment-storage";
 import type { PolicyAttachment } from "@/lib/policies/types";
-import type { ActionState } from "@/lib/church/types";
+import type { ActionState } from "@/lib/organization/types";
 import { FileText, Trash2 } from "lucide-react";
 
 const initialState: ActionState = {};

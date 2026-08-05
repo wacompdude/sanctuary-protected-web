@@ -15,7 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getAuthenticatedUserWithChurch } from "@/lib/church/auth";
+import { getAuthenticatedUserWithChurch } from "@/lib/organization/auth";
 import { listIncidentsForChurch } from "@/lib/incidents/queries";
 import {
   getSafetyConcernAccess,

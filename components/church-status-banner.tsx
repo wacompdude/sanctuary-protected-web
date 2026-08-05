@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { getAuthenticatedUserWithChurch } from "@/lib/church/auth";
-import { isChurchOperationallyLocked } from "@/lib/church/operations";
-import { isOwnershipRole } from "@/lib/church/types";
+import { getAuthenticatedUserWithChurch } from "@/lib/organization/auth";
+import { isChurchOperationallyLocked } from "@/lib/organization/operations";
+import { isOwnershipRole } from "@/lib/organization/types";
 import { ChurchOperationalRedirect } from "@/components/church-operational-redirect";
 
 export async function ChurchStatusBanner() {

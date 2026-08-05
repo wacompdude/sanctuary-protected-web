@@ -2,12 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { writeActiveChurchCookie } from "@/lib/church/cookie";
-import { setActiveChurchForUser } from "@/lib/church/context";
+import { writeActiveChurchCookie } from "@/lib/organization/cookie";
+import { setActiveChurchForUser } from "@/lib/organization/context";
 import {
   hashInvitationToken,
   type InviteActionState,
-} from "@/lib/church/invitations";
+} from "@/lib/organization/invitations";
 import {
   createAdminClient,
   isServiceRoleConfigured,

@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { createTrainingEvent } from "@/app/(app)/training/actions";
-import { getAuthenticatedUserWithChurch } from "@/lib/church/auth";
+import { getAuthenticatedUserWithChurch } from "@/lib/organization/auth";
 import { getTrainingAccess } from "@/lib/training/access";
 import {
   listCampusesForTraining,

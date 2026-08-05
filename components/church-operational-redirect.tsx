@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { isChurchRecoveryPath } from "@/lib/church/operations";
+import { isChurchRecoveryPath } from "@/lib/organization/operations";
 
 /** Client-side gate: keep suspended/closed churches on recovery routes. */
 export function ChurchOperationalRedirect({

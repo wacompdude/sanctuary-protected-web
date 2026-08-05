@@ -23,7 +23,7 @@ import {
   CAMPUS_TYPES,
 } from "@/lib/campuses/constants";
 import type { Campus, CampusActionState } from "@/lib/campuses/types";
-import { SETTINGS_TIMEZONES } from "@/lib/church/settings";
+import { SETTINGS_TIMEZONES } from "@/lib/organization/settings";
 
 const TIMEZONE_OPTIONS = SETTINGS_TIMEZONES.map((tz) => ({
   value: tz,

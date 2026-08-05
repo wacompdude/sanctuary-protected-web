@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { ChurchAccessError } from "@/lib/church/auth";
+import { ChurchAccessError } from "@/lib/organization/auth";
 import {
   campusFilterOrClause,
   resolveCampusFilter,

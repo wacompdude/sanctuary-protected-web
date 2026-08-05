@@ -11,7 +11,7 @@ import { getRequestIpAddress, writeAuditLog } from "@/lib/audit/log";
 import {
   ChurchAccessError,
   getAuthenticatedUserWithChurch,
-} from "@/lib/church/auth";
+} from "@/lib/organization/auth";
 import {
   CAMPUS_MIGRATION_HINT,
   campusMigrationHintFromError,

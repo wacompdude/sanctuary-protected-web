@@ -6,7 +6,7 @@ import { getRequestIpAddress, writeAuditLog } from "@/lib/audit/log";
 import {
   ChurchAccessError,
   getAuthenticatedUserWithChurch,
-} from "@/lib/church/auth";
+} from "@/lib/organization/auth";
 import { scheduleMigrationHintFromError } from "@/lib/schedule/constants";
 import { canManageScheduleSettings } from "@/lib/schedule/permissions";
 import {

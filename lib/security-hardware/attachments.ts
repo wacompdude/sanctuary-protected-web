@@ -1,4 +1,4 @@
-import type { ActionState } from "@/lib/church/types";
+import type { ActionState } from "@/lib/organization/types";
 
 export type EquipmentAttachmentKind =
   | "photo"

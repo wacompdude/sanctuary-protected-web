@@ -7,10 +7,10 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getActiveChurch } from "@/lib/church/context";
-import { requireMinChurchRole } from "@/lib/church/auth";
-import { listChurchTeamMemberships } from "@/lib/church/team-queries";
-import { labelForMembershipRole } from "@/lib/church/invitations";
+import { getActiveChurch } from "@/lib/organization/context";
+import { requireMinChurchRole } from "@/lib/organization/auth";
+import { listChurchTeamMemberships } from "@/lib/organization/team-queries";
+import { labelForMembershipRole } from "@/lib/organization/invitations";
 import {
   canChangeRole,
   canChangeStatus,
@@ -18,8 +18,8 @@ import {
   parseMembershipRoleSafe,
   parseMembershipStatus,
   rolesActorMayAssign,
-} from "@/lib/church/team";
-import type { MembershipRole, MembershipStatus } from "@/lib/church/types";
+} from "@/lib/organization/team";
+import type { MembershipRole, MembershipStatus } from "@/lib/organization/types";
 import {
   createSecurityGroup,
   updateSecurityGroup,

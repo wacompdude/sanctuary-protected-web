@@ -6,10 +6,10 @@ import {
   getAuthenticatedUserWithChurch,
   listIncidentsForChurch,
 } from "@/lib/incidents/queries";
-import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
 import { buildIncidentAnalytics } from "@/lib/incidents/analytics";
 import { resolveIncidentListSort } from "@/lib/incidents/format";
-import { parseAppPreferences } from "@/lib/church/settings";
+import { parseAppPreferences } from "@/lib/organization/settings";
 import {
   IncidentAnalyticsDetailTable,
   IncidentBreakdownChart,

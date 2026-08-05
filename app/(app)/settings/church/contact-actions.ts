@@ -1,18 +1,18 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getAuthenticatedUserWithChurch } from "@/lib/church/auth";
+import { getAuthenticatedUserWithChurch } from "@/lib/organization/auth";
 import { AuditAction, AuditEntityType } from "@/lib/audit/actions";
 import { getRequestIpAddress, writeAuditLog } from "@/lib/audit/log";
-import { canManageChurchSettings } from "@/lib/church/settings";
-import type { ActionState } from "@/lib/church/types";
+import { canManageChurchSettings } from "@/lib/organization/settings";
+import type { ActionState } from "@/lib/organization/types";
 import {
   isMultiContactType,
   labelForContactType,
   migrationHintFromContactsError,
   validateChurchContactForm,
   type ChurchContactType,
-} from "@/lib/church/contacts";
+} from "@/lib/organization/contacts";
 
 function revalidateContactPaths() {
   revalidatePath("/settings/church", "layout");

@@ -3,8 +3,8 @@ import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { CampusSettingsPanel } from "@/components/campuses/campus-settings-panel";
-import { getAuthenticatedUserWithChurch } from "@/lib/church/auth";
-import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
+import { getAuthenticatedUserWithChurch } from "@/lib/organization/auth";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
 import {
   canManageCampuses,
   canViewCampuses,

@@ -20,7 +20,7 @@ export {
   ChurchAccessError,
   getAuthenticatedUserWithChurch,
   getOperationalChurchContext,
-} from "@/lib/church/auth";
+} from "@/lib/organization/auth";
 
 const EQUIPMENT_SELECT = `
   id, organization_id, campus_id, category, subcategory, name, description,

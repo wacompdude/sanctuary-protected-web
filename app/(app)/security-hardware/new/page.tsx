@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { EquipmentForm } from "@/components/security-hardware/equipment-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
 import {
   ChurchAccessError,
   getAuthenticatedUserWithChurch,

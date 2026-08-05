@@ -12,14 +12,14 @@ import { TeamMembersTable } from "@/components/team/team-members-table";
 import {
   ChurchAccessError,
   getAuthenticatedUserWithChurch,
-} from "@/lib/church/auth";
-import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
+} from "@/lib/organization/auth";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
 import {
   canInviteMembers,
   labelForMembershipRole,
-} from "@/lib/church/invitations";
-import { canManageTeamMemberships } from "@/lib/church/team";
-import { listChurchTeamMemberships } from "@/lib/church/team-queries";
+} from "@/lib/organization/invitations";
+import { canManageTeamMemberships } from "@/lib/organization/team";
+import { listChurchTeamMemberships } from "@/lib/organization/team-queries";
 import { listTeamMembersForChurch } from "@/lib/certifications/queries";
 import { ResendInvitationButton } from "@/components/team/resend-invitation-button";
 import { RevokeInvitationButton } from "@/components/team/revoke-invitation-button";

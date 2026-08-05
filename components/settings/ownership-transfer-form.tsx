@@ -6,8 +6,8 @@ import { transferOwnershipToCoOwnerAction } from "@/app/(app)/settings/ownership
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { ActionState } from "@/lib/church/types";
-import { labelForMembershipRole } from "@/lib/church/invitations";
+import type { ActionState } from "@/lib/organization/types";
+import { labelForMembershipRole } from "@/lib/organization/invitations";
 
 export type OwnershipTransferCandidate = {
   membershipId: string;

@@ -6,7 +6,7 @@ import { SafetyConcernProfileForm } from "@/components/safety-concerns/safety-co
 import { SafetyConcernRestrictedBanner } from "@/components/safety-concerns/restricted-banner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { getAuthenticatedUserWithChurch } from "@/lib/church/auth";
+import { getAuthenticatedUserWithChurch } from "@/lib/organization/auth";
 import { resolveCampusFilter } from "@/lib/campuses/filter";
 import {
   getSafetyConcernAccess,

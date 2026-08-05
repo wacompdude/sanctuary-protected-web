@@ -11,11 +11,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
 import {
   ChurchAccessError,
   requireMinChurchRole,
-} from "@/lib/church/auth";
+} from "@/lib/organization/auth";
 import { POLICY_MIGRATION_HINT } from "@/lib/policies/constants";
 import {
   listCampusesForPolicies,

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
-import { getOperationalChurchContext } from "@/lib/church/auth";
+import { getOperationalChurchContext } from "@/lib/organization/auth";
 import {
   buildInvitationUrl,
   canInviteMembers,
@@ -12,10 +12,10 @@ import {
   isAllowedInviteRole,
   type InviteActionState,
   validateInviteForm,
-} from "@/lib/church/invitations";
+} from "@/lib/organization/invitations";
 import { AuditAction, AuditEntityType } from "@/lib/audit/actions";
 import { getRequestIpAddress, writeAuditLog } from "@/lib/audit/log";
-import { sendChurchInvitationEmail } from "@/lib/church/send-invitation-email";
+import { sendChurchInvitationEmail } from "@/lib/organization/send-invitation-email";
 
 export async function createChurchInvitation(
   _prev: InviteActionState,
@@ -46,7 +46,7 @@ export async function createChurchInvitation(
     const { data: emailTaken, error: emailCheckError } = await supabase.rpc(
       "organization_has_active_member_email",
       {
-        p_church_id: church.id,
+        p_organization_id: church.id,
         p_email: input.email,
       },
     );

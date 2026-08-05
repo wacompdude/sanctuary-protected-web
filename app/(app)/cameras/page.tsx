@@ -7,7 +7,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Camera } from "lucide-react";
-import { getAuthenticatedUserWithChurch } from "@/lib/church/auth";
+import { getAuthenticatedUserWithChurch } from "@/lib/organization/auth";
 import { FEATURE_KEYS } from "@/lib/subscriptions/feature-keys";
 import { hasFeature } from "@/lib/subscriptions/resolver";
 

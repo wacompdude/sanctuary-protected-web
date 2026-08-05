@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getOperationalChurchContext } from "@/lib/church/auth";
-import type { ActionState } from "@/lib/church/types";
+import { getOperationalChurchContext } from "@/lib/organization/auth";
+import type { ActionState } from "@/lib/organization/types";
 import {
   parseCreateTeamMemberInput,
   validateCreateTeamMemberInput,

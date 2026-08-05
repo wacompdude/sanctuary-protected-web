@@ -4,7 +4,7 @@ import { useActionState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { revokeChurchInvitation } from "@/app/(app)/team/invite-actions";
 import { Button } from "@/components/ui/button";
-import type { InviteActionState } from "@/lib/church/invitations";
+import type { InviteActionState } from "@/lib/organization/invitations";
 
 const initialState: InviteActionState = {};
 

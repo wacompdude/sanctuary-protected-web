@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import type { TeamMemberRow } from "@/lib/church/team";
-import { labelForMembershipRole } from "@/lib/church/invitations";
+import type { TeamMemberRow } from "@/lib/organization/team";
+import { labelForMembershipRole } from "@/lib/organization/invitations";
 
 function optionLabel(member: TeamMemberRow) {
   const secondary = member.email ? ` (${member.email})` : "";

@@ -5,8 +5,8 @@ import {
 } from "@/components/ui/card";
 import { NotificationGroupForm } from "@/components/notifications/notification-group-form";
 import { updateNotificationGroupAction } from "@/app/(app)/notification-groups/actions";
-import { getAuthenticatedUserWithChurch } from "@/lib/church/auth";
-import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
+import { getAuthenticatedUserWithChurch } from "@/lib/organization/auth";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
 import { canManageNotificationGroup } from "@/lib/notifications/groups/permissions";
 import { getNotificationGroup } from "@/lib/notifications/groups/queries";
 import { listCampusesForChurch } from "@/lib/security-hardware/queries";

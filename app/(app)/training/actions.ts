@@ -14,9 +14,9 @@ import {
 import {
   ChurchAccessError,
   getAuthenticatedUserWithChurch,
-} from "@/lib/church/auth";
+} from "@/lib/organization/auth";
 import { ensureTeamMemberForChurchMember } from "@/lib/certifications/queries";
-import { listChurchTeamMemberships } from "@/lib/church/team-queries";
+import { listChurchTeamMemberships } from "@/lib/organization/team-queries";
 import { createClient } from "@/lib/supabase/server";
 import { entitlementErrorMessage } from "@/lib/subscriptions/enforcement";
 import { FEATURE_KEYS } from "@/lib/subscriptions/feature-keys";

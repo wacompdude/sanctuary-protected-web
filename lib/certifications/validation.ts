@@ -1,4 +1,4 @@
-import type { ActionState } from "@/lib/church/types";
+import type { ActionState } from "@/lib/organization/types";
 
 function isNonEmptyString(value: FormDataEntryValue | null): value is string {
   return typeof value === "string" && value.trim().length > 0;

@@ -14,8 +14,8 @@ import type {
   CampusRole,
   OwnCampusMembership,
 } from "@/lib/campuses/types";
-import type { MembershipRole } from "@/lib/church/types";
-import { displayMemberName } from "@/lib/church/team";
+import type { MembershipRole } from "@/lib/organization/types";
+import { displayMemberName } from "@/lib/organization/team";
 
 const MEMBERSHIP_SELECT = `
   id, organization_id, campus_id, organization_membership_id, user_id, campus_role,

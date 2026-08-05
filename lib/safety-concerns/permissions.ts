@@ -1,5 +1,5 @@
-import { hasMinRole } from "@/lib/church/navigation";
-import type { MembershipRole } from "@/lib/church/types";
+import { hasMinRole } from "@/lib/organization/navigation";
+import type { MembershipRole } from "@/lib/organization/types";
 
 /** Roles that may manage profiles, photos, notes, and archives. */
 export function canManageSafetyConcerns(role: MembershipRole): boolean {

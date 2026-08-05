@@ -1,5 +1,5 @@
-import { listChurchTeamMemberships } from "@/lib/church/team-queries";
-import type { MembershipRole } from "@/lib/church/types";
+import { listChurchTeamMemberships } from "@/lib/organization/team-queries";
+import type { MembershipRole } from "@/lib/organization/types";
 import { isRequiredTrainingAudienceRole } from "@/lib/training/compliance-shared";
 
 export {

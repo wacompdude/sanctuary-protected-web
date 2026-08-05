@@ -17,7 +17,7 @@ import {
 import { formatChurchDateTime } from "@/lib/datetime/format";
 import { labelForPolicyAcknowledgmentStatus } from "@/lib/policies/constants";
 import type { PolicyAcknowledgmentReport } from "@/lib/policies/types";
-import type { ActionState } from "@/lib/church/types";
+import type { ActionState } from "@/lib/organization/types";
 
 const initialState: ActionState = {};
 

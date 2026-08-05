@@ -1,6 +1,6 @@
 import { ChurchDirectoryContacts } from "@/components/settings/church-directory-contacts";
-import { listChurchContactsForTypes } from "@/lib/church/contact-queries";
-import type { ChurchContactType } from "@/lib/church/contacts";
+import { listChurchContactsForTypes } from "@/lib/organization/contact-queries";
+import type { ChurchContactType } from "@/lib/organization/contacts";
 import { Card, CardContent } from "@/components/ui/card";
 
 export async function ChurchDirectoryGroupLoader({

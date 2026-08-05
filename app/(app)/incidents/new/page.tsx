@@ -3,10 +3,10 @@ import { Suspense } from "react";
 import { NewIncidentForm } from "@/components/incidents/new-incident-form";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
-import { getOperationalChurchContext } from "@/lib/church/auth";
-import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
+import { getOperationalChurchContext } from "@/lib/organization/auth";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
 import { Card, CardContent } from "@/components/ui/card";
-import { ChurchAccessError } from "@/lib/church/errors";
+import { ChurchAccessError } from "@/lib/organization/errors";
 import { listActiveIncidentTeamMembers } from "@/lib/incidents/queries";
 import { listAvailableSuppliesForIncident } from "@/lib/medical-supplies/queries";
 import {

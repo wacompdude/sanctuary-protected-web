@@ -6,8 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   ChurchAccessError,
   getCurrentUser,
-} from "@/lib/church/auth";
-import { isNextControlFlowError } from "@/lib/church/access-guard";
+} from "@/lib/organization/auth";
+import { isNextControlFlowError } from "@/lib/organization/access-guard";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 

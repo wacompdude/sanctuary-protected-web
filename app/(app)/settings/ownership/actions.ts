@@ -1,8 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getAuthenticatedUserWithChurch } from "@/lib/church/auth";
-import type { ActionState } from "@/lib/church/types";
+import { getAuthenticatedUserWithChurch } from "@/lib/organization/auth";
+import type { ActionState } from "@/lib/organization/types";
 import {
   auditOwnershipTransferCompleted,
   auditOwnershipTransferInitiated,
@@ -70,7 +70,7 @@ export async function transferOwnershipToCoOwnerAction(
     });
 
     const { data, error } = await supabase.rpc("transfer_organization_ownership", {
-      p_church_id: church.id,
+      p_organization_id: church.id,
       p_to_membership_id: membershipId,
     });
 

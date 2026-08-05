@@ -2,9 +2,9 @@ import { Suspense, type ReactNode } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { AppChurchHeader } from "@/components/app-church-header";
 import { ChurchStatusBanner } from "@/components/church-status-banner";
-import { churchBrandStyle } from "@/lib/church/brand-theme";
-import { requireChurchMembership } from "@/lib/church/auth";
-import { isNextControlFlowError } from "@/lib/church/access-guard";
+import { churchBrandStyle } from "@/lib/organization/brand-theme";
+import { requireChurchMembership } from "@/lib/organization/auth";
+import { isNextControlFlowError } from "@/lib/organization/access-guard";
 
 function SidebarFallback() {
   return (

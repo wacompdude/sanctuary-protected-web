@@ -9,9 +9,9 @@ import {
   type PermissionKey,
 } from "./permission-keys";
 import type { RoleTemplateKind } from "./types";
-import { labelForMembershipRole } from "@/lib/church/invitations";
+import { labelForMembershipRole } from "@/lib/organization/invitations";
 import { labelForCampusRole } from "@/lib/campuses/constants";
-import type { MembershipRole } from "@/lib/church/types";
+import type { MembershipRole } from "@/lib/organization/types";
 
 export const CHURCH_SYSTEM_ROLE_KEYS: MembershipRole[] = [
   "owner",

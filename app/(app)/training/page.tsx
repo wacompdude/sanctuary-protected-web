@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getAuthenticatedUserWithChurch } from "@/lib/church/auth";
+import { getAuthenticatedUserWithChurch } from "@/lib/organization/auth";
 import { resolveCampusFilter } from "@/lib/campuses/filter";
 import { formatChurchDate } from "@/lib/datetime/format";
 import { getTrainingAccess } from "@/lib/training/access";

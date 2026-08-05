@@ -3,10 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { writeActiveChurchCookie } from "@/lib/church/cookie";
-import { setActiveChurchForUser } from "@/lib/church/context";
-import type { ActionState } from "@/lib/church/types";
-import { validateChurchOnboarding } from "@/lib/church/onboarding";
+import { writeActiveChurchCookie } from "@/lib/organization/cookie";
+import { setActiveChurchForUser } from "@/lib/organization/context";
+import type { ActionState } from "@/lib/organization/types";
+import { validateChurchOnboarding } from "@/lib/organization/onboarding";
 import { isServiceRoleConfigured } from "@/lib/supabase/admin";
 import { ensureChurchSubscription } from "@/lib/subscriptions/mutations";
 

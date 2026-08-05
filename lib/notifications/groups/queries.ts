@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { normalizeMembershipRole } from "@/lib/church/types";
+import { normalizeMembershipRole } from "@/lib/organization/types";
 import { listActiveNestingEdges } from "@/lib/notifications/groups/nesting";
 import { getEffectiveGroupUsers } from "@/lib/notifications/groups/membership-resolver";
 import type {

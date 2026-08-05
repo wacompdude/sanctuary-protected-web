@@ -4,9 +4,9 @@ import { ArrowLeft } from "lucide-react";
 import {
   ChurchAccessError,
   getAuthenticatedUserWithChurch,
-} from "@/lib/church/auth";
-import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
-import { listChurchThreatLevels } from "@/lib/church/threat-level-queries";
+} from "@/lib/organization/auth";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
+import { listChurchThreatLevels } from "@/lib/organization/threat-level-queries";
 import { ThreatLevelFrequencyChart } from "@/components/dashboard/threat-level-frequency-chart";
 import { Button } from "@/components/ui/button";
 import {

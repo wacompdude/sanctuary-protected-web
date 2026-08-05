@@ -2,8 +2,8 @@ import { Suspense } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { CampusForm } from "@/components/campuses/campus-form";
 import { updateCampusAction } from "@/app/(app)/campuses/actions";
-import { getAuthenticatedUserWithChurch } from "@/lib/church/auth";
-import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
+import { getAuthenticatedUserWithChurch } from "@/lib/organization/auth";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
 import { canManageCampuses } from "@/lib/campuses/permissions";
 import { getCampus } from "@/lib/campuses/queries";
 

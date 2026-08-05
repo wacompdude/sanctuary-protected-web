@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CHURCH_SETTINGS_SECTIONS } from "@/lib/church/settings-nav";
-import { CHURCH_CONTACT_GROUPS } from "@/lib/church/contacts";
+import { CHURCH_SETTINGS_SECTIONS } from "@/lib/organization/settings-nav";
+import { CHURCH_CONTACT_GROUPS } from "@/lib/organization/contacts";
 import {
   brandedSubnavItemClass,
   brandedSubnavShellClassName,

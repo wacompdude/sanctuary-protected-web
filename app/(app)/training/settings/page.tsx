@@ -8,7 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getAuthenticatedUserWithChurch } from "@/lib/church/auth";
+import { getAuthenticatedUserWithChurch } from "@/lib/organization/auth";
 import { getTrainingAccess } from "@/lib/training/access";
 import { canManageSettings } from "@/lib/training/permissions";
 import { getSettings } from "@/lib/training/queries";

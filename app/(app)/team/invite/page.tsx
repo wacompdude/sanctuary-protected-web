@@ -6,12 +6,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   ChurchAccessError,
   getAuthenticatedUserWithChurch,
-} from "@/lib/church/auth";
-import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
+} from "@/lib/organization/auth";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
 import {
   canInviteMembers,
   rolesInviterMayAssign,
-} from "@/lib/church/invitations";
+} from "@/lib/organization/invitations";
 import { ArrowLeft } from "lucide-react";
 
 async function InviteMemberContent() {

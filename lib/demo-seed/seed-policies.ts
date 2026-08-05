@@ -161,7 +161,7 @@ export async function seedPoliciesAndProcedures(
 
   const { error: catError } = await ctx.admin.rpc(
     "ensure_default_policy_categories",
-    { p_church_id: ctx.organizationId },
+    { p_organization_id: ctx.organizationId },
   );
   if (catError) {
     warn(

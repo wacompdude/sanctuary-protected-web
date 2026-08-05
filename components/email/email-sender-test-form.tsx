@@ -11,7 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import type { ActionState } from "@/lib/church/types";
+import type { ActionState } from "@/lib/organization/types";
 import type { EmailSenderStatusRow } from "@/lib/email";
 import { sendEmailSenderTestAction } from "@/app/(app)/notifications/actions";
 

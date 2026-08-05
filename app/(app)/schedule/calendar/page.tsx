@@ -4,8 +4,8 @@ import {
   Card,
   CardContent,
 } from "@/components/ui/card";
-import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
-import { getAuthenticatedUserWithChurch } from "@/lib/church/auth";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
+import { getAuthenticatedUserWithChurch } from "@/lib/organization/auth";
 import { canManageSchedule } from "@/lib/schedule/permissions";
 import {
   listScheduleCalendarItems,

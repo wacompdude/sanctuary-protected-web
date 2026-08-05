@@ -4,7 +4,7 @@ import { useActionState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { MapPin, ChevronDown } from "lucide-react";
 import { setActiveCampusFilterAction } from "@/app/(app)/campuses/filter-actions";
-import type { ActionState } from "@/lib/church/types";
+import type { ActionState } from "@/lib/organization/types";
 import { CAMPUS_FILTER_ALL } from "@/lib/campuses/constants";
 import { cn } from "@/lib/utils";
 

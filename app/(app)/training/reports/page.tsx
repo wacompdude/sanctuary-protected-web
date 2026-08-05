@@ -1,8 +1,8 @@
 import { Suspense } from "react";
 import { TrainingReportsClient } from "@/components/training/training-reports-client";
-import { getAuthenticatedUserWithChurch } from "@/lib/church/auth";
+import { getAuthenticatedUserWithChurch } from "@/lib/organization/auth";
 import { resolveCampusFilter } from "@/lib/campuses/filter";
-import { listChurchTeamMemberships } from "@/lib/church/team-queries";
+import { listChurchTeamMemberships } from "@/lib/organization/team-queries";
 import { getTrainingAccess } from "@/lib/training/access";
 import {
   canRunReports,

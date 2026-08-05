@@ -4,11 +4,11 @@ import { ArrowLeft } from "lucide-react";
 import { ScheduleEventForm } from "@/components/schedule/schedule-event-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
 import {
   ChurchAccessError,
   getAuthenticatedUserWithChurch,
-} from "@/lib/church/auth";
+} from "@/lib/organization/auth";
 import { canManageSchedule } from "@/lib/schedule/permissions";
 import { listScheduleCampuses } from "@/lib/schedule/queries";
 

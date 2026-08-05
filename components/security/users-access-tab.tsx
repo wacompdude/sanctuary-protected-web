@@ -36,10 +36,10 @@ import {
   type PermissionOption,
   type MemberCampusAssignment,
 } from "@/app/(app)/settings/security/actions";
-import { labelForMembershipRole } from "@/lib/church/invitations";
-import { labelForMembershipStatus } from "@/lib/church/team";
+import { labelForMembershipRole } from "@/lib/organization/invitations";
+import { labelForMembershipStatus } from "@/lib/organization/team";
 import { labelForCampusRole } from "@/lib/campuses/constants";
-import type { MembershipRole, MembershipStatus } from "@/lib/church/types";
+import type { MembershipRole, MembershipStatus } from "@/lib/organization/types";
 import { cn } from "@/lib/utils";
 
 type FocusSection = "member" | "groups" | "direct" | "temporary";

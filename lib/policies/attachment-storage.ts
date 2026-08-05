@@ -1,5 +1,9 @@
 import { randomUUID } from "crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  isStorageTenantPath,
+  storageTenantObjectPath,
+} from "@/lib/storage/tenant-prefix";
 
 export const POLICY_MEDIA_BUCKET = "policy-media";
 export const POLICY_ATTACHMENT_MAX_BYTES = 15 * 1024 * 1024;
@@ -85,7 +89,10 @@ export function policyAttachmentObjectPath(params: {
 }): string | null {
   const ext = extensionForPolicyAttachmentMime(params.mimeType);
   if (!ext) return null;
-  return `churches/${params.organizationId}/policies/${params.policyId}/versions/${params.versionId}/attachments/${randomUUID()}.${ext}`;
+  return storageTenantObjectPath(
+    params.organizationId,
+    `policies/${params.policyId}/versions/${params.versionId}/attachments/${randomUUID()}.${ext}`,
+  );
 }
 
 export function isPolicyMediaStoragePath(
@@ -93,10 +100,9 @@ export function isPolicyMediaStoragePath(
   organizationId: string,
   policyId?: string,
 ): boolean {
-  const prefix = `churches/${organizationId}/policies/`;
-  if (!path.startsWith(prefix)) return false;
+  if (!isStorageTenantPath(path, organizationId, "policies/")) return false;
   if (!policyId) return true;
-  return path.startsWith(`${prefix}${policyId}/`);
+  return isStorageTenantPath(path, organizationId, `policies/${policyId}/`);
 }
 
 export function collectPolicyAttachmentFiles(formData: FormData): File[] {

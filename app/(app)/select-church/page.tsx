@@ -12,8 +12,8 @@ import {
 import {
   ChurchAccessError,
   requireChurchMembership,
-} from "@/lib/church/auth";
-import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
+} from "@/lib/organization/auth";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
 import { ArrowLeft, Plus } from "lucide-react";
 
 async function SelectChurchContent() {

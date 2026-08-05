@@ -12,7 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import type { InviteActionState } from "@/lib/church/invitations";
+import type { InviteActionState } from "@/lib/organization/invitations";
 
 const initialState: InviteActionState = {};
 

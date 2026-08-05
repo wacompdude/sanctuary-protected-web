@@ -15,8 +15,8 @@ import {
   cancelTrainingEventFormAction,
   updateTrainingEvent,
 } from "@/app/(app)/training/actions";
-import { getAuthenticatedUserWithChurch } from "@/lib/church/auth";
-import { listChurchTeamMemberships } from "@/lib/church/team-queries";
+import { getAuthenticatedUserWithChurch } from "@/lib/organization/auth";
+import { listChurchTeamMemberships } from "@/lib/organization/team-queries";
 import { formatChurchDate } from "@/lib/datetime/format";
 import { getTrainingAccess } from "@/lib/training/access";
 import {

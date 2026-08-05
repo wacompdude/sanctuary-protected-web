@@ -5,7 +5,7 @@ import {
   campusMigrationHintFromError,
 } from "@/lib/campuses/constants";
 import { hasImplicitAllCampusAccess } from "@/lib/campuses/permissions";
-import type { MembershipRole } from "@/lib/church/types";
+import type { MembershipRole } from "@/lib/organization/types";
 
 export type AccessibleCampusOption = {
   id: string;

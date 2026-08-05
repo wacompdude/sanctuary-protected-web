@@ -1,5 +1,5 @@
-import { hasMinRole } from "@/lib/church/navigation";
-import type { MembershipRole } from "@/lib/church/types";
+import { hasMinRole } from "@/lib/organization/navigation";
+import type { MembershipRole } from "@/lib/organization/types";
 
 export const POLICY_MANAGEMENT_ROLES: MembershipRole[] = [
   "owner",

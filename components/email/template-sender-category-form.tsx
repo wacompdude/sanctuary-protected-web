@@ -4,7 +4,7 @@ import { useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import type { ActionState } from "@/lib/church/types";
+import type { ActionState } from "@/lib/organization/types";
 import { EMAIL_SENDER_CATEGORIES, EMAIL_SENDER_LABELS } from "@/lib/email/email-sender-types";
 import { updateTemplateSenderCategoryAction } from "@/app/(app)/notifications/template-actions";
 

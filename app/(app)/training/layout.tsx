@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { TrainingUpgradeGate } from "@/components/training/upgrade-gate";
-import { getAuthenticatedUserWithChurch } from "@/lib/church/auth";
+import { getAuthenticatedUserWithChurch } from "@/lib/organization/auth";
 import { getTrainingAccess } from "@/lib/training/access";
 import type { Metadata } from "next";
 

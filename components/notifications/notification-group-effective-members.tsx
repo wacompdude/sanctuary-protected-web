@@ -7,7 +7,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { EffectiveGroupUser } from "@/lib/notifications/groups/types";
-import { labelForMembershipRole } from "@/lib/church/invitations";
+import { labelForMembershipRole } from "@/lib/organization/invitations";
 
 function membershipSourceLabel(user: EffectiveGroupUser): string {
   const inherited = user.sources.filter((source) => source.type === "inherited");

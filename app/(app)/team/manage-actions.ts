@@ -1,14 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getOperationalChurchContext } from "@/lib/church/auth";
-import type { ActionState } from "@/lib/church/types";
+import { getOperationalChurchContext } from "@/lib/organization/auth";
+import type { ActionState } from "@/lib/organization/types";
 import {
   canChangeRole,
   canChangeStatus,
   parseMembershipRoleSafe,
   parseMembershipStatus,
-} from "@/lib/church/team";
+} from "@/lib/organization/team";
 import { AuditAction, AuditEntityType } from "@/lib/audit/actions";
 import { getRequestIpAddress, writeAuditLog } from "@/lib/audit/log";
 

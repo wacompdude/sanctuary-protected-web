@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { AuditAction, AuditEntityType } from "@/lib/audit/actions";
 import { getRequestIpAddress, writeAuditLog } from "@/lib/audit/log";
-import { getOperationalChurchContext } from "@/lib/church/auth";
+import { getOperationalChurchContext } from "@/lib/organization/auth";
 import { POLICY_MIGRATION_HINT } from "@/lib/policies/constants";
 import { canManagePolicyDocuments } from "@/lib/policies/permissions";
 import { assignPolicyAcknowledgments } from "@/lib/policies/acknowledgments";

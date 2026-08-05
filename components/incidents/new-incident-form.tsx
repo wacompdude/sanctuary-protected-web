@@ -23,7 +23,7 @@ import type { MedicalSupply } from "@/lib/medical-supplies/types";
 import { IncidentPhotoPicker } from "@/components/incidents/incident-photo-picker";
 import { IncidentTeamMembersFields } from "@/components/incidents/incident-team-members-fields";
 import { MedicalSuppliesUsedFields } from "@/components/incidents/medical-supplies-used-fields";
-import type { TeamMemberRow } from "@/lib/church/team";
+import type { TeamMemberRow } from "@/lib/organization/team";
 import { selectClassName, textareaClassName } from "./incident-badges";
 import {
   CampusScopeField,

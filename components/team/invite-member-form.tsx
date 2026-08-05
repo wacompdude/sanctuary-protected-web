@@ -17,7 +17,7 @@ import {
   labelForMembershipRole,
   type InvitableRole,
   type InviteActionState,
-} from "@/lib/church/invitations";
+} from "@/lib/organization/invitations";
 
 const initialState: InviteActionState = {};
 

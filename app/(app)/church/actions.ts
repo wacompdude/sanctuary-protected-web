@@ -1,9 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { setActiveChurchForUser } from "@/lib/church/context";
-import { ChurchAccessError } from "@/lib/church/errors";
-import type { ActionState } from "@/lib/church/types";
+import { setActiveChurchForUser } from "@/lib/organization/context";
+import { ChurchAccessError } from "@/lib/organization/errors";
+import type { ActionState } from "@/lib/organization/types";
 
 export async function switchActiveChurch(
   _prev: ActionState,

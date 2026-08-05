@@ -1,4 +1,8 @@
 import { randomUUID } from "crypto";
+import {
+  isStorageTenantPath,
+  storageTenantObjectPath,
+} from "@/lib/storage/tenant-prefix";
 
 export const INCIDENT_MEDIA_BUCKET = "incident-media";
 /** Fallback defaults when entitlements are unavailable — prefer plan limits. */
@@ -28,7 +32,10 @@ export function incidentPhotoObjectPath(params: {
 }): string | null {
   const ext = extensionForIncidentPhotoMime(params.mimeType);
   if (!ext) return null;
-  return `churches/${params.organizationId}/incidents/${params.incidentId}/${randomUUID()}.${ext}`;
+  return storageTenantObjectPath(
+    params.organizationId,
+    `incidents/${params.incidentId}/${randomUUID()}.${ext}`,
+  );
 }
 
 export function isIncidentMediaStoragePath(
@@ -36,10 +43,13 @@ export function isIncidentMediaStoragePath(
   organizationId: string,
   incidentId?: string,
 ): boolean {
-  const prefix = `churches/${organizationId}/incidents/`;
-  if (!path.startsWith(prefix)) return false;
+  if (!isStorageTenantPath(path, organizationId, "incidents/")) return false;
   if (!incidentId) return true;
-  return path.startsWith(`${prefix}${incidentId}/`);
+  return isStorageTenantPath(
+    path,
+    organizationId,
+    `incidents/${incidentId}/`,
+  );
 }
 
 export function collectPhotoFiles(formData: FormData): File[] {

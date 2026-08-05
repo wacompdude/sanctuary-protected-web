@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { listChurchTeamMemberships } from "@/lib/church/team-queries";
+import { listChurchTeamMemberships } from "@/lib/organization/team-queries";
 import {
   scheduleMigrationHintFromError,
   SCHEDULE_MIGRATION_HINT,

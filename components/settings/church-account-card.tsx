@@ -5,7 +5,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import type { ChurchSettingsRecord } from "@/lib/church/settings";
+import type { ChurchSettingsRecord } from "@/lib/organization/settings";
 import { formatChurchDateTime } from "@/lib/datetime/format";
 
 function formatDate(value: string | null, timeZone?: string | null) {

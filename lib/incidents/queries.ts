@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import { listChurchTeamMemberships } from "@/lib/church/team-queries";
-import { hasMinRole } from "@/lib/church/navigation";
+import { listChurchTeamMemberships } from "@/lib/organization/team-queries";
+import { hasMinRole } from "@/lib/organization/navigation";
 import {
   INCIDENT_MEDIA_BUCKET,
   INCIDENT_SIGNED_URL_SECONDS,
@@ -11,14 +11,14 @@ import type {
   IncidentInvolvedMember,
   IncidentUpdate,
 } from "./types";
-import type { TeamMemberRow } from "@/lib/church/team";
+import type { TeamMemberRow } from "@/lib/organization/team";
 import type { IncidentListSort } from "./format";
 
 export {
   ChurchAccessError,
   getAuthenticatedUserWithChurch,
   getOperationalChurchContext,
-} from "@/lib/church/auth";
+} from "@/lib/organization/auth";
 
 export async function listIncidentsForChurch(
   organizationId: string,

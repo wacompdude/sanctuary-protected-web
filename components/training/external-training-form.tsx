@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/card";
 import { createExternalTraining } from "@/app/(app)/training/actions";
 import type { TrainingCategoryWithState } from "@/lib/training/types";
-import type { TeamMemberRow } from "@/lib/church/team";
+import type { TeamMemberRow } from "@/lib/organization/team";
 
 export function ExternalTrainingForm({
   categories,

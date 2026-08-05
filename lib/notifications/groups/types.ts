@@ -1,4 +1,4 @@
-import type { MembershipRole } from "@/lib/church/types";
+import type { MembershipRole } from "@/lib/organization/types";
 import type { NotificationSeverity } from "@/lib/notifications/types";
 
 export type NotificationGroupType =

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { getAuthenticatedUserWithChurch } from "@/lib/church/auth";
-import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
+import { getAuthenticatedUserWithChurch } from "@/lib/organization/auth";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
 import { NotificationPreferencesForm } from "@/components/notifications/notification-preferences-form";
 import { NotificationEndpointsPanel } from "@/components/notifications/notification-endpoints-panel";
 import { NotificationGroupPreferencesForm } from "@/components/notifications/notification-group-preferences-form";

@@ -9,9 +9,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { CampusMembersPanel } from "@/components/campuses/campus-members-panel";
-import { getAuthenticatedUserWithChurch } from "@/lib/church/auth";
-import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
-import { listChurchTeamMemberships } from "@/lib/church/team-queries";
+import { getAuthenticatedUserWithChurch } from "@/lib/organization/auth";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
+import { listChurchTeamMemberships } from "@/lib/organization/team-queries";
 import {
   labelForCampusStatus,
   labelForCampusType,

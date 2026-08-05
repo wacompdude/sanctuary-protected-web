@@ -21,9 +21,9 @@ import {
   removeNotificationGroupNestingAction,
   upsertNotificationGroupDefaultAction,
 } from "@/app/(app)/notification-groups/actions";
-import { getAuthenticatedUserWithChurch } from "@/lib/church/auth";
-import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
-import { listChurchTeamMemberships } from "@/lib/church/team-queries";
+import { getAuthenticatedUserWithChurch } from "@/lib/organization/auth";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
+import { listChurchTeamMemberships } from "@/lib/organization/team-queries";
 import {
   canManageNotificationGroup,
   canViewNotificationGroups,

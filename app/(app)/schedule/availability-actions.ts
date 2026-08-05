@@ -7,7 +7,7 @@ import { getRequestIpAddress, writeAuditLog } from "@/lib/audit/log";
 import {
   ChurchAccessError,
   getAuthenticatedUserWithChurch,
-} from "@/lib/church/auth";
+} from "@/lib/organization/auth";
 import { createClient } from "@/lib/supabase/server";
 import { validateUnavailabilityForm } from "@/lib/schedule/availability-validation";
 import {

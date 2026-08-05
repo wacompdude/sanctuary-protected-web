@@ -6,8 +6,8 @@ import { HelpArticleCard } from "@/components/help/help-article-card";
 import { HelpBreadcrumbs } from "@/components/help/help-breadcrumbs";
 import { HelpSearchForm } from "@/components/help/help-search-form";
 import { Button } from "@/components/ui/button";
-import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
-import { getAuthenticatedUserWithChurch } from "@/lib/church/auth";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
+import { getAuthenticatedUserWithChurch } from "@/lib/organization/auth";
 import {
   getHelpCategoryBySlug,
   listHelpArticlesByCategory,

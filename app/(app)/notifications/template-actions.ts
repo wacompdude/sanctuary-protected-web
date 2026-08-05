@@ -1,9 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getAuthenticatedUserWithChurch } from "@/lib/church/auth";
-import type { ActionState } from "@/lib/church/types";
-import { hasMinRole } from "@/lib/church/navigation";
+import { getAuthenticatedUserWithChurch } from "@/lib/organization/auth";
+import type { ActionState } from "@/lib/organization/types";
+import { hasMinRole } from "@/lib/organization/navigation";
 import {
   EMAIL_SENDER_LABELS,
   EMERGENCY_ELIGIBLE_NOTIFICATION_TYPES,

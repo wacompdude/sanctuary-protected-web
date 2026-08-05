@@ -17,7 +17,7 @@ export type IncidentStatus =
 
 export type IncidentUpdateType = "created" | "comment" | "status_change";
 
-export type { ActionState, Church, Profile } from "@/lib/church/types";
+export type { ActionState, Church, Profile } from "@/lib/organization/types";
 
 export interface Incident {
   id: string;

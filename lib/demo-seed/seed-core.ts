@@ -115,7 +115,7 @@ async function ensureMembership(params: {
   // allows mutations only when app.bypass_membership_guards is set.
   // demo_seed_upsert_membership is service_role-only and sets that flag.
   const { data, error } = await params.admin.rpc("demo_seed_upsert_membership", {
-    p_church_id: params.organizationId,
+    p_organization_id: params.organizationId,
     p_user_id: params.userId,
     p_role: params.role,
     p_seed_source: params.seedSource,

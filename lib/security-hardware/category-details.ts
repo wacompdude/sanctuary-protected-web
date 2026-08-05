@@ -1,5 +1,5 @@
-import { hasMinRole } from "@/lib/church/navigation";
-import type { MembershipRole } from "@/lib/church/types";
+import { hasMinRole } from "@/lib/organization/navigation";
+import type { MembershipRole } from "@/lib/organization/types";
 import type { EquipmentCategory } from "@/lib/security-hardware/types";
 
 /** Detail table names in Postgres. */

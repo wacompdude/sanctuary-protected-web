@@ -4,7 +4,7 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { switchActiveChurch } from "@/app/(app)/church/actions";
 import { Button } from "@/components/ui/button";
-import { labelForMembershipRole } from "@/lib/church/invitations";
+import { labelForMembershipRole } from "@/lib/organization/invitations";
 import { Check } from "lucide-react";
 
 export type SelectableChurch = {

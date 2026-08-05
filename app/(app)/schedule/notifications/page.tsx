@@ -9,10 +9,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ScheduleNotificationComposer } from "@/components/schedule/schedule-notification-composer";
-import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
-import { getAuthenticatedUserWithChurch } from "@/lib/church/auth";
-import { listChurchTeamMemberships } from "@/lib/church/team-queries";
-import { labelForMembershipRole } from "@/lib/church/invitations";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
+import { getAuthenticatedUserWithChurch } from "@/lib/organization/auth";
+import { listChurchTeamMemberships } from "@/lib/organization/team-queries";
+import { labelForMembershipRole } from "@/lib/organization/invitations";
 import { formatChurchDateTime } from "@/lib/datetime/format";
 import { labelForNotificationType } from "@/lib/notifications/constants";
 import {

@@ -8,7 +8,7 @@ import {
   listActiveIncidentTeamMembers,
   listIncidentInvolvedMembers,
 } from "@/lib/incidents/queries";
-import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
 import {
   formatDateTime,
   formatIncidentId,
@@ -33,7 +33,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { hasMinRole } from "@/lib/church/navigation";
+import { hasMinRole } from "@/lib/organization/navigation";
 import { canCreateOperationalNotifications } from "@/lib/notifications/permissions";
 import {
   canManageMedicalSupplies,

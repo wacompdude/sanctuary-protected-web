@@ -1,12 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getOperationalChurchContext } from "@/lib/church/auth";
-import { canInviteMembers, isAllowedInviteRole } from "@/lib/church/invitations";
+import { getOperationalChurchContext } from "@/lib/organization/auth";
+import { canInviteMembers, isAllowedInviteRole } from "@/lib/organization/invitations";
 import {
   validateProvisionMemberForm,
   type ProvisionMemberActionState,
-} from "@/lib/church/provision-member";
+} from "@/lib/organization/provision-member";
 import {
   createAdminClient,
   isServiceRoleConfigured,
@@ -69,7 +69,7 @@ export async function provisionChurchMember(
     const { data: emailTaken, error: emailCheckError } = await supabase.rpc(
       "organization_has_active_member_email",
       {
-        p_church_id: church.id,
+        p_organization_id: church.id,
         p_email: input.email,
       },
     );
@@ -171,7 +171,7 @@ export async function provisionChurchMember(
     const { data: attachResult, error: attachError } = await supabase.rpc(
       "attach_organization_membership",
       {
-        p_church_id: church.id,
+        p_organization_id: church.id,
         p_user_id: targetUserId,
         p_role: input.role,
       },

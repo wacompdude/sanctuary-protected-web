@@ -14,10 +14,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { labelForMembershipRole } from "@/lib/church/invitations";
+import { labelForMembershipRole } from "@/lib/organization/invitations";
 import { POLICY_MINIMUM_ROLES } from "@/lib/policies/constants";
 import type { PolicyAssignment } from "@/lib/policies/types";
-import type { ActionState } from "@/lib/church/types";
+import type { ActionState } from "@/lib/organization/types";
 
 const initialState: ActionState = {};
 

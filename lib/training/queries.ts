@@ -266,7 +266,7 @@ async function attachMemberNames<T extends { user_id: string }>(
   const supabase = await createClient();
   const userIds = [...new Set(rows.map((row) => row.user_id))];
   const { data } = await supabase.rpc("list_organization_team_memberships", {
-    p_church_id: organizationId,
+    p_organization_id: organizationId,
   });
 
   const nameByUser = new Map<

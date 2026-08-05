@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/card";
 import { CAMPUS_ROLES, labelForCampusRole } from "@/lib/campuses/constants";
 import type { CampusActionState, CampusMembership } from "@/lib/campuses/types";
-import { labelForMembershipRole } from "@/lib/church/invitations";
+import { labelForMembershipRole } from "@/lib/organization/invitations";
 
 type MemberOption = {
   membershipId: string;

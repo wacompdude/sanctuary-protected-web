@@ -22,8 +22,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
-import { listChurchTeamMemberships } from "@/lib/church/team-queries";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
+import { listChurchTeamMemberships } from "@/lib/organization/team-queries";
 import {
   canViewSensitiveNetworkFields,
   type CategoryDetailTable,

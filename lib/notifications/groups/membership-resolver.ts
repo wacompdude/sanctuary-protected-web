@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
-import { normalizeMembershipRole } from "@/lib/church/types";
+import { normalizeMembershipRole } from "@/lib/organization/types";
 import { NOTIFICATION_GROUP_MAX_NESTING_DEPTH } from "@/lib/notifications/groups/constants";
 import {
   expandGroupDescendantIds,

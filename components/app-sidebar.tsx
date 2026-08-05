@@ -1,9 +1,9 @@
 import { AppSidebarNav } from "@/components/app-sidebar-nav";
-import { requireChurchMembership } from "@/lib/church/context";
-import { ChurchAccessError } from "@/lib/church/errors";
-import { isNextControlFlowError } from "@/lib/church/access-guard";
-import { getNavSectionsForRole } from "@/lib/church/navigation";
-import type { MembershipRole } from "@/lib/church/types";
+import { requireChurchMembership } from "@/lib/organization/context";
+import { ChurchAccessError } from "@/lib/organization/errors";
+import { isNextControlFlowError } from "@/lib/organization/access-guard";
+import { getNavSectionsForRole } from "@/lib/organization/navigation";
+import type { MembershipRole } from "@/lib/organization/types";
 import {
   getEnabledFeatureKeys,
 } from "@/lib/subscriptions/enforcement";

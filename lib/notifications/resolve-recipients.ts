@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { MembershipRole } from "@/lib/church/types";
-import { normalizeMembershipRole } from "@/lib/church/types";
+import type { MembershipRole } from "@/lib/organization/types";
+import { normalizeMembershipRole } from "@/lib/organization/types";
 import { getChurchClockParts } from "@/lib/datetime/format";
 import {
   CRITICAL_OVERRIDE_TYPES,

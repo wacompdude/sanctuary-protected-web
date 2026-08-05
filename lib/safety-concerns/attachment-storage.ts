@@ -1,3 +1,8 @@
+import {
+  isStorageTenantPath,
+  storageTenantObjectPath,
+} from "@/lib/storage/tenant-prefix";
+
 export const SAFETY_CONCERN_MEDIA_BUCKET = "safety-concern-photos";
 
 /** Works in Node 19+ and React Native / Expo (global crypto). */
@@ -44,7 +49,7 @@ export function extensionForSafetyConcernPhotoMime(
   return null;
 }
 
-/** Path: churches/{organizationId}/safety-concerns/{profileId}/{uuid}.{ext} */
+/** Path: organizations/{organizationId}/safety-concerns/{profileId}/{uuid}.{ext} */
 export function safetyConcernPhotoObjectPath(params: {
   organizationId: string;
   profileId: string;
@@ -52,7 +57,10 @@ export function safetyConcernPhotoObjectPath(params: {
 }): string | null {
   const ext = extensionForSafetyConcernPhotoMime(params.mimeType);
   if (!ext) return null;
-  return `churches/${params.organizationId}/safety-concerns/${params.profileId}/${newPhotoObjectId()}.${ext}`;
+  return storageTenantObjectPath(
+    params.organizationId,
+    `safety-concerns/${params.profileId}/${newPhotoObjectId()}.${ext}`,
+  );
 }
 
 export function isSafetyConcernPhotoStoragePath(
@@ -60,10 +68,15 @@ export function isSafetyConcernPhotoStoragePath(
   organizationId: string,
   profileId?: string,
 ): boolean {
-  const prefix = `churches/${organizationId}/safety-concerns/`;
-  if (!path.startsWith(prefix)) return false;
+  if (!isStorageTenantPath(path, organizationId, "safety-concerns/")) {
+    return false;
+  }
   if (!profileId) return true;
-  return path.startsWith(`${prefix}${profileId}/`);
+  return isStorageTenantPath(
+    path,
+    organizationId,
+    `safety-concerns/${profileId}/`,
+  );
 }
 
 export function collectSafetyConcernPhotoFiles(formData: FormData): File[] {

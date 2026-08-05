@@ -9,8 +9,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
-import { getAuthenticatedUserWithChurch } from "@/lib/church/auth";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
+import { getAuthenticatedUserWithChurch } from "@/lib/organization/auth";
 import { SCHEDULE_MIGRATION_HINT } from "@/lib/schedule/constants";
 import { canManageScheduleSettings } from "@/lib/schedule/permissions";
 import { ensureChurchScheduleSettings, getTypedChurchScheduleSettings } from "@/lib/schedule/settings-queries";

@@ -10,8 +10,8 @@ import { listAccessibleCampuses } from "@/lib/campuses/filter";
 import {
   ChurchAccessError,
   getAuthenticatedUserWithChurch,
-} from "@/lib/church/auth";
-import type { ActionState } from "@/lib/church/types";
+} from "@/lib/organization/auth";
+import type { ActionState } from "@/lib/organization/types";
 
 export async function setActiveCampusFilterAction(
   _prev: ActionState,

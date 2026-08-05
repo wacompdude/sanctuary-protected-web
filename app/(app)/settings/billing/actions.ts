@@ -7,7 +7,7 @@ import {
   buildDowngradeImpactReport,
   getBillingProvider,
 } from "@/lib/billing";
-import { requireMinChurchRole } from "@/lib/church/auth";
+import { requireMinChurchRole } from "@/lib/organization/auth";
 import { isPlanKey } from "@/lib/subscriptions/plan-keys";
 import {
   changeChurchSubscriptionPlan,

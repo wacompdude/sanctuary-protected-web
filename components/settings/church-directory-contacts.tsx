@@ -22,8 +22,8 @@ import {
   labelForContactType,
   type ChurchContactRecord,
   type ChurchContactType,
-} from "@/lib/church/contacts";
-import type { ActionState } from "@/lib/church/types";
+} from "@/lib/organization/contacts";
+import type { ActionState } from "@/lib/organization/types";
 
 function ContactFields({
   contactType,

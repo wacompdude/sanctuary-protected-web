@@ -1,12 +1,12 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { getAuthenticatedUserWithChurch } from "@/lib/church/auth";
-import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
+import { getAuthenticatedUserWithChurch } from "@/lib/organization/auth";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
 import {
   isChurchOperationallyLocked,
   resolveChurchLandingPath,
-} from "@/lib/church/operations";
-import { parseAppPreferences } from "@/lib/church/settings";
+} from "@/lib/organization/operations";
+import { parseAppPreferences } from "@/lib/organization/settings";
 import { Card, CardContent } from "@/components/ui/card";
 
 async function HomeLandingContent(): Promise<React.ReactNode> {

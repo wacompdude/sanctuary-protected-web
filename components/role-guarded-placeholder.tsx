@@ -9,9 +9,9 @@ import {
 import {
   ChurchAccessError,
   requireMinChurchRole,
-} from "@/lib/church/auth";
-import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
-import type { MembershipRole } from "@/lib/church/types";
+} from "@/lib/organization/auth";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
+import type { MembershipRole } from "@/lib/organization/types";
 import type { LucideIcon } from "lucide-react";
 
 export function RoleGuardedPlaceholderPage({

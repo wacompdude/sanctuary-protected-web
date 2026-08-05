@@ -7,7 +7,7 @@ import {
   SettingsSectionCard,
 } from "@/components/settings/settings-form-shell";
 import { updateChurchSecuritySettings } from "@/app/(app)/settings/church/actions";
-import type { ChurchSettingsRecord } from "@/lib/church/settings";
+import type { ChurchSettingsRecord } from "@/lib/organization/settings";
 
 export function ChurchSecurityForm({
   church,

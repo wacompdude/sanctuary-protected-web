@@ -19,7 +19,7 @@ import {
   threatLevelBadgeStyle,
   threatLevelFillColor,
   type ChurchThreatLevelHistoryEntry,
-} from "@/lib/church/threat-levels";
+} from "@/lib/organization/threat-levels";
 import { formatDateTime } from "@/lib/incidents/format";
 import { resolveChurchTimeZone } from "@/lib/datetime/format";
 

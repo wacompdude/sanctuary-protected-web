@@ -13,8 +13,8 @@ import { AcknowledgeEventButton } from "@/components/events/acknowledge-event-bu
 import {
   ChurchAccessError,
   getAuthenticatedUserWithChurch,
-} from "@/lib/church/auth";
-import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
+} from "@/lib/organization/auth";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
 import { listEventsForChurch } from "@/lib/events/queries";
 import { EVENT_TYPES } from "@/lib/events/types";
 import { formatDateTime } from "@/lib/incidents/format";

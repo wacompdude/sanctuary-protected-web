@@ -8,9 +8,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   getCurrentUser,
   getUserMemberships,
-} from "@/lib/church/auth";
-import { ChurchAccessError } from "@/lib/church/errors";
-import { isNextControlFlowError } from "@/lib/church/access-guard";
+} from "@/lib/organization/auth";
+import { ChurchAccessError } from "@/lib/organization/errors";
+import { isNextControlFlowError } from "@/lib/organization/access-guard";
 import { getPlatformAccount } from "@/lib/platform/auth";
 
 async function ChurchOnboardingContent() {

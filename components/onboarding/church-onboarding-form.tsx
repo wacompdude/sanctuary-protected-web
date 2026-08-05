@@ -12,8 +12,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import type { ActionState } from "@/lib/church/types";
-import { ONBOARDING_TIMEZONES } from "@/lib/church/onboarding";
+import type { ActionState } from "@/lib/organization/types";
+import { ONBOARDING_TIMEZONES } from "@/lib/organization/onboarding";
 import { selectClassName } from "@/components/incidents/incident-badges";
 
 const initialState: ActionState = {};

@@ -7,7 +7,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { RequirementForm } from "@/components/training/requirement-form";
-import { getAuthenticatedUserWithChurch } from "@/lib/church/auth";
+import { getAuthenticatedUserWithChurch } from "@/lib/organization/auth";
 import { getTrainingAccess } from "@/lib/training/access";
 import { canManageRequirements } from "@/lib/training/permissions";
 import { listCategories, listCourses, listRequirements } from "@/lib/training/queries";

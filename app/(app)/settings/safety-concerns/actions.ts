@@ -6,7 +6,7 @@ import { getRequestIpAddress, writeAuditLog } from "@/lib/audit/log";
 import {
   ChurchAccessError,
   getAuthenticatedUserWithChurch,
-} from "@/lib/church/auth";
+} from "@/lib/organization/auth";
 import { canManageSafetyConcernSettings } from "@/lib/safety-concerns/permissions";
 import { updateSafetyConcernChurchSettings } from "@/lib/safety-concerns/queries";
 import type { SafetyConcernActionState } from "@/lib/safety-concerns/types";

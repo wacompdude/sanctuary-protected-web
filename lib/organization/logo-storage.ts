@@ -1,0 +1,55 @@
+import { getSupabaseUrl } from "@/lib/supabase/env";
+import {
+  isStorageTenantPath,
+  storageTenantObjectPath,
+} from "@/lib/storage/tenant-prefix";
+
+export const CHURCH_BRANDING_BUCKET = "church-branding";
+export const LOGO_MAX_BYTES = 2 * 1024 * 1024;
+export const LOGO_ALLOWED_MIME = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/gif",
+]);
+export const LOGO_MAX_DIMENSION = 4096;
+
+export function churchLogoObjectPath(
+  organizationId: string,
+  mimeType: string,
+): string {
+  const ext =
+    mimeType === "image/png"
+      ? "png"
+      : mimeType === "image/webp"
+        ? "webp"
+        : mimeType === "image/gif"
+          ? "gif"
+          : "jpg";
+  return storageTenantObjectPath(organizationId, `branding/logo.${ext}`);
+}
+
+export function isChurchBrandingStoragePath(
+  path: string,
+  organizationId: string,
+): boolean {
+  return isStorageTenantPath(path, organizationId, "branding/");
+}
+
+export function publicUrlForLogoPath(logoPath: string | null | undefined): string | null {
+  if (!logoPath) return null;
+  if (logoPath.includes("://")) return logoPath;
+  const base = getSupabaseUrl().replace(/\/$/, "");
+  return `${base}/storage/v1/object/public/${CHURCH_BRANDING_BUCKET}/${logoPath.replace(/^\//, "")}`;
+}
+
+export function extensionForMime(mimeType: string): string | null {
+  if (!LOGO_ALLOWED_MIME.has(mimeType)) return null;
+  return mimeType === "image/png"
+    ? "png"
+    : mimeType === "image/webp"
+      ? "webp"
+      : mimeType === "image/gif"
+        ? "gif"
+        : "jpg";
+}

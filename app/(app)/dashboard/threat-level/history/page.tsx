@@ -4,14 +4,14 @@ import { ArrowLeft } from "lucide-react";
 import {
   ChurchAccessError,
   getAuthenticatedUserWithChurch,
-} from "@/lib/church/auth";
-import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
+} from "@/lib/organization/auth";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
 import {
   canManageThreatLevels,
   labelForWeekStartsOn,
   normalizeWeekStartsOn,
-} from "@/lib/church/threat-levels";
-import { listChurchThreatLevels } from "@/lib/church/threat-level-queries";
+} from "@/lib/organization/threat-levels";
+import { listChurchThreatLevels } from "@/lib/organization/threat-level-queries";
 import { ThreatLevelHistoryList } from "@/components/dashboard/threat-level-history-list";
 import { Button } from "@/components/ui/button";
 import {

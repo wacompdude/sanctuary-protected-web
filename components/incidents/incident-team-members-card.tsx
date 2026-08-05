@@ -16,8 +16,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { labelForMembershipRole } from "@/lib/church/invitations";
-import type { TeamMemberRow } from "@/lib/church/team";
+import { labelForMembershipRole } from "@/lib/organization/invitations";
+import type { TeamMemberRow } from "@/lib/organization/team";
 import { selectClassName } from "@/components/incidents/incident-badges";
 import type { ActionState, IncidentInvolvedMember } from "@/lib/incidents/types";
 

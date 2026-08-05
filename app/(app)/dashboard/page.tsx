@@ -12,14 +12,14 @@ import { Button } from "@/components/ui/button";
 import {
   ChurchAccessError,
   getAuthenticatedUserWithChurch,
-} from "@/lib/church/auth";
-import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
+} from "@/lib/organization/auth";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
 import { getCertificationCounts } from "@/lib/certifications/queries";
 import { listIncidentsForChurch } from "@/lib/incidents/queries";
 import { getUnacknowledgedEventCount } from "@/lib/events/queries";
 import { formatDateTime } from "@/lib/incidents/format";
 import { formatChurchDateTime } from "@/lib/datetime/format";
-import { getCurrentChurchThreatLevel } from "@/lib/church/threat-level-queries";
+import { getCurrentChurchThreatLevel } from "@/lib/organization/threat-level-queries";
 import {
   canManageThreatLevels,
   formatThreatWeek,
@@ -27,7 +27,7 @@ import {
   rankLabelForThreatLevel,
   threatLevelBadgeClassName,
   threatLevelBadgeStyle,
-} from "@/lib/church/threat-levels";
+} from "@/lib/organization/threat-levels";
 import { canManageSchedule } from "@/lib/schedule/permissions";
 import { getScheduleDashboardSummary } from "@/lib/schedule/dashboard-queries";
 import {

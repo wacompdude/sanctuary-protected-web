@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { requireChurchMembership } from "@/lib/church/auth";
-import { ChurchAccessError } from "@/lib/church/errors";
-import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
+import { requireChurchMembership } from "@/lib/organization/auth";
+import { ChurchAccessError } from "@/lib/organization/errors";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
 import { ChurchSwitcher } from "@/components/church-switcher";
 import { OrganizationIdentity } from "@/components/church-identity";
 import { CampusSelector } from "@/components/campuses/campus-selector";

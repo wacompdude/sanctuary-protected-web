@@ -15,11 +15,11 @@ import {
 import {
   labelForMembershipRole,
   type InvitableRole,
-} from "@/lib/church/invitations";
+} from "@/lib/organization/invitations";
 import {
   MIN_PASSWORD_LENGTH,
   type ProvisionMemberActionState,
-} from "@/lib/church/provision-member";
+} from "@/lib/organization/provision-member";
 
 const initialState: ProvisionMemberActionState = {};
 

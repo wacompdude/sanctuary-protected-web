@@ -1,5 +1,5 @@
-import type { ChurchAppPreferences } from "@/lib/church/settings";
-import { DEFAULT_APP_PREFERENCES } from "@/lib/church/settings";
+import type { ChurchAppPreferences } from "@/lib/organization/settings";
+import { DEFAULT_APP_PREFERENCES } from "@/lib/organization/settings";
 
 export const DEFAULT_CHURCH_TIMEZONE = "America/Los_Angeles";
 

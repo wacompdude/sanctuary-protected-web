@@ -4,9 +4,9 @@
  * Type definitions for the security permissions and access-control system.
  */
 
-import type { MembershipRole as ChurchMembershipRole } from "@/lib/church/types";
+import type { MembershipRole as ChurchMembershipRole } from "@/lib/organization/types";
 
-/** @deprecated Prefer MembershipRole from @/lib/church/types */
+/** @deprecated Prefer MembershipRole from @/lib/organization/types */
 export type MembershipRole = ChurchMembershipRole;
 
 export type PermissionEffect = "grant" | "deny";

@@ -2,8 +2,8 @@ import { Suspense } from "react";
 import {
   ChurchAccessError,
   getAuthenticatedUserWithChurch,
-} from "@/lib/church/auth";
-import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
+} from "@/lib/organization/auth";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
 import { canViewNotificationHistory } from "@/lib/notifications";
 import { retryNotificationDeliveryFormAction } from "@/app/(app)/notifications/actions";
 import {

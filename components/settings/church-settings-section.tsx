@@ -6,8 +6,8 @@ import {
 import {
   ChurchAccessError,
   requireMinChurchRole,
-} from "@/lib/church/auth";
-import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
+} from "@/lib/organization/auth";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
 import {
   canManageChurchAccountStatus,
   canManageChurchSettings,
@@ -15,9 +15,9 @@ import {
   migrationHintFromError,
   normalizeChurchSettings,
   type ChurchSettingsRecord,
-} from "@/lib/church/settings";
-import { CHURCH_SETTINGS_SECTIONS } from "@/lib/church/settings-nav";
-import type { ChurchSettingsSectionId } from "@/lib/church/settings-nav";
+} from "@/lib/organization/settings";
+import { CHURCH_SETTINGS_SECTIONS } from "@/lib/organization/settings-nav";
+import type { ChurchSettingsSectionId } from "@/lib/organization/settings-nav";
 import { ChurchSettingsNav } from "@/components/settings/church-settings-nav";
 
 export type ChurchSettingsPageData = {

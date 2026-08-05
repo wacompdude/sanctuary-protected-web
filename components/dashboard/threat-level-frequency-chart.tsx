@@ -7,7 +7,7 @@ import {
   threatLevelFillColor,
   type ChurchThreatLevelHistoryEntry,
   type ThreatLevel,
-} from "@/lib/church/threat-levels";
+} from "@/lib/organization/threat-levels";
 
 type Slice = {
   level: ThreatLevel;

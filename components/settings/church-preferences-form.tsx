@@ -14,7 +14,7 @@ import {
   TIME_FORMAT_OPTIONS,
   type ChurchAppPreferences,
   type ChurchSettingsRecord,
-} from "@/lib/church/settings";
+} from "@/lib/organization/settings";
 
 export function ChurchPreferencesForm({
   church,

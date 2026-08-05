@@ -9,7 +9,7 @@ import {
   threatLevelBadgeStyle,
   type ChurchThreatLevelHistoryEntry,
   type ThreatLevel,
-} from "@/lib/church/threat-levels";
+} from "@/lib/organization/threat-levels";
 import { formatDateTime } from "@/lib/incidents/format";
 import { Button } from "@/components/ui/button";
 

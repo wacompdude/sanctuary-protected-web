@@ -1,4 +1,4 @@
-import type { MembershipRole } from "@/lib/church/types";
+import type { MembershipRole } from "@/lib/organization/types";
 
 export const SCHEDULE_MIGRATION_HINT =
   "Scheduling tables are not available yet. Apply supabase/migrations/035_schedule_management.sql in the Supabase SQL Editor, then refresh.";

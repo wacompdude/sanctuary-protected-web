@@ -4,7 +4,7 @@ import {
 } from "@/components/settings/church-settings-section";
 import { ChurchAddressForm } from "@/components/settings/church-address-form";
 import { ChurchContactForm } from "@/components/settings/church-contact-form";
-import { CHURCH_CONTACT_GROUPS } from "@/lib/church/contacts";
+import { CHURCH_CONTACT_GROUPS } from "@/lib/organization/contacts";
 
 const group = CHURCH_CONTACT_GROUPS.find((item) => item.id === "organization")!;
 

@@ -10,8 +10,8 @@ import { updateChurchGeneralSettings } from "@/app/(app)/settings/church/actions
 import {
   SETTINGS_TIMEZONES,
   type ChurchSettingsRecord,
-} from "@/lib/church/settings";
-import { WEEK_STARTS_ON_OPTIONS } from "@/lib/church/threat-levels";
+} from "@/lib/organization/settings";
+import { WEEK_STARTS_ON_OPTIONS } from "@/lib/organization/threat-levels";
 
 const LANGUAGE_OPTIONS = [
   { value: "en", label: "English" },

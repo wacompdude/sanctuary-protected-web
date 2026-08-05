@@ -3,7 +3,7 @@ import {
   ChurchSettingsSectionSuspense,
 } from "@/components/settings/church-settings-section";
 import { ChurchDirectoryGroupLoader } from "@/components/settings/church-directory-group-loader";
-import { CHURCH_CONTACT_GROUPS } from "@/lib/church/contacts";
+import { CHURCH_CONTACT_GROUPS } from "@/lib/organization/contacts";
 
 const group = CHURCH_CONTACT_GROUPS.find((item) => item.id === "leadership")!;
 

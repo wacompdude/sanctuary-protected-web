@@ -10,8 +10,8 @@ import {
 import {
   ChurchAccessError,
   getAuthenticatedUserWithChurch,
-} from "@/lib/church/auth";
-import type { ActionState } from "@/lib/church/types";
+} from "@/lib/organization/auth";
+import type { ActionState } from "@/lib/organization/types";
 import {
   assertCanManageDashboardCustomization,
   parseDashboardBoxKey,

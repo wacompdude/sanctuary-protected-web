@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import { getUserMemberships } from "@/lib/church/auth";
-import type { ChurchMembershipWithChurch } from "@/lib/church/types";
+import { getUserMemberships } from "@/lib/organization/auth";
+import type { ChurchMembershipWithChurch } from "@/lib/organization/types";
 import { getCertificationStatus } from "@/lib/certifications/status";
 import type { CertificationWithMember } from "@/lib/certifications/types";
 

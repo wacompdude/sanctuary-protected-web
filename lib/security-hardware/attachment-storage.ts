@@ -1,6 +1,10 @@
 import { randomUUID } from "crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { EquipmentAttachmentKind } from "@/lib/security-hardware/attachments";
+import {
+  isStorageTenantPath,
+  storageTenantObjectPath,
+} from "@/lib/storage/tenant-prefix";
 
 export const EQUIPMENT_MEDIA_BUCKET = "equipment-media";
 /** General attachments (docs + photos) on the equipment detail card. */
@@ -45,7 +49,10 @@ export function equipmentAttachmentObjectPath(params: {
 }): string | null {
   const ext = extensionForEquipmentAttachmentMime(params.mimeType);
   if (!ext) return null;
-  return `churches/${params.organizationId}/equipment/${params.equipmentId}/${params.kind}/${randomUUID()}.${ext}`;
+  return storageTenantObjectPath(
+    params.organizationId,
+    `equipment/${params.equipmentId}/${params.kind}/${randomUUID()}.${ext}`,
+  );
 }
 
 export function isEquipmentMediaStoragePath(
@@ -53,10 +60,13 @@ export function isEquipmentMediaStoragePath(
   organizationId: string,
   equipmentId?: string,
 ): boolean {
-  const prefix = `churches/${organizationId}/equipment/`;
-  if (!path.startsWith(prefix)) return false;
+  if (!isStorageTenantPath(path, organizationId, "equipment/")) return false;
   if (!equipmentId) return true;
-  return path.startsWith(`${prefix}${equipmentId}/`);
+  return isStorageTenantPath(
+    path,
+    organizationId,
+    `equipment/${equipmentId}/`,
+  );
 }
 
 export function collectAttachmentFiles(formData: FormData): File[] {

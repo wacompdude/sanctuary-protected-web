@@ -24,7 +24,7 @@ import {
 } from "@/lib/incidents/attachment-storage";
 import { AuditAction, AuditEntityType } from "@/lib/audit/actions";
 import { getRequestIpAddress, writeAuditLog } from "@/lib/audit/log";
-import { hasMinRole } from "@/lib/church/navigation";
+import { hasMinRole } from "@/lib/organization/navigation";
 import { canRecordMedicalSupplyUsage } from "@/lib/medical-supplies/types";
 import { createNotification } from "@/lib/notifications/create-notification";
 import { mapIncidentSeverityToNotification } from "@/lib/notifications/constants";

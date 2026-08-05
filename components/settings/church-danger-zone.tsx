@@ -14,8 +14,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import type { ChurchSettingsRecord } from "@/lib/church/settings";
-import type { ActionState } from "@/lib/church/types";
+import type { ChurchSettingsRecord } from "@/lib/organization/settings";
+import type { ActionState } from "@/lib/organization/types";
 
 function DangerAction({
   actionValue,

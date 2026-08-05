@@ -1,13 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getAuthenticatedUserWithChurch } from "@/lib/church/auth";
+import { getAuthenticatedUserWithChurch } from "@/lib/organization/auth";
 import { AuditAction } from "@/lib/audit/actions";
 import {
   auditChurchAccountStatusChanged,
   auditChurchSettingsUpdated,
 } from "@/lib/audit/church-events";
-import type { ActionState } from "@/lib/church/types";
+import type { ActionState } from "@/lib/organization/types";
 import {
   canManageChurchAccountStatus,
   canManageChurchSettings,
@@ -22,14 +22,14 @@ import {
   validateGeneralSettings,
   validatePreferenceSettings,
   validateSecuritySettings,
-} from "@/lib/church/settings";
+} from "@/lib/organization/settings";
 import {
   CHURCH_BRANDING_BUCKET,
   LOGO_ALLOWED_MIME,
   LOGO_MAX_BYTES,
   churchLogoObjectPath,
   isChurchBrandingStoragePath,
-} from "@/lib/church/logo-storage";
+} from "@/lib/organization/logo-storage";
 
 async function requireSettingsEditor() {
   const context = await getAuthenticatedUserWithChurch();

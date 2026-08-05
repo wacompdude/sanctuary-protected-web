@@ -1,5 +1,5 @@
-import { hasMinRole } from "@/lib/church/navigation";
-import type { MembershipRole } from "@/lib/church/types";
+import { hasMinRole } from "@/lib/organization/navigation";
+import type { MembershipRole } from "@/lib/organization/types";
 import { PERMISSION_KEYS, type PermissionKey } from "@/lib/security/permission-keys";
 
 export function canViewTraining(role: MembershipRole): boolean {

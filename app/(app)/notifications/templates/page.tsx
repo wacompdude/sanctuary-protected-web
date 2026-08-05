@@ -2,10 +2,10 @@ import { Suspense } from "react";
 import {
   ChurchAccessError,
   getAuthenticatedUserWithChurch,
-} from "@/lib/church/auth";
-import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
+} from "@/lib/organization/auth";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
 import { canManageNotificationTemplates } from "@/lib/notifications";
-import { hasMinRole } from "@/lib/church/navigation";
+import { hasMinRole } from "@/lib/organization/navigation";
 import { EMAIL_SENDER_LABELS, isEmailSenderCategory } from "@/lib/email";
 import {
   Card,

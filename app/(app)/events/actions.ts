@@ -1,8 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getOperationalChurchContext } from "@/lib/church/auth";
-import type { ActionState } from "@/lib/church/types";
+import { getOperationalChurchContext } from "@/lib/organization/auth";
+import type { ActionState } from "@/lib/organization/types";
 
 export async function acknowledgeEvent(
   eventId: string,

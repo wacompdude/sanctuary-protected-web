@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { ArrowLeft } from "lucide-react";
-import { getOperationalChurchContext, ChurchAccessError } from "@/lib/church/auth";
-import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
+import { getOperationalChurchContext, ChurchAccessError } from "@/lib/organization/auth";
+import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
 import {
   canManageThreatLevels,
   formatThreatWeek,
@@ -13,11 +13,11 @@ import {
   startOfThreatWeek,
   threatLevelBadgeClassName,
   threatLevelBadgeStyle,
-} from "@/lib/church/threat-levels";
+} from "@/lib/organization/threat-levels";
 import {
   getCurrentChurchThreatLevel,
   listChurchThreatLevels,
-} from "@/lib/church/threat-level-queries";
+} from "@/lib/organization/threat-level-queries";
 import { ThreatLevelManagePanel } from "@/components/dashboard/threat-level-form";
 import { ThreatLevelHistoryList } from "@/components/dashboard/threat-level-history-list";
 import { Button } from "@/components/ui/button";

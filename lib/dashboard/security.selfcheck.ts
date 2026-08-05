@@ -66,14 +66,14 @@ try {
 }
 
 const spoof = new FormData();
-spoof.set("church_id", "22222222-2222-4222-8222-222222222222");
+spoof.set("organization_id", "22222222-2222-4222-8222-222222222222");
 try {
   rejectBrowserSubmittedChurchId(spoof);
-  throw new Error("expected browser church_id to be rejected");
+  throw new Error("expected browser organization_id to be rejected");
 } catch (error) {
   assert(
     error instanceof Error && /cannot be submitted/.test(error.message),
-    "browser church_id rejected",
+    "browser organization_id rejected",
   );
 }
 

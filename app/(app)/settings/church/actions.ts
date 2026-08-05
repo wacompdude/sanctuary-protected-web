@@ -178,7 +178,7 @@ export async function updateChurchGeneralSettings(
     await editor.context.supabase
       .from("organization_notification_settings")
       .update({ timezone: validation.data.timezone })
-      .eq("church_id", editor.context.church.id);
+      .eq("organization_id", editor.context.church.id);
   }
 
   return result;

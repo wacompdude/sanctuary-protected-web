@@ -78,7 +78,7 @@ export function CampusMembersPanel({
     router,
   ]);
 
-  const activeIds = new Set(members.map((member) => member.church_membership_id));
+  const activeIds = new Set(members.map((member) => member.organization_membership_id));
   const available = candidateMembers.filter(
     (member) => !activeIds.has(member.membershipId),
   );

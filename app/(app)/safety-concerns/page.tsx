@@ -88,7 +88,7 @@ async function loadListRows(
   const { data: photoRows } = await supabase
     .from("safety_concern_photos")
     .select("*")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .in("profile_id", profileIds)
     .is("archived_at", null)
     .order("display_order", { ascending: true });
@@ -114,7 +114,7 @@ async function loadListRows(
   const { data: campusLinkRows } = await supabase
     .from("safety_concern_profile_campuses")
     .select("profile_id, campus_id")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .in("profile_id", profileIds);
 
   const campusIds = [
@@ -127,7 +127,7 @@ async function loadListRows(
     const { data: campusRows } = await supabase
       .from("campuses")
       .select("id, name")
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .in("id", campusIds);
     for (const campus of campusRows ?? []) {
       campusNameById.set(String(campus.id), String(campus.name ?? ""));

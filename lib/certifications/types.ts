@@ -5,7 +5,7 @@ export type CertificationComputedStatus =
 
 export interface TeamMember {
   id: string;
-  church_id: string;
+  organization_id: string;
   full_name: string;
   email: string | null;
   title: string | null;
@@ -15,7 +15,7 @@ export interface TeamMember {
 
 export interface Certification {
   id: string;
-  church_id: string;
+  organization_id: string;
   team_member_id: string;
   certification_type: string;
   issuer: string;

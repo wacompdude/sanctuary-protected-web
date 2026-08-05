@@ -30,7 +30,7 @@ export async function replaceChurchDashboardBoxSettings(params: {
   const { data: existingRows, error: existingError } = await supabase
     .from("dashboard_box_settings")
     .select("box_key")
-    .eq("church_id", churchId);
+    .eq("organization_id", churchId);
   if (existingError) {
     return { ok: false, error: friendlyDashboardDbError(existingError.message) };
   }
@@ -64,7 +64,7 @@ export async function replaceChurchDashboardBoxSettings(params: {
     }
 
     const payload = {
-      church_id: churchId,
+      organization_id: churchId,
       box_key: row.boxKey,
       is_visible: row.isVisible,
       display_order: row.displayOrder,
@@ -85,7 +85,7 @@ export async function replaceChurchDashboardBoxSettings(params: {
     const { error: deleteError } = await supabase
       .from("dashboard_box_settings")
       .delete()
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .in("box_key", toDeleteKeys);
     if (deleteError) {
       return { ok: false, error: friendlyDashboardDbError(deleteError.message) };
@@ -112,7 +112,7 @@ export async function replaceChurchDashboardBoxSettings(params: {
         use_automatic_text_color: row.use_automatic_text_color,
         updated_by: row.updated_by,
       })
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .eq("box_key", row.box_key);
     if (updateError) {
       return { ok: false, error: friendlyDashboardDbError(updateError.message) };
@@ -126,7 +126,7 @@ export async function replaceChurchDashboardBoxSettings(params: {
     const { error } = await supabase
       .from("dashboard_box_settings")
       .delete()
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .in("box_key", leftover);
     if (error) {
       return { ok: false, error: friendlyDashboardDbError(error.message) };
@@ -145,7 +145,7 @@ export async function resetChurchDashboardBoxSetting(params: {
   const { error } = await params.supabase
     .from("dashboard_box_settings")
     .delete()
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("box_key", params.boxKey);
 
   if (error) {
@@ -162,7 +162,7 @@ export async function resetAllChurchDashboardBoxSettings(params: {
   const { error } = await params.supabase
     .from("dashboard_box_settings")
     .delete()
-    .eq("church_id", churchId);
+    .eq("organization_id", churchId);
 
   if (error) {
     return { ok: false, error: friendlyDashboardDbError(error.message) };
@@ -185,7 +185,7 @@ export async function purgeObsoleteChurchDashboardBoxSettings(params: {
   const { data, error } = await params.supabase
     .from("dashboard_box_settings")
     .select("box_key")
-    .eq("church_id", churchId);
+    .eq("organization_id", churchId);
 
   if (error) {
     return { ok: false, error: friendlyDashboardDbError(error.message) };
@@ -202,7 +202,7 @@ export async function purgeObsoleteChurchDashboardBoxSettings(params: {
   const { error: deleteError } = await params.supabase
     .from("dashboard_box_settings")
     .delete()
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .in("box_key", obsolete);
 
   if (deleteError) {
@@ -225,7 +225,7 @@ export function friendlyDashboardDbError(message: string): string {
   if (/background_color|text_color|check constraint/i.test(message)) {
     return "Colors must be stored as #RRGGBB.";
   }
-  if (/foreign key|church_id/i.test(message)) {
+  if (/foreign key|organization_id/i.test(message)) {
     return "Unable to save dashboard settings for this church.";
   }
   return "Unable to update dashboard settings. Please try again.";

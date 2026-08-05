@@ -18,7 +18,7 @@ function isMissingNestingTable(message: string): boolean {
 function mapNesting(row: Record<string, unknown>): NotificationGroupNesting {
   return {
     id: String(row.id),
-    church_id: String(row.church_id),
+    organization_id: String(row.organization_id),
     parent_group_id: String(row.parent_group_id),
     child_group_id: String(row.child_group_id),
     status: row.status as NotificationGroupNesting["status"],
@@ -61,7 +61,7 @@ export async function listActiveNestingEdges(
   const { data, error } = await supabase
     .from("notification_group_nestings")
     .select("parent_group_id, child_group_id")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("status", "active");
 
   if (error) {
@@ -131,8 +131,8 @@ export function wouldCreateGroupNestingCycle(
 }
 
 export function validateGroupNesting(input: {
-  parent: Pick<NotificationGroup, "id" | "church_id" | "status" | "is_system_group">;
-  child: Pick<NotificationGroup, "id" | "church_id" | "status">;
+  parent: Pick<NotificationGroup, "id" | "organization_id" | "status" | "is_system_group">;
+  child: Pick<NotificationGroup, "id" | "organization_id" | "status">;
   edges: NestingEdge[];
   maxDepth?: number;
 }): { ok: true } | { ok: false; error: string } {
@@ -146,7 +146,7 @@ export function validateGroupNesting(input: {
     };
   }
 
-  if (input.parent.church_id !== input.child.church_id) {
+  if (input.parent.organization_id !== input.child.organization_id) {
     return { ok: false, error: "Nested groups must belong to the same church." };
   }
 
@@ -261,9 +261,9 @@ export async function listDirectChildGroups(
   const { data, error } = await supabase
     .from("notification_group_nestings")
     .select(
-      "id, church_id, parent_group_id, child_group_id, status, added_by, added_at, removed_at, created_at, updated_at",
+      "id, organization_id, parent_group_id, child_group_id, status, added_by, added_at, removed_at, created_at, updated_at",
     )
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("parent_group_id", parentGroupId)
     .eq("status", "active")
     .order("added_at", { ascending: false });
@@ -282,7 +282,7 @@ export async function listDirectChildGroups(
   const { data: groups } = await supabase
     .from("notification_groups")
     .select("id, name, description, group_type, status, is_system_group")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .in("id", childIds);
 
   const byId = new Map(
@@ -310,9 +310,9 @@ export async function listDirectParentGroups(
   const { data, error } = await supabase
     .from("notification_group_nestings")
     .select(
-      "id, church_id, parent_group_id, child_group_id, status, added_by, added_at, removed_at, created_at, updated_at",
+      "id, organization_id, parent_group_id, child_group_id, status, added_by, added_at, removed_at, created_at, updated_at",
     )
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("child_group_id", childGroupId)
     .eq("status", "active")
     .order("added_at", { ascending: false });
@@ -331,7 +331,7 @@ export async function listDirectParentGroups(
   const { data: groups } = await supabase
     .from("notification_groups")
     .select("id, name, description, group_type, status, is_system_group")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .in("id", parentIds);
 
   const byId = new Map(
@@ -359,9 +359,9 @@ export async function addGroupToGroup(params: {
   addedBy: string;
   parent: Pick<
     NotificationGroup,
-    "id" | "church_id" | "status" | "is_system_group"
+    "id" | "organization_id" | "status" | "is_system_group"
   >;
-  child: Pick<NotificationGroup, "id" | "church_id" | "status">;
+  child: Pick<NotificationGroup, "id" | "organization_id" | "status">;
 }): Promise<{ ok: true; nestingId: string } | { ok: false; error: string }> {
   const edges = await listActiveNestingEdges(params.churchId, params.supabase);
   const validation = validateGroupNesting({
@@ -374,7 +374,7 @@ export async function addGroupToGroup(params: {
   const { data: existing } = await params.supabase
     .from("notification_group_nestings")
     .select("id, status")
-    .eq("church_id", params.churchId)
+    .eq("organization_id", params.churchId)
     .eq("parent_group_id", params.parentGroupId)
     .eq("child_group_id", params.childGroupId)
     .maybeSingle();
@@ -402,7 +402,7 @@ export async function addGroupToGroup(params: {
   const { data, error } = await params.supabase
     .from("notification_group_nestings")
     .insert({
-      church_id: params.churchId,
+      organization_id: params.churchId,
       parent_group_id: params.parentGroupId,
       child_group_id: params.childGroupId,
       status: "active",
@@ -432,7 +432,7 @@ export async function removeGroupFromGroup(params: {
       removed_at: new Date().toISOString(),
     })
     .eq("id", params.nestingId)
-    .eq("church_id", params.churchId)
+    .eq("organization_id", params.churchId)
     .eq("parent_group_id", params.parentGroupId)
     .eq("status", "active");
 

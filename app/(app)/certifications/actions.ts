@@ -37,7 +37,7 @@ export async function createCertification(
       .from("team_members")
       .select("id")
       .eq("id", input.team_member_id)
-      .eq("church_id", profile.church_id)
+      .eq("organization_id", profile.organization_id)
       .maybeSingle();
 
     if (memberError || !member) {
@@ -47,7 +47,7 @@ export async function createCertification(
     const { data: certification, error: insertError } = await supabase
       .from("certifications")
       .insert({
-        church_id: profile.church_id,
+        organization_id: profile.organization_id,
         team_member_id: input.team_member_id,
         certification_type: input.certification_type,
         issuer: input.issuer,
@@ -65,7 +65,7 @@ export async function createCertification(
     }
 
     await writeAuditLog(supabase, {
-      churchId: profile.church_id,
+      churchId: profile.organization_id,
       userId: user.id,
       action: AuditAction.CERTIFICATION_CREATED,
       entityType: AuditEntityType.CERTIFICATION,

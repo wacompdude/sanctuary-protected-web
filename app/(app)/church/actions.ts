@@ -9,7 +9,7 @@ export async function switchActiveChurch(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const churchId = String(formData.get("church_id") ?? "").trim();
+  const churchId = String(formData.get("organization_id") ?? "").trim();
 
   if (!churchId) {
     return { error: "Select a church to continue." };

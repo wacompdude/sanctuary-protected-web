@@ -245,7 +245,7 @@ export async function seedChurchCore(params: {
   ): Promise<string> {
     const registered = await getRegisteredId(admin, seedSource, def.seedKey);
     const payload = {
-      church_id: churchId!,
+      organization_id: churchId!,
       name: def.name,
       slug: def.slug,
       address_line_1: def.address_line_1,
@@ -273,7 +273,7 @@ export async function seedChurchCore(params: {
     const { data: bySlug } = await admin
       .from("campuses")
       .select("id")
-      .eq("church_id", churchId!)
+      .eq("organization_id", churchId!)
       .eq("slug", def.slug)
       .maybeSingle();
 
@@ -430,7 +430,7 @@ export async function seedChurchCore(params: {
         const prefKey = `pref.${person.seedKey}.${notificationType}`;
         const existingPrefId = await getRegisteredId(admin, seedSource, prefKey);
         const prefPayload = {
-          church_id: churchId,
+          organization_id: churchId,
           user_id: ensured.userId,
           notification_type: notificationType,
           email_enabled: true,
@@ -452,7 +452,7 @@ export async function seedChurchCore(params: {
           const { data: existing } = await admin
             .from("notification_preferences")
             .select("id")
-            .eq("church_id", churchId)
+            .eq("organization_id", churchId)
             .eq("user_id", ensured.userId)
             .eq("notification_type", notificationType)
             .maybeSingle();
@@ -562,7 +562,7 @@ export async function seedChurchCore(params: {
   const existingContact = await getRegisteredId(admin, seedSource, contactKey);
   // Prefer head_of_security contact row as a visible directory entry
   const contactPayload = {
-    church_id: churchId,
+    organization_id: churchId,
     contact_type: "head_of_security",
     organization_name: DEMO_CHURCH_NAME,
     full_name: "John Doe",

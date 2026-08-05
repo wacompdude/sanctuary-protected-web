@@ -29,7 +29,7 @@ function mapRow(row: Record<string, unknown>): DashboardBoxSettingRow | null {
 
   return {
     id: String(row.id),
-    church_id: String(row.church_id),
+    organization_id: String(row.organization_id),
     box_key: boxKey,
     is_visible: Boolean(row.is_visible),
     display_order: Number(row.display_order) || 0,
@@ -61,9 +61,9 @@ export async function listChurchDashboardBoxSettings(
   const { data, error } = await supabase
     .from("dashboard_box_settings")
     .select(
-      "id, church_id, box_key, is_visible, display_order, background_color, text_color, use_automatic_text_color, created_by, updated_by, created_at, updated_at",
+      "id, organization_id, box_key, is_visible, display_order, background_color, text_color, use_automatic_text_color, created_by, updated_by, created_at, updated_at",
     )
-    .eq("church_id", churchId);
+    .eq("organization_id", churchId);
 
   if (error) {
     if (isMissingTable(error.message)) return [];

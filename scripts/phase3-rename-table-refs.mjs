@@ -2,7 +2,7 @@
  * Phase 3 helper: rename quoted Supabase table identifiers for Option A.
  * Run: node scripts/phase3-rename-table-refs.mjs
  *
- * Does not change church_id columns, UI copy, RPC names, or historical migrations.
+ * Does not change organization_id columns, UI copy, RPC names, or historical migrations.
  */
 import fs from "fs";
 import path from "path";

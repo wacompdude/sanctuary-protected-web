@@ -32,7 +32,7 @@ export async function createTeamMember(
     const input = parseCreateTeamMemberInput(formData);
 
     const { error } = await supabase.from("team_members").insert({
-      church_id: profile.church_id,
+      organization_id: profile.organization_id,
       full_name: input.full_name,
       email: input.email,
       title: input.title,

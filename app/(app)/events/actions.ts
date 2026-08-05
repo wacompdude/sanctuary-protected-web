@@ -12,11 +12,11 @@ export async function acknowledgeEvent(
 
     const { data: event, error: fetchError } = await supabase
       .from("events")
-      .select("id, church_id, acknowledgment_status")
+      .select("id, organization_id, acknowledgment_status")
       .eq("id", eventId)
       .maybeSingle();
 
-    if (fetchError || !event || event.church_id !== profile.church_id) {
+    if (fetchError || !event || event.organization_id !== profile.organization_id) {
       return { error: "Event not found." };
     }
 
@@ -32,7 +32,7 @@ export async function acknowledgeEvent(
         acknowledged_at: new Date().toISOString(),
       })
       .eq("id", eventId)
-      .eq("church_id", profile.church_id);
+      .eq("organization_id", profile.organization_id);
 
     if (error) {
       return { error: error.message };
@@ -75,7 +75,7 @@ export async function createTestEvent(
     }
 
     const { error } = await supabase.from("events").insert({
-      church_id: profile.church_id,
+      organization_id: profile.organization_id,
       device,
       event_type,
       severity,

@@ -18,7 +18,7 @@ export async function recordLoginSecurityEvent(): Promise<void> {
   // Prefer logging against the user's oldest active church when available.
   const { data: membership } = await supabase
     .from("organization_memberships")
-    .select("church_id")
+    .select("organization_id")
     .eq("user_id", user.id)
     .eq("status", "active")
     .order("joined_at", { ascending: true, nullsFirst: false })
@@ -26,7 +26,7 @@ export async function recordLoginSecurityEvent(): Promise<void> {
     .maybeSingle();
 
   await writeAuditLog(supabase, {
-    churchId: membership?.church_id ?? null,
+    churchId: membership?.organization_id ?? null,
     userId: user.id,
     action: AuditAction.AUTH_LOGIN,
     entityType: AuditEntityType.USER,
@@ -39,7 +39,7 @@ export async function recordLoginSecurityEvent(): Promise<void> {
     ipAddress,
   }).then(async (result) => {
     // If church-scoped insert is blocked (e.g. suspended church), retry as auth-only.
-    if (!result.ok && membership?.church_id) {
+    if (!result.ok && membership?.organization_id) {
       await writeAuditLog(supabase, {
         churchId: null,
         userId: user.id,

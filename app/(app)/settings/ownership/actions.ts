@@ -45,7 +45,7 @@ export async function transferOwnershipToCoOwnerAction(
       .from("organization_memberships")
       .select("id, user_id, role, status")
       .eq("id", membershipId)
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .maybeSingle();
 
     if (targetError || !target) {

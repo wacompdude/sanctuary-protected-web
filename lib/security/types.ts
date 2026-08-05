@@ -59,8 +59,8 @@ export type RoleTemplateKind = "church" | "campus";
 
 export interface ChurchMembershipRoleRow {
   id: string;
-  church_id: string;
-  church_membership_id: string;
+  organization_id: string;
+  organization_membership_id: string;
   user_id: string;
   role: MembershipRole;
   is_primary: boolean;
@@ -106,7 +106,7 @@ export interface PermissionDefinition {
  */
 export interface SecurityGroup {
   id: string;
-  church_id: string;
+  organization_id: string;
   name: string;
   description: string | null;
   status: SecurityGroupStatus;
@@ -160,7 +160,7 @@ export interface SecurityGroupPermission {
  */
 export interface UserPermission {
   id: string;
-  church_id: string;
+  organization_id: string;
   user_id: string;
   permission_definition_id: string;
   permission_effect: PermissionEffect;
@@ -184,7 +184,7 @@ export interface UserPermission {
  */
 export interface SecurityAuditLog {
   id: string;
-  church_id: string;
+  organization_id: string;
   campus_id: string | null;
   actor_user_id: string;
   target_user_id: string | null;

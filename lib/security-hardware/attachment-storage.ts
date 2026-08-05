@@ -148,7 +148,7 @@ export async function uploadEquipmentPhotoFiles(params: {
     const { error: insertError } = await supabase
       .from("equipment_attachments")
       .insert({
-        church_id: churchId,
+        organization_id: churchId,
         equipment_id: equipmentId,
         kind: "photo",
         storage_path: objectPath,

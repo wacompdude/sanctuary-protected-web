@@ -59,7 +59,7 @@ export function SelectChurchList({
                 disabled={pending}
                 onClick={() => {
                   const formData = new FormData();
-                  formData.set("church_id", church.id);
+                  formData.set("organization_id", church.id);
                   startTransition(async () => {
                     const result = await switchActiveChurch({}, formData);
                     if (result.error) {

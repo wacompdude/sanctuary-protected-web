@@ -18,7 +18,7 @@ import type { MembershipRole } from "@/lib/church/types";
 import { displayMemberName } from "@/lib/church/team";
 
 const MEMBERSHIP_SELECT = `
-  id, church_id, campus_id, church_membership_id, user_id, campus_role,
+  id, organization_id, campus_id, organization_membership_id, user_id, campus_role,
   status, is_primary_campus, assigned_by, assigned_at, removed_at,
   created_at, updated_at
 `;
@@ -26,9 +26,9 @@ const MEMBERSHIP_SELECT = `
 function mapMembership(row: Record<string, unknown>): CampusMembership {
   return {
     id: String(row.id),
-    church_id: String(row.church_id),
+    organization_id: String(row.organization_id),
     campus_id: String(row.campus_id),
-    church_membership_id: String(row.church_membership_id),
+    organization_membership_id: String(row.organization_membership_id),
     user_id: String(row.user_id),
     campus_role: (row.campus_role as CampusRole) ?? "campus_viewer",
     status: (row.status as CampusMembershipStatus) ?? "active",
@@ -66,7 +66,7 @@ export async function listCampusMembers(
   let query = supabase
     .from("campus_memberships")
     .select(MEMBERSHIP_SELECT)
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("campus_id", campusId)
     .order("assigned_at", { ascending: false });
 
@@ -95,14 +95,14 @@ export async function listCampusMembers(
       : members.filter((member) => !hiddenUserIds.has(member.user_id));
   if (visibleMembers.length === 0) return [];
 
-  const membershipIds = visibleMembers.map((m) => m.church_membership_id);
+  const membershipIds = visibleMembers.map((m) => m.organization_membership_id);
   const userIds = [...new Set(visibleMembers.map((m) => m.user_id))];
 
   const [{ data: churchMemberships }, { data: profiles }] = await Promise.all([
     supabase
       .from("organization_memberships")
       .select("id, role, user_id")
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .in("id", membershipIds),
     supabase
       .from("profiles")
@@ -124,7 +124,7 @@ export async function listCampusMembers(
     const profile = profileByUserId.get(member.user_id);
     return {
       ...member,
-      church_role: roleByMembershipId.get(member.church_membership_id) ?? null,
+      church_role: roleByMembershipId.get(member.organization_membership_id) ?? null,
       display_name: profile
         ? displayMemberName({
             full_name: (profile.full_name as string | null) ?? null,
@@ -146,7 +146,7 @@ export async function getActorCampusMembership(
   const { data, error } = await supabase
     .from("campus_memberships")
     .select(MEMBERSHIP_SELECT)
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("campus_id", campusId)
     .eq("user_id", userId)
     .eq("status", "active")
@@ -184,7 +184,7 @@ export async function listOwnCampusMemberships(
 
   const { data: churchMemberships, error: membershipError } = await supabase
     .from("organization_memberships")
-    .select("id, church_id, role, status, churches(id, name)")
+    .select("id, organization_id, role, status, churches(id, name)")
     .eq("user_id", userId)
     .eq("status", "active");
 
@@ -194,7 +194,7 @@ export async function listOwnCampusMemberships(
 
   const churchRows = (churchMemberships ?? []) as Array<{
     id: string;
-    church_id: string;
+    organization_id: string;
     role: string;
     churches:
       | { id: string; name: string }
@@ -208,7 +208,7 @@ export async function listOwnCampusMemberships(
     .from("campus_memberships")
     .select(
       `
-      id, church_id, campus_id, campus_role, status, is_primary_campus,
+      id, organization_id, campus_id, campus_role, status, is_primary_campus,
       campuses ( id, name )
     `,
     )
@@ -223,7 +223,7 @@ export async function listOwnCampusMemberships(
           : row.churches;
         return {
           id: `implicit-${row.id}`,
-          church_id: row.church_id,
+          organization_id: row.organization_id,
           church_name: church?.name ?? "Church",
           campus_id: "",
           campus_name: "All campuses (implicit)",
@@ -246,7 +246,7 @@ export async function listOwnCampusMemberships(
         ? row.churches[0]
         : row.churches;
       return [
-        row.church_id,
+        row.organization_id,
         {
           church_name: church?.name ?? "Church",
           role: row.role,
@@ -259,10 +259,10 @@ export async function listOwnCampusMemberships(
     const campus = Array.isArray(row.campuses)
       ? row.campuses[0]
       : row.campuses;
-    const church = byChurch.get(String(row.church_id));
+    const church = byChurch.get(String(row.organization_id));
     return {
       id: String(row.id),
-      church_id: String(row.church_id),
+      organization_id: String(row.organization_id),
       church_name: church?.church_name ?? "Church",
       campus_id: String(row.campus_id),
       campus_name: (campus as { name?: string } | null)?.name ?? "Campus",
@@ -281,11 +281,11 @@ export async function listOwnCampusMemberships(
   const implicitExtras: OwnCampusMembership[] = [];
   for (const [churchId, info] of byChurch) {
     if (!hasImplicitAllCampusAccess(info.role as MembershipRole)) continue;
-    const hasExplicit = explicit.some((row) => row.church_id === churchId);
+    const hasExplicit = explicit.some((row) => row.organization_id === churchId);
     if (hasExplicit) continue;
     implicitExtras.push({
       id: `implicit-${churchId}`,
-      church_id: churchId,
+      organization_id: churchId,
       church_name: info.church_name,
       campus_id: "",
       campus_name: "All campuses",

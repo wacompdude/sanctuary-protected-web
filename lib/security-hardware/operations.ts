@@ -29,7 +29,7 @@ export type EquipmentAssignmentStatus =
 
 export type EquipmentMaintenanceRecord = {
   id: string;
-  church_id: string;
+  organization_id: string;
   equipment_id: string;
   maintenance_type: EquipmentMaintenanceType;
   status: EquipmentMaintenanceStatus;
@@ -53,7 +53,7 @@ export type EquipmentMaintenanceRecord = {
 
 export type EquipmentAssignmentRecord = {
   id: string;
-  church_id: string;
+  organization_id: string;
   equipment_id: string;
   assigned_user_id: string | null;
   assigned_team: string | null;

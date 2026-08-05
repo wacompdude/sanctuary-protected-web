@@ -27,7 +27,7 @@ export async function listIncidentsForChurch(
 ) {
   const supabase = await createClient();
 
-  let query = supabase.from("incidents").select("*").eq("church_id", churchId);
+  let query = supabase.from("incidents").select("*").eq("organization_id", churchId);
 
   if (options?.campusFilterOr) {
     query = query.or(options.campusFilterOr);
@@ -170,7 +170,7 @@ export async function listIncidentInvolvedMembers(
   const { data, error } = await supabase
     .from("incident_team_members")
     .select("id, incident_id, membership_id, created_at")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("incident_id", incidentId)
     .order("created_at", { ascending: true });
 

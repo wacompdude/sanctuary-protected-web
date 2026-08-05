@@ -31,17 +31,17 @@ export async function listOwnCertifications(): Promise<ProfileCertification[]> {
 
   const email = user.email.trim().toLowerCase();
   const memberships = await getUserMemberships(user.id);
-  const churchIds = memberships.map((m) => m.church_id);
+  const churchIds = memberships.map((m) => m.organization_id);
   if (churchIds.length === 0) return [];
 
   const churchNameById = new Map(
-    memberships.map((m) => [m.church_id, m.church.name]),
+    memberships.map((m) => [m.organization_id, m.church.name]),
   );
 
   const { data: members, error: memberError } = await supabase
     .from("team_members")
-    .select("id, church_id, full_name, title, email")
-    .in("church_id", churchIds)
+    .select("id, organization_id, full_name, title, email")
+    .in("organization_id", churchIds)
     .ilike("email", email);
 
   if (memberError) {
@@ -59,7 +59,7 @@ export async function listOwnCertifications(): Promise<ProfileCertification[]> {
         full_name: m.full_name as string,
         title: (m.title as string | null) ?? null,
         email: (m.email as string | null) ?? null,
-        church_id: m.church_id as string,
+        organization_id: m.organization_id as string,
       },
     ]),
   );
@@ -88,7 +88,7 @@ export async function listOwnCertifications(): Promise<ProfileCertification[]> {
         : null,
       status: getCertificationStatus(cert.expiration_date as string),
       church_name: member
-        ? (churchNameById.get(member.church_id) ?? null)
+        ? (churchNameById.get(member.organization_id) ?? null)
         : null,
     } as ProfileCertification;
   });

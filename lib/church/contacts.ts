@@ -68,7 +68,7 @@ export type ChurchContactGroupId =
 
 export type ChurchContactRecord = {
   id: string;
-  church_id: string;
+  organization_id: string;
   contact_type: ChurchContactType;
   organization_name: string | null;
   full_name: string | null;

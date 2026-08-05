@@ -61,7 +61,7 @@ export async function updateScheduleSettingsAction(
         ...validated.data,
         updated_by: user.id,
       })
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (error) {
       return {

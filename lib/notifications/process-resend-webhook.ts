@@ -164,7 +164,7 @@ async function applyDeliveryStatusFromWebhook(
   const nextStatus = EVENT_STATUS_MAP[params.eventType];
   const { data: delivery } = await admin
     .from("notification_deliveries")
-    .select("id, church_id, status")
+    .select("id, organization_id, status")
     .eq("provider", "resend")
     .eq("provider_message_id", params.providerMessageId)
     .maybeSingle();
@@ -174,7 +174,7 @@ async function applyDeliveryStatusFromWebhook(
       .from("notification_provider_events")
       .update({
         delivery_id: (delivery as { id?: string } | null)?.id ?? null,
-        church_id: (delivery as { church_id?: string } | null)?.church_id ?? null,
+        organization_id: (delivery as { organization_id?: string } | null)?.organization_id ?? null,
         processed_at: new Date().toISOString(),
       })
       .eq("id", params.eventRowId);

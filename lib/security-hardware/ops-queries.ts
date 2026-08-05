@@ -22,7 +22,7 @@ export async function listMaintenanceForEquipment(
   const { data, error } = await supabase
     .from("equipment_maintenance")
     .select("*")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("equipment_id", equipmentId)
     .order("scheduled_date", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
@@ -41,7 +41,7 @@ export async function listAssignmentsForEquipment(
   const { data, error } = await supabase
     .from("equipment_assignments")
     .select("*")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("equipment_id", equipmentId)
     .order("assigned_at", { ascending: false });
 
@@ -59,7 +59,7 @@ export async function getActiveAssignment(
   const { data, error } = await supabase
     .from("equipment_assignments")
     .select("*")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("equipment_id", equipmentId)
     .eq("status", "active")
     .order("assigned_at", { ascending: false })
@@ -96,7 +96,7 @@ export async function getMaintenanceDashboard(
   const { data: openRows, error: openError } = await supabase
     .from("equipment_maintenance")
     .select("*")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .in("status", ["scheduled", "in_progress"])
     .order("scheduled_date", { ascending: true, nullsFirst: false });
 
@@ -111,7 +111,7 @@ export async function getMaintenanceDashboard(
   const { data: completedRows } = await supabase
     .from("equipment_maintenance")
     .select("*")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("status", "completed")
     .order("completed_date", { ascending: false, nullsFirst: false })
     .limit(20);
@@ -119,7 +119,7 @@ export async function getMaintenanceDashboard(
   const { data: failedRows } = await supabase
     .from("equipment_maintenance")
     .select("*")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("status", "failed_inspection")
     .order("updated_at", { ascending: false })
     .limit(20);
@@ -127,7 +127,7 @@ export async function getMaintenanceDashboard(
   const { data: outOfService } = await supabase
     .from("security_equipment")
     .select("id, name, asset_tag, status")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .is("archived_at", null)
     .in("status", ["out_of_service", "maintenance"])
     .order("name", { ascending: true });
@@ -150,7 +150,7 @@ export async function getMaintenanceDashboard(
     const { data: equipment } = await supabase
       .from("security_equipment")
       .select("id, name, asset_tag")
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .in("id", equipmentIds);
     for (const row of equipment ?? []) {
       nameById.set(row.id as string, {

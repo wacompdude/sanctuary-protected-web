@@ -122,7 +122,7 @@ export async function getSafetyConcernActivationBlockers(params: {
       const { count, error } = await supabase
         .from("safety_concern_photos")
         .select("id", { count: "exact", head: true })
-        .eq("church_id", params.churchId)
+        .eq("organization_id", params.churchId)
         .eq("profile_id", params.profileId)
         .is("archived_at", null);
       if (error && !isMissingTableError(error)) {
@@ -142,7 +142,7 @@ export async function getSafetyConcernActivationBlockers(params: {
       const { count, error } = await supabase
         .from("safety_concern_incidents")
         .select("id", { count: "exact", head: true })
-        .eq("church_id", params.churchId)
+        .eq("organization_id", params.churchId)
         .eq("profile_id", params.profileId);
       if (error && !isMissingTableError(error)) {
         blockers.push(error.message);
@@ -166,7 +166,7 @@ export async function listSafetyConcernProfiles(
   let query = supabase
     .from("safety_concern_profiles")
     .select("*")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .order("updated_at", { ascending: false });
 
   if (!options.includeInactive) {
@@ -216,7 +216,7 @@ export async function listSafetyConcernProfiles(
     const { data: linkRows, error: linkError } = await supabase
       .from("safety_concern_incidents")
       .select("profile_id")
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .eq("incident_id", options.linkedIncidentId);
     if (linkError && !isMissingTableError(linkError)) {
       throw new Error(linkError.message);
@@ -233,7 +233,7 @@ export async function listSafetyConcernProfiles(
     const { data: campusRows, error: campusError } = await supabase
       .from("safety_concern_profile_campuses")
       .select("profile_id")
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .eq("campus_id", campusId)
       .in("profile_id", profileIds);
     if (campusError && !isMissingTableError(campusError)) {
@@ -271,7 +271,7 @@ export async function countActiveSafetyConcernProfiles(
     const { count, error } = await supabase
       .from("safety_concern_profiles")
       .select("id", { count: "exact", head: true })
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .eq("profile_status", "active")
       .is("archived_at", null);
 
@@ -285,7 +285,7 @@ export async function countActiveSafetyConcernProfiles(
   const { data, error } = await supabase
     .from("safety_concern_profiles")
     .select("id, scope_type, primary_campus_id")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("profile_status", "active")
     .is("archived_at", null);
 
@@ -304,7 +304,7 @@ export async function countActiveSafetyConcernProfiles(
   const { data: campusRows, error: campusError } = await supabase
     .from("safety_concern_profile_campuses")
     .select("profile_id")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("campus_id", campusId)
     .in("profile_id", profileIds);
 
@@ -333,7 +333,7 @@ export async function getSafetyConcernProfile(
   const { data, error } = await supabase
     .from("safety_concern_profiles")
     .select("*")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("id", profileId)
     .maybeSingle();
 
@@ -354,7 +354,7 @@ export async function listSafetyConcernPhotos(
   let query = supabase
     .from("safety_concern_photos")
     .select("*")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("profile_id", profileId)
     .order("display_order", { ascending: true })
     .order("created_at", { ascending: true });
@@ -388,7 +388,7 @@ export async function listSafetyConcernProfileCampuses(
   const { data, error } = await supabase
     .from("safety_concern_profile_campuses")
     .select("*")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("profile_id", profileId);
 
   if (error) {
@@ -407,7 +407,7 @@ export async function listSafetyConcernIncidentLinks(
   const { data, error } = await supabase
     .from("safety_concern_incidents")
     .select("*")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("profile_id", profileId)
     .order("created_at", { ascending: false });
 
@@ -427,7 +427,7 @@ export async function listSafetyConcernReviews(
   const { data, error } = await supabase
     .from("safety_concern_reviews")
     .select("*")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("profile_id", profileId)
     .order("reviewed_at", { ascending: false });
 
@@ -486,7 +486,7 @@ export async function listSafetyConcernBrowseItems(
   const { data: photoRows, error: photoError } = await supabase
     .from("safety_concern_photos")
     .select("*")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .in("profile_id", profileIds)
     .is("archived_at", null)
     .order("display_order", { ascending: true });
@@ -505,7 +505,7 @@ export async function listSafetyConcernBrowseItems(
   const { data: campusLinkRows } = await supabase
     .from("safety_concern_profile_campuses")
     .select("profile_id, campus_id")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .in("profile_id", profileIds);
 
   const campusIds = [
@@ -518,7 +518,7 @@ export async function listSafetyConcernBrowseItems(
     const { data: campusRows } = await supabase
       .from("campuses")
       .select("id, name")
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .in("id", campusIds);
     for (const campus of campusRows ?? []) {
       campusNameById.set(String(campus.id), String(campus.name ?? ""));

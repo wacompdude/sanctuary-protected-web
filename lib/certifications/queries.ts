@@ -12,7 +12,7 @@ export async function listTeamMembersForChurch(churchId: string) {
   const { data, error } = await supabase
     .from("team_members")
     .select("*")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("is_active", true)
     .order("full_name", { ascending: true });
 
@@ -47,7 +47,7 @@ export async function ensureTeamMemberForChurchMember(params: {
     const { data: byEmail, error: emailError } = await supabase
       .from("team_members")
       .select("*")
-      .eq("church_id", params.churchId)
+      .eq("organization_id", params.churchId)
       .eq("is_active", true)
       .ilike("email", email)
       .order("created_at", { ascending: true })
@@ -65,7 +65,7 @@ export async function ensureTeamMemberForChurchMember(params: {
   const { data: byName, error: nameError } = await supabase
     .from("team_members")
     .select("*")
-    .eq("church_id", params.churchId)
+    .eq("organization_id", params.churchId)
     .eq("is_active", true)
     .eq("full_name", fullName)
     .order("created_at", { ascending: true })
@@ -82,7 +82,7 @@ export async function ensureTeamMemberForChurchMember(params: {
   const { data: created, error: createError } = await supabase
     .from("team_members")
     .insert({
-      church_id: params.churchId,
+      organization_id: params.churchId,
       full_name: fullName.slice(0, 200),
       email,
       title: title ? title.slice(0, 200) : null,
@@ -114,7 +114,7 @@ export async function listCertificationsForChurch(churchId: string) {
       )
     `,
     )
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .order("expiration_date", { ascending: true });
 
   if (error) {

@@ -21,7 +21,7 @@ export async function syncMyNotificationEndpoints(params: {
   if (email) {
     const verified = Boolean(user.email_confirmed_at);
     const result = await upsertEndpoint(supabase, {
-      church_id: churchId,
+      organization_id: churchId,
       user_id: user.id,
       membership_id: membershipId,
       channel: "email",
@@ -52,7 +52,7 @@ export async function syncMyNotificationEndpoints(params: {
   const phone = phoneRaw ? normalizePhoneE164(phoneRaw) : null;
   if (phone) {
     const result = await upsertEndpoint(supabase, {
-      church_id: churchId,
+      organization_id: churchId,
       user_id: user.id,
       membership_id: membershipId,
       channel: "sms",
@@ -82,7 +82,7 @@ async function upsertEndpoint(
   const { data: existing, error: lookupError } = await supabase
     .from("notification_endpoints")
     .select("id, status, consent_status")
-    .eq("church_id", row.church_id as string)
+    .eq("organization_id", row.organization_id as string)
     .eq("user_id", row.user_id as string)
     .eq("channel", row.channel as string)
     .eq("normalized_destination", row.normalized_destination as string)
@@ -132,7 +132,7 @@ async function upsertEndpoint(
     await supabase
       .from("notification_endpoints")
       .update({ is_primary: false })
-      .eq("church_id", row.church_id as string)
+      .eq("organization_id", row.organization_id as string)
       .eq("user_id", row.user_id as string)
       .eq("channel", row.channel as string)
       .eq("is_primary", true);

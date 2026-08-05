@@ -75,7 +75,7 @@ export interface Church {
 export interface Profile {
   id: string;
   /** Active church from resolved context (not stored on profiles). */
-  church_id: string;
+  organization_id: string;
   first_name: string | null;
   last_name: string | null;
   full_name: string | null;
@@ -85,7 +85,7 @@ export interface Profile {
 
 export interface ChurchMembership {
   id: string;
-  church_id: string;
+  organization_id: string;
   user_id: string;
   role: MembershipRole;
   status: MembershipStatus;

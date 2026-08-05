@@ -60,7 +60,7 @@ async function syncProfileCampuses(params: {
   await params.supabase
     .from("safety_concern_profile_campuses")
     .delete()
-    .eq("church_id", params.churchId)
+    .eq("organization_id", params.churchId)
     .eq("profile_id", params.profileId);
 
   const ids = new Set<string>();
@@ -77,7 +77,7 @@ async function syncProfileCampuses(params: {
     .from("safety_concern_profile_campuses")
     .insert(
       [...ids].map((campus_id) => ({
-        church_id: params.churchId,
+        organization_id: params.churchId,
         profile_id: params.profileId,
         campus_id,
       })),
@@ -151,7 +151,7 @@ export async function createSafetyConcernProfile(
     const { data, error } = await supabase
       .from("safety_concern_profiles")
       .insert({
-        church_id: church.id,
+        organization_id: church.id,
         display_name: input.display_name,
         known_aliases: input.known_aliases,
         scope_type: input.scope_type,
@@ -314,7 +314,7 @@ export async function updateSafetyConcernProfile(
             : null,
       })
       .eq("id", profileId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (error) return { error: error.message };
 
@@ -384,7 +384,7 @@ export async function archiveSafetyConcernProfile(
         updated_by: user.id,
       })
       .eq("id", profileId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (error) return { error: error.message };
 
@@ -432,7 +432,7 @@ export async function restoreSafetyConcernProfile(
       updated_by: user.id,
     })
     .eq("id", profileId)
-    .eq("church_id", church.id);
+    .eq("organization_id", church.id);
 
   if (error) {
     throw new Error(error.message);
@@ -527,14 +527,14 @@ export async function uploadSafetyConcernPhoto(
         await supabase
           .from("safety_concern_photos")
           .update({ is_primary: false })
-          .eq("church_id", church.id)
+          .eq("organization_id", church.id)
           .eq("profile_id", profileId);
       }
 
       const { data: row, error: insertError } = await supabase
         .from("safety_concern_photos")
         .insert({
-          church_id: church.id,
+          organization_id: church.id,
           profile_id: profileId,
           storage_path: objectPath,
           file_name: file.name.slice(0, 255) || null,
@@ -622,7 +622,7 @@ export async function archiveSafetyConcernPhoto(
     })
     .eq("id", photoId)
     .eq("profile_id", profileId)
-    .eq("church_id", church.id);
+    .eq("organization_id", church.id);
 
   if (error) {
     throw new Error(error.message);
@@ -664,7 +664,7 @@ export async function linkSafetyConcernIncident(
       .from("incidents")
       .select("id")
       .eq("id", validation.data.incident_id)
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .maybeSingle();
 
     if (!incident) {
@@ -674,7 +674,7 @@ export async function linkSafetyConcernIncident(
     const { data, error } = await supabase
       .from("safety_concern_incidents")
       .insert({
-        church_id: church.id,
+        organization_id: church.id,
         profile_id: profileId,
         incident_id: validation.data.incident_id,
         relationship_type: validation.data.relationship_type,
@@ -732,7 +732,7 @@ export async function unlinkSafetyConcernIncident(
     .delete()
     .eq("id", linkId)
     .eq("profile_id", profileId)
-    .eq("church_id", church.id);
+    .eq("organization_id", church.id);
 
   if (error) {
     throw new Error(error.message);
@@ -810,7 +810,7 @@ export async function reviewSafetyConcernProfile(
     const { data: review, error: reviewError } = await supabase
       .from("safety_concern_reviews")
       .insert({
-        church_id: church.id,
+        organization_id: church.id,
         profile_id: profileId,
         reviewed_by: user.id,
         outcome: outcomeRaw,
@@ -838,7 +838,7 @@ export async function reviewSafetyConcernProfile(
         archived_by: nextStatus === "archived" ? user.id : null,
       })
       .eq("id", profileId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (error) return { error: error.message };
 

@@ -13,7 +13,7 @@ import { createAdminClient, isServiceRoleConfigured } from "@/lib/supabase/admin
 
 type DeliveryRow = {
   id: string;
-  church_id: string;
+  organization_id: string;
   notification_id: string;
   recipient_id: string;
   channel: string;
@@ -103,7 +103,7 @@ export async function dispatchPendingDeliveries(options?: {
   let query = admin
     .from("notification_deliveries")
     .select(
-      "id, church_id, notification_id, recipient_id, channel, provider, status, attempt_number, max_attempts, scheduled_for",
+      "id, organization_id, notification_id, recipient_id, channel, provider, status, attempt_number, max_attempts, scheduled_for",
     )
     .in("status", ["pending", "queued"])
     .eq("channel", "email")
@@ -410,10 +410,10 @@ export async function retryFailedDelivery(params: {
   const { data: delivery, error } = await admin
     .from("notification_deliveries")
     .select(
-      "id, church_id, notification_id, recipient_id, channel, provider, status, attempt_number, max_attempts, scheduled_for",
+      "id, organization_id, notification_id, recipient_id, channel, provider, status, attempt_number, max_attempts, scheduled_for",
     )
     .eq("id", params.deliveryId)
-    .eq("church_id", params.churchId)
+    .eq("organization_id", params.churchId)
     .maybeSingle();
 
   if (error || !delivery) {

@@ -26,7 +26,7 @@ export async function countActiveChurchMembers(
   const { count, error } = await supabase
     .from("organization_memberships")
     .select("id", { count: "exact", head: true })
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("status", "active");
 
   if (error) {
@@ -43,7 +43,7 @@ export async function countActiveCampuses(
   const { count, error } = await supabase
     .from("campuses")
     .select("id", { count: "exact", head: true })
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("status", "active");
 
   if (error) {
@@ -103,7 +103,7 @@ export async function requireCampusCreateCapacity(params: {
   const { count: existingCount, error } = await supabase
     .from("campuses")
     .select("id", { count: "exact", head: true })
-    .eq("church_id", params.churchId);
+    .eq("organization_id", params.churchId);
 
   if (error) {
     throw new Error("Unable to count campuses.");

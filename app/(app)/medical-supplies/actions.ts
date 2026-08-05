@@ -54,7 +54,7 @@ export async function createMedicalSupply(
     const { data, error } = await supabase
       .from("medical_supplies")
       .insert({
-        church_id: church.id,
+        organization_id: church.id,
         ...input,
         created_by: user.id,
         updated_by: user.id,
@@ -126,7 +126,7 @@ export async function updateMedicalSupply(
         updated_by: user.id,
       })
       .eq("id", supplyId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (error) {
       return { error: error.message };
@@ -170,7 +170,7 @@ export async function archiveMedicalSupply(
         updated_by: user.id,
       })
       .eq("id", supplyId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (error) return { error: error.message };
 
@@ -216,7 +216,7 @@ export async function restoreMedicalSupply(
         updated_by: user.id,
       })
       .eq("id", supplyId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (error) return { error: error.message };
 
@@ -271,9 +271,9 @@ export async function recordMedicalSupplyUsage(
 
     const { data: incident, error: incidentError } = await supabase
       .from("incidents")
-      .select("id, church_id, type")
+      .select("id, organization_id, type")
       .eq("id", incidentId)
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .maybeSingle();
 
     if (incidentError || !incident) {
@@ -298,7 +298,7 @@ export async function recordMedicalSupplyUsage(
     const { data, error } = await supabase
       .from("medical_supply_usage")
       .insert({
-        church_id: church.id,
+        organization_id: church.id,
         incident_id: incidentId,
         medical_supply_id: supplyId,
         quantity_used: quantity,
@@ -361,7 +361,7 @@ export async function removeMedicalSupplyUsage(
       .from("medical_supply_usage")
       .select("*")
       .eq("id", usageId)
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .eq("incident_id", incidentId)
       .maybeSingle();
 
@@ -373,7 +373,7 @@ export async function removeMedicalSupplyUsage(
       .from("medical_supply_usage")
       .delete()
       .eq("id", usageId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (error) return { error: error.message };
 

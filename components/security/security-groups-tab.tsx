@@ -386,7 +386,7 @@ export function SecurityGroupsTab() {
                       </div>
                       <div>
                         <p className="text-muted-foreground">Church ID</p>
-                        <p className="font-mono text-xs">{group.church_id}</p>
+                        <p className="font-mono text-xs">{group.organization_id}</p>
                       </div>
                     </div>
 

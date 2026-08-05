@@ -31,18 +31,18 @@ async function NotificationTemplatesContent() {
   let { data, error } = await supabase
     .from("notification_templates")
     .select(
-      "id, template_key, name, description, channel, severity, is_system_template, is_active, version, updated_at, church_id, default_sender_category",
+      "id, template_key, name, description, channel, severity, is_system_template, is_active, version, updated_at, organization_id, default_sender_category",
     )
-    .or(`church_id.eq.${church.id},church_id.is.null`)
+    .or(`organization_id.eq.${church.id},organization_id.is.null`)
     .order("template_key", { ascending: true });
 
   if (error && /default_sender_category|column/i.test(error.message)) {
     const fallback = await supabase
       .from("notification_templates")
       .select(
-        "id, template_key, name, description, channel, severity, is_system_template, is_active, version, updated_at, church_id",
+        "id, template_key, name, description, channel, severity, is_system_template, is_active, version, updated_at, organization_id",
       )
-      .or(`church_id.eq.${church.id},church_id.is.null`)
+      .or(`organization_id.eq.${church.id},organization_id.is.null`)
       .order("template_key", { ascending: true });
     data = fallback.data as typeof data;
     error = fallback.error;
@@ -63,7 +63,7 @@ async function NotificationTemplatesContent() {
     is_active: boolean;
     version: number;
     updated_at: string;
-    church_id: string | null;
+    organization_id: string | null;
     default_sender_category?: string | null;
   }>;
 
@@ -101,7 +101,7 @@ async function NotificationTemplatesContent() {
                     ? template.default_sender_category
                     : null;
                 const isChurchOwned =
-                  Boolean(template.church_id) && !template.is_system_template;
+                  Boolean(template.organization_id) && !template.is_system_template;
 
                 return (
                   <li key={template.id} className="rounded-md border border-border p-3">

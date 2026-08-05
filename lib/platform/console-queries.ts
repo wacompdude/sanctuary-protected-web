@@ -185,11 +185,11 @@ export async function listPlatformChurches(input: {
     }
     const { data: subRows } = await admin
       .from("organization_subscriptions")
-      .select("church_id")
+      .select("organization_id")
       .eq("plan_id", planRow.id)
       .in("status", [...CURRENT_SUBSCRIPTION_STATUSES]);
     planFilteredChurchIds = [
-      ...new Set((subRows ?? []).map((row) => String(row.church_id))),
+      ...new Set((subRows ?? []).map((row) => String(row.organization_id))),
     ];
     if (planFilteredChurchIds.length === 0) {
       return { items: [], total: 0, page, pageSize };
@@ -225,36 +225,36 @@ export async function listPlatformChurches(input: {
     churchIds.length
       ? admin
           .from("campuses")
-          .select("id, church_id")
-          .in("church_id", churchIds)
-      : Promise.resolve({ data: [] as Array<{ id: string; church_id: string }> }),
+          .select("id, organization_id")
+          .in("organization_id", churchIds)
+      : Promise.resolve({ data: [] as Array<{ id: string; organization_id: string }> }),
     churchIds.length
       ? admin
           .from("organization_memberships")
-          .select("id, church_id")
-          .in("church_id", churchIds)
+          .select("id, organization_id")
+          .in("organization_id", churchIds)
           .eq("status", "active")
-      : Promise.resolve({ data: [] as Array<{ id: string; church_id: string }> }),
+      : Promise.resolve({ data: [] as Array<{ id: string; organization_id: string }> }),
     churchIds.length
       ? admin
           .from("organization_subscriptions")
           .select(
-            "church_id, status, subscription_plans ( plan_key, display_name )",
+            "organization_id, status, subscription_plans ( plan_key, display_name )",
           )
-          .in("church_id", churchIds)
+          .in("organization_id", churchIds)
           .in("status", [...CURRENT_SUBSCRIPTION_STATUSES])
       : Promise.resolve({ data: [] as Array<Record<string, unknown>> }),
   ]);
 
   const campusCount = new Map<string, number>();
   for (const row of campusesRes.data ?? []) {
-    const id = String(row.church_id);
+    const id = String(row.organization_id);
     campusCount.set(id, (campusCount.get(id) ?? 0) + 1);
   }
 
   const memberCount = new Map<string, number>();
   for (const row of membersRes.data ?? []) {
-    const id = String(row.church_id);
+    const id = String(row.organization_id);
     memberCount.set(id, (memberCount.get(id) ?? 0) + 1);
   }
 
@@ -264,7 +264,7 @@ export async function listPlatformChurches(input: {
   >();
   for (const row of subsRes.data ?? []) {
     const record = row as Record<string, unknown>;
-    const churchId = String(record.church_id);
+    const churchId = String(record.organization_id);
     const planJoin = record.subscription_plans as
       | { plan_key?: string; display_name?: string }
       | { plan_key?: string; display_name?: string }[]
@@ -327,12 +327,12 @@ export async function getPlatformChurchDetail(
     admin
       .from("campuses")
       .select("id, name, status")
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .order("name", { ascending: true }),
     admin
       .from("organization_memberships")
       .select("id, user_id, role, status")
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .eq("status", "active")
       .order("role", { ascending: true })
       .limit(100),
@@ -341,7 +341,7 @@ export async function getPlatformChurchDetail(
       .select(
         "id, status, trial_end, current_period_end, cancel_at_period_end, subscription_plans ( plan_key, display_name )",
       )
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .in("status", [...CURRENT_SUBSCRIPTION_STATUSES])
       .maybeSingle(),
   ]);
@@ -608,7 +608,7 @@ export async function listCurrentSubscriptions(input: {
   const { data, error, count } = await admin
     .from("organization_subscriptions")
     .select(
-      "id, church_id, status, churches ( name ), subscription_plans ( plan_key, display_name )",
+      "id, organization_id, status, churches ( name ), subscription_plans ( plan_key, display_name )",
       { count: "exact" },
     )
     .in("status", [...CURRENT_SUBSCRIPTION_STATUSES])
@@ -633,7 +633,7 @@ export async function listCurrentSubscriptions(input: {
     const plan = Array.isArray(planJoin) ? planJoin[0] : planJoin;
     return {
       id: String(record.id),
-      churchId: String(record.church_id),
+      churchId: String(record.organization_id),
       churchName: String(church?.name ?? "Unknown church"),
       status: String(record.status ?? ""),
       planKey: String(plan?.plan_key ?? ""),

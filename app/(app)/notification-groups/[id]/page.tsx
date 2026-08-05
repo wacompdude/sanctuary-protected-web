@@ -170,7 +170,7 @@ async function GroupDetailContent({ id }: { id: string }) {
           group.is_system_group
             ? detail.effectiveUsers.map((user) => ({
                 id: `dynamic:${user.membershipId}`,
-                church_id: church.id,
+                organization_id: church.id,
                 group_id: group.id,
                 membership_id: user.membershipId,
                 user_id: user.userId,

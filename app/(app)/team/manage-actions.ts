@@ -21,9 +21,9 @@ async function loadTargetMembership(
 ) {
   const { data, error } = await supabase
     .from("organization_memberships")
-    .select("id, church_id, user_id, role, status")
+    .select("id, organization_id, user_id, role, status")
     .eq("id", membershipId)
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .maybeSingle();
 
   if (error || !data) {
@@ -32,7 +32,7 @@ async function loadTargetMembership(
 
   return {
     id: data.id as string,
-    church_id: data.church_id as string,
+    organization_id: data.organization_id as string,
     user_id: data.user_id as string,
     role: parseMembershipRoleSafe(data.role as string),
     status: parseMembershipStatus(data.status as string),
@@ -48,7 +48,7 @@ async function countActiveOwners(
   const { count } = await supabase
     .from("organization_memberships")
     .select("id", { count: "exact", head: true })
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("role", "owner")
     .eq("status", "active");
   return count ?? 0;
@@ -109,7 +109,7 @@ export async function updateTeamMemberRole(
         updated_at: new Date().toISOString(),
       })
       .eq("id", target.id)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (updateError) {
       return { error: updateError.message };
@@ -210,7 +210,7 @@ export async function updateTeamMemberStatus(
         updated_at: new Date().toISOString(),
       })
       .eq("id", target.id)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (updateError) {
       return { error: updateError.message };

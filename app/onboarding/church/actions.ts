@@ -75,20 +75,20 @@ export async function createChurchOnboarding(
 
   const payload =
     typeof data === "object" && data !== null
-      ? (data as { church_id?: string })
+      ? (data as { organization_id?: string })
       : null;
 
-  if (payload?.church_id) {
+  if (payload?.organization_id) {
     try {
-      await setActiveChurchForUser(payload.church_id);
+      await setActiveChurchForUser(payload.organization_id);
     } catch {
-      await writeActiveChurchCookie(payload.church_id);
+      await writeActiveChurchCookie(payload.organization_id);
     }
 
     if (isServiceRoleConfigured()) {
       try {
         await ensureChurchSubscription({
-          churchId: payload.church_id,
+          churchId: payload.organization_id,
           status: "trialing",
           periodDays: 30,
           userId: user.id,

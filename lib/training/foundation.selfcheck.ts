@@ -135,7 +135,7 @@ const payload = buildCompletionRecordPayload({
   renewalDueAt: "2027-01-15",
   sensitive: false,
 });
-assert(payload.church_id === "church-1", "completion church scoped");
+assert(payload.organization_id === "church-1", "completion church scoped");
 assert(payload.course_name === "Radio Communication", "denormalized course name");
 assert(payload.renewal_due_at === "2027-01-15", "renewal stored");
 assert(payload.source_type === "event", "default source event");

@@ -85,7 +85,7 @@ export type CompletionRecordShapeInput = {
 /** Pure helper for building completion record insert payloads. */
 export function buildCompletionRecordPayload(input: CompletionRecordShapeInput) {
   return {
-    church_id: input.churchId,
+    organization_id: input.churchId,
     campus_id: input.campusId ?? null,
     user_id: input.userId,
     training_event_id: input.eventId ?? null,

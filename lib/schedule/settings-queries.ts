@@ -19,7 +19,7 @@ function mapTemplate(row: Record<string, unknown>): ScheduleTemplate {
     : [];
   return {
     id: String(row.id),
-    church_id: String(row.church_id),
+    organization_id: String(row.organization_id),
     campus_id: (row.campus_id as string | null) ?? null,
     name: String(row.name ?? ""),
     description: (row.description as string | null) ?? null,
@@ -56,10 +56,10 @@ export async function ensureChurchScheduleSettings(
       .from("organization_schedule_settings")
       .upsert(
         {
-          church_id: churchId,
+          organization_id: churchId,
           timezone: timezone?.trim() || "America/Los_Angeles",
         },
-        { onConflict: "church_id" },
+        { onConflict: "organization_id" },
       )
       .select("*")
       .single();
@@ -83,7 +83,7 @@ export async function getTypedChurchScheduleSettings(
     const { data, error } = await supabase
       .from("organization_schedule_settings")
       .select("*")
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .maybeSingle();
     if (error) {
       if (isMissingRelation(error.message)) return null;
@@ -110,7 +110,7 @@ export async function listScheduleTemplates(
     let query = supabase
       .from("schedule_templates")
       .select("*")
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .order("name", { ascending: true });
     if (!options?.includeInactive) {
       query = query.eq("is_active", true);
@@ -154,7 +154,7 @@ export async function getScheduleTemplate(
     const { data, error } = await supabase
       .from("schedule_templates")
       .select("*")
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .eq("id", templateId)
       .maybeSingle();
     if (error) {

@@ -79,7 +79,7 @@ export async function createScheduleTemplateAction(
     const { data, error } = await supabase
       .from("schedule_templates")
       .insert({
-        church_id: church.id,
+        organization_id: church.id,
         ...validated.data,
         created_by: user.id,
         updated_by: user.id,
@@ -148,7 +148,7 @@ export async function updateScheduleTemplateAction(
         ...validated.data,
         updated_by: user.id,
       })
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .eq("id", templateId);
 
     if (error) {
@@ -189,7 +189,7 @@ export async function archiveScheduleTemplateAction(
   const { error } = await supabase
     .from("schedule_templates")
     .update({ is_active: false, updated_by: user.id })
-    .eq("church_id", church.id)
+    .eq("organization_id", church.id)
     .eq("id", templateId);
 
   if (error) {
@@ -257,7 +257,7 @@ export async function applyScheduleTemplateAction(
     const { data: event, error: eventError } = await supabase
       .from("schedule_events")
       .insert({
-        church_id: church.id,
+        organization_id: church.id,
         campus_id: campusId,
         title,
         description: template.description,
@@ -294,7 +294,7 @@ export async function applyScheduleTemplateAction(
         shiftStart.getTime() + def.duration_minutes * 60 * 1000,
       );
       return {
-        church_id: church.id,
+        organization_id: church.id,
         campus_id: campusId,
         event_id: event.id,
         title: def.title,

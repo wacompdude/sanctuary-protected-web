@@ -11,7 +11,7 @@ import type {
 } from "@/lib/campuses/types";
 
 const EXTENDED_SELECT = `
-  id, church_id, name, short_name, slug, description, campus_type, status,
+  id, organization_id, name, short_name, slug, description, campus_type, status,
   is_primary, primary_email, phone, address_line_1, address_line_2, city, state,
   postal_code, country, timezone, emergency_contact_name, emergency_contact_phone,
   police_non_emergency_phone, fire_non_emergency_phone, nearest_hospital_name,
@@ -21,14 +21,14 @@ const EXTENDED_SELECT = `
 `;
 
 const LEGACY_SELECT = `
-  id, church_id, name, address_line_1, address_line_2, city, state,
+  id, organization_id, name, address_line_1, address_line_2, city, state,
   postal_code, timezone, status, created_at, updated_at
 `;
 
 function mapCampus(row: Record<string, unknown>, extended: boolean): Campus {
   return {
     id: String(row.id),
-    church_id: String(row.church_id),
+    organization_id: String(row.organization_id),
     name: String(row.name ?? ""),
     short_name: extended ? ((row.short_name as string | null) ?? null) : null,
     slug: extended ? ((row.slug as string | null) ?? null) : null,
@@ -106,7 +106,7 @@ export async function listCampuses(
     const extendedResult = await supabase
       .from("campuses")
       .select(EXTENDED_SELECT)
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .order("is_primary", { ascending: false })
       .order("name", { ascending: true });
 
@@ -118,7 +118,7 @@ export async function listCampuses(
       const legacy = await supabase
         .from("campuses")
         .select(LEGACY_SELECT)
-        .eq("church_id", churchId)
+        .eq("organization_id", churchId)
         .order("name", { ascending: true });
       data = (legacy.data as Record<string, unknown>[] | null) ?? null;
       error = legacy.error;
@@ -149,7 +149,7 @@ export async function listCampuses(
       const { data: memberships } = await supabase
         .from("campus_memberships")
         .select("campus_id")
-        .eq("church_id", churchId)
+        .eq("organization_id", churchId)
         .eq("status", "active");
       const counts = new Map<string, number>();
       for (const row of memberships ?? []) {
@@ -193,7 +193,7 @@ export async function getCampus(
   const extendedResult = await supabase
     .from("campuses")
     .select(EXTENDED_SELECT)
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("id", campusId)
     .maybeSingle();
 
@@ -205,7 +205,7 @@ export async function getCampus(
     const legacy = await supabase
       .from("campuses")
       .select(LEGACY_SELECT)
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .eq("id", campusId)
       .maybeSingle();
     data = (legacy.data as Record<string, unknown> | null) ?? null;
@@ -225,7 +225,7 @@ export async function getCampus(
     const { count } = await supabase
       .from("campus_memberships")
       .select("id", { count: "exact", head: true })
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .eq("campus_id", campusId)
       .eq("status", "active");
     campus.member_count = count ?? 0;

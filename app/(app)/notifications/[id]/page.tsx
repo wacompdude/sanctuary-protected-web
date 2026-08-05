@@ -28,7 +28,7 @@ async function NotificationDetailContent({ id }: { id: string }) {
     .select("id, read_at, acknowledged_at, dismissed_at, user_id")
     .eq("notification_id", id)
     .eq("user_id", user.id)
-    .eq("church_id", church.id)
+    .eq("organization_id", church.id)
     .maybeSingle();
   if (recipientError) throw new Error(recipientError.message);
 
@@ -43,7 +43,7 @@ async function NotificationDetailContent({ id }: { id: string }) {
     .from("notifications")
     .select("*")
     .eq("id", id)
-    .eq("church_id", church.id)
+    .eq("organization_id", church.id)
     .maybeSingle();
   if (notificationError) throw new Error(notificationError.message);
   if (!notification) {

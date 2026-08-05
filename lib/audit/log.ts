@@ -28,7 +28,7 @@ export async function writeAuditLog(
   const metadata = sanitizeAuditMetadata(input.metadata ?? {});
 
   const { error } = await supabase.from("audit_logs").insert({
-    church_id: input.churchId ?? null,
+    organization_id: input.churchId ?? null,
     user_id: input.userId ?? null,
     action: input.action,
     entity_type: input.entityType ?? null,

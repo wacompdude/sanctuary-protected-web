@@ -29,7 +29,7 @@ function normalizeRoleArray(value: unknown): string[] {
 function mapSettingsRow(row: Record<string, unknown>): ChurchNotificationSettings {
   return {
     id: String(row.id),
-    church_id: String(row.church_id),
+    organization_id: String(row.organization_id),
     default_sender_name:
       typeof row.default_sender_name === "string"
         ? row.default_sender_name
@@ -66,7 +66,7 @@ export async function getChurchNotificationSettings(
   const { data, error } = await supabase
     .from("organization_notification_settings")
     .select("*")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .maybeSingle();
 
   if (error) {
@@ -83,7 +83,7 @@ export async function getChurchNotificationSettings(
 
   const { data: inserted, error: insertError } = await supabase
     .from("organization_notification_settings")
-    .insert({ church_id: churchId })
+    .insert({ organization_id: churchId })
     .select("*")
     .single();
 
@@ -91,7 +91,7 @@ export async function getChurchNotificationSettings(
     // Fall back to in-memory defaults if insert is blocked by RLS for the caller.
     return {
       id: "default",
-      church_id: churchId,
+      organization_id: churchId,
       default_sender_name: null,
       reply_to_email: null,
       email_notifications_enabled: true,
@@ -124,7 +124,7 @@ export async function getNotificationTemplate(
   const { data: churchTemplate } = await supabase
     .from("notification_templates")
     .select("*")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("template_key", templateKey)
     .eq("channel", channel)
     .eq("is_active", true)
@@ -137,7 +137,7 @@ export async function getNotificationTemplate(
   const { data: systemTemplate } = await supabase
     .from("notification_templates")
     .select("*")
-    .is("church_id", null)
+    .is("organization_id", null)
     .eq("template_key", templateKey)
     .eq("channel", channel)
     .eq("is_system_template", true)
@@ -158,7 +158,7 @@ function mapTemplate(row: Record<string, unknown>): NotificationTemplate {
 
   return {
     id: String(row.id),
-    church_id: (row.church_id as string | null) ?? null,
+    organization_id: (row.organization_id as string | null) ?? null,
     template_key: String(row.template_key),
     name: String(row.name),
     description: (row.description as string | null) ?? null,

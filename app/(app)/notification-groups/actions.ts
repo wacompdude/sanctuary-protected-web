@@ -66,7 +66,7 @@ export async function createNotificationGroupAction(
     const { data, error } = await supabase
       .from("notification_groups")
       .insert({
-        church_id: church.id,
+        organization_id: church.id,
         campus_id: campusId,
         name: nameResult.name,
         description,
@@ -191,7 +191,7 @@ export async function updateNotificationGroupAction(
       .from("notification_groups")
       .update(patch)
       .eq("id", groupId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (error) {
       return {
@@ -268,7 +268,7 @@ export async function addNotificationGroupMembersAction(
     const { data: members, error: memberError } = await supabase
       .from("organization_memberships")
       .select("id, user_id, status")
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .eq("status", "active")
       .in("id", membershipIds);
 
@@ -302,7 +302,7 @@ export async function addNotificationGroupMembersAction(
         const { error: insertError } = await supabase
           .from("notification_group_members")
           .insert({
-            church_id: church.id,
+            organization_id: church.id,
             group_id: groupId,
             membership_id: row.id,
             user_id: row.user_id,
@@ -350,7 +350,7 @@ export async function addNotificationGroupMembersByRoleAction(
     const { data: members, error } = await supabase
       .from("organization_memberships")
       .select("id")
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .eq("status", "active")
       .eq("role", role);
 
@@ -408,7 +408,7 @@ export async function removeNotificationGroupMemberAction(
       })
       .eq("id", memberRowId)
       .eq("group_id", groupId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (error) return { error: error.message };
 
@@ -459,7 +459,7 @@ export async function upsertNotificationGroupDefaultAction(
       parseGroupSeverity(formData.get("minimum_severity")) ?? "informational";
 
     const payload = {
-      church_id: church.id,
+      organization_id: church.id,
       group_id: groupId,
       notification_type: notificationType,
       email_enabled: readCheckbox(formData, "email_enabled"),

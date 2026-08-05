@@ -163,7 +163,7 @@ export async function uploadEquipmentAttachments(
       const { data: row, error: insertError } = await supabase
         .from("equipment_attachments")
         .insert({
-          church_id: church.id,
+          organization_id: church.id,
           equipment_id: equipmentId,
           kind: resolvedKind,
           storage_path: objectPath,
@@ -232,7 +232,7 @@ export async function deleteEquipmentAttachment(
       .from("equipment_attachments")
       .select("*")
       .eq("id", attachmentId)
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .maybeSingle();
 
     if (error || !attachment) {
@@ -260,7 +260,7 @@ export async function deleteEquipmentAttachment(
       .from("equipment_attachments")
       .delete()
       .eq("id", attachmentId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (deleteRowError) {
       return { error: deleteRowError.message };
@@ -350,7 +350,7 @@ export async function addEquipmentRelationship(
     const { data, error } = await supabase
       .from("equipment_relationships")
       .insert({
-        church_id: church.id,
+        organization_id: church.id,
         parent_equipment_id: parentId,
         child_equipment_id: childId,
         relationship_type: typeRaw as EquipmentRelationshipType,
@@ -414,7 +414,7 @@ export async function removeEquipmentRelationship(
       .from("equipment_relationships")
       .select("*")
       .eq("id", relationshipId)
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .maybeSingle();
 
     if (error || !relationship) {
@@ -425,7 +425,7 @@ export async function removeEquipmentRelationship(
       .from("equipment_relationships")
       .delete()
       .eq("id", relationshipId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (deleteError) {
       return { error: deleteError.message };

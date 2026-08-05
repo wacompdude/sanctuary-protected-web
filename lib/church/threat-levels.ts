@@ -16,7 +16,7 @@ export const THREAT_LEVEL_NOTES_MAX_LENGTH = 4000;
 
 export type ChurchThreatLevelRecord = {
   id: string;
-  church_id: string;
+  organization_id: string;
   week_start: string;
   threat_level: ThreatLevel;
   notes: string | null;

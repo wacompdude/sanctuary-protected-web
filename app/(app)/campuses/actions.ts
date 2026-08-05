@@ -58,7 +58,7 @@ async function clearOtherPrimaries(
   let query = supabase
     .from("campuses")
     .update({ is_primary: false })
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("is_primary", true);
   if (exceptCampusId) {
     query = query.neq("id", exceptCampusId);
@@ -90,7 +90,7 @@ export async function createCampusAction(
     const { data: existingPrimary } = await supabase
       .from("campuses")
       .select("id")
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .eq("is_primary", true)
       .maybeSingle();
 
@@ -100,7 +100,7 @@ export async function createCampusAction(
     }
 
     const payload = {
-      church_id: church.id,
+      organization_id: church.id,
       ...validated.data,
       is_primary: makePrimary,
       timezone:
@@ -175,7 +175,7 @@ export async function updateCampusAction(
     const { data: existing } = await supabase
       .from("campuses")
       .select("id, is_primary, status")
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .eq("id", campusId)
       .maybeSingle();
 
@@ -218,7 +218,7 @@ export async function updateCampusAction(
             : null,
         updated_by: user.id,
       })
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .eq("id", campusId);
 
     if (error) {
@@ -306,7 +306,7 @@ export async function updateCampusStatusAction(
     const { data: existing } = await supabase
       .from("campuses")
       .select("id, is_primary, status, name")
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .eq("id", campusId)
       .maybeSingle();
 
@@ -342,7 +342,7 @@ export async function updateCampusStatusAction(
           status === "archived" ? new Date().toISOString() : null,
         updated_by: user.id,
       })
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .eq("id", campusId);
 
     if (error) {
@@ -393,7 +393,7 @@ export async function setPrimaryCampusAction(
     const { data: campus } = await supabase
       .from("campuses")
       .select("id, status, name")
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .eq("id", campusId)
       .maybeSingle();
 
@@ -410,7 +410,7 @@ export async function setPrimaryCampusAction(
         campus_type: "main",
         updated_by: user.id,
       })
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .eq("id", campusId);
 
     if (error) {

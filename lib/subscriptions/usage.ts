@@ -254,7 +254,7 @@ async function applyAggregateDelta(
     const used = Math.max(0, params.usedDelta);
     const reserved = Math.max(0, params.reservedDelta);
     const { error } = await admin.from("subscription_usage").insert({
-      church_id: params.churchId,
+      organization_id: params.churchId,
       subscription_id: params.subscriptionId,
       feature_id: params.featureId,
       period_start: params.periodStart,
@@ -354,7 +354,7 @@ export async function recordUsageEvent(
   const { data: existingEvent } = await admin
     .from("subscription_usage_events")
     .select("id")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("usage_key", usageKey)
     .maybeSingle();
 
@@ -380,7 +380,7 @@ export async function recordUsageEvent(
   const { data: inserted, error: insertError } = await admin
     .from("subscription_usage_events")
     .insert({
-      church_id: churchId,
+      organization_id: churchId,
       subscription_id: subscription.id,
       feature_id: featureId,
       usage_key: usageKey,
@@ -519,7 +519,7 @@ export async function reconcileUsageFromEvents(params: {
   const { data: events, error } = await admin
     .from("subscription_usage_events")
     .select("quantity, event_type")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("subscription_id", subscription.id)
     .eq("feature_id", featureId)
     .eq("billing_period_start", period.periodStart)
@@ -564,7 +564,7 @@ export async function reconcileUsageFromEvents(params: {
     }
   } else if (used > 0 || reserved > 0) {
     const { error: insertError } = await admin.from("subscription_usage").insert({
-      church_id: churchId,
+      organization_id: churchId,
       subscription_id: subscription.id,
       feature_id: featureId,
       period_start: period.periodStart,

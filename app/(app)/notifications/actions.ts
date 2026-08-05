@@ -208,7 +208,7 @@ export async function updateMyNotificationPreferencesAction(
     const timezone = String(formData.get("timezone") ?? "UTC").trim();
 
     const payload = {
-      church_id: church.id,
+      organization_id: church.id,
       user_id: user.id,
       notification_type: notificationType,
       email_enabled: readCheckbox(formData, "email_enabled"),
@@ -226,7 +226,7 @@ export async function updateMyNotificationPreferencesAction(
 
     const { error } = await supabase
       .from("notification_preferences")
-      .upsert(payload, { onConflict: "church_id,user_id,notification_type" });
+      .upsert(payload, { onConflict: "organization_id,user_id,notification_type" });
     if (error) return { error: error.message };
 
     await writeAuditLog(supabase, {
@@ -310,7 +310,7 @@ export async function updateChurchNotificationSettingsAction(
 
     const { error } = await supabase
       .from("organization_notification_settings")
-      .upsert({ church_id: church.id, ...patch }, { onConflict: "church_id" });
+      .upsert({ organization_id: church.id, ...patch }, { onConflict: "organization_id" });
     if (error) return { error: error.message };
 
     await writeAuditLog(supabase, {
@@ -350,7 +350,7 @@ async function assertSenderTestRateLimit(params: {
   const { data, error } = await params.supabase
     .from("audit_logs")
     .select("id, created_at, metadata")
-    .eq("church_id", params.churchId)
+    .eq("organization_id", params.churchId)
     .eq("user_id", params.userId)
     .eq("action", AuditAction.EMAIL_SENDER_TEST_SENT)
     .gte("created_at", since)

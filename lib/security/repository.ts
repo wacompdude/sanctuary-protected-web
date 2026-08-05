@@ -43,7 +43,7 @@ export async function listSecurityGroups(
   churchId: string,
   activeOnly: boolean = true,
 ): Promise<SecurityGroup[]> {
-  let query = admin.from("security_groups").select("*").eq("church_id", churchId);
+  let query = admin.from("security_groups").select("*").eq("organization_id", churchId);
 
   if (activeOnly) {
     query = query.eq("status", "active");
@@ -110,7 +110,7 @@ export async function getUserSecurityGroupMemberships(
   return (data || [])
     .map((item: Record<string, unknown>) => {
       const group = item.security_groups as SecurityGroup | null;
-      if (!group || group.church_id !== churchId) return null;
+      if (!group || group.organization_id !== churchId) return null;
       const membership: SecurityGroupMember = {
         id: String(item.id),
         security_group_id: String(item.security_group_id),
@@ -182,13 +182,13 @@ export async function listPermissionGrantHolders(
         .select(
           "user_id, permission_effect, status, expires_at, assigned_at, reason",
         )
-        .eq("church_id", churchId)
+        .eq("organization_id", churchId)
         .eq("permission_definition_id", permissionDefinitionId)
         .neq("status", "revoked"),
       admin
         .from("security_group_permissions")
         .select(
-          "security_group_id, permission_effect, expires_at, security_groups!inner(id, name, church_id, status)",
+          "security_group_id, permission_effect, expires_at, security_groups!inner(id, name, organization_id, status)",
         )
         .eq("permission_definition_id", permissionDefinitionId),
     ]);
@@ -224,13 +224,13 @@ export async function listPermissionGrantHolders(
       | {
           id: string;
           name: string;
-          church_id: string;
+          organization_id: string;
           status: string;
         }
       | {
           id: string;
           name: string;
-          church_id: string;
+          organization_id: string;
           status: string;
         }[]
       | null;
@@ -239,7 +239,7 @@ export async function listPermissionGrantHolders(
       const group = Array.isArray(row.security_groups)
         ? row.security_groups[0]
         : row.security_groups;
-      if (!group || group.church_id !== churchId || group.status !== "active") {
+      if (!group || group.organization_id !== churchId || group.status !== "active") {
         return null;
       }
       return {
@@ -309,7 +309,7 @@ export async function getUserDirectPermissions(
     .from("user_permissions")
     .select("*")
     .eq("user_id", userId)
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .neq("status", "revoked");
 
   if (error) {
@@ -392,7 +392,7 @@ export async function createSecurityGroup(
   const { data, error } = await admin
     .from("security_groups")
     .insert({
-      church_id: churchId,
+      organization_id: churchId,
       name,
       description,
       created_by: createdBy,
@@ -564,7 +564,7 @@ export async function grantUserPermission(
     .from("user_permissions")
     .insert({
       user_id: userId,
-      church_id: churchId,
+      organization_id: churchId,
       permission_definition_id: permissionDefinitionId,
       permission_effect: "grant",
       scope_type: scopeType,
@@ -605,7 +605,7 @@ export async function denyUserPermission(
     .from("user_permissions")
     .insert({
       user_id: userId,
-      church_id: churchId,
+      organization_id: churchId,
       permission_definition_id: permissionDefinitionId,
       permission_effect: "deny",
       scope_type: scopeType,
@@ -694,7 +694,7 @@ export async function getUserPermissionById(
     .from("user_permissions")
     .select("*")
     .eq("id", permissionId)
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .maybeSingle();
 
   if (error) {
@@ -741,7 +741,7 @@ export async function listChurchUserPermissions(
   let query = admin
     .from("user_permissions")
     .select("*")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .neq("status", "revoked")
     .order("assigned_at", { ascending: false });
 

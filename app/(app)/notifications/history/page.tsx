@@ -55,7 +55,7 @@ async function NotificationHistoryContent() {
       )
     `,
     )
-    .eq("church_id", church.id)
+    .eq("organization_id", church.id)
     .order("created_at", { ascending: false })
     .limit(150);
 
@@ -90,7 +90,7 @@ async function NotificationHistoryContent() {
       )
     `,
           )
-          .eq("church_id", church.id)
+          .eq("organization_id", church.id)
           .order("created_at", { ascending: false })
           .limit(150)
       : { data: null, error: null };

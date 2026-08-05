@@ -120,7 +120,7 @@ export type NotificationType =
 
 export type ChurchNotificationSettings = {
   id: string;
-  church_id: string;
+  organization_id: string;
   default_sender_name: string | null;
   reply_to_email: string | null;
   email_notifications_enabled: boolean;
@@ -142,7 +142,7 @@ export type ChurchNotificationSettings = {
 
 export type NotificationTemplate = {
   id: string;
-  church_id: string | null;
+  organization_id: string | null;
   template_key: string;
   name: string;
   description: string | null;

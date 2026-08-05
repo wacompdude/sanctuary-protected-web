@@ -30,7 +30,7 @@ export type ScheduleCalendarView = "month" | "week" | "day" | "agenda";
 
 export type ScheduleEvent = {
   id: string;
-  church_id: string;
+  organization_id: string;
   campus_id: string | null;
   title: string;
   description: string | null;
@@ -169,7 +169,7 @@ export type ScheduleConflict = {
 
 export type ScheduleShift = {
   id: string;
-  church_id: string;
+  organization_id: string;
   campus_id: string | null;
   event_id: string | null;
   title: string;
@@ -204,7 +204,7 @@ export type ScheduleShift = {
 
 export type ShiftAssignment = {
   id: string;
-  church_id: string;
+  organization_id: string;
   shift_id: string;
   membership_id: string | null;
   user_id: string | null;
@@ -264,7 +264,7 @@ export type UnavailabilityStatus = "active" | "cancelled" | "expired";
 
 export type MemberUnavailability = {
   id: string;
-  church_id: string;
+  organization_id: string;
   membership_id: string;
   user_id: string;
   title: string | null;
@@ -328,7 +328,7 @@ export type AvailabilityConflictRow = {
 
 export type ChurchScheduleSettings = {
   id: string;
-  church_id: string;
+  organization_id: string;
   default_calendar_view: ScheduleCalendarView;
   week_starts_on: number;
   default_event_duration_minutes: number;
@@ -378,7 +378,7 @@ export type ScheduleTemplateShiftDefinition = {
 
 export type ScheduleTemplate = {
   id: string;
-  church_id: string;
+  organization_id: string;
   campus_id: string | null;
   name: string;
   description: string | null;

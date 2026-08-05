@@ -287,7 +287,7 @@ export async function listPlatformSubscriptionHistory(
     .select(
       "id, change_type, reason, old_status, new_status, created_at, old_plan_id, new_plan_id",
     )
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .order("created_at", { ascending: false })
     .limit(limit);
 

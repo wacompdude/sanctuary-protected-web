@@ -71,7 +71,7 @@ export function PlatformSupportWorkspacePanel({
     setError(null);
     setMessage(null);
     const formData = new FormData();
-    formData.set("church_id", selectedChurchId);
+    formData.set("organization_id", selectedChurchId);
     formData.set("reason", reason);
     formData.set("ticket_reference", ticket);
     formData.set("access_type", accessType);

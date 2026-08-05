@@ -40,7 +40,7 @@ export type PolicyAudienceScope =
 
 export type PolicyCategory = {
   id: string;
-  church_id: string;
+  organization_id: string;
   key: string;
   label: string;
   description: string | null;
@@ -51,7 +51,7 @@ export type PolicyCategory = {
 
 export type PolicyVersion = {
   id: string;
-  church_id: string;
+  organization_id: string;
   policy_document_id: string;
   version_number: number;
   version_label: string;
@@ -74,7 +74,7 @@ export type PolicyVersion = {
 
 export type PolicyDocument = {
   id: string;
-  church_id: string;
+  organization_id: string;
   campus_id: string | null;
   category_id: string | null;
   document_type: PolicyDocumentType;
@@ -162,7 +162,7 @@ export type PolicyApprovalDecision =
 
 export type PolicyApproval = {
   id: string;
-  church_id: string;
+  organization_id: string;
   policy_document_id: string;
   policy_version_id: string;
   decision: PolicyApprovalDecision;
@@ -211,7 +211,7 @@ export type PolicyAttachmentType =
 
 export type PolicyAttachment = {
   id: string;
-  church_id: string;
+  organization_id: string;
   policy_document_id: string;
   policy_version_id: string | null;
   file_name: string;
@@ -235,7 +235,7 @@ export type PolicyAcknowledgmentStatus =
 
 export type PolicyAcknowledgment = {
   id: string;
-  church_id: string;
+  organization_id: string;
   policy_document_id: string;
   policy_version_id: string;
   user_id: string;
@@ -265,7 +265,7 @@ export type PolicyAssignmentType =
 
 export type PolicyAssignment = {
   id: string;
-  church_id: string;
+  organization_id: string;
   policy_document_id: string;
   policy_version_id: string | null;
   assignment_type: PolicyAssignmentType;

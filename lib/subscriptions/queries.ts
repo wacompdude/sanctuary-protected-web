@@ -222,7 +222,7 @@ export async function getChurchSubscription(
     .select(
       `
       id,
-      church_id,
+      organization_id,
       plan_id,
       status,
       billing_interval,
@@ -241,7 +241,7 @@ export async function getChurchSubscription(
       )
     `,
     )
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .in("status", [...CURRENT_SUBSCRIPTION_STATUSES])
     .order("started_at", { ascending: false })
     .limit(1)
@@ -259,7 +259,7 @@ export async function getChurchSubscription(
 
   return {
     id: String(row.id),
-    church_id: String(row.church_id),
+    organization_id: String(row.organization_id),
     plan_id: String(row.plan_id),
     status: row.status as ChurchSubscriptionRecord["status"],
     billing_interval:

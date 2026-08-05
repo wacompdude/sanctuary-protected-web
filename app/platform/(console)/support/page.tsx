@@ -33,7 +33,7 @@ async function SupportContent() {
         <div className="rounded-lg border border-amber-800/60 bg-amber-950/20 p-5 text-sm">
           <p className="font-medium text-amber-200">Active session</p>
           <p className="mt-2 text-slate-300">
-            {active.church_name || active.church_id} · {active.access_type} ·
+            {active.church_name || active.organization_id} · {active.access_type} ·
             expires {new Date(active.expires_at).toLocaleString()}
           </p>
           <p className="mt-1 text-slate-500">{active.reason}</p>
@@ -51,7 +51,7 @@ async function SupportContent() {
 
       {permissions.has("churches.support_access") ? (
         <PlatformSupportWorkspacePanel
-          initialChurchId={active?.church_id}
+          initialChurchId={active?.organization_id}
           initialChurchName={active?.church_name}
         />
       ) : null}
@@ -83,7 +83,7 @@ async function SupportContent() {
                       {new Date(row.started_at).toLocaleString()}
                     </td>
                     <td className="px-3 py-2">
-                      {row.church_name || row.church_id}
+                      {row.church_name || row.organization_id}
                     </td>
                     <td className="px-3 py-2 text-slate-300">
                       {row.access_type}

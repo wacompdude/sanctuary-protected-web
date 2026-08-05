@@ -55,7 +55,7 @@ export async function getScheduleDashboardSummary(
     let upcomingEventsQuery = supabase
       .from("schedule_events")
       .select("id", { count: "exact", head: true })
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .gte("start_at", nowIso)
       .lte("start_at", in7Days)
       .not("status", "in", '("cancelled","archived")');
@@ -64,7 +64,7 @@ export async function getScheduleDashboardSummary(
     let todaysShiftsQuery = supabase
       .from("schedule_shifts")
       .select("id", { count: "exact", head: true })
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .lt("start_at", dayEnd)
       .gt("end_at", dayStart)
       .not("status", "in", '("cancelled","completed")');
@@ -73,7 +73,7 @@ export async function getScheduleDashboardSummary(
     let unfilledQuery = supabase
       .from("schedule_shifts")
       .select("id, required_member_count, confirmed_assignment_count")
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .gte("start_at", nowIso)
       .lte("start_at", in7Days)
       .not("status", "in", '("cancelled","completed","draft")');
@@ -82,7 +82,7 @@ export async function getScheduleDashboardSummary(
     let trainingQuery = supabase
       .from("schedule_events")
       .select("id", { count: "exact", head: true })
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .eq("event_type", "training")
       .gte("start_at", nowIso)
       .lte("start_at", in7Days)
@@ -104,12 +104,12 @@ export async function getScheduleDashboardSummary(
       supabase
         .from("shift_assignments")
         .select("id", { count: "exact", head: true })
-        .eq("church_id", churchId)
+        .eq("organization_id", churchId)
         .in("status", ["pending", "invited"]),
       supabase
         .from("member_unavailability")
         .select("id", { count: "exact", head: true })
-        .eq("church_id", churchId)
+        .eq("organization_id", churchId)
         .eq("status", "active")
         .lt("start_at", dayEnd)
         .gt("end_at", dayStart),
@@ -129,7 +129,7 @@ export async function getScheduleDashboardSummary(
           )
         `,
         )
-        .eq("church_id", churchId)
+        .eq("organization_id", churchId)
         .eq("user_id", userId)
         .in("status", ["pending", "invited", "accepted", "confirmed"])
         .order("created_at", { ascending: false })

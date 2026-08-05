@@ -12,7 +12,7 @@ export type AcknowledgmentStatus = "unacknowledged" | "acknowledged";
 
 export interface SecurityEvent {
   id: string;
-  church_id: string;
+  organization_id: string;
   device: string;
   event_type: EventType;
   severity: EventSeverity;

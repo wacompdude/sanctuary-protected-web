@@ -1,6 +1,7 @@
 /**
  * Physical Supabase table names after migration 071 (Option A).
- * Column names like `church_id` and customer-facing "Church" UI are unchanged.
+ * Tenant FK columns use `organization_id` after migration 072.
+ * Customer-facing UI terminology remains "Church".
  */
 export const TABLES = {
   organizations: "organizations",

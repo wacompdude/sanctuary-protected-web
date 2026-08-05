@@ -20,7 +20,7 @@ export async function AppSidebar() {
     activeChurchId = church.id;
     role = membership.role;
     churches = memberships.map((item) => ({
-      id: item.church_id,
+      id: item.organization_id,
       name: item.church.name,
       role: item.role,
     }));

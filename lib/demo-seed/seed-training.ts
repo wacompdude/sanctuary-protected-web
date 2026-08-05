@@ -555,11 +555,11 @@ async function upsertRow(params: {
 export async function seedChurchTraining(ctx: DemoSeedContext): Promise<void> {
   log(ctx.summary, "Seeding Training Management demo data");
 
-  // Settings (PK is church_id — no separate id column)
+  // Settings (PK is organization_id — no separate id column)
   {
     const seedKey = "training_settings.church";
     const payload = {
-      church_id: ctx.churchId,
+      organization_id: ctx.churchId,
       due_soon_days: 30,
       reminder_at_assignment: true,
       reminder_days_before: [30, 14, 7, 1],
@@ -573,7 +573,7 @@ export async function seedChurchTraining(ctx: DemoSeedContext): Promise<void> {
       const { error } = await ctx.admin
         .from("training_organization_settings")
         .update({ ...payload, updated_at: new Date().toISOString() })
-        .eq("church_id", ctx.churchId);
+        .eq("organization_id", ctx.churchId);
       if (error) {
         throw new Error(`training_church_settings update: ${error.message}`);
       }
@@ -581,7 +581,7 @@ export async function seedChurchTraining(ctx: DemoSeedContext): Promise<void> {
     } else {
       const { error } = await ctx.admin
         .from("training_organization_settings")
-        .upsert(payload, { onConflict: "church_id" });
+        .upsert(payload, { onConflict: "organization_id" });
       if (error) {
         throw new Error(`training_church_settings insert: ${error.message}`);
       }
@@ -639,7 +639,7 @@ export async function seedChurchTraining(ctx: DemoSeedContext): Promise<void> {
       table: "training_courses",
       domain: "training_courses",
       payload: {
-        church_id: ctx.churchId,
+        organization_id: ctx.churchId,
         training_category_id: category.id,
         course_code: course.courseCode,
         name: course.name,
@@ -687,7 +687,7 @@ export async function seedChurchTraining(ctx: DemoSeedContext): Promise<void> {
       table: "training_events",
       domain: "training_events",
       payload: {
-        church_id: ctx.churchId,
+        organization_id: ctx.churchId,
         campus_id: campusId,
         training_course_id: courseId,
         training_category_id: category.id,
@@ -755,7 +755,7 @@ export async function seedChurchTraining(ctx: DemoSeedContext): Promise<void> {
       table: "training_requirements",
       domain: "training_requirements",
       payload: {
-        church_id: ctx.churchId,
+        organization_id: ctx.churchId,
         name: `Required: ${courseDef.name}`,
         training_course_id: courseId,
         training_category_id: category.id,
@@ -806,7 +806,7 @@ export async function seedChurchTraining(ctx: DemoSeedContext): Promise<void> {
         table: "training_participants",
         domain: "training_participants",
         payload: {
-          church_id: ctx.churchId,
+          organization_id: ctx.churchId,
           training_event_id: eventId,
           user_id: uid,
           enrollment_status: "assigned",
@@ -841,7 +841,7 @@ export async function seedChurchTraining(ctx: DemoSeedContext): Promise<void> {
         table: "training_completion_records",
         domain: "training_completions",
         payload: {
-          church_id: ctx.churchId,
+          organization_id: ctx.churchId,
           campus_id: campusId,
           user_id: uid,
           training_event_id: eventId,
@@ -882,7 +882,7 @@ export async function seedChurchTraining(ctx: DemoSeedContext): Promise<void> {
         table: "training_participants",
         domain: "training_participants",
         payload: {
-          church_id: ctx.churchId,
+          organization_id: ctx.churchId,
           training_event_id: eventId,
           user_id: uid,
           enrollment_status:
@@ -907,7 +907,7 @@ export async function seedChurchTraining(ctx: DemoSeedContext): Promise<void> {
       table: "training_external_records",
       domain: "training_external",
       payload: {
-        church_id: ctx.churchId,
+        organization_id: ctx.churchId,
         user_id: externalUser,
         training_category_id: traumaCategory.id,
         course_name: "Community CPR / AED Provider",
@@ -935,7 +935,7 @@ export async function seedChurchTraining(ctx: DemoSeedContext): Promise<void> {
       table: "training_completion_records",
       domain: "training_completions",
       payload: {
-        church_id: ctx.churchId,
+        organization_id: ctx.churchId,
         campus_id: ctx.primaryCampusId,
         user_id: externalUser,
         training_category_id: traumaCategory.id,

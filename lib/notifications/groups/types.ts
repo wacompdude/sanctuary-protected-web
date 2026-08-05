@@ -25,7 +25,7 @@ export type DynamicRuleType =
 
 export type NotificationGroup = {
   id: string;
-  church_id: string;
+  organization_id: string;
   campus_id: string | null;
   name: string;
   description: string | null;
@@ -53,7 +53,7 @@ export type NotificationGroupListItem = NotificationGroup & {
 
 export type NotificationGroupMember = {
   id: string;
-  church_id: string;
+  organization_id: string;
   group_id: string;
   membership_id: string;
   user_id: string;
@@ -67,7 +67,7 @@ export type NotificationGroupMember = {
 
 export type NotificationGroupNesting = {
   id: string;
-  church_id: string;
+  organization_id: string;
   parent_group_id: string;
   child_group_id: string;
   status: NotificationGroupNestingStatus;
@@ -121,7 +121,7 @@ export type NestingEdge = {
 
 export type NotificationGroupDefault = {
   id: string;
-  church_id: string;
+  organization_id: string;
   group_id: string;
   notification_type: string;
   email_enabled: boolean;

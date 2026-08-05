@@ -49,7 +49,7 @@ export async function listMyUnavailability(
     const { data, error } = await supabase
       .from("member_unavailability")
       .select("*")
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .eq("user_id", userId)
       .order("start_at", { ascending: false });
 
@@ -93,7 +93,7 @@ export async function getUnavailabilityById(
       .from("member_unavailability")
       .select("*")
       .eq("id", id)
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .maybeSingle();
 
     if (error) {
@@ -129,7 +129,7 @@ export async function listTeamUnavailabilityInRange(
     const { data, error } = await supabase
       .from("member_unavailability")
       .select("*")
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .eq("status", "active")
       .lt("start_at", rangeEndIso)
       .gt("end_at", rangeStartIso)
@@ -205,7 +205,7 @@ export async function getTeamAvailabilityView(
       .select(
         "id, membership_id, user_id, title, reason_category, start_at, end_at, all_day, status",
       )
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .eq("status", "active")
       .lt("start_at", rangeEndIso)
       .gt("end_at", rangeStartIso);
@@ -224,7 +224,7 @@ export async function getTeamAvailabilityView(
     const { data: assignments, error: assignError } = await supabase
       .from("shift_assignments")
       .select("id, membership_id, shift_id, status")
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .in("status", [...ACTIVE_ASSIGNMENT_STATUSES]);
 
     if (assignError) {
@@ -249,7 +249,7 @@ export async function getTeamAvailabilityView(
       const { data: shifts } = await supabase
         .from("schedule_shifts")
         .select("id, title, start_at, end_at, status")
-        .eq("church_id", churchId)
+        .eq("organization_id", churchId)
         .in("id", shiftIds)
         .neq("status", "cancelled");
       for (const shift of shifts ?? []) {
@@ -373,7 +373,7 @@ export async function listAvailabilityConflicts(
     const { data: assignments } = await supabase
       .from("shift_assignments")
       .select("id, conflict_override")
-      .eq("church_id", churchId);
+      .eq("organization_id", churchId);
 
     const overrideById = new Map(
       (assignments ?? []).map((a) => [

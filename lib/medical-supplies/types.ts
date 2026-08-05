@@ -14,7 +14,7 @@ export type MedicalSupplyCategory =
 
 export type MedicalSupply = {
   id: string;
-  church_id: string;
+  organization_id: string;
   name: string;
   category: MedicalSupplyCategory;
   unit: string;
@@ -33,7 +33,7 @@ export type MedicalSupply = {
 
 export type MedicalSupplyUsage = {
   id: string;
-  church_id: string;
+  organization_id: string;
   incident_id: string;
   medical_supply_id: string;
   quantity_used: number;

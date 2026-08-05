@@ -25,7 +25,7 @@ import { isChurchOperationallyLocked } from "@/lib/church/operations";
 
 type MembershipQueryRow = {
   id: string;
-  church_id: string;
+  organization_id: string;
   user_id: string;
   role: string;
   status: string;
@@ -44,7 +44,7 @@ type ChurchQueryRow = {
 
 export type CurrentUser = {
   user: User;
-  profile: Omit<Profile, "church_id" | "role">;
+  profile: Omit<Profile, "organization_id" | "role">;
   supabase: Awaited<ReturnType<typeof createClient>>;
 };
 
@@ -183,7 +183,7 @@ export async function getUserMemberships(
 
   const { data: memberships, error: membershipError } = await supabase
     .from("organization_memberships")
-    .select("id, church_id, user_id, role, status, joined_at, created_at")
+    .select("id, organization_id, user_id, role, status, joined_at, created_at")
     .eq("user_id", user.id)
     .eq("status", "active");
 
@@ -203,7 +203,7 @@ export async function getUserMemberships(
   const rows = (memberships ?? []) as MembershipQueryRow[];
   if (rows.length === 0) return [];
 
-  const churchIds = [...new Set(rows.map((row) => row.church_id))];
+  const churchIds = [...new Set(rows.map((row) => row.organization_id))];
   const { data: churches, error: churchError } = await supabase
     .from("organizations")
     .select("id, name, status, slug, timezone, week_starts_on")
@@ -245,7 +245,7 @@ export async function getUserMemberships(
     );
     const resultFallback: ChurchMembershipWithChurch[] = [];
     for (const row of rows) {
-      const church = churchByIdFallback.get(row.church_id);
+      const church = churchByIdFallback.get(row.organization_id);
       if (!church) continue;
       const role = normalizeMembershipRole(row.role);
       const usable = isUsableChurchStatus(church.status);
@@ -254,7 +254,7 @@ export async function getUserMemberships(
       if (!usable && !ownerRecovery) continue;
       resultFallback.push({
         id: row.id,
-        church_id: row.church_id,
+        organization_id: row.organization_id,
         user_id: row.user_id,
         role,
         status: "active",
@@ -279,7 +279,7 @@ export async function getUserMemberships(
 
   const result: ChurchMembershipWithChurch[] = [];
   for (const row of rows) {
-    const church = churchById.get(row.church_id);
+    const church = churchById.get(row.organization_id);
     if (!church) continue;
 
     const role = normalizeMembershipRole(row.role);
@@ -291,7 +291,7 @@ export async function getUserMemberships(
 
     result.push({
       id: row.id,
-      church_id: row.church_id,
+      organization_id: row.organization_id,
       user_id: row.user_id,
       role,
       status: "active",
@@ -342,12 +342,12 @@ export async function getActiveChurch(): Promise<{
       membership: only,
       memberships,
       cookieSyncChurchId:
-        cookieChurchId !== only.church_id ? only.church_id : null,
+        cookieChurchId !== only.organization_id ? only.organization_id : null,
     };
   }
 
   const matched = cookieChurchId
-    ? memberships.find((item) => item.church_id === cookieChurchId)
+    ? memberships.find((item) => item.organization_id === cookieChurchId)
     : null;
 
   if (matched) {
@@ -361,7 +361,7 @@ export async function getActiveChurch(): Promise<{
   return {
     membership: fallback,
     memberships,
-    cookieSyncChurchId: fallback.church_id,
+    cookieSyncChurchId: fallback.organization_id,
   };
 }
 
@@ -376,7 +376,7 @@ export async function requireChurchMembership(): Promise<ActiveChurchContext> {
     user,
     profile: {
       ...profile,
-      church_id: membership.church_id,
+      organization_id: membership.organization_id,
       role: membership.role,
     },
     church: membership.church,
@@ -438,7 +438,7 @@ export async function requireChurchRole(
  */
 export async function setActiveChurchForUser(churchId: string): Promise<void> {
   const memberships = await getUserMemberships();
-  const match = memberships.find((item) => item.church_id === churchId);
+  const match = memberships.find((item) => item.organization_id === churchId);
 
   if (!match) {
     await clearActiveChurchCookie();
@@ -448,7 +448,7 @@ export async function setActiveChurchForUser(churchId: string): Promise<void> {
     );
   }
 
-  await writeActiveChurchCookie(match.church_id);
+  await writeActiveChurchCookie(match.organization_id);
   // Campus filter is church-scoped — reset to All Campuses on switch.
   await clearActiveCampusCookie();
 }

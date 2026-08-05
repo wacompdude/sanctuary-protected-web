@@ -21,7 +21,7 @@ export type { ActionState, Church, Profile } from "@/lib/church/types";
 
 export interface Incident {
   id: string;
-  church_id: string;
+  organization_id: string;
   created_by: string;
   title: string;
   type: IncidentType;
@@ -39,7 +39,7 @@ export interface Incident {
 export interface IncidentUpdate {
   id: string;
   incident_id: string;
-  church_id: string;
+  organization_id: string;
   created_by: string;
   update_type: IncidentUpdateType;
   content: string;
@@ -51,7 +51,7 @@ export interface IncidentUpdate {
 
 export interface IncidentAttachment {
   id: string;
-  church_id: string;
+  organization_id: string;
   incident_id: string;
   uploaded_by: string;
   storage_path: string;

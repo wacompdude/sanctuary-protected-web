@@ -19,7 +19,7 @@ export type ConsentStatus =
 
 export type NotificationEndpoint = {
   id: string;
-  church_id: string;
+  organization_id: string;
   user_id: string;
   membership_id: string | null;
   channel: NotificationChannel;

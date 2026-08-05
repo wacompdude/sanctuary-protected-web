@@ -42,7 +42,7 @@ async function attachShiftMeta(
     const { data } = await supabase
       .from("campuses")
       .select("id, name")
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .in("id", campusIds);
     for (const row of data ?? []) {
       campusMap.set(row.id as string, row.name as string);
@@ -53,7 +53,7 @@ async function attachShiftMeta(
     const { data } = await supabase
       .from("schedule_events")
       .select("id, title")
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .in("id", eventIds);
     for (const row of data ?? []) {
       eventMap.set(row.id as string, row.title as string);
@@ -96,7 +96,7 @@ export async function listScheduleShifts(
     let query = supabase
       .from("schedule_shifts")
       .select("*", { count: "exact" })
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .order("start_at", { ascending: true })
       .range(from, to);
 
@@ -165,7 +165,7 @@ export async function getScheduleShiftById(
       .from("schedule_shifts")
       .select("*")
       .eq("id", shiftId)
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .maybeSingle();
 
     if (error) {
@@ -191,7 +191,7 @@ export async function listAssignmentsForShift(
     const { data, error } = await supabase
       .from("shift_assignments")
       .select("*")
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .eq("shift_id", shiftId)
       .order("assigned_at", { ascending: true });
 
@@ -243,7 +243,7 @@ export async function listMyAssignments(
     const { data, error } = await supabase
       .from("shift_assignments")
       .select("*")
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .eq("user_id", userId)
       .order("assigned_at", { ascending: false });
 
@@ -259,7 +259,7 @@ export async function listMyAssignments(
     const { data: shifts } = await supabase
       .from("schedule_shifts")
       .select("id, title, start_at, end_at")
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .in("id", shiftIds);
 
     const shiftById = new Map(
@@ -290,7 +290,7 @@ export async function listEventOptionsForShifts(
     const { data, error } = await supabase
       .from("schedule_events")
       .select("id, title, start_at")
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .not("status", "in", '("cancelled","archived")')
       .order("start_at", { ascending: true })
       .limit(200);
@@ -317,7 +317,7 @@ export async function getChurchScheduleSettings(churchId: string) {
     const { data, error } = await supabase
       .from("organization_schedule_settings")
       .select("*")
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .maybeSingle();
     if (error) {
       if (isMissingRelation(error.message)) return null;
@@ -345,7 +345,7 @@ export async function listEligibleMembersForShift(
     const { data: existing } = await supabase
       .from("shift_assignments")
       .select("membership_id, status")
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .eq("shift_id", shift.id)
       .not("status", "in", '("declined","cancelled")');
 

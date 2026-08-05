@@ -61,7 +61,7 @@ export async function createChurchInvitation(
     const { data: pendingInvite } = await supabase
       .from("organization_invitations")
       .select("id")
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .ilike("email", input.email)
       .is("accepted_at", null)
       .is("revoked_at", null)
@@ -82,7 +82,7 @@ export async function createChurchInvitation(
     const { data: invitation, error: insertError } = await supabase
       .from("organization_invitations")
       .insert({
-        church_id: church.id,
+        organization_id: church.id,
         email: input.email,
         role: input.role,
         token_hash: tokenHash,
@@ -192,7 +192,7 @@ export async function resendChurchInvitation(
       .from("organization_invitations")
       .select("id, email, role, accepted_at, revoked_at, expires_at")
       .eq("id", invitationId)
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .maybeSingle();
 
     if (loadError || !invite) {
@@ -226,7 +226,7 @@ export async function resendChurchInvitation(
         expires_at: expiresAt.toISOString(),
       })
       .eq("id", invitationId)
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .is("accepted_at", null)
       .is("revoked_at", null);
 
@@ -320,7 +320,7 @@ export async function revokeChurchInvitation(
       .from("organization_invitations")
       .select("id, email, role, accepted_at, revoked_at")
       .eq("id", invitationId)
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .maybeSingle();
 
     if (loadError || !invite) {
@@ -338,7 +338,7 @@ export async function revokeChurchInvitation(
       .from("organization_invitations")
       .update({ revoked_at: revokedAt })
       .eq("id", invitationId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (updateError) {
       return { error: updateError.message };

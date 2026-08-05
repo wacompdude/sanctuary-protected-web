@@ -43,7 +43,7 @@ DECLARE
   v_sole_owner_church record;
   v_reassign_to uuid;
   v_incident record;
-  v_church_id uuid;
+  v_organization_id uuid;
 BEGIN
   v_normalized_email := lower(trim(both from coalesce(v_email, '')));
 
@@ -71,16 +71,16 @@ BEGIN
   -- Last-owner safety
   -- ---------------------------------------------------------------------------
   FOR v_sole_owner_church IN
-    SELECT m.church_id, c.name AS church_name
+    SELECT m.organization_id, c.name AS church_name
     FROM public.organization_memberships m
-    JOIN public.organizations c ON c.id = m.church_id
+    JOIN public.organizations c ON c.id = m.organization_id
     WHERE m.user_id = v_user_id
       AND m.role = 'owner'::public.membership_role
       AND m.status = 'active'::public.membership_status
       AND (
         SELECT COUNT(*)::integer
         FROM public.organization_memberships o
-        WHERE o.church_id = m.church_id
+        WHERE o.organization_id = m.organization_id
           AND o.role = 'owner'::public.membership_role
           AND o.status = 'active'::public.membership_status
       ) = 1
@@ -89,67 +89,67 @@ BEGIN
       RAISE EXCEPTION
         'User is the last active owner of church "%" (%). Transfer ownership first, or set v_force_delete_owned_churches := true to delete that church.',
         v_sole_owner_church.church_name,
-        v_sole_owner_church.church_id;
+        v_sole_owner_church.organization_id;
     END IF;
 
     RAISE NOTICE 'Force-deleting sole-owned church % (%)',
       v_sole_owner_church.church_name,
-      v_sole_owner_church.church_id;
+      v_sole_owner_church.organization_id;
 
     -- Clear RESTRICT parents before deleting the church.
     -- Newer church-scoped tables mostly CASCADE from organizations; these do not.
 
     DELETE FROM public.incident_updates
-    WHERE church_id = v_sole_owner_church.church_id;
+    WHERE organization_id = v_sole_owner_church.organization_id;
 
     -- Cascades incident_attachments + incident_team_members via incident_id
     DELETE FROM public.incidents
-    WHERE church_id = v_sole_owner_church.church_id;
+    WHERE organization_id = v_sole_owner_church.organization_id;
 
     DELETE FROM public.events
-    WHERE church_id = v_sole_owner_church.church_id;
+    WHERE organization_id = v_sole_owner_church.organization_id;
 
     DELETE FROM public.certifications
-    WHERE church_id = v_sole_owner_church.church_id;
+    WHERE organization_id = v_sole_owner_church.organization_id;
 
     DELETE FROM public.team_members
-    WHERE church_id = v_sole_owner_church.church_id;
+    WHERE organization_id = v_sole_owner_church.organization_id;
 
     -- medical_supply_usage RESTRICT → medical_supplies; clear before church CASCADE
     IF to_regclass('public.medical_supply_usage') IS NOT NULL THEN
       DELETE FROM public.medical_supply_usage
-      WHERE church_id = v_sole_owner_church.church_id;
+      WHERE organization_id = v_sole_owner_church.organization_id;
     END IF;
 
     DELETE FROM public.organization_invitations
-    WHERE church_id = v_sole_owner_church.church_id;
+    WHERE organization_id = v_sole_owner_church.organization_id;
 
     -- Campus memberships / locations (036+) before campuses / church memberships
     IF to_regclass('public.campus_memberships') IS NOT NULL THEN
       DELETE FROM public.campus_memberships
-      WHERE church_id = v_sole_owner_church.church_id;
+      WHERE organization_id = v_sole_owner_church.organization_id;
     END IF;
 
     IF to_regclass('public.campus_locations') IS NOT NULL THEN
       DELETE FROM public.campus_locations
-      WHERE church_id = v_sole_owner_church.church_id;
+      WHERE organization_id = v_sole_owner_church.organization_id;
     END IF;
 
     DELETE FROM public.campuses
-    WHERE church_id = v_sole_owner_church.church_id;
+    WHERE organization_id = v_sole_owner_church.organization_id;
 
     DELETE FROM public.organization_memberships
-    WHERE church_id = v_sole_owner_church.church_id;
+    WHERE organization_id = v_sole_owner_church.organization_id;
 
     ALTER TABLE public.audit_logs DISABLE TRIGGER USER;
     DELETE FROM public.audit_logs
-    WHERE church_id = v_sole_owner_church.church_id;
+    WHERE organization_id = v_sole_owner_church.organization_id;
     ALTER TABLE public.audit_logs ENABLE TRIGGER USER;
 
     -- Remaining church-scoped rows (notifications, equipment, policies,
     -- threat levels, contacts, medical supplies, etc.) CASCADE from organizations.
     DELETE FROM public.organizations
-    WHERE id = v_sole_owner_church.church_id;
+    WHERE id = v_sole_owner_church.organization_id;
   END LOOP;
 
   -- ---------------------------------------------------------------------------
@@ -174,8 +174,8 @@ BEGIN
     );
 
     -- Reassign "added_by" on remaining rows, else delete
-    FOR v_church_id IN
-      SELECT DISTINCT church_id
+    FOR v_organization_id IN
+      SELECT DISTINCT organization_id
       FROM public.incident_team_members
       WHERE added_by = v_user_id
     LOOP
@@ -183,7 +183,7 @@ BEGIN
       SELECT m.user_id
       INTO v_reassign_to
       FROM public.organization_memberships m
-      WHERE m.church_id = v_church_id
+      WHERE m.organization_id = v_organization_id
         AND m.user_id <> v_user_id
         AND m.status = 'active'::public.membership_status
       ORDER BY
@@ -200,11 +200,11 @@ BEGIN
         UPDATE public.incident_team_members
         SET added_by = v_reassign_to
         WHERE added_by = v_user_id
-          AND church_id = v_church_id;
+          AND organization_id = v_organization_id;
       ELSE
         DELETE FROM public.incident_team_members
         WHERE added_by = v_user_id
-          AND church_id = v_church_id;
+          AND organization_id = v_organization_id;
       END IF;
     END LOOP;
   END IF;
@@ -214,7 +214,7 @@ BEGIN
   -- Prefer reassignment to another active member of the same church.
   -- ---------------------------------------------------------------------------
   FOR v_incident IN
-    SELECT i.id, i.church_id
+    SELECT i.id, i.organization_id
     FROM public.incidents i
     WHERE i.created_by = v_user_id
   LOOP
@@ -222,7 +222,7 @@ BEGIN
     SELECT m.user_id
     INTO v_reassign_to
     FROM public.organization_memberships m
-    WHERE m.church_id = v_incident.church_id
+    WHERE m.organization_id = v_incident.organization_id
       AND m.user_id <> v_user_id
       AND m.status = 'active'::public.membership_status
     ORDER BY
@@ -275,8 +275,8 @@ BEGIN
 
   -- Remaining incident attachments uploaded by this user
   IF to_regclass('public.incident_attachments') IS NOT NULL THEN
-    FOR v_church_id IN
-      SELECT DISTINCT church_id
+    FOR v_organization_id IN
+      SELECT DISTINCT organization_id
       FROM public.incident_attachments
       WHERE uploaded_by = v_user_id
     LOOP
@@ -284,7 +284,7 @@ BEGIN
       SELECT m.user_id
       INTO v_reassign_to
       FROM public.organization_memberships m
-      WHERE m.church_id = v_church_id
+      WHERE m.organization_id = v_organization_id
         AND m.user_id <> v_user_id
         AND m.status = 'active'::public.membership_status
       ORDER BY
@@ -301,11 +301,11 @@ BEGIN
         UPDATE public.incident_attachments
         SET uploaded_by = v_reassign_to
         WHERE uploaded_by = v_user_id
-          AND church_id = v_church_id;
+          AND organization_id = v_organization_id;
       ELSE
         DELETE FROM public.incident_attachments
         WHERE uploaded_by = v_user_id
-          AND church_id = v_church_id;
+          AND organization_id = v_organization_id;
       END IF;
     END LOOP;
   END IF;
@@ -314,8 +314,8 @@ BEGIN
   -- Church threat levels (changed_by NOT NULL + ON DELETE RESTRICT)
   -- ---------------------------------------------------------------------------
   IF to_regclass('public.organization_threat_levels') IS NOT NULL THEN
-    FOR v_church_id IN
-      SELECT DISTINCT church_id
+    FOR v_organization_id IN
+      SELECT DISTINCT organization_id
       FROM public.organization_threat_levels
       WHERE changed_by = v_user_id
     LOOP
@@ -323,7 +323,7 @@ BEGIN
       SELECT m.user_id
       INTO v_reassign_to
       FROM public.organization_memberships m
-      WHERE m.church_id = v_church_id
+      WHERE m.organization_id = v_organization_id
         AND m.user_id <> v_user_id
         AND m.status = 'active'::public.membership_status
       ORDER BY
@@ -340,11 +340,11 @@ BEGIN
         UPDATE public.organization_threat_levels
         SET changed_by = v_reassign_to
         WHERE changed_by = v_user_id
-          AND church_id = v_church_id;
+          AND organization_id = v_organization_id;
       ELSE
         DELETE FROM public.organization_threat_levels
         WHERE changed_by = v_user_id
-          AND church_id = v_church_id;
+          AND organization_id = v_organization_id;
       END IF;
     END LOOP;
   END IF;
@@ -353,8 +353,8 @@ BEGIN
   -- Equipment attachments (uploaded_by NOT NULL + NO ACTION)
   -- ---------------------------------------------------------------------------
   IF to_regclass('public.equipment_attachments') IS NOT NULL THEN
-    FOR v_church_id IN
-      SELECT DISTINCT church_id
+    FOR v_organization_id IN
+      SELECT DISTINCT organization_id
       FROM public.equipment_attachments
       WHERE uploaded_by = v_user_id
     LOOP
@@ -362,7 +362,7 @@ BEGIN
       SELECT m.user_id
       INTO v_reassign_to
       FROM public.organization_memberships m
-      WHERE m.church_id = v_church_id
+      WHERE m.organization_id = v_organization_id
         AND m.user_id <> v_user_id
         AND m.status = 'active'::public.membership_status
       ORDER BY
@@ -379,11 +379,11 @@ BEGIN
         UPDATE public.equipment_attachments
         SET uploaded_by = v_reassign_to
         WHERE uploaded_by = v_user_id
-          AND church_id = v_church_id;
+          AND organization_id = v_organization_id;
       ELSE
         DELETE FROM public.equipment_attachments
         WHERE uploaded_by = v_user_id
-          AND church_id = v_church_id;
+          AND organization_id = v_organization_id;
       END IF;
     END LOOP;
   END IF;
@@ -392,8 +392,8 @@ BEGIN
   -- Policy attachments + approvals (uploaded_by / actor_user_id NOT NULL)
   -- ---------------------------------------------------------------------------
   IF to_regclass('public.policy_attachments') IS NOT NULL THEN
-    FOR v_church_id IN
-      SELECT DISTINCT church_id
+    FOR v_organization_id IN
+      SELECT DISTINCT organization_id
       FROM public.policy_attachments
       WHERE uploaded_by = v_user_id
     LOOP
@@ -401,7 +401,7 @@ BEGIN
       SELECT m.user_id
       INTO v_reassign_to
       FROM public.organization_memberships m
-      WHERE m.church_id = v_church_id
+      WHERE m.organization_id = v_organization_id
         AND m.user_id <> v_user_id
         AND m.status = 'active'::public.membership_status
       ORDER BY
@@ -418,18 +418,18 @@ BEGIN
         UPDATE public.policy_attachments
         SET uploaded_by = v_reassign_to
         WHERE uploaded_by = v_user_id
-          AND church_id = v_church_id;
+          AND organization_id = v_organization_id;
       ELSE
         DELETE FROM public.policy_attachments
         WHERE uploaded_by = v_user_id
-          AND church_id = v_church_id;
+          AND organization_id = v_organization_id;
       END IF;
     END LOOP;
   END IF;
 
   IF to_regclass('public.policy_approvals') IS NOT NULL THEN
-    FOR v_church_id IN
-      SELECT DISTINCT church_id
+    FOR v_organization_id IN
+      SELECT DISTINCT organization_id
       FROM public.policy_approvals
       WHERE actor_user_id = v_user_id
     LOOP
@@ -437,7 +437,7 @@ BEGIN
       SELECT m.user_id
       INTO v_reassign_to
       FROM public.organization_memberships m
-      WHERE m.church_id = v_church_id
+      WHERE m.organization_id = v_organization_id
         AND m.user_id <> v_user_id
         AND m.status = 'active'::public.membership_status
       ORDER BY
@@ -454,11 +454,11 @@ BEGIN
         UPDATE public.policy_approvals
         SET actor_user_id = v_reassign_to
         WHERE actor_user_id = v_user_id
-          AND church_id = v_church_id;
+          AND organization_id = v_organization_id;
       ELSE
         DELETE FROM public.policy_approvals
         WHERE actor_user_id = v_user_id
-          AND church_id = v_church_id;
+          AND organization_id = v_organization_id;
       END IF;
     END LOOP;
   END IF;
@@ -492,7 +492,7 @@ BEGIN
 
   -- ---------------------------------------------------------------------------
   -- Campus memberships (036+)
-  --   church_membership_id → organization_memberships ON DELETE CASCADE
+  --   organization_membership_id → organization_memberships ON DELETE CASCADE
   --   user_id → auth.users ON DELETE CASCADE
   --   assigned_by → auth.users ON DELETE SET NULL
   -- Explicit delete: authenticated role cannot DELETE these rows; keep ops path
@@ -501,7 +501,7 @@ BEGIN
   IF to_regclass('public.campus_memberships') IS NOT NULL THEN
     DELETE FROM public.campus_memberships
     WHERE user_id = v_user_id
-       OR church_membership_id IN (
+       OR organization_membership_id IN (
             SELECT m.id
             FROM public.organization_memberships m
             WHERE m.user_id = v_user_id

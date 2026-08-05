@@ -207,7 +207,7 @@ export async function sendScheduleCustomNotificationAction(
       const { data: assigned } = await supabase
         .from("shift_assignments")
         .select("membership_id")
-        .eq("church_id", church.id)
+        .eq("organization_id", church.id)
         .eq("shift_id", shiftId)
         .not("status", "in", '("declined","cancelled")');
       const extra = (assigned ?? [])

@@ -67,7 +67,7 @@ export async function setPrimaryEndpointAction(
       .from("notification_endpoints")
       .select("id, channel, status")
       .eq("id", endpointId)
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .eq("user_id", user.id)
       .maybeSingle();
 
@@ -79,7 +79,7 @@ export async function setPrimaryEndpointAction(
     await supabase
       .from("notification_endpoints")
       .update({ is_primary: false })
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .eq("user_id", user.id)
       .eq("channel", channel);
 
@@ -128,7 +128,7 @@ export async function disableEndpointAction(
         is_primary: false,
       })
       .eq("id", endpointId)
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .eq("user_id", user.id);
 
     if (error) return { error: error.message };
@@ -168,7 +168,7 @@ export async function updateSmsConsentAction(
       .from("notification_endpoints")
       .select("id, channel")
       .eq("id", endpointId)
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .eq("user_id", user.id)
       .eq("channel", "sms")
       .maybeSingle();
@@ -242,7 +242,7 @@ export async function upsertGroupPreferenceRuleAction(
       parseGroupSeverity(formData.get("minimum_severity")) ?? "informational";
 
     const payload = {
-      church_id: church.id,
+      organization_id: church.id,
       user_id: user.id,
       membership_id: membership.id,
       group_id: groupId,
@@ -266,7 +266,7 @@ export async function upsertGroupPreferenceRuleAction(
     let existingQuery = supabase
       .from("notification_preference_rules")
       .select("id")
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .eq("user_id", user.id)
       .eq("notification_type", notificationType)
       .eq("channel", channelRaw);

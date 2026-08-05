@@ -37,7 +37,7 @@ export async function writeSecurityAuditLog(
     const { data, error } = await admin
       .from("security_audit_logs")
       .insert({
-        church_id: params.churchId,
+        organization_id: params.churchId,
         campus_id: params.campusId || null,
         actor_user_id: params.actorUserId,
         target_user_id: params.targetUserId || null,
@@ -91,7 +91,7 @@ export async function querySecurityAuditLogs(
     .select(
       `
       id,
-      church_id,
+      organization_id,
       campus_id,
       actor_user_id,
       target_user_id,
@@ -109,7 +109,7 @@ export async function querySecurityAuditLogs(
     `,
       { count: "exact" },
     )
-    .eq("church_id", filters.churchId)
+    .eq("organization_id", filters.churchId)
     .order("created_at", { ascending: false });
 
   if (filters.startDate) {

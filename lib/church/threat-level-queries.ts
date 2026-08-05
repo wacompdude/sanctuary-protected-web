@@ -8,7 +8,7 @@ import {
 
 type ThreatLevelRow = {
   id: string;
-  church_id: string;
+  organization_id: string;
   week_start: string;
   threat_level: ChurchThreatLevelRecord["threat_level"];
   notes: string | null;
@@ -46,9 +46,9 @@ export async function listChurchThreatLevels(
   const { data, error } = await supabase
     .from("organization_threat_levels")
     .select(
-      "id, church_id, week_start, threat_level, notes, changed_by, created_at, updated_at, updated_by",
+      "id, organization_id, week_start, threat_level, notes, changed_by, created_at, updated_at, updated_by",
     )
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .order("week_start", { ascending: false })
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -61,8 +61,8 @@ export async function listChurchThreatLevels(
     ) {
       const legacy = await supabase
         .from("organization_threat_levels")
-        .select("id, church_id, week_start, threat_level, notes, changed_by, created_at")
-        .eq("church_id", churchId)
+        .select("id, organization_id, week_start, threat_level, notes, changed_by, created_at")
+        .eq("organization_id", churchId)
         .order("week_start", { ascending: false })
         .order("created_at", { ascending: false })
         .limit(limit);
@@ -73,9 +73,9 @@ export async function listChurchThreatLevels(
           const older = await supabase
             .from("organization_threat_levels")
             .select(
-              "id, church_id, week_start, threat_level, changed_by, created_at",
+              "id, organization_id, week_start, threat_level, changed_by, created_at",
             )
-            .eq("church_id", churchId)
+            .eq("organization_id", churchId)
             .order("week_start", { ascending: false })
             .order("created_at", { ascending: false })
             .limit(limit);

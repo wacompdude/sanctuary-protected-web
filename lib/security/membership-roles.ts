@@ -12,7 +12,7 @@ import type {
 
 export type ChurchRoleSettingRow = {
   id: string;
-  church_id: string;
+  organization_id: string;
   role_kind: RoleTemplateKind;
   role_key: string;
   display_name_override: string | null;
@@ -30,7 +30,7 @@ export async function listChurchRoleSettings(
   const { data, error } = await admin
     .from("organization_role_settings")
     .select("*")
-    .eq("church_id", churchId);
+    .eq("organization_id", churchId);
 
   if (error) {
     console.error("Failed to list church role settings:", error);
@@ -55,7 +55,7 @@ export async function upsertChurchRoleSetting(
     .from("organization_role_settings")
     .upsert(
       {
-        church_id: input.churchId,
+        organization_id: input.churchId,
         role_kind: input.roleKind,
         role_key: input.roleKey,
         display_name_override: input.displayNameOverride ?? null,
@@ -64,7 +64,7 @@ export async function upsertChurchRoleSetting(
         updated_by: input.updatedBy,
         updated_at: new Date().toISOString(),
       },
-      { onConflict: "church_id,role_kind,role_key" },
+      { onConflict: "organization_id,role_kind,role_key" },
     )
     .select()
     .maybeSingle();
@@ -84,7 +84,7 @@ export async function listActiveMembershipRolesForUser(
   const { data, error } = await admin
     .from("organization_membership_roles")
     .select("*")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("user_id", userId)
     .eq("status", "active")
     .order("is_primary", { ascending: false });
@@ -111,8 +111,8 @@ export async function listMembersWithRole(
 > {
   const { data, error } = await admin
     .from("organization_membership_roles")
-    .select("id, church_membership_id, user_id, is_primary, assigned_at")
-    .eq("church_id", churchId)
+    .select("id, organization_membership_id, user_id, is_primary, assigned_at")
+    .eq("organization_id", churchId)
     .eq("role", roleKey)
     .eq("status", "active");
 
@@ -123,7 +123,7 @@ export async function listMembersWithRole(
 
   return (data || []).map((row) => ({
     membershipRoleId: row.id as string,
-    membershipId: row.church_membership_id as string,
+    membershipId: row.organization_membership_id as string,
     userId: row.user_id as string,
     isPrimary: Boolean(row.is_primary),
     assignedAt: row.assigned_at as string,
@@ -137,7 +137,7 @@ export async function countMembersByPrimaryRole(
   const { data, error } = await admin
     .from("organization_memberships")
     .select("role")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .neq("status", "removed");
 
   if (error) {
@@ -160,7 +160,7 @@ export async function countMembersByAnyRole(
   const { data, error } = await admin
     .from("organization_membership_roles")
     .select("role")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("status", "active");
 
   if (error) {
@@ -233,7 +233,7 @@ export async function setMembershipRoles(params: {
     .from("organization_memberships")
     .update({ role: primaryRole })
     .eq("id", membershipId)
-    .eq("church_id", churchId);
+    .eq("organization_id", churchId);
 
   if (membershipError) {
     return { ok: false, error: membershipError.message };
@@ -259,8 +259,8 @@ export async function setMembershipRoles(params: {
     }
 
     const { error } = await admin.from("organization_membership_roles").insert({
-      church_id: churchId,
-      church_membership_id: membershipId,
+      organization_id: churchId,
+      organization_membership_id: membershipId,
       user_id: userId,
       role,
       is_primary: false,
@@ -272,7 +272,7 @@ export async function setMembershipRoles(params: {
       const { data: prior } = await admin
         .from("organization_membership_roles")
         .select("id")
-        .eq("church_membership_id", membershipId)
+        .eq("organization_membership_id", membershipId)
         .eq("role", role)
         .maybeSingle();
 

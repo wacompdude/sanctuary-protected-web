@@ -48,7 +48,7 @@ async function TeamContent({ created }: { created?: string }) {
     const { data: invites } = await supabase
       .from("organization_invitations")
       .select("id, email, role, expires_at, created_at")
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .is("accepted_at", null)
       .is("revoked_at", null)
       .gt("expires_at", new Date().toISOString())

@@ -13,7 +13,7 @@ import type {
 function mapGroup(row: Record<string, unknown>): NotificationGroup {
   return {
     id: String(row.id),
-    church_id: String(row.church_id),
+    organization_id: String(row.organization_id),
     campus_id: (row.campus_id as string | null) ?? null,
     name: String(row.name),
     description: (row.description as string | null) ?? null,
@@ -58,9 +58,9 @@ export async function listNotificationGroups(
   let query = supabase
     .from("notification_groups")
     .select(
-      "id, church_id, campus_id, name, description, group_type, status, is_system_group, dynamic_rule_type, dynamic_rule_value, allow_member_self_join, allow_member_self_leave, default_notification_severity, created_by, updated_by, created_at, updated_at, archived_at",
+      "id, organization_id, campus_id, name, description, group_type, status, is_system_group, dynamic_rule_type, dynamic_rule_value, allow_member_self_join, allow_member_self_leave, default_notification_severity, created_by, updated_by, created_at, updated_at, archived_at",
     )
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .order("name", { ascending: true });
 
   if (!options?.includeArchived) {
@@ -96,7 +96,7 @@ export async function listNotificationGroups(
       supabase
         .from("notification_group_members")
         .select("group_id")
-        .eq("church_id", churchId)
+        .eq("organization_id", churchId)
         .eq("status", "active")
         .in("group_id", groupIds),
       campusIds.length > 0
@@ -150,7 +150,7 @@ export async function getNotificationGroup(
   const { data, error } = await supabase
     .from("notification_groups")
     .select("*")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("id", groupId)
     .maybeSingle();
 
@@ -169,9 +169,9 @@ export async function listNotificationGroupMembers(
   const { data, error } = await supabase
     .from("notification_group_members")
     .select(
-      "id, church_id, group_id, membership_id, user_id, status, added_by, added_at, removed_at",
+      "id, organization_id, group_id, membership_id, user_id, status, added_by, added_at, removed_at",
     )
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("group_id", groupId)
     .eq("status", "active")
     .order("added_at", { ascending: false });
@@ -180,7 +180,7 @@ export async function listNotificationGroupMembers(
 
   const rows = (data ?? []) as Array<{
     id: string;
-    church_id: string;
+    organization_id: string;
     group_id: string;
     membership_id: string;
     user_id: string;
@@ -219,7 +219,7 @@ export async function listEffectiveNotificationGroupMembers(
   const effective = await getEffectiveGroupUsers(churchId, group.id);
   return effective.map((user) => ({
     id: `dynamic:${user.membershipId}`,
-    church_id: churchId,
+    organization_id: churchId,
     group_id: group.id,
     membership_id: user.membershipId,
     user_id: user.userId,
@@ -244,7 +244,7 @@ async function enrichGroupMembers(
   churchId: string,
   rows: Array<{
     id: string;
-    church_id: string;
+    organization_id: string;
     group_id: string;
     membership_id: string;
     user_id: string;
@@ -261,7 +261,7 @@ async function enrichGroupMembers(
     supabase
       .from("organization_memberships")
       .select("id, role")
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .in("id", membershipIds),
     supabase
       .from("profiles")
@@ -310,7 +310,7 @@ export async function listNotificationGroupDefaults(
   const { data, error } = await supabase
     .from("notification_group_defaults")
     .select("*")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("group_id", groupId)
     .order("notification_type", { ascending: true });
 
@@ -318,7 +318,7 @@ export async function listNotificationGroupDefaults(
 
   return ((data ?? []) as Record<string, unknown>[]).map((row) => ({
     id: String(row.id),
-    church_id: String(row.church_id),
+    organization_id: String(row.organization_id),
     group_id: String(row.group_id),
     notification_type: String(row.notification_type),
     email_enabled: Boolean(row.email_enabled),

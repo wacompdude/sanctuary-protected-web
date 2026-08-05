@@ -163,7 +163,7 @@ async function maybeCreateCertification(params: {
   const { data: existing } = await params.supabase
     .from("certifications")
     .select("id")
-    .eq("church_id", params.churchId)
+    .eq("organization_id", params.churchId)
     .eq("team_member_id", teamMember.id)
     .eq("certification_type", certType)
     .maybeSingle();
@@ -175,7 +175,7 @@ async function maybeCreateCertification(params: {
   expiration.setFullYear(expiration.getFullYear() + 1);
 
   await params.supabase.from("certifications").insert({
-    church_id: params.churchId,
+    organization_id: params.churchId,
     team_member_id: teamMember.id,
     certification_type: certType,
     issuer: "Training Management",
@@ -204,7 +204,7 @@ async function completeParticipantInternal(params: {
       `
       *,
       event:training_events (
-        id, church_id, name, status, campus_id, instructor_name, provider_name,
+        id, organization_id, name, status, campus_id, instructor_name, provider_name,
         creates_certification, certification_type, training_course_id, training_category_id,
         course:training_courses ( id, name, renewal_months, creates_certification, certification_type ),
         category:training_categories ( id, name, sensitive, default_renewal_months )
@@ -212,7 +212,7 @@ async function completeParticipantInternal(params: {
     `,
     )
     .eq("id", params.participantId)
-    .eq("church_id", params.churchId)
+    .eq("organization_id", params.churchId)
     .maybeSingle();
 
   if (participantError || !participant) {
@@ -221,7 +221,7 @@ async function completeParticipantInternal(params: {
 
   const event = participant.event as {
     id: string;
-    church_id: string;
+    organization_id: string;
     name: string;
     status: TrainingEventStatus;
     campus_id: string | null;
@@ -365,7 +365,7 @@ export async function createTrainingEvent(
     if (!name) return { error: "Event name is required.", fieldErrors: { name: "Required" } };
 
     const payload = {
-      church_id: church.id,
+      organization_id: church.id,
       name: name.slice(0, 200),
       description: readOptionalString(formData, "description"),
       objective: readOptionalString(formData, "objective"),
@@ -458,7 +458,7 @@ export async function updateTrainingEvent(
       .from("training_events")
       .update(payload)
       .eq("id", eventId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (error) throw new Error(error.message);
 
@@ -492,7 +492,7 @@ export async function cancelTrainingEvent(
       .from("training_events")
       .update({ status: "cancelled", updated_by: user.id })
       .eq("id", eventId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (error) throw new Error(error.message);
 
@@ -524,7 +524,7 @@ export async function addParticipants(
     if (uniqueIds.length === 0) return { error: "Select at least one member." };
 
     const rows = uniqueIds.map((userId) => ({
-      church_id: church.id,
+      organization_id: church.id,
       training_event_id: eventId,
       user_id: userId,
       enrollment_status: "assigned" as const,
@@ -567,7 +567,7 @@ export async function updateParticipantAttendance(
         recorded_at: new Date().toISOString(),
       })
       .eq("id", participantId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (error) throw new Error(error.message);
     return { success: "Attendance updated." };
@@ -601,7 +601,7 @@ export async function bulkUpdateParticipantAttendance(
           recorded_at: new Date().toISOString(),
         })
         .eq("id", update.participantId)
-        .eq("church_id", church.id)
+        .eq("organization_id", church.id)
         .eq("training_event_id", eventId);
     }
 
@@ -690,7 +690,7 @@ export async function createCustomCategory(
     if (!name) return { error: "Category name is required." };
 
     const { error } = await supabase.from("training_categories").insert({
-      church_id: church.id,
+      organization_id: church.id,
       name: name.slice(0, 200),
       description: readOptionalString(formData, "description"),
       default_renewal_months: readNumber(formData, "default_renewal_months"),
@@ -718,7 +718,7 @@ export async function updateCategoryChurchState(
     const supabase = await createClient();
 
     const payload = {
-      church_id: church.id,
+      organization_id: church.id,
       category_id: categoryId,
       active: readBoolean(formData, "active"),
       display_order: readNumber(formData, "display_order"),
@@ -730,7 +730,7 @@ export async function updateCategoryChurchState(
 
     const { error } = await supabase
       .from("training_category_church_state")
-      .upsert(payload, { onConflict: "church_id,category_id" });
+      .upsert(payload, { onConflict: "organization_id,category_id" });
 
     if (error) throw new Error(error.message);
     revalidatePath("/training/courses");
@@ -756,7 +756,7 @@ export async function createCourse(
     }
 
     const { error } = await supabase.from("training_courses").insert({
-      church_id: church.id,
+      organization_id: church.id,
       training_category_id: categoryId,
       name: name.slice(0, 200),
       description: readOptionalString(formData, "description"),
@@ -805,7 +805,7 @@ export async function updateCourse(
         updated_by: user.id,
       })
       .eq("id", courseId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (error) throw new Error(error.message);
     revalidatePath("/training/courses");
@@ -828,7 +828,7 @@ export async function createRequirement(
     if (!name) return { error: "Requirement name is required." };
 
     const { error } = await supabase.from("training_requirements").insert({
-      church_id: church.id,
+      organization_id: church.id,
       name: name.slice(0, 200),
       training_course_id: readOptionalString(formData, "training_course_id"),
       training_category_id: readOptionalString(formData, "training_category_id"),
@@ -876,7 +876,7 @@ export async function updateRequirement(
         updated_by: user.id,
       })
       .eq("id", requirementId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (error) throw new Error(error.message);
     revalidatePath("/training/required");
@@ -904,7 +904,7 @@ export async function createExternalTraining(
     }
 
     const { error } = await supabase.from("training_external_records").insert({
-      church_id: church.id,
+      organization_id: church.id,
       user_id: userId,
       training_category_id: readOptionalString(formData, "training_category_id"),
       course_name: courseName.slice(0, 200),
@@ -942,7 +942,7 @@ export async function verifyExternalTraining(
       .from("training_external_records")
       .select("*")
       .eq("id", externalRecordId)
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .maybeSingle();
 
     if (fetchError || !external) throw new Error("External record not found.");
@@ -1003,7 +1003,7 @@ export async function verifyExternalTraining(
         updated_by: user.id,
       })
       .eq("id", externalRecordId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     await auditTrainingExternalVerified(supabase, {
       churchId: church.id,
@@ -1055,7 +1055,7 @@ export async function updateTrainingSettings(
     const { error } = await supabase
       .from("training_organization_settings")
       .update(payload)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (error) throw new Error(error.message);
 

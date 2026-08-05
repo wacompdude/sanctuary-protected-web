@@ -10,7 +10,7 @@ export async function listEventsForChurch(
   let query = supabase
     .from("events")
     .select("*")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .order("event_timestamp", { ascending: false });
 
   if (options?.campusFilterOr) {
@@ -38,7 +38,7 @@ export async function getUnacknowledgedEventCount(
   let query = supabase
     .from("events")
     .select("*", { count: "exact", head: true })
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("acknowledgment_status", "unacknowledged");
 
   if (options?.campusFilterOr) {
@@ -53,7 +53,7 @@ export async function getUnacknowledgedEventCount(
       const fallback = await supabase
         .from("events")
         .select("*", { count: "exact", head: true })
-        .eq("church_id", churchId)
+        .eq("organization_id", churchId)
         .eq("acknowledgment_status", "unacknowledged");
       if (fallback.error) throw new Error(fallback.error.message);
       return fallback.count ?? 0;

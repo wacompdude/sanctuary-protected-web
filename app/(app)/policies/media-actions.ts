@@ -131,9 +131,9 @@ export async function archivePolicyAttachment(
 
     const { data: attachment, error } = await supabase
       .from("policy_attachments")
-      .select("id, policy_document_id, storage_path, church_id")
+      .select("id, policy_document_id, storage_path, organization_id")
       .eq("id", attachmentId)
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .maybeSingle();
 
     if (error || !attachment) {
@@ -144,7 +144,7 @@ export async function archivePolicyAttachment(
       .from("policy_attachments")
       .update({ archived_at: new Date().toISOString() })
       .eq("id", attachmentId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (updateError) {
       return { error: updateError.message };

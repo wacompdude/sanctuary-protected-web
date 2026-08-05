@@ -62,7 +62,7 @@ async function IncidentDetailContent({
   const { church, user, membership } = await getAuthenticatedUserWithChurch();
   const incident = await getIncidentWithUpdates(id);
 
-  if (!incident || incident.church_id !== church.id) {
+  if (!incident || incident.organization_id !== church.id) {
     notFound();
   }
 

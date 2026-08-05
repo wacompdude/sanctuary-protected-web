@@ -30,7 +30,7 @@ async function listRecentScheduleNotifications(churchId: string) {
   const { data, error } = await supabase
     .from("notifications")
     .select("id, title, notification_type, severity, status, created_at")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .like("notification_type", "schedule.%")
     .order("created_at", { ascending: false })
     .limit(25);

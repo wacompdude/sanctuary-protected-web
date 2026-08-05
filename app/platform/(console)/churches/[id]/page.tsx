@@ -26,7 +26,7 @@ async function ChurchDetailContent({
     ? await getActivePlatformSupportSession(context)
     : null;
   const activeForThisChurch =
-    activeSupport && activeSupport.church_id === church.id
+    activeSupport && activeSupport.organization_id === church.id
       ? activeSupport
       : null;
 

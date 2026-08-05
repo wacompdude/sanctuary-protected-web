@@ -86,7 +86,7 @@ export function PlatformSubscriptionAdminPanel({
     setError(null);
     setMessage(null);
     const formData = new FormData();
-    formData.set("church_id", churchId);
+    formData.set("organization_id", churchId);
     formData.set("plan_key", selectedPlanKey);
     formData.set("reason", reason);
     if (confirmDowngrade) formData.set("confirm_downgrade", "1");
@@ -112,7 +112,7 @@ export function PlatformSubscriptionAdminPanel({
     setError(null);
     setMessage(null);
     const formData = new FormData();
-    formData.set("church_id", churchId);
+    formData.set("organization_id", churchId);
     formData.set("reason", cancelReason);
     if (cancelConfirm) formData.set("confirm", "1");
     formData.set("typed_confirmation", cancelTyped);
@@ -135,7 +135,7 @@ export function PlatformSubscriptionAdminPanel({
     setError(null);
     setMessage(null);
     const formData = new FormData();
-    formData.set("church_id", churchId);
+    formData.set("organization_id", churchId);
     formData.set("reason", restoreReason);
 
     startTransition(async () => {

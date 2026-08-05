@@ -20,7 +20,7 @@ async function claimReminderKey(input: {
 }): Promise<boolean> {
   const admin = createAdminClient();
   const { error } = await admin.from("schedule_reminder_keys").insert({
-    church_id: input.churchId,
+    organization_id: input.churchId,
     dedupe_key: input.dedupeKey,
     reminder_kind: input.reminderKind,
     shift_id: input.shiftId ?? null,
@@ -81,7 +81,7 @@ export async function scanScheduleReminders(options?: {
       .select(
         "default_first_reminder_minutes, default_second_reminder_minutes, unfilled_shift_warning_minutes, assignment_invitation_email_enabled, timezone",
       )
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .maybeSingle();
 
     const firstMinutes = settings?.default_first_reminder_minutes ?? 1440;
@@ -102,7 +102,7 @@ export async function scanScheduleReminders(options?: {
       .select(
         "id, title, start_at, end_at, status, required_member_count, confirmed_assignment_count, location_name",
       )
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .neq("status", "cancelled")
       .neq("status", "completed")
       .gte("start_at", now.toISOString())
@@ -123,7 +123,7 @@ export async function scanScheduleReminders(options?: {
       const { data: assignments } = await admin
         .from("shift_assignments")
         .select("id, user_id, status")
-        .eq("church_id", church.id)
+        .eq("organization_id", church.id)
         .eq("shift_id", shift.id)
         .in("status", [...CONFIRMED_STAFFING_STATUSES, "invited", "pending"]);
 
@@ -200,7 +200,7 @@ export async function scanScheduleReminders(options?: {
             await admin
               .from("schedule_reminder_keys")
               .update({ notification_id: notifyResult.notificationId })
-              .eq("church_id", church.id)
+              .eq("organization_id", church.id)
               .eq("dedupe_key", dedupeKey);
           } else if (notifyResult.error) {
             result.errors.push(notifyResult.error);
@@ -242,7 +242,7 @@ export async function scanScheduleReminders(options?: {
         const { data: managers } = await admin
           .from("organization_memberships")
           .select("user_id")
-          .eq("church_id", church.id)
+          .eq("organization_id", church.id)
           .eq("status", "active")
           .in("role", [
             "owner",
@@ -290,7 +290,7 @@ export async function scanScheduleReminders(options?: {
           await admin
             .from("schedule_reminder_keys")
             .update({ notification_id: notifyResult.notificationId })
-            .eq("church_id", church.id)
+            .eq("organization_id", church.id)
             .eq("dedupe_key", dedupeKey);
         } else if (notifyResult.error) {
           result.errors.push(notifyResult.error);

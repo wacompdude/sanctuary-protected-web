@@ -70,7 +70,7 @@ export async function scanCertificationExpirations(options?: {
       .select(
         "id, certification_type, expiration_date, team_member_id, team_members(id, full_name, email)",
       )
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .lte("expiration_date", thresholdStr) // on or before the warning threshold
       .order("expiration_date", { ascending: true });
 

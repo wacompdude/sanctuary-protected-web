@@ -29,7 +29,7 @@ export async function getAuthenticatedUserWithChurch() {
     church: context.church,
     membership: {
       id: context.membership.id,
-      church_id: context.membership.church_id,
+      organization_id: context.membership.organization_id,
       user_id: context.membership.user_id,
       role: context.membership.role,
       status: context.membership.status,
@@ -51,7 +51,7 @@ export async function getOperationalChurchContext() {
     church: context.church,
     membership: {
       id: context.membership.id,
-      church_id: context.membership.church_id,
+      organization_id: context.membership.organization_id,
       user_id: context.membership.user_id,
       role: context.membership.role,
       status: context.membership.status,

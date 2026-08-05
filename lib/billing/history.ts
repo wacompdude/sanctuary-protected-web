@@ -14,7 +14,7 @@ export async function listBillingHistory(
       .select(
         "id, change_type, reason, old_status, new_status, created_at, metadata",
       )
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .order("created_at", { ascending: false })
       .limit(take),
     supabase
@@ -22,7 +22,7 @@ export async function listBillingHistory(
       .select(
         "id, event_type, processing_status, created_at, billing_provider, error_message",
       )
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .order("created_at", { ascending: false })
       .limit(take),
   ]);

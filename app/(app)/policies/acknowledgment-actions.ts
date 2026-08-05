@@ -182,7 +182,7 @@ export async function waivePolicyAcknowledgment(
       .from("policy_acknowledgments")
       .select("id, policy_document_id, acknowledgment_status")
       .eq("id", acknowledgmentId)
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .maybeSingle();
 
     if (loadError || !ack) return { error: "Acknowledgment not found." };
@@ -197,7 +197,7 @@ export async function waivePolicyAcknowledgment(
         waiver_reason: reason.slice(0, 2000),
       })
       .eq("id", acknowledgmentId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (error) return { error: error.message };
 
@@ -326,7 +326,7 @@ export async function addPolicyAssignment(
     }
 
     const payload: Record<string, unknown> = {
-      church_id: church.id,
+      organization_id: church.id,
       policy_document_id: policyId,
       assignment_type: assignmentType,
       created_by: user.id,
@@ -391,7 +391,7 @@ export async function revokePolicyAssignment(
       .from("policy_assignments")
       .select("id, policy_document_id")
       .eq("id", assignmentId)
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .maybeSingle();
 
     if (loadError || !assignment) {
@@ -402,7 +402,7 @@ export async function revokePolicyAssignment(
       .from("policy_assignments")
       .update({ revoked_at: new Date().toISOString() })
       .eq("id", assignmentId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (error) return { error: error.message };
 

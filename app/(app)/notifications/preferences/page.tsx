@@ -41,7 +41,7 @@ async function NotificationPreferencesContent() {
     supabase
       .from("notification_preferences")
       .select("*")
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .eq("user_id", user.id)
       .eq("notification_type", "*")
       .maybeSingle(),
@@ -64,7 +64,7 @@ async function NotificationPreferencesContent() {
     .select(
       "critical_alert_override_enabled, allow_email_override, allow_sms_override, sms_notifications_enabled, push_notifications_enabled",
     )
-    .eq("church_id", church.id)
+    .eq("organization_id", church.id)
     .maybeSingle();
 
   return (

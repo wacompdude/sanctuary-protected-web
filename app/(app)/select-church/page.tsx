@@ -53,7 +53,7 @@ async function SelectChurchContent() {
         <CardContent>
           <SelectChurchList
             churches={memberships.map((membership) => ({
-              id: membership.church_id,
+              id: membership.organization_id,
               name: membership.church.name,
               role: membership.role,
             }))}

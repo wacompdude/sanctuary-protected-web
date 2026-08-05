@@ -19,7 +19,7 @@ export type CampusStatus =
 
 export type Campus = {
   id: string;
-  church_id: string;
+  organization_id: string;
   name: string;
   short_name: string | null;
   slug: string | null;
@@ -103,9 +103,9 @@ export type CampusMembershipStatus = "active" | "inactive" | "removed";
 
 export type CampusMembership = {
   id: string;
-  church_id: string;
+  organization_id: string;
   campus_id: string;
-  church_membership_id: string;
+  organization_membership_id: string;
   user_id: string;
   campus_role: CampusRole;
   status: CampusMembershipStatus;
@@ -124,7 +124,7 @@ export type CampusMembership = {
 
 export type OwnCampusMembership = {
   id: string;
-  church_id: string;
+  organization_id: string;
   church_name: string;
   campus_id: string;
   campus_name: string;

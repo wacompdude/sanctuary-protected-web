@@ -72,7 +72,7 @@ const CALENDAR_VIEWS: ScheduleCalendarView[] = [
 
 export type ScheduleSettingsFormInput = Omit<
   ChurchScheduleSettings,
-  "id" | "church_id" | "created_at" | "updated_at" | "updated_by"
+  "id" | "organization_id" | "created_at" | "updated_at" | "updated_by"
 >;
 
 export function validateScheduleSettingsForm(

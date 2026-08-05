@@ -629,7 +629,7 @@ export async function recordHelpSearchEvent(params: {
   const { error } = await supabase.from("help_search_events").insert({
     query_text: query,
     result_count: Math.max(0, Math.floor(params.resultCount)),
-    church_id: params.churchId ?? null,
+    organization_id: params.churchId ?? null,
     user_id: params.userId ?? null,
     selected_article_id: params.selectedArticleId ?? null,
   });
@@ -651,7 +651,7 @@ export async function recordHelpArticleView(params: {
   const { error } = await supabase.from("help_article_views").insert({
     article_id: params.articleId,
     article_version_id: params.articleVersionId ?? null,
-    church_id: params.churchId ?? null,
+    organization_id: params.churchId ?? null,
     user_id: params.userId ?? null,
   });
 
@@ -675,7 +675,7 @@ export async function submitHelpArticleFeedback(params: {
     article_version_id: params.articleVersionId ?? null,
     rating: params.rating,
     comment: params.comment?.trim().slice(0, 2000) || null,
-    church_id: params.churchId ?? null,
+    organization_id: params.churchId ?? null,
     user_id: params.userId,
   });
 

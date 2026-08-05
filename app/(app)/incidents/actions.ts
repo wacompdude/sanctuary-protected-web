@@ -82,7 +82,7 @@ async function recordIncidentTeamMembers(params: {
     const { data, error } = await params.supabase
       .from("incident_team_members")
       .insert({
-        church_id: params.churchId,
+        organization_id: params.churchId,
         incident_id: params.incidentId,
         membership_id: membershipId,
         added_by: params.userId,
@@ -129,7 +129,7 @@ async function recordUsagesForIncident(params: {
     const { data, error } = await params.supabase
       .from("medical_supply_usage")
       .insert({
-        church_id: params.churchId,
+        organization_id: params.churchId,
         incident_id: params.incidentId,
         medical_supply_id: usage.supplyId,
         quantity_used: usage.quantity,
@@ -282,7 +282,7 @@ async function uploadIncidentPhotoFiles(params: {
     const { data: row, error: insertError } = await supabase
       .from("incident_attachments")
       .insert({
-        church_id: churchId,
+        organization_id: churchId,
         incident_id: incidentId,
         uploaded_by: userId,
         storage_path: objectPath,
@@ -433,7 +433,7 @@ export async function createIncident(
     const { data: incident, error: incidentError } = await supabase
       .from("incidents")
       .insert({
-        church_id: church.id,
+        organization_id: church.id,
         created_by: user.id,
         title: input.title,
         type: input.type,
@@ -457,7 +457,7 @@ export async function createIncident(
       .from("incident_updates")
       .insert({
         incident_id: incident.id,
-        church_id: church.id,
+        organization_id: church.id,
         created_by: user.id,
         update_type: "created",
         content: "Incident reported.",
@@ -613,7 +613,7 @@ export async function resendIncidentNotificationAction(
     }
 
     const incident = await getIncidentWithUpdates(incidentId);
-    if (!incident || incident.church_id !== church.id) {
+    if (!incident || incident.organization_id !== church.id) {
       return { error: "Incident not found." };
     }
 
@@ -700,7 +700,7 @@ export async function addIncidentUpdate(
     const { supabase, user, church, membership } = context;
     const incident = await getIncidentWithUpdates(incidentId);
 
-    if (!incident || incident.church_id !== church.id) {
+    if (!incident || incident.organization_id !== church.id) {
       return { error: "Incident not found." };
     }
 
@@ -742,7 +742,7 @@ export async function addIncidentUpdate(
         .from("incidents")
         .update({ status: nextStatus })
         .eq("id", incidentId)
-        .eq("church_id", church.id);
+        .eq("organization_id", church.id);
 
       if (statusError) {
         return { error: statusError.message };
@@ -759,7 +759,7 @@ export async function addIncidentUpdate(
       .from("incident_updates")
       .insert({
         incident_id: incidentId,
-        church_id: church.id,
+        organization_id: church.id,
         created_by: user.id,
         update_type: statusChanged ? "status_change" : "comment",
         content,
@@ -821,7 +821,7 @@ export async function addIncidentTeamMember(
     }
 
     const incident = await getIncidentWithUpdates(incidentId);
-    if (!incident || incident.church_id !== church.id) {
+    if (!incident || incident.organization_id !== church.id) {
       return { error: "Incident not found." };
     }
 
@@ -883,9 +883,9 @@ export async function removeIncidentTeamMember(
 
     const { data: incidentMember, error } = await supabase
       .from("incident_team_members")
-      .select("id, incident_id, membership_id, church_id")
+      .select("id, incident_id, membership_id, organization_id")
       .eq("id", incidentMemberId)
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .maybeSingle();
 
     if (error) {
@@ -910,7 +910,7 @@ export async function removeIncidentTeamMember(
       .from("incident_team_members")
       .delete()
       .eq("id", incidentMemberId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (deleteError) {
       return { error: deleteError.message };
@@ -956,7 +956,7 @@ export async function uploadIncidentPhotos(
     }
 
     const incident = await getIncidentWithUpdates(incidentId);
-    if (!incident || incident.church_id !== church.id) {
+    if (!incident || incident.organization_id !== church.id) {
       return { error: "Incident not found." };
     }
 
@@ -983,7 +983,7 @@ export async function uploadIncidentPhotos(
     if (result.uploaded > 0) {
       await supabase.from("incident_updates").insert({
         incident_id: incidentId,
-        church_id: church.id,
+        organization_id: church.id,
         created_by: user.id,
         update_type: "comment",
         content:
@@ -1021,7 +1021,7 @@ export async function deleteIncidentPhoto(
       .from("incident_attachments")
       .select("*")
       .eq("id", attachmentId)
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .maybeSingle();
 
     if (error || !attachment) {
@@ -1047,7 +1047,7 @@ export async function deleteIncidentPhoto(
       .from("incident_attachments")
       .delete()
       .eq("id", attachmentId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (deleteRowError) {
       return { error: deleteRowError.message };

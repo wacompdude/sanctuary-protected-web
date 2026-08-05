@@ -50,7 +50,7 @@ export async function listAccessibleCampuses(params: {
       const { data, error } = await supabase
         .from("campuses")
         .select("id, name, short_name, is_primary, status, archived_at")
-        .eq("church_id", params.churchId)
+        .eq("organization_id", params.churchId)
         .order("is_primary", { ascending: false })
         .order("name", { ascending: true });
 
@@ -60,7 +60,7 @@ export async function listAccessibleCampuses(params: {
           const legacy = await supabase
             .from("campuses")
             .select("id, name, status")
-            .eq("church_id", params.churchId)
+            .eq("organization_id", params.churchId)
             .order("name", { ascending: true });
           if (legacy.error) {
             return { campuses: [], implicitAllAccess, tablesAvailable: false };
@@ -100,7 +100,7 @@ export async function listAccessibleCampuses(params: {
     const { data: memberships, error: membershipError } = await supabase
       .from("campus_memberships")
       .select("campus_id")
-      .eq("church_id", params.churchId)
+      .eq("organization_id", params.churchId)
       .eq("user_id", params.userId)
       .eq("status", "active");
 
@@ -123,7 +123,7 @@ export async function listAccessibleCampuses(params: {
     const { data, error } = await supabase
       .from("campuses")
       .select("id, name, short_name, is_primary, status, archived_at")
-      .eq("church_id", params.churchId)
+      .eq("organization_id", params.churchId)
       .in("id", campusIds)
       .order("is_primary", { ascending: false })
       .order("name", { ascending: true });

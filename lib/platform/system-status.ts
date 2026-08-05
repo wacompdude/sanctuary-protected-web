@@ -91,7 +91,7 @@ export async function listPlatformJobDeliveries(limit = 50): Promise<{
   counts: Record<string, number>;
   rows: Array<{
     id: string;
-    church_id: string;
+    organization_id: string;
     channel: string;
     provider: string;
     status: string;
@@ -107,7 +107,7 @@ export async function listPlatformJobDeliveries(limit = 50): Promise<{
   const { data, error } = await admin
     .from("notification_deliveries")
     .select(
-      "id, church_id, channel, provider, status, attempt_number, scheduled_for, last_error_message, created_at",
+      "id, organization_id, channel, provider, status, attempt_number, scheduled_for, last_error_message, created_at",
     )
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -143,7 +143,7 @@ export async function listPlatformJobDeliveries(limit = 50): Promise<{
     },
     rows: (data ?? []).map((row) => ({
       id: String(row.id),
-      church_id: String(row.church_id),
+      organization_id: String(row.organization_id),
       channel: String(row.channel),
       provider: String(row.provider),
       status: String(row.status),
@@ -161,7 +161,7 @@ export async function listPlatformWebhookEvents(limit = 40): Promise<{
     billing_provider: string;
     event_type: string;
     processing_status: string;
-    church_id: string | null;
+    organization_id: string | null;
     error_message: string | null;
     created_at: string;
   }>;
@@ -181,7 +181,7 @@ export async function listPlatformWebhookEvents(limit = 40): Promise<{
     admin
       .from("billing_events")
       .select(
-        "id, billing_provider, event_type, processing_status, church_id, error_message, created_at",
+        "id, billing_provider, event_type, processing_status, organization_id, error_message, created_at",
       )
       .order("created_at", { ascending: false })
       .limit(limit),
@@ -204,7 +204,7 @@ export async function listPlatformWebhookEvents(limit = 40): Promise<{
       billing_provider: String(row.billing_provider),
       event_type: String(row.event_type),
       processing_status: String(row.processing_status),
-      church_id: (row.church_id as string | null) ?? null,
+      organization_id: (row.organization_id as string | null) ?? null,
       error_message: (row.error_message as string | null) ?? null,
       created_at: String(row.created_at),
     })),

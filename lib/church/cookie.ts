@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 
 /** HttpOnly cookie storing the user's selected church id. Always re-validated server-side. */
-export const ACTIVE_CHURCH_COOKIE = "sp_active_church_id";
+export const ACTIVE_CHURCH_COOKIE = "sp_active_organization_id";
 
 export async function readActiveChurchCookie(): Promise<string | null> {
   const jar = await cookies();

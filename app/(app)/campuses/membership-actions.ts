@@ -82,7 +82,7 @@ export async function addCampusMembersAction(
     const { data: churchMembers, error: memberError } = await supabase
       .from("organization_memberships")
       .select("id, user_id, role, status")
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .eq("status", "active")
       .in("id", membershipIds);
 
@@ -111,13 +111,13 @@ export async function addCampusMembersAction(
         .from("campus_memberships")
         .select("id, status")
         .eq("campus_id", campusId)
-        .eq("church_membership_id", row.id)
+        .eq("organization_membership_id", row.id)
         .maybeSingle();
 
       const { count: existingActiveCount } = await supabase
         .from("campus_memberships")
         .select("id", { count: "exact", head: true })
-        .eq("church_membership_id", row.id)
+        .eq("organization_membership_id", row.id)
         .eq("status", "active");
 
       const shouldBePrimary =
@@ -127,7 +127,7 @@ export async function addCampusMembersAction(
         await supabase
           .from("campus_memberships")
           .update({ is_primary_campus: false })
-          .eq("church_membership_id", row.id)
+          .eq("organization_membership_id", row.id)
           .eq("status", "active")
           .eq("is_primary_campus", true);
       }
@@ -156,9 +156,9 @@ export async function addCampusMembersAction(
         const { error: insertError } = await supabase
           .from("campus_memberships")
           .insert({
-            church_id: church.id,
+            organization_id: church.id,
             campus_id: campusId,
-            church_membership_id: row.id,
+            organization_membership_id: row.id,
             user_id: row.user_id,
             campus_role: campusRole,
             status: "active",
@@ -222,7 +222,7 @@ export async function updateCampusMemberRoleAction(
       .select("id, campus_role, status")
       .eq("id", memberRowId)
       .eq("campus_id", campusId)
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .maybeSingle();
 
     if (!existing || existing.status !== "active") {
@@ -233,7 +233,7 @@ export async function updateCampusMemberRoleAction(
       .from("campus_memberships")
       .update({ campus_role: role })
       .eq("id", memberRowId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (error) {
       return {
@@ -284,10 +284,10 @@ export async function setMemberPrimaryCampusAction(
 
     const { data: existing } = await supabase
       .from("campus_memberships")
-      .select("id, church_membership_id, status, is_primary_campus")
+      .select("id, organization_membership_id, status, is_primary_campus")
       .eq("id", memberRowId)
       .eq("campus_id", campusId)
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .maybeSingle();
 
     if (!existing || existing.status !== "active") {
@@ -297,7 +297,7 @@ export async function setMemberPrimaryCampusAction(
     await supabase
       .from("campus_memberships")
       .update({ is_primary_campus: false })
-      .eq("church_membership_id", existing.church_membership_id)
+      .eq("organization_membership_id", existing.organization_membership_id)
       .eq("status", "active")
       .eq("is_primary_campus", true);
 
@@ -305,7 +305,7 @@ export async function setMemberPrimaryCampusAction(
       .from("campus_memberships")
       .update({ is_primary_campus: true })
       .eq("id", memberRowId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (error) {
       return {
@@ -359,7 +359,7 @@ export async function removeCampusMemberAction(
       })
       .eq("id", memberRowId)
       .eq("campus_id", campusId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (error) {
       return {

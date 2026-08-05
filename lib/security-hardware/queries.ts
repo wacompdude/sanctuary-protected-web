@@ -23,7 +23,7 @@ export {
 } from "@/lib/church/auth";
 
 const EQUIPMENT_SELECT = `
-  id, church_id, campus_id, category, subcategory, name, description,
+  id, organization_id, campus_id, category, subcategory, name, description,
   asset_tag, manufacturer, model, serial_number, status, criticality,
   location_name, building, floor, room, installation_area,
   assigned_user_id, assigned_team, responsible_user_id,
@@ -48,7 +48,7 @@ export async function listCampusesForChurch(
   const { data, error } = await supabase
     .from("campuses")
     .select("id, name, status")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .order("name", { ascending: true });
 
   if (error) {
@@ -94,7 +94,7 @@ export async function getEquipmentSummary(
     .select(
       "status, criticality, assigned_user_id, assigned_team, next_maintenance_at, warranty_expiration, expected_replacement_date, archived_at",
     )
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .is("archived_at", null);
 
   if (options?.campusFilterOr) {
@@ -169,7 +169,7 @@ export async function listSecurityEquipment(
   let query = supabase
     .from("security_equipment")
     .select(EQUIPMENT_SELECT)
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .order("updated_at", { ascending: false });
 
   if (!filters.includeArchived) {
@@ -277,7 +277,7 @@ export async function getSecurityEquipmentById(
     .from("security_equipment")
     .select(EQUIPMENT_SELECT)
     .eq("id", equipmentId)
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .maybeSingle();
 
   if (error) {
@@ -291,7 +291,7 @@ export async function getSecurityEquipmentById(
       .from("campuses")
       .select("name")
       .eq("id", row.campus_id)
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .maybeSingle();
     row.campus_name = campus?.name ?? null;
   }
@@ -309,14 +309,14 @@ export async function loadCategoryDetails(
     .from(table)
     .select("*")
     .eq("equipment_id", equipment.id)
-    .eq("church_id", equipment.church_id)
+    .eq("organization_id", equipment.organization_id)
     .maybeSingle();
 
   if (error || !data) return null;
 
   const values: CategoryDetailRecord = { ...(data as CategoryDetailRecord) };
   delete values.equipment_id;
-  delete values.church_id;
+  delete values.organization_id;
 
   return { table, values };
 }
@@ -350,12 +350,12 @@ export async function upsertCategoryDetails(params: {
       .from(other)
       .delete()
       .eq("equipment_id", params.equipmentId)
-      .eq("church_id", params.churchId);
+      .eq("organization_id", params.churchId);
   }
 
   const payload = {
     equipment_id: params.equipmentId,
-    church_id: params.churchId,
+    organization_id: params.churchId,
     ...params.values,
   };
 
@@ -379,7 +379,7 @@ export async function clearAllCategoryDetails(params: {
       .from(table)
       .delete()
       .eq("equipment_id", params.equipmentId)
-      .eq("church_id", params.churchId);
+      .eq("organization_id", params.churchId);
   }
 }
 
@@ -398,7 +398,7 @@ export async function suggestAssetTag(params: {
       .from("campuses")
       .select("name")
       .eq("id", params.campusId)
-      .eq("church_id", params.churchId)
+      .eq("organization_id", params.churchId)
       .maybeSingle();
     const name = (campus?.name ?? "MAIN").toUpperCase().replace(/[^A-Z0-9]+/g, "");
     campusCode = (name.slice(0, 6) || "MAIN").slice(0, 6);
@@ -410,7 +410,7 @@ export async function suggestAssetTag(params: {
   const { data } = await supabase
     .from("security_equipment")
     .select("asset_tag")
-    .eq("church_id", params.churchId)
+    .eq("organization_id", params.churchId)
     .ilike("asset_tag", `${stub}%`);
 
   let max = 0;

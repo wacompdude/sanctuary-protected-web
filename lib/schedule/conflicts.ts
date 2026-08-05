@@ -75,7 +75,7 @@ export async function validateShiftAssignment(
       .from("schedule_events")
       .select("id, status")
       .eq("id", shift.event_id)
-      .eq("church_id", input.churchId)
+      .eq("organization_id", input.churchId)
       .maybeSingle();
 
     if (event?.status === "cancelled" || event?.status === "archived") {
@@ -107,7 +107,7 @@ export async function validateShiftAssignment(
   const { data: otherAssignments } = await supabase
     .from("shift_assignments")
     .select("id, shift_id, status")
-    .eq("church_id", input.churchId)
+    .eq("organization_id", input.churchId)
     .eq("membership_id", input.membershipId)
     .in("status", [...ACTIVE_ASSIGNMENT_STATUSES]);
 
@@ -123,7 +123,7 @@ export async function validateShiftAssignment(
     const { data: otherShifts } = await supabase
       .from("schedule_shifts")
       .select("id, title, start_at, end_at, status")
-      .eq("church_id", input.churchId)
+      .eq("organization_id", input.churchId)
       .in("id", otherShiftIds)
       .neq("status", "cancelled");
 
@@ -151,7 +151,7 @@ export async function validateShiftAssignment(
   const { data: unavailable } = await supabase
     .from("member_unavailability")
     .select("id, start_at, end_at, title, status")
-    .eq("church_id", input.churchId)
+    .eq("organization_id", input.churchId)
     .eq("membership_id", input.membershipId)
     .eq("status", "active");
 
@@ -182,7 +182,7 @@ export async function validateShiftAssignment(
     const { data: certs } = await supabase
       .from("certifications")
       .select("id, certification_type, expiration_date, user_id")
-      .eq("church_id", input.churchId)
+      .eq("organization_id", input.churchId)
       .eq("user_id", input.userId);
 
     const now = Date.now();

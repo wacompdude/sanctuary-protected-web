@@ -115,7 +115,7 @@ export async function createSecurityEquipment(
     const { data, error } = await supabase
       .from("security_equipment")
       .insert({
-        church_id: church.id,
+        organization_id: church.id,
         campus_id: input.campus_id,
         category: input.category,
         subcategory: input.subcategory,
@@ -322,7 +322,7 @@ export async function updateSecurityEquipment(
         updated_by: user.id,
       })
       .eq("id", equipmentId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (error) {
       if (error.code === "23505") {
@@ -413,7 +413,7 @@ export async function archiveSecurityEquipment(
         updated_by: user.id,
       })
       .eq("id", equipmentId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (error) {
       return { error: error.message };
@@ -469,7 +469,7 @@ export async function restoreSecurityEquipment(
         updated_by: user.id,
       })
       .eq("id", equipmentId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (error) {
       return { error: error.message };

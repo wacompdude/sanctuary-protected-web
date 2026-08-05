@@ -67,7 +67,7 @@ export async function scanSafetyConcernReviewReminders(options?: {
     const { data: profiles, error: profileError } = await admin
       .from("safety_concern_profiles")
       .select("id, next_review_date, expires_at, profile_status")
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .is("archived_at", null)
       .in("profile_status", ["active", "under_review", "expired"]);
 

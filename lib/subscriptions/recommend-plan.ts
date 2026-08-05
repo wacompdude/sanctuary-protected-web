@@ -73,13 +73,13 @@ export async function collectChurchUsageSignals(
     photoCount,
   ] = await Promise.all([
     countExact(supabase, "campuses", {
-      church_id: churchId,
+      organization_id: churchId,
       status: "active",
     }),
-    countExact(supabase, "policy_documents", { church_id: churchId }),
-    countExact(supabase, "medical_supplies", { church_id: churchId }),
-    countExact(supabase, "security_equipment", { church_id: churchId }),
-    countExact(supabase, "incident_attachments", { church_id: churchId }),
+    countExact(supabase, "policy_documents", { organization_id: churchId }),
+    countExact(supabase, "medical_supplies", { organization_id: churchId }),
+    countExact(supabase, "security_equipment", { organization_id: churchId }),
+    countExact(supabase, "incident_attachments", { organization_id: churchId }),
   ]);
 
   return {

@@ -494,7 +494,7 @@ export async function applyPlatformPlanChangeAction(
     await requireRecentPlatformAuthentication();
     const context = await requirePlatformPermission("subscriptions.change_plan");
 
-    const churchId = String(formData.get("church_id") ?? "").trim();
+    const churchId = String(formData.get("organization_id") ?? "").trim();
     const planKey = String(formData.get("plan_key") ?? "").trim();
     const reason = String(formData.get("reason") ?? "").trim();
     const confirmDowngrade = formData.get("confirm_downgrade") === "1";
@@ -547,7 +547,7 @@ export async function cancelPlatformSubscriptionAction(
     await requireRecentPlatformAuthentication();
     const context = await requirePlatformPermission("subscriptions.cancel");
 
-    const churchId = String(formData.get("church_id") ?? "").trim();
+    const churchId = String(formData.get("organization_id") ?? "").trim();
     const reason = String(formData.get("reason") ?? "").trim();
     const confirm = formData.get("confirm") === "1";
     const typedConfirmation = String(
@@ -588,7 +588,7 @@ export async function restorePlatformSubscriptionAction(
     await requireRecentPlatformAuthentication();
     const context = await requirePlatformPermission("subscriptions.restore");
 
-    const churchId = String(formData.get("church_id") ?? "").trim();
+    const churchId = String(formData.get("organization_id") ?? "").trim();
     const reason = String(formData.get("reason") ?? "").trim();
     if (!churchId) return { error: "Church is required." };
 
@@ -635,7 +635,7 @@ export async function startPlatformSupportSessionAction(
     await requireRecentPlatformAuthentication();
     const context = await requirePlatformPermission("churches.support_access");
 
-    const churchId = String(formData.get("church_id") ?? "").trim();
+    const churchId = String(formData.get("organization_id") ?? "").trim();
     if (!churchId) return { error: "Select a church." };
 
     const session = await startPlatformSupportSession({

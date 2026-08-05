@@ -401,7 +401,7 @@ export async function resolveSystemGroupIdsForRoles(
   const { data, error } = await supabase
     .from("notification_groups")
     .select("id, dynamic_rule_value")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("is_system_group", true)
     .eq("status", "active")
     .eq("dynamic_rule_type", "role")
@@ -461,7 +461,7 @@ export async function resolveNotificationAudience(params: {
     const { data: rows } = await supabase
       .from("organization_memberships")
       .select("id, user_id, role, status")
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .eq("status", "active")
       .in("id", targets.membershipIds);
     for (const row of (rows ?? []) as Array<{
@@ -538,7 +538,7 @@ export async function resolveNotificationAudience(params: {
         .select(
           "id, user_id, channel, destination, normalized_destination, is_primary, is_verified, status, consent_status",
         )
-        .eq("church_id", churchId)
+        .eq("organization_id", churchId)
         .in("user_id", userIds)
         .neq("status", "revoked"),
       supabase
@@ -546,14 +546,14 @@ export async function resolveNotificationAudience(params: {
         .select(
           "user_id, group_id, notification_type, channel, enabled, minimum_severity, quiet_hours_enabled, quiet_hours_start, quiet_hours_end, digest_frequency",
         )
-        .eq("church_id", churchId)
+        .eq("organization_id", churchId)
         .in("user_id", userIds),
       supabase
         .from("notification_preferences")
         .select(
           "user_id, notification_type, email_enabled, sms_enabled, push_enabled, in_app_enabled, minimum_severity, quiet_hours_enabled, quiet_hours_start, quiet_hours_end, digest_frequency",
         )
-        .eq("church_id", churchId)
+        .eq("organization_id", churchId)
         .in("user_id", userIds)
         .in("notification_type", [notificationType, "*"]),
     ]);

@@ -114,7 +114,7 @@ async function allocateUniqueSlug(
     let query = supabase
       .from("policy_documents")
       .select("id")
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .eq("slug", slug)
       .limit(1);
     if (excludeId) query = query.neq("id", excludeId);
@@ -148,7 +148,7 @@ async function syncPolicyTags(params: {
   await supabase
     .from("policy_document_tags")
     .delete()
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("policy_document_id", policyId);
 
   if (tags.length === 0) return;
@@ -159,7 +159,7 @@ async function syncPolicyTags(params: {
     const { data: existing } = await supabase
       .from("policy_tags")
       .select("id")
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .eq("slug", slug)
       .maybeSingle();
 
@@ -170,7 +170,7 @@ async function syncPolicyTags(params: {
 
     const { data: created, error } = await supabase
       .from("policy_tags")
-      .insert({ church_id: churchId, name: name.slice(0, 80), slug })
+      .insert({ organization_id: churchId, name: name.slice(0, 80), slug })
       .select("id")
       .single();
     if (error || !created) {
@@ -181,7 +181,7 @@ async function syncPolicyTags(params: {
 
   const { error } = await supabase.from("policy_document_tags").insert(
     tagIds.map((tag_id) => ({
-      church_id: churchId,
+      organization_id: churchId,
       policy_document_id: policyId,
       tag_id,
     })),
@@ -214,7 +214,7 @@ async function insertApproval(params: {
   notes?: string | null;
 }) {
   const { error } = await params.supabase.from("policy_approvals").insert({
-    church_id: params.churchId,
+    organization_id: params.churchId,
     policy_document_id: params.policyId,
     policy_version_id: params.versionId,
     decision: params.decision,
@@ -314,7 +314,7 @@ export async function createPolicy(
     const { data: document, error: docError } = await supabase
       .from("policy_documents")
       .insert({
-        church_id: church.id,
+        organization_id: church.id,
         ...documentFieldsFromInput(input, user.id, slug),
         status: "draft" satisfies PolicyDocumentStatus,
         owner_user_id: user.id,
@@ -334,7 +334,7 @@ export async function createPolicy(
     const { data: version, error: versionError } = await supabase
       .from("policy_versions")
       .insert({
-        church_id: church.id,
+        organization_id: church.id,
         policy_document_id: policyId,
         version_number: versionNumber,
         version_label: versionLabel,
@@ -366,7 +366,7 @@ export async function createPolicy(
         updated_by: user.id,
       })
       .eq("id", policyId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (linkError) {
       return { error: linkError.message };
@@ -503,7 +503,7 @@ export async function updatePolicy(
       .from("policy_documents")
       .update(documentFieldsFromInput(input, user.id, slug))
       .eq("id", policyId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (docError) {
       return {
@@ -521,7 +521,7 @@ export async function updatePolicy(
         word_count: countWords(input.content),
       })
       .eq("id", currentVersion.id)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (versionError) {
       return {
@@ -626,7 +626,7 @@ async function runWorkflowAction(params: {
       const { data: draft, error: draftError } = await supabase
         .from("policy_versions")
         .insert({
-          church_id: church.id,
+          organization_id: church.id,
           policy_document_id: policyId,
           version_number: draftNumber,
           version_label: formatVersionLabel(draftNumber),
@@ -662,7 +662,7 @@ async function runWorkflowAction(params: {
           archived_at: null,
         })
         .eq("id", policyId)
-        .eq("church_id", church.id);
+        .eq("organization_id", church.id);
 
       if (docError) {
         return { error: docError.message };
@@ -744,7 +744,7 @@ async function runWorkflowAction(params: {
               superseded_at: now,
             })
             .eq("id", version.id)
-            .eq("church_id", church.id);
+            .eq("organization_id", church.id);
           if (supersedeError) {
             return { error: supersedeError.message };
           }
@@ -770,7 +770,7 @@ async function runWorkflowAction(params: {
           approved_at: existing.current_version.approved_at ?? now,
         })
         .eq("id", existing.current_version_id!)
-        .eq("church_id", church.id);
+        .eq("organization_id", church.id);
 
       if (versionError) {
         return {
@@ -794,7 +794,7 @@ async function runWorkflowAction(params: {
           archived_at: null,
         })
         .eq("id", policyId)
-        .eq("church_id", church.id);
+        .eq("organization_id", church.id);
 
       if (docError) {
         return { error: docError.message };
@@ -900,7 +900,7 @@ async function runWorkflowAction(params: {
       .from("policy_documents")
       .update(documentUpdate)
       .eq("id", policyId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (docError) {
       return { error: docError.message };
@@ -925,7 +925,7 @@ async function runWorkflowAction(params: {
         .from("policy_versions")
         .update(versionUpdate)
         .eq("id", existing.current_version_id!)
-        .eq("church_id", church.id);
+        .eq("organization_id", church.id);
       if (versionError) {
         return { error: versionError.message };
       }

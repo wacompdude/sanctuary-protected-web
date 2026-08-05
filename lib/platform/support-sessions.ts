@@ -21,7 +21,7 @@ export {
 export type PlatformSupportSessionRecord = {
   id: string;
   platform_account_id: string;
-  church_id: string;
+  organization_id: string;
   church_name: string | null;
   access_type: PlatformAccessSessionType;
   reason: string;
@@ -141,7 +141,7 @@ export async function startPlatformSupportSession(params: {
     .from("platform_access_sessions")
     .insert({
       platform_account_id: params.context.account.id,
-      church_id: church.id,
+      organization_id: church.id,
       access_type: accessType,
       reason,
       ticket_reference: params.ticketReference?.trim() || null,
@@ -150,7 +150,7 @@ export async function startPlatformSupportSession(params: {
       expires_at: expiresAt.toISOString(),
     })
     .select(
-      "id, platform_account_id, church_id, access_type, reason, ticket_reference, status, started_at, expires_at, ended_at",
+      "id, platform_account_id, organization_id, access_type, reason, ticket_reference, status, started_at, expires_at, ended_at",
     )
     .single();
 
@@ -182,7 +182,7 @@ export async function startPlatformSupportSession(params: {
   return {
     id: String(session.id),
     platform_account_id: String(session.platform_account_id),
-    church_id: String(session.church_id),
+    organization_id: String(session.organization_id),
     church_name: String(church.name),
     access_type: session.access_type as PlatformAccessSessionType,
     reason: String(session.reason),
@@ -211,7 +211,7 @@ export async function endPlatformSupportSession(params: {
 
   const { data: session } = await admin
     .from("platform_access_sessions")
-    .select("id, platform_account_id, church_id, status, access_type")
+    .select("id, platform_account_id, organization_id, status, access_type")
     .eq("id", sessionId)
     .maybeSingle();
 
@@ -247,7 +247,7 @@ export async function endPlatformSupportSession(params: {
         action: AuditAction.PLATFORM_SUPPORT_SESSION_ENDED,
         targetType: AuditEntityType.PLATFORM_ACCESS_SESSION,
         targetId: String(session.id),
-        churchId: String(session.church_id),
+        churchId: String(session.organization_id),
         reason: params.reason?.trim() || "Support session ended",
         metadata: {
           access_type: session.access_type,
@@ -269,7 +269,7 @@ async function hydrateSession(
   return {
     id: String(row.id),
     platform_account_id: String(row.platform_account_id),
-    church_id: String(row.church_id),
+    organization_id: String(row.organization_id),
     church_name: churchName ?? null,
     access_type: row.access_type as PlatformAccessSessionType,
     reason: String(row.reason ?? ""),
@@ -292,7 +292,7 @@ export async function getActivePlatformSupportSession(
     ? await admin
         .from("platform_access_sessions")
         .select(
-          "id, platform_account_id, church_id, access_type, reason, ticket_reference, status, started_at, expires_at, ended_at",
+          "id, platform_account_id, organization_id, access_type, reason, ticket_reference, status, started_at, expires_at, ended_at",
         )
         .eq("id", cookieSessionId)
         .eq("platform_account_id", context.account.id)
@@ -302,7 +302,7 @@ export async function getActivePlatformSupportSession(
     : await admin
         .from("platform_access_sessions")
         .select(
-          "id, platform_account_id, church_id, access_type, reason, ticket_reference, status, started_at, expires_at, ended_at",
+          "id, platform_account_id, organization_id, access_type, reason, ticket_reference, status, started_at, expires_at, ended_at",
         )
         .eq("platform_account_id", context.account.id)
         .eq("status", "active")
@@ -320,7 +320,7 @@ export async function getActivePlatformSupportSession(
   const { data: church } = await admin
     .from("organizations")
     .select("name")
-    .eq("id", session.church_id)
+    .eq("id", session.organization_id)
     .maybeSingle();
 
   return hydrateSession(
@@ -334,7 +334,7 @@ export async function requireActiveSupportSessionForChurch(
   churchId: string,
 ): Promise<PlatformSupportSessionRecord> {
   const session = await getActivePlatformSupportSession(context);
-  if (!session || session.church_id !== churchId) {
+  if (!session || session.organization_id !== churchId) {
     throw new PlatformAccessError(
       "An active support session for this church is required.",
       "FORBIDDEN_PERMISSION",
@@ -427,7 +427,7 @@ export async function listRecentSupportSessionsForAccount(
   const { data, error } = await admin
     .from("platform_access_sessions")
     .select(
-      "id, platform_account_id, church_id, access_type, reason, ticket_reference, status, started_at, expires_at, ended_at",
+      "id, platform_account_id, organization_id, access_type, reason, ticket_reference, status, started_at, expires_at, ended_at",
     )
     .eq("platform_account_id", context.account.id)
     .order("started_at", { ascending: false })
@@ -436,7 +436,7 @@ export async function listRecentSupportSessionsForAccount(
   if (error) throw new Error(error.message);
 
   const churchIds = [
-    ...new Set((data ?? []).map((row) => String(row.church_id))),
+    ...new Set((data ?? []).map((row) => String(row.organization_id))),
   ];
   const nameById = new Map<string, string>();
   if (churchIds.length) {
@@ -453,7 +453,7 @@ export async function listRecentSupportSessionsForAccount(
     (data ?? []).map((row) =>
       hydrateSession(
         row as Record<string, unknown>,
-        nameById.get(String(row.church_id)) ?? null,
+        nameById.get(String(row.organization_id)) ?? null,
       ),
     ),
   );

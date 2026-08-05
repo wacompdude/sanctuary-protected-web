@@ -173,7 +173,7 @@ export async function seedPoliciesAndProcedures(
   const { data: categories, error: listError } = await ctx.admin
     .from("policy_categories")
     .select("id, key")
-    .eq("church_id", ctx.churchId);
+    .eq("organization_id", ctx.churchId);
 
   if (listError || !categories?.length) {
     warn(
@@ -218,7 +218,7 @@ export async function seedPoliciesAndProcedures(
           };
 
     const docPayload = {
-      church_id: ctx.churchId,
+      organization_id: ctx.churchId,
       campus_id: null, // church-wide → all campuses
       category_id: categoryId,
       document_type: def.document_type,
@@ -311,7 +311,7 @@ export async function seedPoliciesAndProcedures(
             : "draft";
 
     const versionPayload = {
-      church_id: ctx.churchId,
+      organization_id: ctx.churchId,
       policy_document_id: documentId,
       version_number: 1,
       version_label: "1.0",

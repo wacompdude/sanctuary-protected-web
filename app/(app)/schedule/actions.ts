@@ -48,7 +48,7 @@ async function writeScheduleChangeHistory(input: {
   changedFields?: string[];
 }) {
   await input.supabase.from("schedule_change_history").insert({
-    church_id: input.churchId,
+    organization_id: input.churchId,
     entity_type: "event",
     entity_id: input.entityId,
     event_id: input.eventId,
@@ -80,7 +80,7 @@ export async function createScheduleEventAction(
 
     const supabase = await createClient();
     const payload = {
-      church_id: church.id,
+      organization_id: church.id,
       ...validated.data,
       created_by: user.id,
       updated_by: user.id,
@@ -174,7 +174,7 @@ export async function updateScheduleEventAction(
       .from("schedule_events")
       .select("id, title, status, start_at, end_at")
       .eq("id", eventId)
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .maybeSingle();
 
     if (existingError) {
@@ -198,7 +198,7 @@ export async function updateScheduleEventAction(
         updated_by: user.id,
       })
       .eq("id", eventId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (error) {
       return { error: "Unable to update the event. Please try again." };
@@ -275,7 +275,7 @@ export async function cancelScheduleEventAction(
       .from("schedule_events")
       .select("id, title, status, start_at, end_at")
       .eq("id", eventId)
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .maybeSingle();
 
     if (existingError) {
@@ -290,7 +290,7 @@ export async function cancelScheduleEventAction(
     const { data: relatedShifts } = await supabase
       .from("schedule_shifts")
       .select("id")
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .eq("event_id", eventId);
 
     const shiftIds = (relatedShifts ?? []).map((row) => row.id as string);
@@ -299,7 +299,7 @@ export async function cancelScheduleEventAction(
       const { data: assignees } = await supabase
         .from("shift_assignments")
         .select("user_id")
-        .eq("church_id", church.id)
+        .eq("organization_id", church.id)
         .in("shift_id", shiftIds)
         .not("status", "in", '("declined","cancelled")');
       recipientUserIds = [
@@ -319,7 +319,7 @@ export async function cancelScheduleEventAction(
         updated_by: user.id,
       })
       .eq("id", eventId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (error) {
       return { error: "Unable to cancel the event. Please try again." };
@@ -333,7 +333,7 @@ export async function cancelScheduleEventAction(
         cancelled_at: new Date().toISOString(),
         updated_by: user.id,
       })
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .eq("event_id", eventId)
       .not("status", "in", '("cancelled","completed")');
 
@@ -344,7 +344,7 @@ export async function cancelScheduleEventAction(
           status: "cancelled",
           cancelled_at: new Date().toISOString(),
         })
-        .eq("church_id", church.id)
+        .eq("organization_id", church.id)
         .in("shift_id", shiftIds)
         .not("status", "in", '("declined","cancelled","completed")');
     }

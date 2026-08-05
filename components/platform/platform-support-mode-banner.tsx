@@ -10,7 +10,7 @@ export function PlatformSupportModeBanner({
 }: {
   session: {
     id: string;
-    church_id: string;
+    organization_id: string;
     church_name: string | null;
     access_type: string;
     expires_at: string;
@@ -37,10 +37,10 @@ export function PlatformSupportModeBanner({
           <p className="mt-1 text-amber-100/80">
             Church:{" "}
             <Link
-              href={`/platform/churches/${session.church_id}`}
+              href={`/platform/churches/${session.organization_id}`}
               className="underline hover:text-amber-50"
             >
-              {session.church_name || session.church_id}
+              {session.church_name || session.organization_id}
             </Link>
             {" · "}
             Access: {session.access_type.replaceAll("_", " ")}

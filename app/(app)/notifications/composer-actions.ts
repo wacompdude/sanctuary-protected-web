@@ -87,7 +87,7 @@ async function loadGroupNames(
   const { data } = await supabase
     .from("notification_groups")
     .select("id, name")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .in("id", groupIds);
   return ((data ?? []) as Array<{ id: string; name: string }>).map((row) => ({
     id: row.id,

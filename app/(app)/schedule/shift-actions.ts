@@ -90,7 +90,7 @@ export async function createScheduleShiftAction(
     const { data, error } = await supabase
       .from("schedule_shifts")
       .insert({
-        church_id: church.id,
+        organization_id: church.id,
         ...validated.data,
         created_by: user.id,
         updated_by: user.id,
@@ -163,7 +163,7 @@ export async function updateScheduleShiftAction(
         updated_by: user.id,
       })
       .eq("id", shiftId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (error) {
       if (error.message.includes("SCHEDULE_SHIFT_OUTSIDE_EVENT_WINDOW")) {
@@ -206,7 +206,7 @@ export async function cancelScheduleShiftAction(
     const { data: assignees } = await supabase
       .from("shift_assignments")
       .select("user_id")
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .eq("shift_id", shiftId)
       .not("status", "in", '("declined","cancelled")');
 
@@ -218,7 +218,7 @@ export async function cancelScheduleShiftAction(
         updated_by: user.id,
       })
       .eq("id", shiftId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (error) return { error: "Unable to cancel the shift." };
 
@@ -228,7 +228,7 @@ export async function cancelScheduleShiftAction(
         status: "cancelled",
         cancelled_at: new Date().toISOString(),
       })
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .eq("shift_id", shiftId)
       .not("status", "in", '("declined","cancelled","completed")');
 
@@ -289,9 +289,9 @@ export async function assignMemberToShiftAction(
 
     const { data: targetMembership, error: membershipError } = await supabase
       .from("organization_memberships")
-      .select("id, user_id, status, church_id")
+      .select("id, user_id, status, organization_id")
       .eq("id", validated.data.membership_id)
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .maybeSingle();
 
     if (membershipError || !targetMembership) {
@@ -341,7 +341,7 @@ export async function assignMemberToShiftAction(
     const { data: assignment, error } = await supabase
       .from("shift_assignments")
       .insert({
-        church_id: church.id,
+        organization_id: church.id,
         shift_id: shiftId,
         membership_id: targetMembership.id,
         user_id: targetMembership.user_id,
@@ -424,7 +424,7 @@ export async function cancelShiftAssignmentAction(
       .from("shift_assignments")
       .select("id, user_id, status")
       .eq("id", assignmentId)
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .eq("shift_id", shiftId)
       .maybeSingle();
 
@@ -435,7 +435,7 @@ export async function cancelShiftAssignmentAction(
         cancelled_at: new Date().toISOString(),
       })
       .eq("id", assignmentId)
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .eq("shift_id", shiftId);
 
     if (error) return { error: "Unable to cancel the assignment." };
@@ -494,7 +494,7 @@ export async function respondToAssignmentAction(
       .from("shift_assignments")
       .select("id, shift_id, user_id, status")
       .eq("id", assignmentId)
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .maybeSingle();
 
     if (loadError) {
@@ -536,7 +536,7 @@ export async function respondToAssignmentAction(
           nextStatus === "declined" ? validated.data.decline_note : null,
       })
       .eq("id", assignmentId)
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .eq("user_id", user.id);
 
     if (error) return { error: "Unable to save your response." };
@@ -558,7 +558,7 @@ export async function respondToAssignmentAction(
     const { data: managers } = await supabase
       .from("organization_memberships")
       .select("user_id")
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .eq("status", "active")
       .in("role", ["owner", "co_owner", "administrator", "security_leader"]);
 

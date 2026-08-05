@@ -86,12 +86,12 @@ export async function listCategories(
       supabase
         .from("training_categories")
         .select("*")
-        .or(`is_system.eq.true,church_id.eq.${churchId}`)
+        .or(`is_system.eq.true,organization_id.eq.${churchId}`)
         .order("display_order", { ascending: true }),
       supabase
         .from("training_category_church_state")
         .select("*")
-        .eq("church_id", churchId),
+        .eq("organization_id", churchId),
     ]);
 
   if (catError) {
@@ -143,7 +143,7 @@ export async function listCourses(
       category:training_categories ( id, name, sensitive )
     `,
     )
-    .or(`is_system.eq.true,church_id.eq.${churchId}`)
+    .or(`is_system.eq.true,organization_id.eq.${churchId}`)
     .in("training_category_id", categoryIds)
     .order("name", { ascending: true });
 
@@ -196,7 +196,7 @@ export async function listEvents(
       category:training_categories ( id, name, sensitive, default_renewal_months )
     `,
     )
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .order("start_at", { ascending: true, nullsFirst: false });
 
   if (options?.campusFilter) {
@@ -240,7 +240,7 @@ export async function getEvent(
       category:training_categories ( id, name, sensitive, default_renewal_months )
     `,
     )
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("id", eventId)
     .maybeSingle();
 
@@ -312,7 +312,7 @@ export async function listParticipants(
   const { data, error } = await supabase
     .from("training_participants")
     .select("*")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("training_event_id", eventId)
     .order("created_at", { ascending: true });
 
@@ -342,7 +342,7 @@ export async function listCompletionRecords(
   let query = supabase
     .from("training_completion_records")
     .select("*")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .order("completed_at", { ascending: false });
 
   if (options?.userId) query = query.eq("user_id", options.userId);
@@ -466,7 +466,7 @@ export async function listRequirements(
       category:training_categories ( id, name )
     `,
     )
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .order("name", { ascending: true });
 
   if (error) {
@@ -484,7 +484,7 @@ export async function getSettings(
   const { data, error } = await supabase
     .from("training_organization_settings")
     .select("*")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .maybeSingle();
 
   if (error && !isMissingTrainingTable(error.message)) {
@@ -504,7 +504,7 @@ export async function getSettings(
   }
 
   return {
-    church_id: churchId,
+    organization_id: churchId,
     due_soon_days: DEFAULT_DUE_SOON_DAYS,
     reminder_at_assignment: true,
     reminder_days_before: [30, 14, 7, 1],
@@ -525,7 +525,7 @@ export async function ensureSettingsRow(
   const { data: existing } = await supabase
     .from("training_organization_settings")
     .select("*")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .maybeSingle();
 
   if (existing) return existing as TrainingChurchSettings;
@@ -535,10 +535,10 @@ export async function ensureSettingsRow(
     .from("training_organization_settings")
     .upsert(
       {
-        church_id: churchId,
+        organization_id: churchId,
         due_soon_days: defaults.due_soon_days,
       },
-      { onConflict: "church_id" },
+      { onConflict: "organization_id" },
     )
     .select("*")
     .single();
@@ -570,7 +570,7 @@ export async function listExternalRecords(
   let query = supabase
     .from("training_external_records")
     .select("*")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .order("completion_date", { ascending: false });
 
   if (options?.userId) query = query.eq("user_id", options.userId);
@@ -595,7 +595,7 @@ export async function listCampusesForTraining(churchId: string) {
   const { data, error } = await supabase
     .from("campuses")
     .select("id, name, short_name, is_primary, status")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .neq("status", "archived")
     .order("is_primary", { ascending: false })
     .order("name", { ascending: true });

@@ -71,7 +71,7 @@ export async function updateChurchThreatLevel(
     const { data: previousRow, error: previousError } = await supabase
       .from("organization_threat_levels")
       .select("threat_level")
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .eq("week_start", resolvedWeekStart)
       .order("created_at", { ascending: false })
       .limit(1)
@@ -88,7 +88,7 @@ export async function updateChurchThreatLevel(
     const { data: inserted, error: insertError } = await supabase
       .from("organization_threat_levels")
       .insert({
-        church_id: church.id,
+        organization_id: church.id,
         week_start: resolvedWeekStart,
         threat_level: threatLevel,
         notes,
@@ -177,7 +177,7 @@ export async function editChurchThreatLevelEntry(
       .from("organization_threat_levels")
       .select("id, week_start, threat_level, notes")
       .eq("id", entryId)
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .maybeSingle();
 
     if (loadError) {
@@ -202,7 +202,7 @@ export async function editChurchThreatLevelEntry(
         updated_by: user.id,
       })
       .eq("id", entryId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (updateError) {
       return {
@@ -261,7 +261,7 @@ export async function deleteChurchThreatLevelEntry(
       .from("organization_threat_levels")
       .select("id, week_start, threat_level")
       .eq("id", entryId)
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .maybeSingle();
 
     if (loadError) {
@@ -279,7 +279,7 @@ export async function deleteChurchThreatLevelEntry(
       .from("organization_threat_levels")
       .delete()
       .eq("id", entryId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (deleteError) {
       return {

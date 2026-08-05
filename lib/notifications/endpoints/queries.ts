@@ -4,7 +4,7 @@ import type { NotificationEndpoint } from "@/lib/notifications/endpoints/types";
 function mapEndpoint(row: Record<string, unknown>): NotificationEndpoint {
   return {
     id: String(row.id),
-    church_id: String(row.church_id),
+    organization_id: String(row.organization_id),
     user_id: String(row.user_id),
     membership_id: (row.membership_id as string | null) ?? null,
     channel: row.channel as NotificationEndpoint["channel"],
@@ -34,7 +34,7 @@ export async function listMyNotificationEndpoints(
   const { data, error } = await supabase
     .from("notification_endpoints")
     .select("*")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("user_id", userId)
     .neq("status", "revoked")
     .order("channel", { ascending: true })

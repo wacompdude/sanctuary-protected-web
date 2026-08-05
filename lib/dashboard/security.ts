@@ -20,7 +20,7 @@ export function assertDashboardChurchId(churchId: string): string {
  * Church scope always comes from getAuthenticatedUserWithChurch().
  */
 export function rejectBrowserSubmittedChurchId(formData: FormData): void {
-  const submitted = formData.get("church_id") ?? formData.get("churchId");
+  const submitted = formData.get("organization_id") ?? formData.get("churchId");
   if (submitted != null && String(submitted).trim() !== "") {
     throw new Error(
       "Church id cannot be submitted from the browser for dashboard settings.",

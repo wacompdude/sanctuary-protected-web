@@ -3,7 +3,7 @@ import type { NotificationChannel, NotificationSeverity } from "@/lib/notificati
 
 export type PreferenceRule = {
   id: string;
-  church_id: string;
+  organization_id: string;
   user_id: string;
   membership_id: string | null;
   group_id: string | null;
@@ -29,7 +29,7 @@ export async function listMyPreferenceRules(
   const { data, error } = await supabase
     .from("notification_preference_rules")
     .select("*")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("user_id", userId)
     .order("notification_type", { ascending: true });
 
@@ -40,7 +40,7 @@ export async function listMyPreferenceRules(
 
   const rows = ((data ?? []) as Record<string, unknown>[]).map((row) => ({
     id: String(row.id),
-    church_id: String(row.church_id),
+    organization_id: String(row.organization_id),
     user_id: String(row.user_id),
     membership_id: (row.membership_id as string | null) ?? null,
     group_id: (row.group_id as string | null) ?? null,
@@ -70,7 +70,7 @@ export async function listMyPreferenceRules(
   const { data: groups } = await supabase
     .from("notification_groups")
     .select("id, name")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .in("id", groupIds);
 
   const names = new Map(
@@ -107,7 +107,7 @@ export async function listPreferableGroupsForUser(params: {
   const { data: memberRows } = await supabase
     .from("notification_group_members")
     .select("group_id")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("user_id", userId)
     .eq("membership_id", membershipId)
     .eq("status", "active");
@@ -124,7 +124,7 @@ export async function listPreferableGroupsForUser(params: {
     const { data: memberGroups } = await supabase
       .from("notification_groups")
       .select("id, name, is_system_group, status")
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .in("id", memberGroupIds)
       .neq("status", "archived");
 
@@ -147,7 +147,7 @@ export async function listPreferableGroupsForUser(params: {
     .select(
       "id, name, is_system_group, dynamic_rule_type, dynamic_rule_value, status",
     )
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("is_system_group", true)
     .eq("status", "active");
 
@@ -182,7 +182,7 @@ export async function listPreferableGroupsForUser(params: {
     const { data: nestingRows, error: nestingError } = await supabase
       .from("notification_group_nestings")
       .select("parent_group_id, child_group_id")
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .eq("status", "active");
 
     if (!nestingError && nestingRows) {
@@ -214,7 +214,7 @@ export async function listPreferableGroupsForUser(params: {
         const { data: parentGroups } = await supabase
           .from("notification_groups")
           .select("id, name, is_system_group, status")
-          .eq("church_id", churchId)
+          .eq("organization_id", churchId)
           .in("id", missing)
           .neq("status", "archived");
 

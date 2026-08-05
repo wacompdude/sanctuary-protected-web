@@ -74,7 +74,7 @@ export async function processBillingWebhook(input: {
   const { data: inserted, error } = await admin
     .from("billing_events")
     .insert({
-      church_id: parsed.churchId ?? null,
+      organization_id: parsed.churchId ?? null,
       billing_provider: billingProvider || "unknown",
       provider_event_id: providerEventId,
       event_type: parsed.eventType,

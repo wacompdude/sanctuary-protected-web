@@ -58,7 +58,7 @@ export async function upsertChurchContact(
     const { supabase, user, church } = editor.context;
     const input = validation.data;
     const payload = {
-      church_id: church.id,
+      organization_id: church.id,
       contact_type: input.contactType,
       organization_name: input.organization_name,
       full_name: input.full_name,
@@ -73,7 +73,7 @@ export async function upsertChurchContact(
         .from("organization_contacts")
         .update(payload)
         .eq("id", contactId)
-        .eq("church_id", church.id)
+        .eq("organization_id", church.id)
         .select("id")
         .maybeSingle();
 
@@ -96,7 +96,7 @@ export async function upsertChurchContact(
       const { data: existing } = await supabase
         .from("organization_contacts")
         .select("id")
-        .eq("church_id", church.id)
+        .eq("organization_id", church.id)
         .eq("contact_type", input.contactType)
         .maybeSingle();
 
@@ -105,7 +105,7 @@ export async function upsertChurchContact(
           .from("organization_contacts")
           .update(payload)
           .eq("id", existing.id)
-          .eq("church_id", church.id);
+          .eq("organization_id", church.id);
 
         if (error) return { error: safeContactError(error.message) };
 
@@ -204,7 +204,7 @@ export async function deleteChurchContact(
       .from("organization_contacts")
       .select("id, contact_type")
       .eq("id", contactId)
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .maybeSingle();
 
     if (loadError) return { error: safeContactError(loadError.message) };
@@ -214,7 +214,7 @@ export async function deleteChurchContact(
       .from("organization_contacts")
       .delete()
       .eq("id", contactId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (error) return { error: safeContactError(error.message) };
 

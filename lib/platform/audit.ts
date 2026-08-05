@@ -39,7 +39,7 @@ export async function writePlatformAdminAction(
     action: input.action,
     target_type: input.targetType ?? null,
     target_id: input.targetId ?? null,
-    church_id: input.churchId ?? null,
+    organization_id: input.churchId ?? null,
     reason: input.reason ?? null,
     success: input.success !== false,
     correlation_id: input.correlationId ?? null,

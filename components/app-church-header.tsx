@@ -38,7 +38,7 @@ export async function AppChurchHeader() {
         : null;
 
     const churchOptions = memberships.map((item) => ({
-      id: item.church_id,
+      id: item.organization_id,
       name: item.church.name,
       role: item.role,
     }));

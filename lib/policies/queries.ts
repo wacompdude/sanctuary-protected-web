@@ -33,7 +33,7 @@ export { ChurchAccessError } from "@/lib/church/errors";
 
 type DocumentRow = {
   id: string;
-  church_id: string;
+  organization_id: string;
   campus_id: string | null;
   category_id: string | null;
   document_type: string;
@@ -69,7 +69,7 @@ type DocumentRow = {
 
 type VersionRow = {
   id: string;
-  church_id: string;
+  organization_id: string;
   policy_document_id: string;
   version_number: number | string;
   version_label: string;
@@ -91,7 +91,7 @@ type VersionRow = {
 };
 
 const DOCUMENT_SELECT = `
-  id, church_id, campus_id, category_id, document_type, title, slug, summary,
+  id, organization_id, campus_id, category_id, document_type, title, slug, summary,
   status, current_version_id, owner_user_id, created_by, updated_by, published_by,
   published_at, effective_date, review_due_date, retired_at, archived_at,
   requires_acknowledgment, acknowledgment_due_days, reacknowledge_on_publish,
@@ -108,7 +108,7 @@ function isMissingTableError(message: string) {
 function mapVersion(row: VersionRow): PolicyVersion {
   return {
     id: row.id,
-    church_id: row.church_id,
+    organization_id: row.organization_id,
     policy_document_id: row.policy_document_id,
     version_number: Number(row.version_number),
     version_label: row.version_label,
@@ -143,7 +143,7 @@ function mapListItem(
 ): PolicyDocumentListItem {
   return {
     id: row.id,
-    church_id: row.church_id,
+    organization_id: row.organization_id,
     campus_id: row.campus_id,
     category_id: row.category_id,
     document_type: row.document_type as PolicyDocumentType,
@@ -206,7 +206,7 @@ async function loadVersionsByIds(
   const { data, error } = await supabase
     .from("policy_versions")
     .select(
-      `id, church_id, policy_document_id, version_number, version_label,
+      `id, organization_id, policy_document_id, version_number, version_label,
        title_snapshot, summary_snapshot, content, content_format, change_summary,
        created_by, created_at, submitted_for_review_at, approved_by, approved_at,
        published_at, superseded_at, status, word_count, checksum`,
@@ -240,9 +240,9 @@ export async function listPolicyCategories(
   const { data, error } = await supabase
     .from("policy_categories")
     .select(
-      "id, church_id, key, label, description, is_system, sort_order, archived_at",
+      "id, organization_id, key, label, description, is_system, sort_order, archived_at",
     )
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .is("archived_at", null)
     .order("sort_order", { ascending: true });
 
@@ -264,7 +264,7 @@ export async function countMyPendingPolicyAcknowledgments(
   const { count, error } = await supabase
     .from("policy_acknowledgments")
     .select("id", { count: "exact", head: true })
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("user_id", userId)
     .in("acknowledgment_status", ["assigned", "viewed", "overdue"]);
 
@@ -292,7 +292,7 @@ async function enrichDocuments(
     const { data: acks } = await supabase
       .from("policy_acknowledgments")
       .select("policy_document_id, acknowledgment_status")
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .eq("user_id", userId)
       .in("policy_document_id", ids);
     for (const ack of acks ?? []) {
@@ -308,7 +308,7 @@ async function enrichDocuments(
     const { data: tagRows } = await supabase
       .from("policy_document_tags")
       .select("policy_document_id, policy_tags ( name )")
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .in("policy_document_id", ids);
     for (const row of tagRows ?? []) {
       const docId = String(row.policy_document_id);
@@ -363,7 +363,7 @@ export async function getPublishedPolicies(
   let query = supabase
     .from("policy_documents")
     .select(DOCUMENT_SELECT, { count: "exact" })
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("status", "published");
 
   if (filters.documentType) query = query.eq("document_type", filters.documentType);
@@ -408,7 +408,7 @@ export async function getPublishedPolicies(
       supabase
         .from("policy_documents")
         .select(DOCUMENT_SELECT)
-        .eq("church_id", churchId)
+        .eq("organization_id", churchId)
         .eq("status", "published")
         .eq("is_emergency_document", true)
         .order("updated_at", { ascending: false })
@@ -416,7 +416,7 @@ export async function getPublishedPolicies(
       supabase
         .from("policy_documents")
         .select(DOCUMENT_SELECT)
-        .eq("church_id", churchId)
+        .eq("organization_id", churchId)
         .eq("status", "published")
         .eq("is_featured", true)
         .order("updated_at", { ascending: false })
@@ -424,7 +424,7 @@ export async function getPublishedPolicies(
       supabase
         .from("policy_documents")
         .select(DOCUMENT_SELECT)
-        .eq("church_id", churchId)
+        .eq("organization_id", churchId)
         .eq("status", "published")
         .order("updated_at", { ascending: false })
         .limit(6),
@@ -479,7 +479,7 @@ export async function getPolicyById(
   const { data, error } = await supabase
     .from("policy_documents")
     .select(DOCUMENT_SELECT)
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("id", policyId)
     .maybeSingle();
 
@@ -537,7 +537,7 @@ export async function listCampusesForPolicies(churchId: string) {
   const { data, error } = await supabase
     .from("campuses")
     .select("id, name, status")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .order("name", { ascending: true });
 
   if (error) return [];
@@ -568,7 +568,7 @@ export async function listManagedPolicies(
   let query = supabase
     .from("policy_documents")
     .select(DOCUMENT_SELECT, { count: "exact" })
-    .eq("church_id", churchId);
+    .eq("organization_id", churchId);
 
   if (filters.status) query = query.eq("status", filters.status);
   if (filters.documentType) {
@@ -626,12 +626,12 @@ export async function listPolicyVersions(
   const { data, error } = await supabase
     .from("policy_versions")
     .select(
-      `id, church_id, policy_document_id, version_number, version_label,
+      `id, organization_id, policy_document_id, version_number, version_label,
        title_snapshot, summary_snapshot, content, content_format, change_summary,
        created_by, created_at, submitted_for_review_at, approved_by, approved_at,
        published_at, superseded_at, status, word_count, checksum`,
     )
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("policy_document_id", policyId)
     .order("version_number", { ascending: false });
 
@@ -654,9 +654,9 @@ export async function listPolicyApprovals(
   const { data, error } = await supabase
     .from("policy_approvals")
     .select(
-      "id, church_id, policy_document_id, policy_version_id, decision, notes, actor_user_id, created_at",
+      "id, organization_id, policy_document_id, policy_version_id, decision, notes, actor_user_id, created_at",
     )
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("policy_document_id", policyId)
     .order("created_at", { ascending: false })
     .limit(50);
@@ -682,7 +682,7 @@ export async function getDefaultReviewPeriodDays(
   const { data, error } = await supabase
     .from("organization_policy_settings")
     .select("default_review_period_days")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .maybeSingle();
 
   if (error || !data) return 365;
@@ -700,11 +700,11 @@ export async function listPolicyAttachments(
   const { data, error } = await supabase
     .from("policy_attachments")
     .select(
-      `id, church_id, policy_document_id, policy_version_id, file_name,
+      `id, organization_id, policy_document_id, policy_version_id, file_name,
        storage_path, mime_type, size_bytes, attachment_type, description,
        uploaded_by, created_at, archived_at`,
     )
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("policy_document_id", policyId)
     .is("archived_at", null)
     .order("created_at", { ascending: false });
@@ -724,7 +724,7 @@ export async function listPolicyAttachments(
 
     items.push({
       id: String(row.id),
-      church_id: String(row.church_id),
+      organization_id: String(row.organization_id),
       policy_document_id: String(row.policy_document_id),
       policy_version_id: row.policy_version_id
         ? String(row.policy_version_id)

@@ -24,7 +24,7 @@ export type EquipmentRelationshipType =
 
 export type EquipmentAttachment = {
   id: string;
-  church_id: string;
+  organization_id: string;
   equipment_id: string;
   kind: EquipmentAttachmentKind;
   storage_path: string;
@@ -38,7 +38,7 @@ export type EquipmentAttachment = {
 
 export type EquipmentRelationship = {
   id: string;
-  church_id: string;
+  organization_id: string;
   parent_equipment_id: string;
   child_equipment_id: string;
   relationship_type: EquipmentRelationshipType;

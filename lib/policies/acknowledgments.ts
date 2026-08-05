@@ -16,7 +16,7 @@ function isMissing(message: string) {
 function mapAck(row: Record<string, unknown>): PolicyAcknowledgment {
   return {
     id: String(row.id),
-    church_id: String(row.church_id),
+    organization_id: String(row.organization_id),
     policy_document_id: String(row.policy_document_id),
     policy_version_id: String(row.policy_version_id),
     user_id: String(row.user_id),
@@ -52,13 +52,13 @@ export async function listMyPendingPolicyAcknowledgments(
   const { data, error } = await supabase
     .from("policy_acknowledgments")
     .select(
-      `id, church_id, policy_document_id, policy_version_id, user_id, membership_id,
+      `id, organization_id, policy_document_id, policy_version_id, user_id, membership_id,
        acknowledgment_status, assigned_at, due_at, viewed_at, acknowledged_at,
        acknowledgment_text, waived_by, waived_at, waiver_reason, created_at, updated_at,
        policy_documents ( title ),
        policy_versions ( version_label )`,
     )
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("user_id", userId)
     .in("acknowledgment_status", ["assigned", "viewed", "overdue"])
     .order("due_at", { ascending: true, nullsFirst: false });
@@ -88,7 +88,7 @@ export async function getMyPolicyAcknowledgment(
   const { data: policy } = await supabase
     .from("policy_documents")
     .select("current_version_id")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("id", policyId)
     .maybeSingle();
 
@@ -97,11 +97,11 @@ export async function getMyPolicyAcknowledgment(
   const { data, error } = await supabase
     .from("policy_acknowledgments")
     .select(
-      `id, church_id, policy_document_id, policy_version_id, user_id, membership_id,
+      `id, organization_id, policy_document_id, policy_version_id, user_id, membership_id,
        acknowledgment_status, assigned_at, due_at, viewed_at, acknowledged_at,
        acknowledgment_text, waived_by, waived_at, waiver_reason, created_at, updated_at`,
     )
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("policy_document_id", policyId)
     .eq("policy_version_id", policy.current_version_id)
     .eq("user_id", userId)
@@ -131,11 +131,11 @@ export async function getPolicyAcknowledgmentReport(
   const { data, error } = await supabase
     .from("policy_acknowledgments")
     .select(
-      `id, church_id, policy_document_id, policy_version_id, user_id, membership_id,
+      `id, organization_id, policy_document_id, policy_version_id, user_id, membership_id,
        acknowledgment_status, assigned_at, due_at, viewed_at, acknowledged_at,
        acknowledgment_text, waived_by, waived_at, waiver_reason, created_at, updated_at`,
     )
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("policy_document_id", policyId)
     .order("acknowledgment_status", { ascending: true })
     .order("due_at", { ascending: true, nullsFirst: false });
@@ -272,10 +272,10 @@ export async function listPolicyAssignments(
   const { data, error } = await supabase
     .from("policy_assignments")
     .select(
-      `id, church_id, policy_document_id, policy_version_id, assignment_type,
+      `id, organization_id, policy_document_id, policy_version_id, assignment_type,
        role, campus_id, user_id, due_days, created_by, created_at, revoked_at`,
     )
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("policy_document_id", policyId)
     .is("revoked_at", null)
     .order("created_at", { ascending: true });
@@ -314,7 +314,7 @@ export async function listPolicyAssignments(
     const { data: campuses } = await supabase
       .from("campuses")
       .select("id, name")
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .in("id", campusIds);
     for (const campus of campuses ?? []) {
       nameByCampus.set(String(campus.id), String(campus.name));
@@ -323,7 +323,7 @@ export async function listPolicyAssignments(
 
   return rows.map((row) => ({
     id: String(row.id),
-    church_id: String(row.church_id),
+    organization_id: String(row.organization_id),
     policy_document_id: String(row.policy_document_id),
     policy_version_id: row.policy_version_id
       ? String(row.policy_version_id)
@@ -350,7 +350,7 @@ export async function listActiveChurchMembersForPolicies(churchId: string) {
   const { data, error } = await supabase
     .from("organization_memberships")
     .select("id, user_id, role")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("status", "active")
     .order("role", { ascending: true });
 

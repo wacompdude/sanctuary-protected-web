@@ -15,9 +15,9 @@ export async function listChurchContactsForTypes(
   const { data, error } = await supabase
     .from("organization_contacts")
     .select(
-      "id, church_id, contact_type, organization_name, full_name, phone, email, notes, sort_order, created_at, updated_at",
+      "id, organization_id, contact_type, organization_name, full_name, phone, email, notes, sort_order, created_at, updated_at",
     )
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .in("contact_type", types)
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true });

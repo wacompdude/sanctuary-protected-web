@@ -83,7 +83,7 @@ export async function resolveUsersByChurchRole(
   const { data: memberships, error } = await supabase
     .from("organization_memberships")
     .select("id, user_id, role, status")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("status", "active")
     .in("role", roles);
 
@@ -105,7 +105,7 @@ export async function resolveUsersByIds(
   const { data: memberships, error } = await supabase
     .from("organization_memberships")
     .select("id, user_id, role, status")
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("status", "active")
     .in("user_id", unique);
 
@@ -222,7 +222,7 @@ export async function applyRecipientPreferences(params: {
     .select(
       "user_id, notification_type, email_enabled, in_app_enabled, minimum_severity, quiet_hours_enabled, quiet_hours_start, quiet_hours_end, digest_frequency",
     )
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .in("user_id", userIds)
     .in("notification_type", [notificationType, "*"]);
 

@@ -201,7 +201,7 @@ export async function uploadPolicyAttachmentFiles(params: {
     const { data: row, error: insertError } = await supabase
       .from("policy_attachments")
       .insert({
-        church_id: churchId,
+        organization_id: churchId,
         policy_document_id: policyId,
         policy_version_id: versionId,
         file_name: file.name?.slice(0, 255) || "attachment",

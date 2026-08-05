@@ -3,7 +3,7 @@ import { labelForAuditAction } from "@/lib/audit/actions";
 
 export type AuditLogRow = {
   id: string;
-  church_id: string | null;
+  organization_id: string | null;
   user_id: string | null;
   action: string;
   entity_type: string | null;
@@ -21,9 +21,9 @@ export async function listRecentAuditLogs(
   const { data, error } = await supabase
     .from("audit_logs")
     .select(
-      "id, church_id, user_id, action, entity_type, entity_id, metadata, created_at",
+      "id, organization_id, user_id, action, entity_type, entity_id, metadata, created_at",
     )
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .order("created_at", { ascending: false })
     .limit(limit);
 
@@ -33,7 +33,7 @@ export async function listRecentAuditLogs(
 
   return (data ?? []).map((row) => ({
     id: row.id as string,
-    church_id: (row.church_id as string | null) ?? null,
+    organization_id: (row.organization_id as string | null) ?? null,
     user_id: (row.user_id as string | null) ?? null,
     action: row.action as string,
     entity_type: (row.entity_type as string | null) ?? null,

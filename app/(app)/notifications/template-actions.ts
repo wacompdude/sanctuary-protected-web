@@ -42,7 +42,7 @@ export async function updateTemplateSenderCategoryAction(
     const { data: template, error: loadError } = await supabase
       .from("notification_templates")
       .select(
-        "id, church_id, template_key, is_system_template, default_sender_category",
+        "id, organization_id, template_key, is_system_template, default_sender_category",
       )
       .eq("id", templateId)
       .maybeSingle();
@@ -53,20 +53,20 @@ export async function updateTemplateSenderCategoryAction(
 
     const row = template as {
       id: string;
-      church_id: string | null;
+      organization_id: string | null;
       template_key: string;
       is_system_template: boolean;
       default_sender_category: string | null;
     };
 
-    if (row.is_system_template || row.church_id == null) {
+    if (row.is_system_template || row.organization_id == null) {
       return {
         error:
           "System template sender categories are platform-controlled. Create a church override to customize.",
       };
     }
 
-    if (row.church_id !== church.id) {
+    if (row.organization_id !== church.id) {
       return { error: "Template not found for this church." };
     }
 
@@ -102,7 +102,7 @@ export async function updateTemplateSenderCategoryAction(
         updated_at: new Date().toISOString(),
       })
       .eq("id", row.id)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (error) {
       if (/default_sender_category|column/i.test(error.message)) {

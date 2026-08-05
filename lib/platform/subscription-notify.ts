@@ -23,7 +23,7 @@ export async function notifyChurchOwnersOfPlanChange(params: {
   const { data: memberships, error } = await admin
     .from("organization_memberships")
     .select("user_id, role")
-    .eq("church_id", params.churchId)
+    .eq("organization_id", params.churchId)
     .eq("status", "active")
     .in("role", ["owner", "co_owner"]);
 

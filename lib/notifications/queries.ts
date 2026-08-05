@@ -44,7 +44,7 @@ export async function listUserNotifications(
       created_at,
       notification:notifications!inner (
         id,
-        church_id,
+        organization_id,
         campus_id,
         title,
         summary,
@@ -57,7 +57,7 @@ export async function listUserNotifications(
       )
     `,
     )
-    .eq("church_id", params.churchId)
+    .eq("organization_id", params.churchId)
     .eq("user_id", params.userId)
     .is("dismissed_at", null)
     .order("created_at", { ascending: false })
@@ -85,7 +85,7 @@ export async function listUserNotifications(
           created_at,
           notification:notifications!inner (
             id,
-            church_id,
+            organization_id,
             title,
             summary,
             severity,
@@ -97,7 +97,7 @@ export async function listUserNotifications(
           )
         `,
         )
-        .eq("church_id", params.churchId)
+        .eq("organization_id", params.churchId)
         .eq("user_id", params.userId)
         .is("dismissed_at", null)
         .order("created_at", { ascending: false })
@@ -120,7 +120,7 @@ export async function listUserNotifications(
           return {
             id: String(row.id),
             notificationId: String(notification.id),
-            churchId: String(notification.church_id),
+            churchId: String(notification.organization_id),
             title: String(notification.title),
             summary: (notification.summary as string | null) ?? null,
             severity: notification.severity as NotificationSeverity,
@@ -159,7 +159,7 @@ export async function listUserNotifications(
       return {
         id: String(row.id),
         notificationId: String(notification.id),
-        churchId: String(notification.church_id),
+        churchId: String(notification.organization_id),
         title: String(notification.title),
         summary: (notification.summary as string | null) ?? null,
         severity: notification.severity as NotificationSeverity,
@@ -197,7 +197,7 @@ export async function countUnreadNotifications(
   const { count, error } = await supabase
     .from("notification_recipients")
     .select("id", { count: "exact", head: true })
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("user_id", userId)
     .is("read_at", null)
     .is("dismissed_at", null);

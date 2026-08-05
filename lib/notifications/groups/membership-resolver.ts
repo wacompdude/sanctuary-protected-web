@@ -110,7 +110,7 @@ async function loadGroupsByIds(
     .select(
       "id, name, status, is_system_group, dynamic_rule_type, dynamic_rule_value",
     )
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .in("id", groupIds)
     .eq("status", "active");
 
@@ -135,7 +135,7 @@ async function collectMembersFromGroups(
     const { data: memberRows, error } = await supabase
       .from("notification_group_members")
       .select("group_id, membership_id, user_id")
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .eq("status", "active")
       .in(
         "group_id",
@@ -156,7 +156,7 @@ async function collectMembersFromGroups(
       const { data: memberships, error: membershipError } = await supabase
         .from("organization_memberships")
         .select("id, user_id, role, status")
-        .eq("church_id", churchId)
+        .eq("organization_id", churchId)
         .eq("status", "active")
         .in("id", membershipIds);
 
@@ -193,7 +193,7 @@ async function collectMembersFromGroups(
     let query = supabase
       .from("organization_memberships")
       .select("id, user_id, role, status")
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .eq("status", "active");
 
     if (group.dynamic_rule_type === "role" && group.dynamic_rule_value) {
@@ -345,7 +345,7 @@ export async function getNotificationGroupCounts(
     const { count, error } = await supabase
       .from("notification_group_members")
       .select("id", { count: "exact", head: true })
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .eq("group_id", group.id)
       .eq("status", "active");
     if (error) throw new Error(error.message);

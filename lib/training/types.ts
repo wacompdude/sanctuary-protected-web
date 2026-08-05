@@ -78,7 +78,7 @@ export type TrainingRenewalStatus =
 
 export interface TrainingCategory {
   id: string;
-  church_id: string | null;
+  organization_id: string | null;
   system_key: string | null;
   name: string;
   description: string | null;
@@ -95,7 +95,7 @@ export interface TrainingCategory {
 
 export interface TrainingCategoryChurchState {
   id: string;
-  church_id: string;
+  organization_id: string;
   category_id: string;
   active: boolean;
   display_order: number | null;
@@ -112,7 +112,7 @@ export interface TrainingCategoryWithState extends TrainingCategory {
 
 export interface TrainingCourse {
   id: string;
-  church_id: string | null;
+  organization_id: string | null;
   training_category_id: string;
   system_key: string | null;
   course_code: string | null;
@@ -139,7 +139,7 @@ export interface TrainingCourse {
 
 export interface TrainingEvent {
   id: string;
-  church_id: string;
+  organization_id: string;
   campus_id: string | null;
   training_course_id: string | null;
   training_category_id: string | null;
@@ -179,7 +179,7 @@ export interface TrainingEvent {
 
 export interface TrainingParticipant {
   id: string;
-  church_id: string;
+  organization_id: string;
   training_event_id: string;
   user_id: string;
   enrollment_status: TrainingEnrollmentStatus;
@@ -201,7 +201,7 @@ export interface TrainingParticipant {
 
 export interface TrainingRequirement {
   id: string;
-  church_id: string;
+  organization_id: string;
   name: string;
   training_course_id: string | null;
   training_category_id: string | null;
@@ -228,7 +228,7 @@ export interface TrainingRequirement {
 
 export interface TrainingCompletionRecord {
   id: string;
-  church_id: string;
+  organization_id: string;
   campus_id: string | null;
   user_id: string;
   training_event_id: string | null;
@@ -257,7 +257,7 @@ export interface TrainingCompletionRecord {
 
 export interface TrainingExternalRecord {
   id: string;
-  church_id: string;
+  organization_id: string;
   user_id: string;
   training_category_id: string | null;
   course_name: string;
@@ -279,7 +279,7 @@ export interface TrainingExternalRecord {
 }
 
 export interface TrainingChurchSettings {
-  church_id: string;
+  organization_id: string;
   due_soon_days: number;
   reminder_at_assignment: boolean;
   reminder_days_before: number[];

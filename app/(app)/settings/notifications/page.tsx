@@ -46,7 +46,7 @@ async function NotificationSettingsContent() {
       const { count, error } = await supabase
         .from("notification_recipients")
         .select("id", { count: "exact", head: true })
-        .eq("church_id", church.id);
+        .eq("organization_id", church.id);
       if (error) {
         loadError = error.message;
       } else {

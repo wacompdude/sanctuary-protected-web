@@ -43,19 +43,19 @@ export async function acceptChurchInvitation(
       const tokenHash = hashInvitationToken(token);
       const { data: invitation } = await admin
         .from("organization_invitations")
-        .select("church_id, accepted_at, revoked_at, expires_at")
+        .select("organization_id, accepted_at, revoked_at, expires_at")
         .eq("token_hash", tokenHash)
         .maybeSingle();
 
       if (
-        invitation?.church_id &&
+        invitation?.organization_id &&
         !invitation.accepted_at &&
         !invitation.revoked_at &&
         (!invitation.expires_at ||
           new Date(invitation.expires_at).getTime() >= Date.now())
       ) {
         await requireActiveSeatCapacity({
-          churchId: String(invitation.church_id),
+          churchId: String(invitation.organization_id),
           client: admin,
         });
       }
@@ -106,8 +106,8 @@ export async function acceptChurchInvitation(
   }
 
   const churchId =
-    data && typeof data === "object" && "church_id" in data
-      ? String((data as { church_id: string }).church_id)
+    data && typeof data === "object" && "organization_id" in data
+      ? String((data as { organization_id: string }).organization_id)
       : null;
 
   if (churchId) {

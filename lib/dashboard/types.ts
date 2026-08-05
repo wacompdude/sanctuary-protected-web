@@ -42,7 +42,7 @@ export type DashboardBoxDefinition = {
 
 export type DashboardBoxSettingRow = {
   id: string;
-  church_id: string;
+  organization_id: string;
   box_key: DashboardBoxKey;
   is_visible: boolean;
   display_order: number;

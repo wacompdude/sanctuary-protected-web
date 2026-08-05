@@ -12,7 +12,7 @@ export {
 } from "@/lib/church/auth";
 
 const SUPPLY_SELECT = `
-  id, church_id, name, category, unit, quantity_on_hand, minimum_quantity,
+  id, organization_id, name, category, unit, quantity_on_hand, minimum_quantity,
   location_name, sku, vendor_name, notes, created_by, updated_by,
   created_at, updated_at, archived_at
 `;
@@ -33,7 +33,7 @@ export async function listMedicalSupplies(
   let query = supabase
     .from("medical_supplies")
     .select(SUPPLY_SELECT)
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .order("name", { ascending: true });
 
   if (!options.includeArchived) {
@@ -69,7 +69,7 @@ export async function getMedicalSupplyById(
     .from("medical_supplies")
     .select(SUPPLY_SELECT)
     .eq("id", id)
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .maybeSingle();
 
   if (error) {
@@ -105,13 +105,13 @@ export async function getRestockReport(
     supabase
       .from("medical_supplies")
       .select(SUPPLY_SELECT)
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .is("archived_at", null)
       .order("name", { ascending: true }),
     supabase
       .from("medical_supply_usage")
       .select("medical_supply_id, quantity_used, incident_id")
-      .eq("church_id", churchId)
+      .eq("organization_id", churchId)
       .gte("created_at", cutoffIso),
   ]);
 
@@ -158,12 +158,12 @@ export async function listUsageForIncident(
     .from("medical_supply_usage")
     .select(
       `
-      id, church_id, incident_id, medical_supply_id, quantity_used,
+      id, organization_id, incident_id, medical_supply_id, quantity_used,
       recorded_by, notes, created_at,
       medical_supplies ( name, unit )
     `,
     )
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("incident_id", incidentId)
     .order("created_at", { ascending: false });
 
@@ -180,7 +180,7 @@ export async function listUsageForIncident(
       : row.medical_supplies;
     return {
       id: row.id as string,
-      church_id: row.church_id as string,
+      organization_id: row.organization_id as string,
       incident_id: row.incident_id as string,
       medical_supply_id: row.medical_supply_id as string,
       quantity_used: row.quantity_used as number,

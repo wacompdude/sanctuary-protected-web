@@ -84,7 +84,7 @@ export async function scheduleEquipmentMaintenance(
     const { data, error } = await supabase
       .from("equipment_maintenance")
       .insert({
-        church_id: church.id,
+        organization_id: church.id,
         equipment_id: equipmentId,
         maintenance_type: typeRaw as EquipmentMaintenanceType,
         status: "scheduled" as EquipmentMaintenanceStatus,
@@ -114,7 +114,7 @@ export async function scheduleEquipmentMaintenance(
       .from("security_equipment")
       .update(patch)
       .eq("id", equipmentId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     await writeAuditLog(supabase, {
       churchId: church.id,
@@ -160,7 +160,7 @@ export async function completeEquipmentMaintenance(
       .from("equipment_maintenance")
       .select("*")
       .eq("id", maintenanceId)
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .maybeSingle();
 
     if (loadError || !record) {
@@ -194,7 +194,7 @@ export async function completeEquipmentMaintenance(
         updated_by: user.id,
       })
       .eq("id", maintenanceId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (error) {
       return { error: error.message };
@@ -236,7 +236,7 @@ export async function completeEquipmentMaintenance(
       .from("security_equipment")
       .update(equipmentPatch)
       .eq("id", record.equipment_id)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     await writeAuditLog(supabase, {
       churchId: church.id,
@@ -308,7 +308,7 @@ export async function assignEquipment(
     const { data, error } = await supabase
       .from("equipment_assignments")
       .insert({
-        church_id: church.id,
+        organization_id: church.id,
         equipment_id: equipmentId,
         assigned_user_id: assignedUserId,
         assigned_team: assignedTeam,
@@ -332,7 +332,7 @@ export async function assignEquipment(
         updated_by: user.id,
       })
       .eq("id", equipmentId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     await writeAuditLog(supabase, {
       churchId: church.id,
@@ -376,7 +376,7 @@ export async function returnEquipmentAssignment(
       .from("equipment_assignments")
       .select("*")
       .eq("id", assignmentId)
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .maybeSingle();
 
     if (loadError || !assignment) {
@@ -402,7 +402,7 @@ export async function returnEquipmentAssignment(
         assignment_notes: notes ?? assignment.assignment_notes,
       })
       .eq("id", assignmentId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (error) {
       return { error: error.message };
@@ -422,7 +422,7 @@ export async function returnEquipmentAssignment(
       .from("security_equipment")
       .update(equipmentPatch)
       .eq("id", assignment.equipment_id)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     await writeAuditLog(supabase, {
       churchId: church.id,
@@ -489,7 +489,7 @@ export async function reportEquipmentLostOrStolen(
         updated_by: user.id,
       })
       .eq("id", equipmentId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (error) {
       return { error: error.message };
@@ -506,7 +506,7 @@ export async function reportEquipmentLostOrStolen(
           assignment_notes: notes ?? active.assignment_notes,
         })
         .eq("id", active.id)
-        .eq("church_id", church.id);
+        .eq("organization_id", church.id);
     }
 
     await writeAuditLog(supabase, {

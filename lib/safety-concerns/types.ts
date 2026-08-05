@@ -66,7 +66,7 @@ export type SafetyConcernReviewOutcome =
 
 export type SafetyConcernProfile = {
   id: string;
-  church_id: string;
+  organization_id: string;
   scope_type: SafetyConcernScopeType;
   primary_campus_id: string | null;
   display_name: string;
@@ -100,7 +100,7 @@ export type SafetyConcernProfile = {
 
 export type SafetyConcernPhoto = {
   id: string;
-  church_id: string;
+  organization_id: string;
   profile_id: string;
   storage_path: string;
   file_name: string | null;
@@ -124,7 +124,7 @@ export type SafetyConcernPhoto = {
 
 export type SafetyConcernProfileCampus = {
   id: string;
-  church_id: string;
+  organization_id: string;
   profile_id: string;
   campus_id: string;
   created_at: string;
@@ -132,7 +132,7 @@ export type SafetyConcernProfileCampus = {
 
 export type SafetyConcernIncidentLink = {
   id: string;
-  church_id: string;
+  organization_id: string;
   profile_id: string;
   incident_id: string;
   relationship_type: SafetyConcernIncidentRelationship;
@@ -143,7 +143,7 @@ export type SafetyConcernIncidentLink = {
 
 export type SafetyConcernReview = {
   id: string;
-  church_id: string;
+  organization_id: string;
   profile_id: string;
   reviewed_by: string;
   reviewed_at: string;

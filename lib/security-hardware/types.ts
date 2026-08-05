@@ -64,7 +64,7 @@ export type CampusOption = {
 
 export type SecurityEquipment = {
   id: string;
-  church_id: string;
+  organization_id: string;
   campus_id: string | null;
   category: EquipmentCategory;
   subcategory: string | null;

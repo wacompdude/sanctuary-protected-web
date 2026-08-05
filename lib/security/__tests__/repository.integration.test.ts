@@ -235,13 +235,13 @@ describe("Security Repository Integration Tests", () => {
   });
 
   describe("Multi-tenant Isolation", () => {
-    it("isolates groups by church_id", async () => {
+    it("isolates groups by organization_id", async () => {
       // Create groups in Church A and Church B
       // List Church A's groups
       // Verify Church B's groups not included
     });
 
-    it("isolates permissions by church_id", async () => {
+    it("isolates permissions by organization_id", async () => {
       // Grant permission to user in Church A
       // Grant same permission to user in Church B
       // Verify they're isolated
@@ -272,7 +272,7 @@ describe("Security Repository Integration Tests", () => {
   });
 
   describe("Performance", () => {
-    it("indexes church_id for fast lookups", async () => {
+    it("indexes organization_id for fast lookups", async () => {
       // List security groups should use index
     });
 

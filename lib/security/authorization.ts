@@ -44,9 +44,9 @@ async function getChurch(admin: SupabaseClient, churchId: string) {
 async function getChurchMembership(admin: SupabaseClient, userId: string, churchId: string) {
   const { data } = await admin
     .from("organization_memberships")
-    .select("id, user_id, church_id, role, status")
+    .select("id, user_id, organization_id, role, status")
     .eq("user_id", userId)
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .maybeSingle();
   return data;
 }
@@ -63,7 +63,7 @@ async function getActiveMembershipRoles(
   const { data, error } = await admin
     .from("organization_membership_roles")
     .select("role")
-    .eq("church_membership_id", membershipId)
+    .eq("organization_membership_id", membershipId)
     .eq("status", "active");
 
   if (error || !data?.length) {
@@ -238,7 +238,7 @@ async function getUserDirectPermissions(
     .from("user_permissions")
     .select("*")
     .eq("user_id", userId)
-    .eq("church_id", churchId)
+    .eq("organization_id", churchId)
     .eq("permission_effect", effect)
     .neq("status", "revoked")
     .maybeSingle();

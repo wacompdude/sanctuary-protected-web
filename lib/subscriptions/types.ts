@@ -68,7 +68,7 @@ export type PlanFeatureAssignment = {
 
 export type ChurchSubscriptionRecord = {
   id: string;
-  church_id: string;
+  organization_id: string;
   plan_id: string;
   status: ChurchSubscriptionStatus;
   billing_interval: SubscriptionBillingInterval;

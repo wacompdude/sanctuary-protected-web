@@ -42,7 +42,7 @@ describe("buildCompletionRecordPayload", () => {
     });
 
     expect(payload).toMatchObject({
-      church_id: "church-1",
+      organization_id: "church-1",
       user_id: "user-1",
       training_event_id: "event-1",
       training_course_id: "course-1",

@@ -87,7 +87,7 @@ export async function createUnavailabilityAction(
         .from("organization_memberships")
         .select("id, user_id, status")
         .eq("id", validated.data.membership_id)
-        .eq("church_id", church.id)
+        .eq("organization_id", church.id)
         .maybeSingle();
       if (!target || target.status !== "active") {
         return { error: "Selected member was not found or is not active." };
@@ -100,7 +100,7 @@ export async function createUnavailabilityAction(
     const { data, error } = await supabase
       .from("member_unavailability")
       .insert({
-        church_id: church.id,
+        organization_id: church.id,
         membership_id: targetMembershipId,
         user_id: targetUserId,
         title: validated.data.title,
@@ -171,7 +171,7 @@ export async function updateUnavailabilityAction(
       .from("member_unavailability")
       .select("id, user_id, status, end_at")
       .eq("id", unavailabilityId)
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .maybeSingle();
 
     if (loadError) {
@@ -223,7 +223,7 @@ export async function updateUnavailabilityAction(
         recurrence_end_at: validated.data.recurrence_end_at,
       })
       .eq("id", unavailabilityId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (error) return { error: "Unable to update unavailability." };
 
@@ -266,7 +266,7 @@ export async function cancelUnavailabilityAction(
       .from("member_unavailability")
       .select("id, user_id, status, start_at")
       .eq("id", unavailabilityId)
-      .eq("church_id", church.id)
+      .eq("organization_id", church.id)
       .maybeSingle();
 
     if (loadError) {
@@ -296,7 +296,7 @@ export async function cancelUnavailabilityAction(
         cancelled_at: new Date().toISOString(),
       })
       .eq("id", unavailabilityId)
-      .eq("church_id", church.id);
+      .eq("organization_id", church.id);
 
     if (error) return { error: "Unable to cancel unavailability." };
 

@@ -25,13 +25,18 @@ Goal: Backend, schema, and service APIs use **Organization** terminology. The Sa
 1. **Run `077`** — dual-read Storage path helpers (`churches/` + `organizations/`)
 2. **Run `076`**, then **deploy the app** immediately  
    - App sends `p_organization_id` in RPCs  
-   - App writes Storage under `organizations/`  
    - `lib/organization` is canonical; `lib/church` is thin re-exports
-3. **Smoke-test** login, Team, create church, logo upload, incident photo
-4. **Run `078`** — rewrite `storage.objects` + DB path columns `churches/` → `organizations/`
-5. Smoke-test Storage again (existing logos/photos)
+3. Smoke-test login, Team, create church, logo upload
 
-Bucket id `church-branding` is unchanged (path prefix only).
+### Storage prefix note
+
+`078` updated `storage.objects.name` in SQL only — that does **not** rename S3
+blobs, so logos 404’d. **Run `079`** to revert metadata to `churches/`.
+
+New uploads stay on `churches/` until a Storage **move/copy API** migration exists.
+Dual-read helpers from `077` remain (both prefixes accepted).
+
+Bucket id `church-branding` is unchanged.
 
 ---
 

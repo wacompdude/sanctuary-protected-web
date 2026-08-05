@@ -2,6 +2,11 @@
 -- 078_storage_rewrite_churches_prefix.sql
 -- Rewrite Storage object names and DB path columns from churches/ → organizations/.
 --
+-- *** SUPERSEDED / DO NOT RELY ON ***
+-- Updating storage.objects.name does NOT rename the object in S3. This migration
+-- breaks public URLs. Apply 079_revert_storage_prefix_metadata.sql to repair.
+-- A real prefix move must use the Storage move/copy API, then update DB paths.
+--
 -- APPLY AFTER:
 --   1. 077 (dual-read path helpers)
 --   2. App deploy that writes organizations/ paths (and dual-accepts churches/)

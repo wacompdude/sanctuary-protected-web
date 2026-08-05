@@ -4,7 +4,8 @@
 -- requested_church_id → requested_organization_id.
 --
 -- CREATE OR REPLACE cannot change param names (42P13), so we:
---   1) RENAME each target aside (…__church_params) — RLS keeps working via OID
+--   1) RENAME each target aside (_mig076_<oid>) — RLS keeps working via OID
+--      (OID-based aside names avoid Postgres 63-char identifier truncation)
 --   2) CREATE replacement with new param names under the original name
 --   3) Rebind policies + dependent function bodies to the new OID
 --   4) DROP aside functions
@@ -26,6 +27,13 @@ BEGIN
   END IF;
 END $$;
 
+CREATE TEMP TABLE mig076_aside (
+  proc_oid oid PRIMARY KEY,
+  original_name text NOT NULL,
+  aside_name text NOT NULL,
+  args text NOT NULL
+) ON COMMIT DROP;
+
 -- ---------------------------------------------------------------------------
 -- 1. Rename-aside + recreate with new param names
 -- ---------------------------------------------------------------------------
@@ -34,7 +42,6 @@ DO $$
 DECLARE
   r record;
   aside text;
-  def text;
   new_def text;
   recreated integer := 0;
 BEGIN
@@ -48,13 +55,13 @@ BEGIN
     JOIN pg_namespace n ON n.oid = p.pronamespace
     WHERE n.nspname = 'public'
       AND p.prokind = 'f'
-      AND position('__church_params' in p.proname) = 0
-      AND (
-        pg_get_function_identity_arguments(p.oid) ~ 'p_church_id|requested_church_id'
-      )
+      AND p.proname NOT LIKE '\_mig076\_%' ESCAPE '\'
+      AND p.proname NOT LIKE '%\_\_church_par%' ESCAPE '\'
+      AND pg_get_function_identity_arguments(p.oid) ~ 'p_church_id|requested_church_id'
     ORDER BY length(p.proname) DESC, p.proname
   LOOP
-    aside := r.proname || '__church_params';
+    -- Short, unique, always ≤ 63 chars (oid text is small)
+    aside := '_mig076_' || r.oid::text;
 
     IF EXISTS (
       SELECT 1 FROM pg_proc p2
@@ -63,7 +70,7 @@ BEGIN
         AND p2.proname = aside
         AND pg_get_function_identity_arguments(p2.oid) = r.args
     ) THEN
-      RAISE NOTICE '076 skip % — aside already exists', r.proname;
+      RAISE NOTICE '076 skip % — aside % already exists', r.proname, aside;
       CONTINUE;
     END IF;
 
@@ -74,16 +81,15 @@ BEGIN
       aside
     );
 
-    def := r.def;
-    new_def := def;
+    INSERT INTO mig076_aside(proc_oid, original_name, aside_name, args)
+    VALUES (r.oid, r.proname, aside, r.args);
+
+    new_def := r.def;
     new_def := replace(new_def, 'requested_church_id', 'requested_organization_id');
     new_def := replace(new_def, 'p_church_id', 'p_organization_id');
-    -- pg_get_functiondef embeds the old name; after rename the CREATE must use it
-    -- The def still says CREATE FUNCTION … original_name … which is what we want.
 
     BEGIN
       EXECUTE new_def;
-      -- pg_get_functiondef does not restore ACLs; re-grant typical app roles
       BEGIN
         EXECUTE format(
           'GRANT EXECUTE ON FUNCTION public.%I(%s) TO authenticated',
@@ -101,13 +107,13 @@ BEGIN
       recreated := recreated + 1;
       RAISE NOTICE '076 recreated %(%) with organization params', r.proname, r.args;
     EXCEPTION WHEN others THEN
-      -- Roll the aside back so the system is not left half-migrated for this fn
       EXECUTE format(
         'ALTER FUNCTION public.%I(%s) RENAME TO %I',
         aside,
         r.args,
         r.proname
       );
+      DELETE FROM mig076_aside WHERE proc_oid = r.oid;
       RAISE EXCEPTION '076 failed recreating %(%) — %', r.proname, r.args, SQLERRM;
     END;
   END LOOP;
@@ -120,12 +126,13 @@ BEGIN
 END $$;
 
 -- ---------------------------------------------------------------------------
--- 2. Rebind dependent function bodies that still call __church_params names
+-- 2. Rebind dependent function bodies that still call aside names
 -- ---------------------------------------------------------------------------
 
 DO $$
 DECLARE
   r record;
+  pair record;
   def text;
   new_def text;
   updated integer := 0;
@@ -140,11 +147,20 @@ BEGIN
     JOIN pg_namespace n ON n.oid = p.pronamespace
     WHERE n.nspname = 'public'
       AND p.prokind = 'f'
-      AND position('__church_params' in p.proname) = 0
-      AND pg_get_functiondef(p.oid) LIKE '%__church_params%'
+      AND p.proname NOT LIKE '\_mig076\_%' ESCAPE '\'
+      AND EXISTS (SELECT 1 FROM mig076_aside)
+      AND pg_get_functiondef(p.oid) ~ '_mig076_'
   LOOP
     def := r.def;
-    new_def := replace(def, '__church_params', '');
+    new_def := def;
+    FOR pair IN
+      SELECT aside_name, original_name
+      FROM mig076_aside
+      ORDER BY length(aside_name) DESC
+    LOOP
+      new_def := replace(new_def, pair.aside_name, pair.original_name);
+    END LOOP;
+
     IF new_def IS DISTINCT FROM def THEN
       BEGIN
         EXECUTE new_def;
@@ -166,6 +182,7 @@ END $$;
 DO $$
 DECLARE
   r record;
+  pair record;
   qual text;
   with_check text;
   new_qual text;
@@ -184,17 +201,27 @@ BEGIN
     JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE n.nspname IN ('public', 'storage')
       AND (
-        COALESCE(pg_get_expr(p.polqual, p.polrelid), '') LIKE '%__church_params%'
-        OR COALESCE(pg_get_expr(p.polwithcheck, p.polrelid), '') LIKE '%__church_params%'
+        COALESCE(pg_get_expr(p.polqual, p.polrelid), '') LIKE '%_mig076_%'
+        OR COALESCE(pg_get_expr(p.polwithcheck, p.polrelid), '') LIKE '%_mig076_%'
       )
   LOOP
     qual := r.qual;
     with_check := r.with_check;
-    new_qual := CASE WHEN qual IS NULL THEN NULL ELSE replace(qual, '__church_params', '') END;
-    new_with_check := CASE
-      WHEN with_check IS NULL THEN NULL
-      ELSE replace(with_check, '__church_params', '')
-    END;
+    new_qual := qual;
+    new_with_check := with_check;
+
+    FOR pair IN
+      SELECT aside_name, original_name
+      FROM mig076_aside
+      ORDER BY length(aside_name) DESC
+    LOOP
+      IF new_qual IS NOT NULL THEN
+        new_qual := replace(new_qual, pair.aside_name, pair.original_name);
+      END IF;
+      IF new_with_check IS NOT NULL THEN
+        new_with_check := replace(new_with_check, pair.aside_name, pair.original_name);
+      END IF;
+    END LOOP;
 
     IF new_qual IS DISTINCT FROM qual AND new_qual IS NOT NULL THEN
       EXECUTE format(
@@ -226,6 +253,16 @@ DECLARE
   dropped integer := 0;
 BEGIN
   FOR r IN
+    SELECT aside_name, args FROM mig076_aside
+    ORDER BY length(aside_name) DESC
+  LOOP
+    EXECUTE format('DROP FUNCTION public.%I(%s)', r.aside_name, r.args);
+    dropped := dropped + 1;
+    RAISE NOTICE '076 dropped aside %(%)', r.aside_name, r.args;
+  END LOOP;
+
+  -- Safety: drop any truncated leftovers from earlier 076 attempts
+  FOR r IN
     SELECT
       p.proname,
       pg_get_function_identity_arguments(p.oid) AS args
@@ -233,12 +270,14 @@ BEGIN
     JOIN pg_namespace n ON n.oid = p.pronamespace
     WHERE n.nspname = 'public'
       AND p.prokind = 'f'
-      AND p.proname LIKE '%\_\_church_params' ESCAPE '\'
-    ORDER BY length(p.proname) DESC
+      AND (
+        p.proname LIKE '\_mig076\_%' ESCAPE '\'
+        OR p.proname LIKE '%\_\_church_par%' ESCAPE '\'
+      )
   LOOP
     EXECUTE format('DROP FUNCTION public.%I(%s)', r.proname, r.args);
     dropped := dropped + 1;
-    RAISE NOTICE '076 dropped aside %(%)', r.proname, r.args;
+    RAISE NOTICE '076 dropped leftover aside %(%)', r.proname, r.args;
   END LOOP;
 
   RAISE NOTICE '076 dropped % aside function(s)', dropped;
@@ -266,7 +305,10 @@ BEGIN
       AND p.prokind = 'f'
       AND pg_get_function_identity_arguments(p.oid) ~ 'p_church_id|requested_church_id'
   ) THEN
-    SELECT string_agg(p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')', ', ')
+    SELECT string_agg(
+      p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')',
+      ', '
+    )
     INTO leftover
     FROM pg_proc p
     JOIN pg_namespace n ON n.oid = p.pronamespace
@@ -278,7 +320,6 @@ BEGIN
   END IF;
 END $$;
 
--- Refresh PostgREST schema cache when available
 DO $$
 BEGIN
   PERFORM pg_notify('pgrst', 'reload schema');

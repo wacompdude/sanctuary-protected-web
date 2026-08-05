@@ -1,9 +1,17 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requirePlatformPermission } from "@/lib/platform/auth";
+import { DemoRecoveryPanel } from "@/components/platform/demo-recovery-panel";
+import {
+  hasPlatformPermission,
+  requirePlatformPermission,
+} from "@/lib/platform/auth";
 import { rethrowOrRedirectForPlatformAccess } from "@/lib/platform/access-guard";
+import { listDemoPlatformAlerts } from "@/lib/platform/demo-snapshots/alerts";
 import { getDemoOrganizationById } from "@/lib/platform/demo-snapshots/guardrails";
+import { getDemoRecoveryStatus } from "@/lib/platform/demo-snapshots/recovery";
 import { listDemoRestoreOperations } from "@/lib/platform/demo-snapshots/queries";
+
+export const maxDuration = 300;
 
 export default async function DemoRestoreHistoryPage({
   params,
@@ -17,14 +25,31 @@ export default async function DemoRestoreHistoryPage({
   }
 
   const { organizationId } = await params;
+  const canUnlock = await hasPlatformPermission("demo_restores.unlock").catch(
+    () => false,
+  );
+  const canRollback = await hasPlatformPermission(
+    "demo_restores.rollback",
+  ).catch(() => false);
+  const canManage = await hasPlatformPermission(
+    "demo_organizations.manage",
+  ).catch(() => false);
+
   let org: Awaited<ReturnType<typeof getDemoOrganizationById>> = null;
   let ops: Awaited<ReturnType<typeof listDemoRestoreOperations>> = [];
+  let recovery: Awaited<ReturnType<typeof getDemoRecoveryStatus>> | null = null;
+  let alerts: Awaited<ReturnType<typeof listDemoPlatformAlerts>> = [];
   let loadError: string | null = null;
 
   try {
     org = await getDemoOrganizationById(organizationId);
     if (org?.is_demo_organization) {
       ops = await listDemoRestoreOperations(organizationId);
+      recovery = await getDemoRecoveryStatus(organizationId);
+      alerts = await listDemoPlatformAlerts({
+        organizationId,
+        limit: 15,
+      });
     }
   } catch (error) {
     loadError = error instanceof Error ? error.message : "Unable to load.";
@@ -44,10 +69,10 @@ export default async function DemoRestoreHistoryPage({
           ← {org?.name ?? "Demo church"}
         </Link>
         <h1 className="mt-2 text-2xl font-semibold tracking-tight">
-          Restore history
+          Restore history &amp; recovery
         </h1>
         <p className="mt-1 text-sm text-slate-400">
-          Platform restore and rollback operations for this demo church.
+          Operation history, manual rollback, emergency unlock, and lock recovery.
         </p>
       </div>
 
@@ -55,6 +80,17 @@ export default async function DemoRestoreHistoryPage({
         <div className="rounded-lg border border-amber-800/60 bg-amber-950/30 p-4 text-sm text-amber-100">
           {loadError}
         </div>
+      ) : null}
+
+      {recovery ? (
+        <DemoRecoveryPanel
+          organizationId={organizationId}
+          status={recovery}
+          alerts={alerts}
+          canUnlock={canUnlock}
+          canRollback={canRollback}
+          canManage={canManage}
+        />
       ) : null}
 
       {ops.length === 0 && !loadError ? (

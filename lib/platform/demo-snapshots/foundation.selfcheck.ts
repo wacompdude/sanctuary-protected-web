@@ -22,6 +22,7 @@ import {
   tablesForStrategy,
 } from "@/lib/platform/demo-snapshots/snapshot-table-registry";
 import { SNAPSHOT_STORAGE_REFS } from "@/lib/platform/demo-snapshots/storage-refs";
+import { DEMO_EMERGENCY_UNLOCK_PHRASE } from "@/lib/platform/demo-snapshots/phrases";
 import { PLATFORM_PERMISSIONS } from "@/lib/platform/permission-keys";
 
 function assert(condition: boolean, message: string) {
@@ -142,4 +143,9 @@ assert(
   "confirmation phrase length",
 );
 
-console.log("demo-snapshots Phase 5 foundation self-check passed");
+assert(
+  DEMO_EMERGENCY_UNLOCK_PHRASE === "EMERGENCY UNLOCK DEMO CHURCH",
+  "emergency unlock phrase",
+);
+
+console.log("demo-snapshots Phase 6 foundation self-check passed");

@@ -1,8 +1,26 @@
 import { requirePlatformAdminClient } from "@/lib/platform/queries";
+import { expireStaleRestoreLockIfNeeded } from "@/lib/platform/demo-snapshots/lock-expiry";
 
 const DEFAULT_LOCK_TTL_MINUTES = 60;
 
 export async function getActiveRestoreLock(organizationId: string) {
+  // Auto-expire stale locks on read so UI and eligibility stay accurate.
+  const expired = await expireStaleRestoreLockIfNeeded(organizationId);
+  if (expired.expired) {
+    const { recordDemoPlatformAlert } = await import(
+      "@/lib/platform/demo-snapshots/alerts"
+    );
+    const { AuditAction } = await import("@/lib/audit/actions");
+    await recordDemoPlatformAlert({
+      action: AuditAction.DEMO_RESTORE_LOCK_EXPIRED,
+      organizationId,
+      reason: `Lock ${expired.lockId} expired at ${expired.expiresAt}`,
+      targetId: expired.lockId,
+      metadata: { expires_at: expired.expiresAt },
+    });
+    return null;
+  }
+
   const admin = requirePlatformAdminClient();
   const { data, error } = await admin
     .from("demo_organization_restore_locks")

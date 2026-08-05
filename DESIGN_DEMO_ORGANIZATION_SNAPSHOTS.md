@@ -1,6 +1,6 @@
 # Demo Organization Snapshot & Restore — Phase 2 Architecture
 
-Status: **Phase 5 complete (dry-run + restore + auto-rollback). Apply 080→081 if needed; create a ready snapshot before testing restore.**  
+Status: **Phase 6 complete (manual rollback, emergency unlock, lock expiry, recovery, alerts).**  
 UI terminology remains **Church / Demo Church**. Internal code uses **organization**.
 
 Related artifacts:
@@ -10,6 +10,7 @@ Related artifacts:
 - Guardrails: `lib/platform/demo-snapshots/guardrails.ts`, `locks.ts`
 - Snapshot create: `lib/platform/demo-snapshots/create-snapshot.ts`, `export.ts`, `queries.ts`
 - Restore: `lib/platform/demo-snapshots/restore.ts`, `dry-run.ts`, `verify.ts`
+- Recovery: `lib/platform/demo-snapshots/recovery.ts`, `lock-expiry.ts`, `alerts.ts`
 - Console: `/platform/demo-organizations` (+ `/snapshots`, `/restore`, `/restore-history`)
 
 ---
@@ -252,9 +253,21 @@ Nav label: **Demo Environments** (platform console only).
 | Notification suppression (create + dispatch) | Done |
 | Restore + history UI | Done |
 
-## Phase 6 (next)
+## Phase 6 checklist
 
-Manual rollback UX, emergency unlock, lock expiry recovery, platform alerts.
+| Item | Status |
+|------|--------|
+| Automatic rollback alerts | Done |
+| Manual rollback from safety snapshot | Done |
+| Emergency unlock (`demo_restores.unlock`) | Done |
+| Lock TTL auto-expiry on read + manual expire | Done |
+| Failed-operation recovery | Done |
+| Platform alerts via `platform_admin_actions` | Done |
+| Recovery UI on restore-history | Done |
+
+## Phase 7 (next)
+
+Version labels, tier badges, tags, feature summaries, retention rules, search/filtering.
 
 ---
 

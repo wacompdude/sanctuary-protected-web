@@ -349,6 +349,11 @@ export async function executeDemoOrganizationRestore(
       warnings,
     });
 
+    const { recordDemoPlatformAlert } = await import(
+      "@/lib/platform/demo-snapshots/alerts"
+    );
+    const { AuditAction } = await import("@/lib/audit/actions");
+
     if (dbMutated && preRestoreSnapshotId && !input.skipSafetySnapshot) {
       await updateOperation(admin, operationId, { status: "rolling_back" });
       try {
@@ -369,7 +374,25 @@ export async function executeDemoOrganizationRestore(
           rolled_back_at: new Date().toISOString(),
           rollback_snapshot_id: preRestoreSnapshotId,
         });
+        await recordDemoPlatformAlert({
+          action: AuditAction.DEMO_RESTORE_ROLLED_BACK,
+          organizationId: input.organizationId,
+          platformAccountId: input.platformAccountId,
+          reason: message.slice(0, 500),
+          targetId: operationId,
+          metadata: {
+            pre_restore_snapshot_id: preRestoreSnapshotId,
+            automatic: true,
+          },
+        });
+        throw new PlatformAccessError(
+          `Restore failed and was automatically rolled back: ${message}`,
+          "LOAD_FAILED",
+        );
       } catch (rollbackError) {
+        if (rollbackError instanceof PlatformAccessError) {
+          throw rollbackError;
+        }
         const detail =
           rollbackError instanceof Error
             ? rollbackError.message
@@ -381,6 +404,18 @@ export async function executeDemoOrganizationRestore(
             2000,
           ),
         });
+        await recordDemoPlatformAlert({
+          action: AuditAction.DEMO_RESTORE_FAILED,
+          organizationId: input.organizationId,
+          platformAccountId: input.platformAccountId,
+          reason: `${message} | rollback failed: ${detail}`.slice(0, 500),
+          targetId: operationId,
+          success: false,
+          metadata: {
+            pre_restore_snapshot_id: preRestoreSnapshotId,
+            rollback_failed: true,
+          },
+        });
         // Keep lock/maintenance for manual recovery.
         throw new PlatformAccessError(
           `Restore failed and automatic rollback failed: ${detail}`,
@@ -389,6 +424,23 @@ export async function executeDemoOrganizationRestore(
       }
     } else if (lockAcquired) {
       await releaseRestoreLock({ organizationId: input.organizationId });
+      await recordDemoPlatformAlert({
+        action: AuditAction.DEMO_RESTORE_FAILED,
+        organizationId: input.organizationId,
+        platformAccountId: input.platformAccountId,
+        reason: message.slice(0, 500),
+        targetId: operationId,
+        success: false,
+      });
+    } else {
+      await recordDemoPlatformAlert({
+        action: AuditAction.DEMO_RESTORE_FAILED,
+        organizationId: input.organizationId,
+        platformAccountId: input.platformAccountId,
+        reason: message.slice(0, 500),
+        targetId: operationId,
+        success: false,
+      });
     }
 
     throw new PlatformAccessError(message, "LOAD_FAILED");

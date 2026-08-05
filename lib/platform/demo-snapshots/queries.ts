@@ -254,3 +254,35 @@ export async function listDemoRestoreOperations(
 
   return (data ?? []) as DemoRestoreOperationRecord[];
 }
+
+export async function getDemoRestoreOperationById(
+  organizationId: string,
+  operationId: string,
+): Promise<DemoRestoreOperationRecord | null> {
+  const admin = requirePlatformAdminClient();
+  const { data, error } = await admin
+    .from("demo_organization_restore_operations")
+    .select(
+      `id, organization_id, snapshot_id, pre_restore_snapshot_id, operation_type, status,
+       reason, dry_run_summary, records_deleted, records_inserted, records_preserved,
+       files_deleted, files_restored, warnings, safe_error_summary,
+       started_by_platform_account_id, started_at, completed_at, rolled_back_at,
+       rollback_snapshot_id, created_at`,
+    )
+    .eq("organization_id", organizationId)
+    .eq("id", operationId)
+    .maybeSingle();
+
+  if (error) {
+    if (/demo_organization_restore_operations|does not exist|schema cache/i.test(
+      error.message,
+    )) {
+      throw new PlatformAccessError(
+        "Demo restore tables are not available. Apply migrations 080 and 081.",
+        "LOAD_FAILED",
+      );
+    }
+    throw new PlatformAccessError(error.message, "LOAD_FAILED");
+  }
+  return (data as DemoRestoreOperationRecord | null) ?? null;
+}

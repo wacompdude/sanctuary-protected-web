@@ -10,6 +10,9 @@
 --   3) Rebind policies + dependent function bodies to the new OID
 --   4) DROP aside functions
 --
+-- Note: all mutation logic is in one DO block so a staging table stays visible
+-- even when the SQL editor commits between top-level statements.
+--
 -- APPLY WITH the app deploy that sends p_organization_id in .rpc() calls.
 -- Prefer: run 076, then deploy app immediately (short RPC window).
 -- =============================================================================
@@ -17,6 +20,20 @@
 BEGIN;
 
 DO $$
+DECLARE
+  r record;
+  pair record;
+  aside text;
+  new_def text;
+  def text;
+  qual text;
+  with_check text;
+  new_qual text;
+  new_with_check text;
+  recreated integer := 0;
+  updated integer := 0;
+  dropped integer := 0;
+  leftover text;
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_proc p
@@ -25,26 +42,17 @@ BEGIN
   ) THEN
     RAISE EXCEPTION '076 preflight failed — apply 073–075 first';
   END IF;
-END $$;
 
-CREATE TEMP TABLE mig076_aside (
-  proc_oid oid PRIMARY KEY,
-  original_name text NOT NULL,
-  aside_name text NOT NULL,
-  args text NOT NULL
-) ON COMMIT DROP;
+  CREATE TEMP TABLE mig076_aside (
+    proc_oid oid PRIMARY KEY,
+    original_name text NOT NULL,
+    aside_name text NOT NULL,
+    args text NOT NULL
+  ) ON COMMIT DROP;
 
--- ---------------------------------------------------------------------------
--- 1. Rename-aside + recreate with new param names
--- ---------------------------------------------------------------------------
-
-DO $$
-DECLARE
-  r record;
-  aside text;
-  new_def text;
-  recreated integer := 0;
-BEGIN
+  -- -------------------------------------------------------------------------
+  -- 1. Rename-aside + recreate with new param names
+  -- -------------------------------------------------------------------------
   FOR r IN
     SELECT
       p.oid,
@@ -60,7 +68,6 @@ BEGIN
       AND pg_get_function_identity_arguments(p.oid) ~ 'p_church_id|requested_church_id'
     ORDER BY length(p.proname) DESC, p.proname
   LOOP
-    -- Short, unique, always ≤ 63 chars (oid text is small)
     aside := '_mig076_' || r.oid::text;
 
     IF EXISTS (
@@ -123,20 +130,11 @@ BEGIN
   END IF;
 
   RAISE NOTICE '076 recreated % function(s) with organization param names', recreated;
-END $$;
 
--- ---------------------------------------------------------------------------
--- 2. Rebind dependent function bodies that still call aside names
--- ---------------------------------------------------------------------------
-
-DO $$
-DECLARE
-  r record;
-  pair record;
-  def text;
-  new_def text;
-  updated integer := 0;
-BEGIN
+  -- -------------------------------------------------------------------------
+  -- 2. Rebind dependent function bodies that still call aside names
+  -- -------------------------------------------------------------------------
+  updated := 0;
   FOR r IN
     SELECT
       p.oid,
@@ -148,7 +146,6 @@ BEGIN
     WHERE n.nspname = 'public'
       AND p.prokind = 'f'
       AND p.proname NOT LIKE '\_mig076\_%' ESCAPE '\'
-      AND EXISTS (SELECT 1 FROM mig076_aside)
       AND pg_get_functiondef(p.oid) ~ '_mig076_'
   LOOP
     def := r.def;
@@ -173,22 +170,11 @@ BEGIN
   END LOOP;
 
   RAISE NOTICE '076 rebound % dependent function(s)', updated;
-END $$;
 
--- ---------------------------------------------------------------------------
--- 3. Rebind policies (re-resolve function names → new OIDs)
--- ---------------------------------------------------------------------------
-
-DO $$
-DECLARE
-  r record;
-  pair record;
-  qual text;
-  with_check text;
-  new_qual text;
-  new_with_check text;
-  updated integer := 0;
-BEGIN
+  -- -------------------------------------------------------------------------
+  -- 3. Rebind policies (re-resolve function names → new OIDs)
+  -- -------------------------------------------------------------------------
+  updated := 0;
   FOR r IN
     SELECT
       n.nspname AS schema_name,
@@ -241,17 +227,10 @@ BEGIN
   END LOOP;
 
   RAISE NOTICE '076 rebound % policy expression(s)', updated;
-END $$;
 
--- ---------------------------------------------------------------------------
--- 4. Drop aside functions
--- ---------------------------------------------------------------------------
-
-DO $$
-DECLARE
-  r record;
-  dropped integer := 0;
-BEGIN
+  -- -------------------------------------------------------------------------
+  -- 4. Drop aside functions
+  -- -------------------------------------------------------------------------
   FOR r IN
     SELECT aside_name, args FROM mig076_aside
     ORDER BY length(aside_name) DESC
@@ -261,7 +240,6 @@ BEGIN
     RAISE NOTICE '076 dropped aside %(%)', r.aside_name, r.args;
   END LOOP;
 
-  -- Safety: drop any truncated leftovers from earlier 076 attempts
   FOR r IN
     SELECT
       p.proname,
@@ -281,16 +259,10 @@ BEGIN
   END LOOP;
 
   RAISE NOTICE '076 dropped % aside function(s)', dropped;
-END $$;
 
--- ---------------------------------------------------------------------------
--- 5. Post-checks
--- ---------------------------------------------------------------------------
-
-DO $$
-DECLARE
-  leftover text;
-BEGIN
+  -- -------------------------------------------------------------------------
+  -- 5. Post-checks
+  -- -------------------------------------------------------------------------
   IF pg_get_function_identity_arguments(
     'public.is_active_organization_member(uuid)'::regprocedure
   ) !~ 'requested_organization_id' THEN
@@ -318,13 +290,12 @@ BEGIN
 
     RAISE EXCEPTION '076 post-check failed — leftover church params: %', leftover;
   END IF;
-END $$;
 
-DO $$
-BEGIN
-  PERFORM pg_notify('pgrst', 'reload schema');
-EXCEPTION WHEN others THEN
-  NULL;
+  BEGIN
+    PERFORM pg_notify('pgrst', 'reload schema');
+  EXCEPTION WHEN others THEN
+    NULL;
+  END;
 END $$;
 
 COMMIT;

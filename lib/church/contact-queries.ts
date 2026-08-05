@@ -6,7 +6,7 @@ import {
 } from "@/lib/church/contacts";
 
 export async function listChurchContactsForTypes(
-  churchId: string,
+  organizationId: string,
   types: ChurchContactType[],
 ): Promise<{ contacts: ChurchContactRecord[]; error?: string }> {
   if (types.length === 0) return { contacts: [] };
@@ -17,7 +17,7 @@ export async function listChurchContactsForTypes(
     .select(
       "id, organization_id, contact_type, organization_name, full_name, phone, email, notes, sort_order, created_at, updated_at",
     )
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .in("contact_type", types)
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true });

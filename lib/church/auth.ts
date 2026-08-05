@@ -1,26 +1,33 @@
 import {
-  requireChurchMembership,
-  requireOperationalChurch,
+  requireOrganizationMembership,
+  requireOperationalOrganization,
 } from "@/lib/church/context";
 
 export { ChurchAccessError } from "@/lib/church/errors";
 export {
   getCurrentUser,
   getUserMemberships,
+  getActiveOrganization,
   getActiveChurch,
+  requireOrganizationMembership,
   requireChurchMembership,
+  requireOperationalOrganization,
   requireOperationalChurch,
+  requireOrganizationRole,
   requireChurchRole,
+  requireMinOrganizationRole,
   requireMinChurchRole,
+  setActiveOrganizationForUser,
   setActiveChurchForUser,
 } from "@/lib/church/context";
 
 /**
  * Backward-compatible church context used by existing pages/actions.
- * Prefer requireChurchMembership() / requireChurchRole() for new code.
+ * Prefer requireOrganizationMembership() for new service code.
+ * UI may keep calling the Church-named helpers.
  */
 export async function getAuthenticatedUserWithChurch() {
-  const context = await requireChurchMembership();
+  const context = await requireOrganizationMembership();
 
   return {
     supabase: context.supabase,
@@ -36,13 +43,13 @@ export async function getAuthenticatedUserWithChurch() {
     },
     memberships: context.memberships,
     canManageCertifications: context.canManageCertifications,
-    cookieSyncChurchId: context.cookieSyncChurchId,
+    cookieSyncOrganizationId: context.cookieSyncOrganizationId,
   };
 }
 
-/** Same as getAuthenticatedUserWithChurch but rejects suspended/closed churches. */
+/** Same as getAuthenticatedUserWithChurch but rejects suspended/closed organizations. */
 export async function getOperationalChurchContext() {
-  const context = await requireOperationalChurch();
+  const context = await requireOperationalOrganization();
 
   return {
     supabase: context.supabase,
@@ -58,6 +65,9 @@ export async function getOperationalChurchContext() {
     },
     memberships: context.memberships,
     canManageCertifications: context.canManageCertifications,
-    cookieSyncChurchId: context.cookieSyncChurchId,
+    cookieSyncOrganizationId: context.cookieSyncOrganizationId,
   };
 }
+
+/** Alias for service-layer naming consistency. */
+export const getAuthenticatedUserWithOrganization = getAuthenticatedUserWithChurch;

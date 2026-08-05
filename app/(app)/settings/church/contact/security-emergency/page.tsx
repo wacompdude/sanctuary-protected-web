@@ -19,7 +19,7 @@ export default function ChurchContactSecurityEmergencyPage() {
       >
         {({ church, canEdit }) => (
           <ChurchDirectoryGroupLoader
-            churchId={church.id}
+            organizationId={church.id}
             canEdit={canEdit}
             contactTypes={[...group.contactTypes]}
             intro="These are directory contacts for partners and leads. Incident policy numbers (hospital, fire, retention) remain under Security and Emergency Information."

@@ -57,7 +57,7 @@ async function SelectChurchContent() {
               name: membership.church.name,
               role: membership.role,
             }))}
-            activeChurchId={church.id}
+            activeOrganizationId={church.id}
           />
           {memberships.length <= 1 && (
             <p className="mt-4 text-sm text-muted-foreground">

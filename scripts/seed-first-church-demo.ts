@@ -51,7 +51,7 @@ async function main(): Promise<void> {
   const safe = {
     ok: summary.ok,
     seedSource: summary.seedSource,
-    churchId: summary.churchId,
+    organizationId: summary.organizationId,
     churchName: summary.churchName,
     startedAt: summary.startedAt,
     finishedAt: summary.finishedAt,

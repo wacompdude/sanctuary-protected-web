@@ -6,7 +6,7 @@ export type SeedCountBucket = {
 
 export type DemoSeedSummary = {
   seedSource: string;
-  churchId: string | null;
+  organizationId: string | null;
   churchName: string;
   startedAt: string;
   finishedAt: string | null;
@@ -30,7 +30,7 @@ export type DemoSeedContext = {
   tempPassword: string;
   ownerUserId: string;
   summary: DemoSeedSummary;
-  churchId: string;
+  organizationId: string;
   primaryCampusId: string;
   sunshineCampusId: string;
   /** seedKey → user id */

@@ -43,11 +43,11 @@ async function DashboardSettingsContent() {
     const supabase = await createClient();
     const purge = await purgeObsoleteChurchDashboardBoxSettings({
       supabase,
-      churchId: church.id,
+      organizationId: church.id,
     });
     if (purge.ok && purge.purgedKeys.length > 0) {
       await auditDashboardObsoleteKeysPurged(supabase, {
-        churchId: church.id,
+        organizationId: church.id,
         userId: user.id,
         obsoleteKeys: purge.purgedKeys,
       });

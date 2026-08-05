@@ -44,7 +44,7 @@ async function PoliciesLibraryContent({
   const canManage = canManagePolicyDocuments(membership.role);
   const canManageView = canViewPolicyManagement(membership.role);
   const campusFilter = await resolveCampusFilter({
-    churchId: church.id,
+    organizationId: church.id,
     userId: user.id,
     role: membership.role,
   });

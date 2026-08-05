@@ -29,7 +29,7 @@ async function NewEventContent() {
   }
 
   const campusFilter = await resolveCampusFilter({
-    churchId: church.id,
+    organizationId: church.id,
     userId: user.id,
     role: membership.role,
   });

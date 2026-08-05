@@ -161,7 +161,7 @@ export async function seedPoliciesAndProcedures(
 
   const { error: catError } = await ctx.admin.rpc(
     "ensure_default_policy_categories",
-    { p_church_id: ctx.churchId },
+    { p_church_id: ctx.organizationId },
   );
   if (catError) {
     warn(
@@ -173,7 +173,7 @@ export async function seedPoliciesAndProcedures(
   const { data: categories, error: listError } = await ctx.admin
     .from("policy_categories")
     .select("id, key")
-    .eq("organization_id", ctx.churchId);
+    .eq("organization_id", ctx.organizationId);
 
   if (listError || !categories?.length) {
     warn(
@@ -218,7 +218,7 @@ export async function seedPoliciesAndProcedures(
           };
 
     const docPayload = {
-      organization_id: ctx.churchId,
+      organization_id: ctx.organizationId,
       campus_id: null, // church-wide → all campuses
       category_id: categoryId,
       document_type: def.document_type,
@@ -311,7 +311,7 @@ export async function seedPoliciesAndProcedures(
             : "draft";
 
     const versionPayload = {
-      organization_id: ctx.churchId,
+      organization_id: ctx.organizationId,
       policy_document_id: documentId,
       version_number: 1,
       version_label: "1.0",

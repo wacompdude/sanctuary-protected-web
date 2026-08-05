@@ -27,14 +27,14 @@ type RelationshipRow = {
 };
 
 export async function listAttachmentsForEquipment(
-  churchId: string,
+  organizationId: string,
   equipmentId: string,
 ): Promise<EquipmentAttachment[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("equipment_attachments")
     .select("*")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("equipment_id", equipmentId)
     .order("created_at", { ascending: true });
 
@@ -66,7 +66,7 @@ export async function listAttachmentsForEquipment(
 }
 
 export async function listRelationshipsForEquipment(
-  churchId: string,
+  organizationId: string,
   equipmentId: string,
 ): Promise<EquipmentRelationship[]> {
   const supabase = await createClient();
@@ -75,7 +75,7 @@ export async function listRelationshipsForEquipment(
     .select(
       "id, organization_id, parent_equipment_id, child_equipment_id, relationship_type, notes, created_by, created_at",
     )
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .or(
       `parent_equipment_id.eq.${equipmentId},child_equipment_id.eq.${equipmentId}`,
     )
@@ -108,7 +108,7 @@ export async function listRelationshipsForEquipment(
   const { data: relatedRows, error: relatedError } = await supabase
     .from("security_equipment")
     .select("id, name, asset_tag, category")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .in("id", relatedIds);
 
   if (relatedError) {
@@ -144,14 +144,14 @@ export async function listRelationshipsForEquipment(
 }
 
 export async function listEquipmentOptionsForRelationships(
-  churchId: string,
+  organizationId: string,
   excludeEquipmentId: string,
 ): Promise<{ id: string; label: string }[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("security_equipment")
     .select("id, name, asset_tag, category")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .is("archived_at", null)
     .neq("id", excludeEquipmentId)
     .order("name", { ascending: true })
@@ -185,14 +185,14 @@ export type EquipmentReportBreakdown = {
 };
 
 export async function getEquipmentReportBreakdown(
-  churchId: string,
+  organizationId: string,
   options?: { campusFilterOr?: string | null },
 ): Promise<EquipmentReportBreakdown> {
   const supabase = await createClient();
   let query = supabase
     .from("security_equipment")
     .select("category, status")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .is("archived_at", null);
 
   if (options?.campusFilterOr) {
@@ -243,7 +243,7 @@ function csvEscape(value: string | number | null | undefined): string {
 }
 
 export async function buildEquipmentInventoryCsv(
-  churchId: string,
+  organizationId: string,
   options?: { campusFilterOr?: string | null },
 ): Promise<string> {
   const supabase = await createClient();
@@ -258,7 +258,7 @@ export async function buildEquipmentInventoryCsv(
       next_maintenance_at, expected_replacement_date, notes, archived_at
     `,
     )
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .order("asset_tag", { ascending: true, nullsFirst: false })
     .order("name", { ascending: true });
 
@@ -272,7 +272,7 @@ export async function buildEquipmentInventoryCsv(
       supabase
         .from("campuses")
         .select("id, name")
-        .eq("organization_id", churchId),
+        .eq("organization_id", organizationId),
     ]);
 
   if (error) {

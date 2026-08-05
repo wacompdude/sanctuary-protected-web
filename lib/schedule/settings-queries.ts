@@ -44,10 +44,10 @@ function mapTemplate(row: Record<string, unknown>): ScheduleTemplate {
 }
 
 export async function ensureChurchScheduleSettings(
-  churchId: string,
+  organizationId: string,
   timezone?: string | null,
 ): Promise<ChurchScheduleSettings | null> {
-  const existing = await getTypedChurchScheduleSettings(churchId);
+  const existing = await getTypedChurchScheduleSettings(organizationId);
   if (existing) return existing;
 
   try {
@@ -56,7 +56,7 @@ export async function ensureChurchScheduleSettings(
       .from("organization_schedule_settings")
       .upsert(
         {
-          organization_id: churchId,
+          organization_id: organizationId,
           timezone: timezone?.trim() || "America/Los_Angeles",
         },
         { onConflict: "organization_id" },
@@ -76,14 +76,14 @@ export async function ensureChurchScheduleSettings(
 }
 
 export async function getTypedChurchScheduleSettings(
-  churchId: string,
+  organizationId: string,
 ): Promise<ChurchScheduleSettings | null> {
   try {
     const supabase = await createClient();
     const { data, error } = await supabase
       .from("organization_schedule_settings")
       .select("*")
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .maybeSingle();
     if (error) {
       if (isMissingRelation(error.message)) return null;
@@ -98,7 +98,7 @@ export async function getTypedChurchScheduleSettings(
 }
 
 export async function listScheduleTemplates(
-  churchId: string,
+  organizationId: string,
   options?: { includeInactive?: boolean },
 ): Promise<{
   items: ScheduleTemplate[];
@@ -110,7 +110,7 @@ export async function listScheduleTemplates(
     let query = supabase
       .from("schedule_templates")
       .select("*")
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .order("name", { ascending: true });
     if (!options?.includeInactive) {
       query = query.eq("is_active", true);
@@ -146,7 +146,7 @@ export async function listScheduleTemplates(
 }
 
 export async function getScheduleTemplate(
-  churchId: string,
+  organizationId: string,
   templateId: string,
 ): Promise<ScheduleTemplate | null> {
   try {
@@ -154,7 +154,7 @@ export async function getScheduleTemplate(
     const { data, error } = await supabase
       .from("schedule_templates")
       .select("*")
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .eq("id", templateId)
       .maybeSingle();
     if (error) {

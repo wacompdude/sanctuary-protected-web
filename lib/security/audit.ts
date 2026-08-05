@@ -9,7 +9,7 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import type { SecurityAuditEventType, SecurityAuditResult } from "./types";
 
 export interface SecurityAuditLogParams {
-  churchId: string;
+  organizationId: string;
   campusId?: string | null;
   actorUserId: string;
   targetUserId?: string | null;
@@ -37,7 +37,7 @@ export async function writeSecurityAuditLog(
     const { data, error } = await admin
       .from("security_audit_logs")
       .insert({
-        organization_id: params.churchId,
+        organization_id: params.organizationId,
         campus_id: params.campusId || null,
         actor_user_id: params.actorUserId,
         target_user_id: params.targetUserId || null,
@@ -70,7 +70,7 @@ export async function writeSecurityAuditLog(
  * Query security audit logs with filters.
  */
 export interface SecurityAuditLogFilters {
-  churchId: string;
+  organizationId: string;
   startDate?: Date;
   endDate?: Date;
   actorUserId?: string;
@@ -109,7 +109,7 @@ export async function querySecurityAuditLogs(
     `,
       { count: "exact" },
     )
-    .eq("organization_id", filters.churchId)
+    .eq("organization_id", filters.organizationId)
     .order("created_at", { ascending: false });
 
   if (filters.startDate) {
@@ -164,13 +164,13 @@ export async function querySecurityAuditLogs(
 
 export async function logSecurityGroupCreated(
   admin: SupabaseClient,
-  churchId: string,
+  organizationId: string,
   groupId: string,
   groupName: string,
   actorUserId: string,
 ) {
   return writeSecurityAuditLog(admin, {
-    churchId,
+    organizationId,
     actorUserId,
     eventType: "security_group.created",
     securityGroupId: groupId,
@@ -181,14 +181,14 @@ export async function logSecurityGroupCreated(
 
 export async function logSecurityGroupUpdated(
   admin: SupabaseClient,
-  churchId: string,
+  organizationId: string,
   groupId: string,
   previousValue: Record<string, unknown>,
   newValue: Record<string, unknown>,
   actorUserId: string,
 ) {
   return writeSecurityAuditLog(admin, {
-    churchId,
+    organizationId,
     actorUserId,
     eventType: "security_group.updated",
     securityGroupId: groupId,
@@ -199,14 +199,14 @@ export async function logSecurityGroupUpdated(
 
 export async function logUserPermissionGranted(
   admin: SupabaseClient,
-  churchId: string,
+  organizationId: string,
   targetUserId: string,
   permissionKey: string,
   actorUserId: string,
   reason?: string,
 ) {
   return writeSecurityAuditLog(admin, {
-    churchId,
+    organizationId,
     actorUserId,
     targetUserId,
     eventType: "user_permission.granted",
@@ -217,14 +217,14 @@ export async function logUserPermissionGranted(
 
 export async function logUserPermissionDenied(
   admin: SupabaseClient,
-  churchId: string,
+  organizationId: string,
   targetUserId: string,
   permissionKey: string,
   actorUserId: string,
   reason?: string,
 ) {
   return writeSecurityAuditLog(admin, {
-    churchId,
+    organizationId,
     actorUserId,
     targetUserId,
     eventType: "user_permission.denied",
@@ -235,14 +235,14 @@ export async function logUserPermissionDenied(
 
 export async function logUserPermissionRevoked(
   admin: SupabaseClient,
-  churchId: string,
+  organizationId: string,
   targetUserId: string,
   permissionKey: string,
   actorUserId: string,
   reason?: string,
 ) {
   return writeSecurityAuditLog(admin, {
-    churchId,
+    organizationId,
     actorUserId,
     targetUserId,
     eventType: "user_permission.revoked",
@@ -253,7 +253,7 @@ export async function logUserPermissionRevoked(
 
 export async function logUserPermissionUpdated(
   admin: SupabaseClient,
-  churchId: string,
+  organizationId: string,
   targetUserId: string,
   permissionKey: string,
   actorUserId: string,
@@ -262,7 +262,7 @@ export async function logUserPermissionUpdated(
   reason?: string,
 ) {
   return writeSecurityAuditLog(admin, {
-    churchId,
+    organizationId,
     actorUserId,
     targetUserId,
     eventType: "user_permission.updated",
@@ -274,14 +274,14 @@ export async function logUserPermissionUpdated(
 
 export async function logSecurityGroupMemberAdded(
   admin: SupabaseClient,
-  churchId: string,
+  organizationId: string,
   groupId: string,
   targetUserId: string,
   actorUserId: string,
   reason?: string,
 ) {
   return writeSecurityAuditLog(admin, {
-    churchId,
+    organizationId,
     actorUserId,
     targetUserId,
     eventType: "security_group_member.added",
@@ -292,14 +292,14 @@ export async function logSecurityGroupMemberAdded(
 
 export async function logSecurityGroupMemberRemoved(
   admin: SupabaseClient,
-  churchId: string,
+  organizationId: string,
   groupId: string,
   targetUserId: string,
   actorUserId: string,
   reason?: string,
 ) {
   return writeSecurityAuditLog(admin, {
-    churchId,
+    organizationId,
     actorUserId,
     targetUserId,
     eventType: "security_group_member.removed",
@@ -310,11 +310,11 @@ export async function logSecurityGroupMemberRemoved(
 
 export async function logSecurityAuditLogViewed(
   admin: SupabaseClient,
-  churchId: string,
+  organizationId: string,
   actorUserId: string,
 ) {
   return writeSecurityAuditLog(admin, {
-    churchId,
+    organizationId,
     actorUserId,
     eventType: "security_audit_log.viewed",
     reason: "Viewed security audit log",
@@ -323,13 +323,13 @@ export async function logSecurityAuditLogViewed(
 
 export async function logAccessPreviewUsed(
   admin: SupabaseClient,
-  churchId: string,
+  organizationId: string,
   targetUserId: string,
   permissionKey: string,
   actorUserId: string,
 ) {
   return writeSecurityAuditLog(admin, {
-    churchId,
+    organizationId,
     actorUserId,
     targetUserId,
     eventType: "security.preview_access_used",

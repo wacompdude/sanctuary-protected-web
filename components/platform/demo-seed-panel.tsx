@@ -58,7 +58,7 @@ function ResultPanel({ result }: { result: DemoSeedActionResult | null }) {
         <p className="font-medium text-slate-100">Cleanup complete</p>
         <p className="text-slate-400">
           Church: {s.churchName}
-          {s.churchId ? ` (${s.churchId})` : ""}
+          {s.organizationId ? ` (${s.organizationId})` : ""}
         </p>
         <pre className="overflow-x-auto rounded bg-slate-950/60 p-3 text-xs text-slate-300">
           {JSON.stringify(s.deleted, null, 2)}
@@ -81,7 +81,7 @@ function ResultPanel({ result }: { result: DemoSeedActionResult | null }) {
         <p className="font-medium text-slate-100">Seed complete</p>
         <p className="mt-1 text-slate-400">
           {s.churchName}
-          {s.churchId ? ` · ${s.churchId}` : ""}
+          {s.organizationId ? ` · ${s.organizationId}` : ""}
         </p>
       </div>
       <CountTable counts={s.counts} />
@@ -127,10 +127,10 @@ function ResultPanel({ result }: { result: DemoSeedActionResult | null }) {
 
 export function DemoSeedPanel({
   environmentAllowed,
-  churchId,
+  organizationId,
 }: {
   environmentAllowed: boolean;
-  churchId: string | null;
+  organizationId: string | null;
 }) {
   const [seedState, seedAction, seedPending] = useActionState(
     runDemoSeedAction,
@@ -172,8 +172,8 @@ export function DemoSeedPanel({
       <section className="rounded-lg border border-slate-800 bg-slate-900/40 p-5 text-sm">
         <h2 className="font-medium text-slate-100">Current demo church</h2>
         <p className="mt-2 text-slate-400">
-          {churchId
-            ? `Registered church id: ${churchId}`
+          {organizationId
+            ? `Registered church id: ${organizationId}`
             : "No first-church-demo organization found yet."}
         </p>
       </section>

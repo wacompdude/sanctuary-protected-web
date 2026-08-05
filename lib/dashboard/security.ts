@@ -7,8 +7,8 @@ const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 /** Active church id must be a UUID from auth context — never from the browser. */
-export function assertDashboardChurchId(churchId: string): string {
-  const trimmed = churchId.trim();
+export function assertDashboardOrganizationId(organizationId: string): string {
+  const trimmed = organizationId.trim();
   if (!UUID_RE.test(trimmed)) {
     throw new Error("Invalid church context for dashboard settings.");
   }
@@ -19,8 +19,8 @@ export function assertDashboardChurchId(churchId: string): string {
  * Guard against clients that try to spoof tenant scope via FormData.
  * Church scope always comes from getAuthenticatedUserWithChurch().
  */
-export function rejectBrowserSubmittedChurchId(formData: FormData): void {
-  const submitted = formData.get("organization_id") ?? formData.get("churchId");
+export function rejectBrowserSubmittedOrganizationId(formData: FormData): void {
+  const submitted = formData.get("organization_id") ?? formData.get("organizationId");
   if (submitted != null && String(submitted).trim() !== "") {
     throw new Error(
       "Church id cannot be submitted from the browser for dashboard settings.",

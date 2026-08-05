@@ -79,11 +79,11 @@ function migrationOrError(message: string | undefined, fallback: string) {
 }
 
 async function assertCampusBelongsToChurch(
-  churchId: string,
+  organizationId: string,
   campusId: string | null,
 ): Promise<string | null> {
   if (!campusId) return null;
-  const campuses = await listCampusesForPolicies(churchId);
+  const campuses = await listCampusesForPolicies(organizationId);
   if (!campuses.some((campus) => campus.id === campusId)) {
     return "Selected campus does not belong to this church.";
   }
@@ -91,11 +91,11 @@ async function assertCampusBelongsToChurch(
 }
 
 async function assertCategoryBelongsToChurch(
-  churchId: string,
+  organizationId: string,
   categoryId: string | null,
 ): Promise<string | null> {
   if (!categoryId) return null;
-  const categories = await listPolicyCategories(churchId);
+  const categories = await listPolicyCategories(organizationId);
   if (!categories.some((category) => category.id === categoryId)) {
     return "Selected category does not belong to this church.";
   }
@@ -104,7 +104,7 @@ async function assertCategoryBelongsToChurch(
 
 async function allocateUniqueSlug(
   supabase: SupabaseClient,
-  churchId: string,
+  organizationId: string,
   title: string,
   excludeId?: string,
 ): Promise<string> {
@@ -114,7 +114,7 @@ async function allocateUniqueSlug(
     let query = supabase
       .from("policy_documents")
       .select("id")
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .eq("slug", slug)
       .limit(1);
     if (excludeId) query = query.neq("id", excludeId);
@@ -140,15 +140,15 @@ function tagSlug(name: string): string {
 
 async function syncPolicyTags(params: {
   supabase: SupabaseClient;
-  churchId: string;
+  organizationId: string;
   policyId: string;
   tags: string[];
 }) {
-  const { supabase, churchId, policyId, tags } = params;
+  const { supabase, organizationId, policyId, tags } = params;
   await supabase
     .from("policy_document_tags")
     .delete()
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("policy_document_id", policyId);
 
   if (tags.length === 0) return;
@@ -159,7 +159,7 @@ async function syncPolicyTags(params: {
     const { data: existing } = await supabase
       .from("policy_tags")
       .select("id")
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .eq("slug", slug)
       .maybeSingle();
 
@@ -170,7 +170,7 @@ async function syncPolicyTags(params: {
 
     const { data: created, error } = await supabase
       .from("policy_tags")
-      .insert({ organization_id: churchId, name: name.slice(0, 80), slug })
+      .insert({ organization_id: organizationId, name: name.slice(0, 80), slug })
       .select("id")
       .single();
     if (error || !created) {
@@ -181,7 +181,7 @@ async function syncPolicyTags(params: {
 
   const { error } = await supabase.from("policy_document_tags").insert(
     tagIds.map((tag_id) => ({
-      organization_id: churchId,
+      organization_id: organizationId,
       policy_document_id: policyId,
       tag_id,
     })),
@@ -206,7 +206,7 @@ async function refreshSearch(
 
 async function insertApproval(params: {
   supabase: SupabaseClient;
-  churchId: string;
+  organizationId: string;
   policyId: string;
   versionId: string;
   userId: string;
@@ -214,7 +214,7 @@ async function insertApproval(params: {
   notes?: string | null;
 }) {
   const { error } = await params.supabase.from("policy_approvals").insert({
-    organization_id: params.churchId,
+    organization_id: params.organizationId,
     policy_document_id: params.policyId,
     policy_version_id: params.versionId,
     decision: params.decision,
@@ -268,7 +268,7 @@ export async function createPolicy(
     }
 
     await requireFeature({
-      churchId: church.id,
+      organizationId: church.id,
       featureKey: FEATURE_KEYS.POLICIES,
     });
 
@@ -374,7 +374,7 @@ export async function createPolicy(
 
     await syncPolicyTags({
       supabase,
-      churchId: church.id,
+      organizationId: church.id,
       policyId,
       tags: input.tags,
     });
@@ -385,7 +385,7 @@ export async function createPolicy(
     if (attachmentFiles.length > 0) {
       const uploadResult = await uploadPolicyAttachmentFiles({
         supabase,
-        churchId: church.id,
+        organizationId: church.id,
         policyId,
         versionId: version.id,
         userId: user.id,
@@ -398,7 +398,7 @@ export async function createPolicy(
     }
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.POLICY_CREATED,
       entityType: AuditEntityType.POLICY_DOCUMENT,
@@ -445,7 +445,7 @@ export async function updatePolicy(
     }
 
     await requireFeature({
-      churchId: church.id,
+      organizationId: church.id,
       featureKey: FEATURE_KEYS.POLICIES,
     });
 
@@ -534,14 +534,14 @@ export async function updatePolicy(
 
     await syncPolicyTags({
       supabase,
-      churchId: church.id,
+      organizationId: church.id,
       policyId,
       tags: input.tags,
     });
     await refreshSearch(supabase, policyId);
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.POLICY_UPDATED,
       entityType: AuditEntityType.POLICY_DOCUMENT,
@@ -583,7 +583,7 @@ async function runWorkflowAction(params: {
     }
 
     await requireFeature({
-      churchId: church.id,
+      organizationId: church.id,
       featureKey: FEATURE_KEYS.POLICIES,
     });
 
@@ -669,7 +669,7 @@ async function runWorkflowAction(params: {
       }
 
       await writeAuditLog(supabase, {
-        churchId: church.id,
+        organizationId: church.id,
         userId: user.id,
         action: AuditAction.POLICY_REVISION_STARTED,
         entityType: AuditEntityType.POLICY_DOCUMENT,
@@ -802,7 +802,7 @@ async function runWorkflowAction(params: {
 
       await insertApproval({
         supabase,
-        churchId: church.id,
+        organizationId: church.id,
         policyId,
         versionId: existing.current_version_id!,
         userId: user.id,
@@ -812,7 +812,7 @@ async function runWorkflowAction(params: {
       await refreshSearch(supabase, policyId);
 
       await writeAuditLog(supabase, {
-        churchId: church.id,
+        organizationId: church.id,
         userId: user.id,
         action: AuditAction.POLICY_PUBLISHED,
         entityType: AuditEntityType.POLICY_DOCUMENT,
@@ -825,7 +825,7 @@ async function runWorkflowAction(params: {
       });
 
       await notifyPolicyPublished({
-        churchId: church.id,
+        organizationId: church.id,
         policyId,
         title: existing.title,
         versionLabel: publishLabel,
@@ -844,7 +844,7 @@ async function runWorkflowAction(params: {
                   ).toISOString()
                 : null;
             await notifyPolicyAcknowledgmentsRequired({
-              churchId: church.id,
+              organizationId: church.id,
               policyId,
               title: existing.title,
               versionLabel: publishLabel,
@@ -854,7 +854,7 @@ async function runWorkflowAction(params: {
               timeZone: church.timezone,
             });
             await writeAuditLog(supabase, {
-              churchId: church.id,
+              organizationId: church.id,
               userId: user.id,
               action: AuditAction.POLICY_ACKNOWLEDGMENTS_ASSIGNED,
               entityType: AuditEntityType.POLICY_DOCUMENT,
@@ -938,7 +938,7 @@ async function runWorkflowAction(params: {
     ) {
       await insertApproval({
         supabase,
-        churchId: church.id,
+        organizationId: church.id,
         policyId,
         versionId: existing.current_version_id!,
         userId: user.id,
@@ -964,7 +964,7 @@ async function runWorkflowAction(params: {
     const auditAction = auditByAction[action];
     if (auditAction) {
       await writeAuditLog(supabase, {
-        churchId: church.id,
+        organizationId: church.id,
         userId: user.id,
         action: auditAction,
         entityType: AuditEntityType.POLICY_DOCUMENT,

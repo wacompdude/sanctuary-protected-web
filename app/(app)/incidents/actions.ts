@@ -73,7 +73,7 @@ function parseIncidentMemberIds(formData: FormData): string[] {
 
 async function recordIncidentTeamMembers(params: {
   supabase: SupabaseClient;
-  churchId: string;
+  organizationId: string;
   incidentId: string;
   userId: string;
   membershipIds: string[];
@@ -82,7 +82,7 @@ async function recordIncidentTeamMembers(params: {
     const { data, error } = await params.supabase
       .from("incident_team_members")
       .insert({
-        organization_id: params.churchId,
+        organization_id: params.organizationId,
         incident_id: params.incidentId,
         membership_id: membershipId,
         added_by: params.userId,
@@ -102,7 +102,7 @@ async function recordIncidentTeamMembers(params: {
     }
 
     await writeAuditLog(params.supabase, {
-      churchId: params.churchId,
+      organizationId: params.organizationId,
       userId: params.userId,
       action: AuditAction.INCIDENT_MEMBER_ADDED,
       entityType: AuditEntityType.INCIDENT_MEMBER,
@@ -120,7 +120,7 @@ async function recordIncidentTeamMembers(params: {
 
 async function recordUsagesForIncident(params: {
   supabase: SupabaseClient;
-  churchId: string;
+  organizationId: string;
   incidentId: string;
   userId: string;
   usages: { supplyId: string; quantity: number }[];
@@ -129,7 +129,7 @@ async function recordUsagesForIncident(params: {
     const { data, error } = await params.supabase
       .from("medical_supply_usage")
       .insert({
-        organization_id: params.churchId,
+        organization_id: params.organizationId,
         incident_id: params.incidentId,
         medical_supply_id: usage.supplyId,
         quantity_used: usage.quantity,
@@ -146,7 +146,7 @@ async function recordUsagesForIncident(params: {
     }
 
     await writeAuditLog(params.supabase, {
-      churchId: params.churchId,
+      organizationId: params.organizationId,
       userId: params.userId,
       action: AuditAction.MEDICAL_SUPPLY_USED,
       entityType: AuditEntityType.MEDICAL_SUPPLY_USAGE,
@@ -163,14 +163,14 @@ async function recordUsagesForIncident(params: {
   return null;
 }
 
-async function loadIncidentPolicy(churchId: string) {
+async function loadIncidentPolicy(organizationId: string) {
   const { supabase, membership } = await getOperationalChurchContext();
   const { data } = await supabase
     .from("organizations")
     .select(
       "require_incident_location, require_incident_severity, require_incident_follow_up, allow_security_members_create_incidents, allow_security_members_close_incidents",
     )
-    .eq("id", churchId)
+    .eq("id", organizationId)
     .maybeSingle();
 
   return {
@@ -213,19 +213,19 @@ async function countIncidentPhotos(
 
 async function uploadIncidentPhotoFiles(params: {
   supabase: SupabaseClient;
-  churchId: string;
+  organizationId: string;
   incidentId: string;
   userId: string;
   files: File[];
 }): Promise<{ uploaded: number; error?: string }> {
-  const { supabase, churchId, incidentId, userId, files } = params;
+  const { supabase, organizationId, incidentId, userId, files } = params;
   if (files.length === 0) return { uploaded: 0 };
 
   const existing = await countIncidentPhotos(supabase, incidentId);
   let maxBytes = 10 * 1024 * 1024;
   try {
     const limits = await requireIncidentPhotoUpload({
-      churchId,
+      organizationId,
       existingCount: existing,
       newCount: files.length,
       files,
@@ -251,7 +251,7 @@ async function uploadIncidentPhotoFiles(params: {
 
   for (const file of files) {
     const objectPath = incidentPhotoObjectPath({
-      churchId,
+      organizationId,
       incidentId,
       mimeType: file.type,
     });
@@ -282,7 +282,7 @@ async function uploadIncidentPhotoFiles(params: {
     const { data: row, error: insertError } = await supabase
       .from("incident_attachments")
       .insert({
-        organization_id: churchId,
+        organization_id: organizationId,
         incident_id: incidentId,
         uploaded_by: userId,
         storage_path: objectPath,
@@ -306,7 +306,7 @@ async function uploadIncidentPhotoFiles(params: {
     uploaded += 1;
 
     await writeAuditLog(supabase, {
-      churchId,
+      organizationId,
       userId,
       action: AuditAction.INCIDENT_PHOTO_ADDED,
       entityType: AuditEntityType.INCIDENT_ATTACHMENT,
@@ -352,7 +352,7 @@ export async function createIncident(
     }
 
     await requireFeature({
-      churchId: context.church.id,
+      organizationId: context.church.id,
       featureKey: FEATURE_KEYS.INCIDENT_LOGGING,
     });
 
@@ -369,7 +369,7 @@ export async function createIncident(
     if (photoFiles.length > 0) {
       try {
         await requireIncidentPhotoUpload({
-          churchId: context.church.id,
+          organizationId: context.church.id,
           existingCount: 0,
           newCount: photoFiles.length,
           files: photoFiles,
@@ -425,7 +425,7 @@ export async function createIncident(
         };
       }
       await requireFeature({
-        churchId: context.church.id,
+        organizationId: context.church.id,
         featureKey: FEATURE_KEYS.MEDICAL_INCIDENT_USAGE,
       });
     }
@@ -472,7 +472,7 @@ export async function createIncident(
     if (photoFiles.length > 0) {
       const photoResult = await uploadIncidentPhotoFiles({
         supabase,
-        churchId: church.id,
+        organizationId: church.id,
         incidentId: incident.id,
         userId: user.id,
         files: photoFiles,
@@ -486,7 +486,7 @@ export async function createIncident(
     if (medicalUsages.length > 0) {
       const usageError = await recordUsagesForIncident({
         supabase,
-        churchId: church.id,
+        organizationId: church.id,
         incidentId: incident.id,
         userId: user.id,
         usages: medicalUsages,
@@ -499,7 +499,7 @@ export async function createIncident(
     if (involvedMemberIds.length > 0) {
       const incidentMemberError = await recordIncidentTeamMembers({
         supabase,
-        churchId: church.id,
+        organizationId: church.id,
         incidentId: incident.id,
         userId: user.id,
         membershipIds: involvedMemberIds,
@@ -515,7 +515,7 @@ export async function createIncident(
       formData.get("skip_notification") === "true";
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.INCIDENT_CREATED,
       entityType: AuditEntityType.INCIDENT,
@@ -544,7 +544,7 @@ export async function createIncident(
         input.severity === "critical" ? "incident.critical" : "incident.created";
       try {
         const notifyResult = await createNotification({
-          churchId: church.id,
+          organizationId: church.id,
           createdBy: user.id,
           notificationType,
           severity: mapIncidentSeverityToNotification(input.severity),
@@ -628,7 +628,7 @@ export async function resendIncidentNotificationAction(
 
     const result = await createNotification(
       {
-        churchId: church.id,
+        organizationId: church.id,
         createdBy: user.id,
         notificationType,
         severity: mapIncidentSeverityToNotification(incident.severity),
@@ -655,7 +655,7 @@ export async function resendIncidentNotificationAction(
 
     if (result.notificationId) {
       await auditNotificationCreated(supabase, {
-        churchId: church.id,
+        organizationId: church.id,
         userId: user.id,
         notificationId: result.notificationId,
         notificationType,
@@ -772,7 +772,7 @@ export async function addIncidentUpdate(
     }
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.INCIDENT_UPDATED,
       entityType: AuditEntityType.INCIDENT,
@@ -846,7 +846,7 @@ export async function addIncidentTeamMember(
 
     const recordError = await recordIncidentTeamMembers({
       supabase,
-      churchId: church.id,
+      organizationId: church.id,
       incidentId,
       userId: user.id,
       membershipIds: [membershipId],
@@ -917,7 +917,7 @@ export async function removeIncidentTeamMember(
     }
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.INCIDENT_MEMBER_REMOVED,
       entityType: AuditEntityType.INCIDENT_MEMBER,
@@ -967,7 +967,7 @@ export async function uploadIncidentPhotos(
 
     const result = await uploadIncidentPhotoFiles({
       supabase,
-      churchId: church.id,
+      organizationId: church.id,
       incidentId,
       userId: user.id,
       files,
@@ -1058,7 +1058,7 @@ export async function deleteIncidentPhoto(
       .remove([attachment.storage_path]);
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.INCIDENT_PHOTO_REMOVED,
       entityType: AuditEntityType.INCIDENT_ATTACHMENT,

@@ -128,7 +128,7 @@ async function ChurchDetailContent({
 
       {canSupport ? (
         <PlatformSupportSessionForm
-          churchId={church.id}
+          organizationId={church.id}
           churchName={church.name}
           canStart
           activeSessionId={activeForThisChurch?.id ?? null}

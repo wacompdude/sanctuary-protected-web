@@ -76,11 +76,11 @@ export async function getPlanEntitlements(params: {
  * assign real church_subscriptions rows.
  */
 export const getChurchEntitlements = cache(
-  async (churchId: string): Promise<ChurchEntitlements> => {
-    const trimmed = churchId.trim();
+  async (organizationId: string): Promise<ChurchEntitlements> => {
+    const trimmed = organizationId.trim();
     if (!trimmed) {
       return {
-        churchId: "",
+        organizationId: "",
         subscription: null,
         plan: null,
         usedDefaultPlanFallback: true,
@@ -109,7 +109,7 @@ export const getChurchEntitlements = cache(
         } satisfies SubscriptionPlanRecord);
 
       return {
-        churchId: trimmed,
+        organizationId: trimmed,
         subscription,
         plan: resolvedPlan,
         usedDefaultPlanFallback: false,
@@ -120,7 +120,7 @@ export const getChurchEntitlements = cache(
     const defaultPlan = await getDefaultSubscriptionPlan();
     if (!defaultPlan) {
       return {
-        churchId: trimmed,
+        organizationId: trimmed,
         subscription: null,
         plan: null,
         usedDefaultPlanFallback: true,
@@ -129,7 +129,7 @@ export const getChurchEntitlements = cache(
     }
 
     return {
-      churchId: trimmed,
+      organizationId: trimmed,
       subscription: null,
       plan: defaultPlan,
       usedDefaultPlanFallback: true,
@@ -139,7 +139,7 @@ export const getChurchEntitlements = cache(
 );
 
 export async function hasFeature(params: {
-  churchId: string;
+  organizationId: string;
   featureKey: FeatureKey | string;
 }): Promise<FeatureAccessResult> {
   const featureKey = String(params.featureKey);
@@ -153,7 +153,7 @@ export async function hasFeature(params: {
     };
   }
 
-  const entitlements = await getChurchEntitlements(params.churchId);
+  const entitlements = await getChurchEntitlements(params.organizationId);
   const allowed = readBooleanEntitlement(entitlements.values, featureKey);
 
   return {
@@ -171,7 +171,7 @@ export async function hasFeature(params: {
 }
 
 export async function getFeatureLimit(params: {
-  churchId: string;
+  organizationId: string;
   featureKey: FeatureKey | string;
 }): Promise<FeatureLimitResult> {
   const featureKey = String(params.featureKey);
@@ -185,7 +185,7 @@ export async function getFeatureLimit(params: {
     };
   }
 
-  const entitlements = await getChurchEntitlements(params.churchId);
+  const entitlements = await getChurchEntitlements(params.organizationId);
   const { limit, unlimited } = readIntegerEntitlement(
     entitlements.values,
     featureKey,
@@ -201,7 +201,7 @@ export async function getFeatureLimit(params: {
 }
 
 export async function requireFeature(params: {
-  churchId: string;
+  organizationId: string;
   featureKey: FeatureKey | string;
 }): Promise<void> {
   const result = await hasFeature(params);
@@ -224,7 +224,7 @@ export async function requireFeature(params: {
 }
 
 export async function requireFeatureCapacity(params: {
-  churchId: string;
+  organizationId: string;
   featureKey: FeatureKey | string;
   currentUsage: number;
   requestedIncrease?: number;
@@ -240,7 +240,7 @@ export async function requireFeatureCapacity(params: {
   const requestedIncrease = Math.max(0, params.requestedIncrease ?? 1);
   const currentUsage = Math.max(0, params.currentUsage);
   const limitResult = await getFeatureLimit({
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     featureKey,
   });
 

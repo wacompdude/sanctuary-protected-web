@@ -206,7 +206,7 @@ export interface SecurityAuditLog {
  */
 export interface AuthorizationRequest {
   userId: string;
-  churchId: string;
+  organizationId: string;
   campusId?: string | null;
   permissionKey: string;
   resourceId?: string | null;
@@ -266,7 +266,7 @@ export interface PermissionGrant {
  */
 export interface AccessPreviewRequest {
   userId: string;
-  churchId: string;
+  organizationId: string;
   permissionKey: string;
   campusId?: string | null;
   resourceId?: string | null;

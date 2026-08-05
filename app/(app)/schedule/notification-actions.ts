@@ -82,7 +82,7 @@ export async function previewScheduleAudienceAction(
 
     const audience = await resolveNotificationAudience({
       supabase,
-      churchId: church.id,
+      organizationId: church.id,
       settings,
       notificationType: "schedule.custom_message",
       severity: "medium",
@@ -125,11 +125,11 @@ export async function sendScheduleCustomNotificationAction(
     const { FEATURE_KEYS } = await import("@/lib/subscriptions/feature-keys");
     const { requireFeature } = await import("@/lib/subscriptions/resolver");
     await requireFeature({
-      churchId: church.id,
+      organizationId: church.id,
       featureKey: FEATURE_KEYS.TEAM_SCHEDULING,
     });
     await requireFeature({
-      churchId: church.id,
+      organizationId: church.id,
       featureKey: FEATURE_KEYS.EMAIL,
     });
 
@@ -219,7 +219,7 @@ export async function sendScheduleCustomNotificationAction(
     }
 
     const result = await createNotification({
-      churchId: church.id,
+      organizationId: church.id,
       createdBy: user.id,
       notificationType: "schedule.custom_message",
       severity: severityRaw,
@@ -254,7 +254,7 @@ export async function sendScheduleCustomNotificationAction(
     }
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.NOTIFICATION_CREATED,
       entityType: AuditEntityType.NOTIFICATION,

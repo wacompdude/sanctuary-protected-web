@@ -6,7 +6,7 @@ import type { NotificationSeverity } from "@/lib/notifications/types";
 export type UserNotificationListItem = {
   id: string;
   notificationId: string;
-  churchId: string;
+  organizationId: string;
   title: string;
   summary: string | null;
   severity: NotificationSeverity;
@@ -23,7 +23,7 @@ export type UserNotificationListItem = {
 export async function listUserNotifications(
   supabase: SupabaseClient,
   params: {
-    churchId: string;
+    organizationId: string;
     userId: string;
     limit?: number;
     unreadOnly?: boolean;
@@ -57,7 +57,7 @@ export async function listUserNotifications(
       )
     `,
     )
-    .eq("organization_id", params.churchId)
+    .eq("organization_id", params.organizationId)
     .eq("user_id", params.userId)
     .is("dismissed_at", null)
     .order("created_at", { ascending: false })
@@ -97,7 +97,7 @@ export async function listUserNotifications(
           )
         `,
         )
-        .eq("organization_id", params.churchId)
+        .eq("organization_id", params.organizationId)
         .eq("user_id", params.userId)
         .is("dismissed_at", null)
         .order("created_at", { ascending: false })
@@ -120,7 +120,7 @@ export async function listUserNotifications(
           return {
             id: String(row.id),
             notificationId: String(notification.id),
-            churchId: String(notification.organization_id),
+            organizationId: String(notification.organization_id),
             title: String(notification.title),
             summary: (notification.summary as string | null) ?? null,
             severity: notification.severity as NotificationSeverity,
@@ -159,7 +159,7 @@ export async function listUserNotifications(
       return {
         id: String(row.id),
         notificationId: String(notification.id),
-        churchId: String(notification.organization_id),
+        organizationId: String(notification.organization_id),
         title: String(notification.title),
         summary: (notification.summary as string | null) ?? null,
         severity: notification.severity as NotificationSeverity,
@@ -179,13 +179,13 @@ export async function listUserNotifications(
 
 export async function countUnreadNotifications(
   supabase: SupabaseClient,
-  churchId: string,
+  organizationId: string,
   userId: string,
   campusFilter?: CampusFilterSelection | null,
 ): Promise<number> {
   if (campusFilter) {
     const unread = await listUserNotifications(supabase, {
-      churchId,
+      organizationId,
       userId,
       unreadOnly: true,
       limit: 100,
@@ -197,7 +197,7 @@ export async function countUnreadNotifications(
   const { count, error } = await supabase
     .from("notification_recipients")
     .select("id", { count: "exact", head: true })
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("user_id", userId)
     .is("read_at", null)
     .is("dismissed_at", null);

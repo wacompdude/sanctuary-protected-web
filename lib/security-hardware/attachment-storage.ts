@@ -38,22 +38,22 @@ export function extensionForEquipmentAttachmentMime(
 }
 
 export function equipmentAttachmentObjectPath(params: {
-  churchId: string;
+  organizationId: string;
   equipmentId: string;
   kind: EquipmentAttachmentKind;
   mimeType: string;
 }): string | null {
   const ext = extensionForEquipmentAttachmentMime(params.mimeType);
   if (!ext) return null;
-  return `churches/${params.churchId}/equipment/${params.equipmentId}/${params.kind}/${randomUUID()}.${ext}`;
+  return `churches/${params.organizationId}/equipment/${params.equipmentId}/${params.kind}/${randomUUID()}.${ext}`;
 }
 
 export function isEquipmentMediaStoragePath(
   path: string,
-  churchId: string,
+  organizationId: string,
   equipmentId?: string,
 ): boolean {
-  const prefix = `churches/${churchId}/equipment/`;
+  const prefix = `churches/${organizationId}/equipment/`;
   if (!path.startsWith(prefix)) return false;
   if (!equipmentId) return true;
   return path.startsWith(`${prefix}${equipmentId}/`);
@@ -107,17 +107,17 @@ export function defaultKindForMime(mimeType: string): EquipmentAttachmentKind {
 
 export async function uploadEquipmentPhotoFiles(params: {
   supabase: SupabaseClient;
-  churchId: string;
+  organizationId: string;
   equipmentId: string;
   userId: string;
   files: File[];
 }): Promise<{ uploaded: number; error?: string }> {
-  const { supabase, churchId, equipmentId, userId, files } = params;
+  const { supabase, organizationId, equipmentId, userId, files } = params;
   let uploaded = 0;
 
   for (const file of files) {
     const objectPath = equipmentAttachmentObjectPath({
-      churchId,
+      organizationId,
       equipmentId,
       kind: "photo",
       mimeType: file.type,
@@ -148,7 +148,7 @@ export async function uploadEquipmentPhotoFiles(params: {
     const { error: insertError } = await supabase
       .from("equipment_attachments")
       .insert({
-        organization_id: churchId,
+        organization_id: organizationId,
         equipment_id: equipmentId,
         kind: "photo",
         storage_path: objectPath,

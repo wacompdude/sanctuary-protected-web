@@ -34,7 +34,7 @@ export type CampusFilterSelection = {
  * Implicit-access roles get all non-archived campuses for the church.
  */
 export async function listAccessibleCampuses(params: {
-  churchId: string;
+  organizationId: string;
   userId: string;
   role: MembershipRole;
 }): Promise<{
@@ -50,7 +50,7 @@ export async function listAccessibleCampuses(params: {
       const { data, error } = await supabase
         .from("campuses")
         .select("id, name, short_name, is_primary, status, archived_at")
-        .eq("organization_id", params.churchId)
+        .eq("organization_id", params.organizationId)
         .order("is_primary", { ascending: false })
         .order("name", { ascending: true });
 
@@ -60,7 +60,7 @@ export async function listAccessibleCampuses(params: {
           const legacy = await supabase
             .from("campuses")
             .select("id, name, status")
-            .eq("organization_id", params.churchId)
+            .eq("organization_id", params.organizationId)
             .order("name", { ascending: true });
           if (legacy.error) {
             return { campuses: [], implicitAllAccess, tablesAvailable: false };
@@ -100,7 +100,7 @@ export async function listAccessibleCampuses(params: {
     const { data: memberships, error: membershipError } = await supabase
       .from("campus_memberships")
       .select("campus_id")
-      .eq("organization_id", params.churchId)
+      .eq("organization_id", params.organizationId)
       .eq("user_id", params.userId)
       .eq("status", "active");
 
@@ -123,7 +123,7 @@ export async function listAccessibleCampuses(params: {
     const { data, error } = await supabase
       .from("campuses")
       .select("id, name, short_name, is_primary, status, archived_at")
-      .eq("organization_id", params.churchId)
+      .eq("organization_id", params.organizationId)
       .in("id", campusIds)
       .order("is_primary", { ascending: false })
       .order("name", { ascending: true });
@@ -164,7 +164,7 @@ export async function listAccessibleCampuses(params: {
  * accessible campuses. Defaults to All Campuses.
  */
 export async function resolveCampusFilter(params: {
-  churchId: string;
+  organizationId: string;
   userId: string;
   role: MembershipRole;
 }): Promise<CampusFilterSelection> {

@@ -57,7 +57,7 @@ async function HelpSearchContent({
     await recordHelpSearchEvent({
       query: page.query,
       resultCount: page.result_count,
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
     });
   }

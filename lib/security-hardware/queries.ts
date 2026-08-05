@@ -42,13 +42,13 @@ function addDaysIso(days: number): string {
 }
 
 export async function listCampusesForChurch(
-  churchId: string,
+  organizationId: string,
 ): Promise<CampusOption[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("campuses")
     .select("id, name, status")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .order("name", { ascending: true });
 
   if (error) {
@@ -58,7 +58,7 @@ export async function listCampusesForChurch(
   return (data ?? []) as CampusOption[];
 }
 
-export async function getChurchEquipmentWarningDays(churchId: string): Promise<{
+export async function getChurchEquipmentWarningDays(organizationId: string): Promise<{
   warrantyDays: number;
   replacementDays: number;
   assetTagPrefix: string;
@@ -69,7 +69,7 @@ export async function getChurchEquipmentWarningDays(churchId: string): Promise<{
     .select(
       "equipment_warranty_warning_days, equipment_replacement_warning_days, equipment_asset_tag_prefix",
     )
-    .eq("id", churchId)
+    .eq("id", organizationId)
     .maybeSingle();
 
   return {
@@ -80,11 +80,11 @@ export async function getChurchEquipmentWarningDays(churchId: string): Promise<{
 }
 
 export async function getEquipmentSummary(
-  churchId: string,
+  organizationId: string,
   options?: { campusFilterOr?: string | null },
 ): Promise<EquipmentSummary> {
   const supabase = await createClient();
-  const warnings = await getChurchEquipmentWarningDays(churchId);
+  const warnings = await getChurchEquipmentWarningDays(organizationId);
   const warrantyCutoff = addDaysIso(warnings.warrantyDays);
   const replacementCutoff = addDaysIso(warnings.replacementDays);
   const today = addDaysIso(0);
@@ -94,7 +94,7 @@ export async function getEquipmentSummary(
     .select(
       "status, criticality, assigned_user_id, assigned_team, next_maintenance_at, warranty_expiration, expected_replacement_date, archived_at",
     )
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .is("archived_at", null);
 
   if (options?.campusFilterOr) {
@@ -157,11 +157,11 @@ export async function getEquipmentSummary(
 }
 
 export async function listSecurityEquipment(
-  churchId: string,
+  organizationId: string,
   filters: EquipmentListFilters = {},
 ): Promise<SecurityEquipment[]> {
   const supabase = await createClient();
-  const warnings = await getChurchEquipmentWarningDays(churchId);
+  const warnings = await getChurchEquipmentWarningDays(organizationId);
   const warrantyCutoff = addDaysIso(warnings.warrantyDays);
   const replacementCutoff = addDaysIso(warnings.replacementDays);
   const today = addDaysIso(0);
@@ -169,7 +169,7 @@ export async function listSecurityEquipment(
   let query = supabase
     .from("security_equipment")
     .select(EQUIPMENT_SELECT)
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .order("updated_at", { ascending: false });
 
   if (!filters.includeArchived) {
@@ -270,14 +270,14 @@ export async function listSecurityEquipment(
 
 export async function getSecurityEquipmentById(
   equipmentId: string,
-  churchId: string,
+  organizationId: string,
 ): Promise<SecurityEquipment | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("security_equipment")
     .select(EQUIPMENT_SELECT)
     .eq("id", equipmentId)
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .maybeSingle();
 
   if (error) {
@@ -291,7 +291,7 @@ export async function getSecurityEquipmentById(
       .from("campuses")
       .select("name")
       .eq("id", row.campus_id)
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .maybeSingle();
     row.campus_name = campus?.name ?? null;
   }
@@ -323,10 +323,10 @@ export async function loadCategoryDetails(
 
 export async function getSecurityEquipmentWithDetails(
   equipmentId: string,
-  churchId: string,
+  organizationId: string,
 ): Promise<SecurityEquipmentWithDetails | null> {
   const supabase = await createClient();
-  const equipment = await getSecurityEquipmentById(equipmentId, churchId);
+  const equipment = await getSecurityEquipmentById(equipmentId, organizationId);
   if (!equipment) return null;
 
   const categoryDetails = await loadCategoryDetails(supabase, equipment);
@@ -335,7 +335,7 @@ export async function getSecurityEquipmentWithDetails(
 
 export async function upsertCategoryDetails(params: {
   supabase: SupabaseClient;
-  churchId: string;
+  organizationId: string;
   equipmentId: string;
   category: SecurityEquipment["category"];
   values: CategoryDetailRecord;
@@ -350,12 +350,12 @@ export async function upsertCategoryDetails(params: {
       .from(other)
       .delete()
       .eq("equipment_id", params.equipmentId)
-      .eq("organization_id", params.churchId);
+      .eq("organization_id", params.organizationId);
   }
 
   const payload = {
     equipment_id: params.equipmentId,
-    organization_id: params.churchId,
+    organization_id: params.organizationId,
     ...params.values,
   };
 
@@ -371,7 +371,7 @@ export async function upsertCategoryDetails(params: {
 
 export async function clearAllCategoryDetails(params: {
   supabase: SupabaseClient;
-  churchId: string;
+  organizationId: string;
   equipmentId: string;
 }): Promise<void> {
   for (const table of ALL_DETAIL_TABLES) {
@@ -379,12 +379,12 @@ export async function clearAllCategoryDetails(params: {
       .from(table)
       .delete()
       .eq("equipment_id", params.equipmentId)
-      .eq("organization_id", params.churchId);
+      .eq("organization_id", params.organizationId);
   }
 }
 
 export async function suggestAssetTag(params: {
-  churchId: string;
+  organizationId: string;
   campusId: string | null;
   category: SecurityEquipment["category"];
   prefix?: string;
@@ -398,7 +398,7 @@ export async function suggestAssetTag(params: {
       .from("campuses")
       .select("name")
       .eq("id", params.campusId)
-      .eq("organization_id", params.churchId)
+      .eq("organization_id", params.organizationId)
       .maybeSingle();
     const name = (campus?.name ?? "MAIN").toUpperCase().replace(/[^A-Z0-9]+/g, "");
     campusCode = (name.slice(0, 6) || "MAIN").slice(0, 6);
@@ -410,7 +410,7 @@ export async function suggestAssetTag(params: {
   const { data } = await supabase
     .from("security_equipment")
     .select("asset_tag")
-    .eq("organization_id", params.churchId)
+    .eq("organization_id", params.organizationId)
     .ilike("asset_tag", `${stub}%`);
 
   let max = 0;

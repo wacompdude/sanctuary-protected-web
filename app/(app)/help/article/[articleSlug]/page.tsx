@@ -58,7 +58,7 @@ async function HelpArticleContent({ params }: PageProps) {
 
   const [notices, category] = await Promise.all([
     resolveHelpFeatureNoticesForChurch({
-      churchId: church.id,
+      organizationId: church.id,
       featureKeys: article.feature_keys,
       planKeysOverride: article.plan_keys,
     }),

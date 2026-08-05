@@ -33,20 +33,20 @@ import { hasFeature } from "@/lib/subscriptions/resolver";
 /**
  * Local helper: get a church by ID.
  */
-async function getChurch(admin: SupabaseClient, churchId: string) {
-  const { data } = await admin.from("organizations").select("id, status").eq("id", churchId).maybeSingle();
+async function getChurch(admin: SupabaseClient, organizationId: string) {
+  const { data } = await admin.from("organizations").select("id, status").eq("id", organizationId).maybeSingle();
   return data;
 }
 
 /**
  * Local helper: get a church membership.
  */
-async function getChurchMembership(admin: SupabaseClient, userId: string, churchId: string) {
+async function getChurchMembership(admin: SupabaseClient, userId: string, organizationId: string) {
   const { data } = await admin
     .from("organization_memberships")
     .select("id, user_id, organization_id, role, status")
     .eq("user_id", userId)
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .maybeSingle();
   return data;
 }
@@ -139,7 +139,7 @@ function getRolePermissions(roles: string[], permissionKey: string): PermissionG
 async function getGroupPermissions(
   admin: SupabaseClient,
   userId: string,
-  churchId: string,
+  organizationId: string,
   permissionKey: string,
   actionDate: Date,
 ): Promise<PermissionGrant[]> {
@@ -230,7 +230,7 @@ async function getGroupPermissions(
 async function getUserDirectPermissions(
   admin: SupabaseClient,
   userId: string,
-  churchId: string,
+  organizationId: string,
   permissionKey: string,
   effect: "grant" | "deny",
 ): Promise<UserPermission | null> {
@@ -238,7 +238,7 @@ async function getUserDirectPermissions(
     .from("user_permissions")
     .select("*")
     .eq("user_id", userId)
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("permission_effect", effect)
     .neq("status", "revoked")
     .maybeSingle();
@@ -268,7 +268,7 @@ export async function canUserPerform(
   admin: SupabaseClient,
   request: AuthorizationRequest,
 ): Promise<AuthorizationResult> {
-  const { userId, churchId, campusId, permissionKey, resourceId, actionDate = new Date() } = request;
+  const { userId, organizationId, campusId, permissionKey, resourceId, actionDate = new Date() } = request;
 
   try {
     // 1. Check user is active
@@ -282,7 +282,7 @@ export async function canUserPerform(
     }
 
     // 2. Check church is active
-    const church = await getChurch(admin, churchId);
+    const church = await getChurch(admin, organizationId);
     if (!church || church.status !== "active") {
       return {
         allowed: false,
@@ -292,7 +292,7 @@ export async function canUserPerform(
     }
 
     // 3. Check user is a member of the church
-    const membership = await getChurchMembership(admin, userId, churchId);
+    const membership = await getChurchMembership(admin, userId, organizationId);
     if (!membership || membership.status !== "active") {
       return {
         allowed: false,
@@ -318,7 +318,7 @@ export async function canUserPerform(
 
     // 5. Check tier availability
     const canUseFeature = await hasFeature({
-      churchId,
+      organizationId,
       featureKey: permissionDef.minimum_tier,
     });
 
@@ -331,7 +331,7 @@ export async function canUserPerform(
     }
 
     // 6. Check explicit user-level DENY (highest priority exception)
-    const userDeny = await getUserDirectPermissions(admin, userId, churchId, permissionKey, "deny");
+    const userDeny = await getUserDirectPermissions(admin, userId, organizationId, permissionKey, "deny");
     if (userDeny && isPermissionActive(userDeny, actionDate)) {
       if (!campusId || isCampusInScope(userDeny, campusId)) {
         return {
@@ -360,11 +360,11 @@ export async function canUserPerform(
     grants.push(...roleGrants);
 
     // 7b. Group-based grants
-    const groupGrants = await getGroupPermissions(admin, userId, churchId, permissionKey, actionDate);
+    const groupGrants = await getGroupPermissions(admin, userId, organizationId, permissionKey, actionDate);
     grants.push(...groupGrants);
 
     // 7c. Direct user grants
-    const directGrant = await getUserDirectPermissions(admin, userId, churchId, permissionKey, "grant");
+    const directGrant = await getUserDirectPermissions(admin, userId, organizationId, permissionKey, "grant");
     if (directGrant) {
       grants.push({
         id: directGrant.id,
@@ -432,13 +432,13 @@ export async function canUserPerform(
 export async function isUserAuthorized(
   admin: SupabaseClient,
   userId: string,
-  churchId: string,
+  organizationId: string,
   permissionKey: string,
   campusId?: string,
 ): Promise<boolean> {
   const result = await canUserPerform(admin, {
     userId,
-    churchId,
+    organizationId,
     campusId,
     permissionKey,
   });
@@ -453,13 +453,13 @@ export async function isUserAuthorized(
 export async function requirePermission(
   admin: SupabaseClient,
   userId: string,
-  churchId: string,
+  organizationId: string,
   permissionKey: string,
   campusId?: string,
 ): Promise<void> {
   const result = await canUserPerform(admin, {
     userId,
-    churchId,
+    organizationId,
     campusId,
     permissionKey,
   });

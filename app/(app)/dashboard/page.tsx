@@ -57,7 +57,7 @@ import {
 async function DashboardContent() {
   const { church, membership, user } = await getAuthenticatedUserWithChurch();
   const campusFilter = await resolveCampusFilter({
-    churchId: church.id,
+    organizationId: church.id,
     userId: user.id,
     role: membership.role,
   });
@@ -68,13 +68,13 @@ async function DashboardContent() {
 
   const safetyConcernSettings = await getSafetyConcernChurchSettings(church.id);
   const safetyConcernAccess = await getSafetyConcernAccess({
-    churchId: church.id,
+    organizationId: church.id,
     role: membership.role,
     allowSecurityMemberView: safetyConcernSettings.allow_security_member_view,
   });
 
   const resolvedBoxes = await resolveDashboardBoxSettings({
-    churchId: church.id,
+    organizationId: church.id,
     userRole: membership.role,
     canManageSchedule: canSeeManagerSchedule,
     includeHidden: false,

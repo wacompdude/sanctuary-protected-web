@@ -58,7 +58,7 @@ async function CampusDetailContent({ id }: { id: string }) {
   const [canManageMembers, campusMembers, team] = extendedSchema
     ? await Promise.all([
         canActorManageCampusMemberships({
-          churchId: church.id,
+          organizationId: church.id,
           campusId: campus.id,
           userId: user.id,
           churchRole: membership.role,

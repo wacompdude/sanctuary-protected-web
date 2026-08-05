@@ -397,7 +397,7 @@ export async function sendEmailDelivery(
 
 export async function retryFailedDelivery(params: {
   deliveryId: string;
-  churchId: string;
+  organizationId: string;
 }): Promise<{ ok: boolean; error?: string }> {
   if (!isServiceRoleConfigured()) {
     return {
@@ -413,7 +413,7 @@ export async function retryFailedDelivery(params: {
       "id, organization_id, notification_id, recipient_id, channel, provider, status, attempt_number, max_attempts, scheduled_for",
     )
     .eq("id", params.deliveryId)
-    .eq("organization_id", params.churchId)
+    .eq("organization_id", params.organizationId)
     .maybeSingle();
 
   if (error || !delivery) {

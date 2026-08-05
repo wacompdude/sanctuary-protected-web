@@ -120,7 +120,7 @@ async function seedCampusLocations(ctx: DemoSeedContext): Promise<void> {
       domain: "campus_locations",
       label: `location ${d.name}`,
       payload: {
-        organization_id: ctx.churchId,
+        organization_id: ctx.organizationId,
         campus_id: d.campus,
         parent_location_id: parentId,
         name: d.name,
@@ -152,7 +152,7 @@ async function seedThreatLevels(ctx: DemoSeedContext): Promise<void> {
     const weekStart = ymd(addDays(sunday, -(9 - i) * 7));
     const seedKey = `threat.week.${weekStart}`;
     const payload = {
-      organization_id: ctx.churchId,
+      organization_id: ctx.organizationId,
       week_start: weekStart,
       threat_level: level,
       notes: notes[level] ?? `Demo threat level ${level}.`,
@@ -173,7 +173,7 @@ async function seedThreatLevels(ctx: DemoSeedContext): Promise<void> {
     const { data: existing } = await ctx.admin
       .from("organization_threat_levels")
       .select("id")
-      .eq("organization_id", ctx.churchId)
+      .eq("organization_id", ctx.organizationId)
       .eq("week_start", weekStart)
       .maybeSingle();
 
@@ -195,7 +195,7 @@ async function seedThreatLevels(ctx: DemoSeedContext): Promise<void> {
     const { data, error } = await ctx.admin
       .from("organization_threat_levels")
       .insert({
-        organization_id: ctx.churchId,
+        organization_id: ctx.organizationId,
         week_start: weekStart,
         threat_level: level,
         notes: payload.notes,
@@ -253,7 +253,7 @@ async function seedIncidents(ctx: DemoSeedContext): Promise<void> {
       domain: "incidents",
       label: `incident ${n}: ${title}`,
       payload: {
-        organization_id: ctx.churchId,
+        organization_id: ctx.organizationId,
         campus_id: campusId,
         created_by: createdBy,
         title,
@@ -271,7 +271,7 @@ async function seedIncidents(ctx: DemoSeedContext): Promise<void> {
       .from("incident_updates")
       .insert({
         incident_id: result.id,
-        organization_id: ctx.churchId,
+        organization_id: ctx.organizationId,
         created_by: createdBy,
         update_type: "created",
         content: `Incident created: ${title}`,
@@ -350,7 +350,7 @@ async function seedSafetyConcerns(ctx: DemoSeedContext): Promise<void> {
       domain: "safety_concern_profiles",
       label: `safety profile ${d.display_name}`,
       payload: {
-        organization_id: ctx.churchId,
+        organization_id: ctx.organizationId,
         scope_type: d.scope_type,
         primary_campus_id: d.primary_campus_id,
         display_name: d.display_name,
@@ -398,7 +398,7 @@ async function seedSafetyConcerns(ctx: DemoSeedContext): Promise<void> {
       }
       const { data, error } = await ctx.admin
         .from("safety_concern_profile_campuses")
-        .insert({ organization_id: ctx.churchId, profile_id: result.id, campus_id: campusId })
+        .insert({ organization_id: ctx.organizationId, profile_id: result.id, campus_id: campusId })
         .select("id")
         .single();
       if (error || !data?.id) {
@@ -436,7 +436,7 @@ async function seedSafetyConcerns(ctx: DemoSeedContext): Promise<void> {
     const { data, error } = await ctx.admin
       .from("safety_concern_incidents")
       .insert({
-        organization_id: ctx.churchId,
+        organization_id: ctx.organizationId,
         profile_id: profileId,
         incident_id: incidentId,
         relationship_type,
@@ -476,7 +476,7 @@ async function seedCertifications(ctx: DemoSeedContext): Promise<void> {
       domain: "team_members",
       label: `team member ${full_name}`,
       payload: {
-        organization_id: ctx.churchId,
+        organization_id: ctx.organizationId,
         full_name,
         email,
         title,
@@ -513,7 +513,7 @@ async function seedCertifications(ctx: DemoSeedContext): Promise<void> {
       domain: "certifications",
       label: `${type} for ${teamKey}`,
       payload: {
-        organization_id: ctx.churchId,
+        organization_id: ctx.organizationId,
         team_member_id: teamMemberId,
         user_id: userId(ctx, userKey),
         certification_type: type,
@@ -541,7 +541,7 @@ async function seedUnavailability(ctx: DemoSeedContext): Promise<{ start: Date; 
     domain: "member_unavailability",
     label: "Hannibal Smith 14-day unavailability",
     payload: {
-      organization_id: ctx.churchId,
+      organization_id: ctx.organizationId,
       membership_id: membershipId(ctx, "user.security_member_hannibal"),
       user_id: userId(ctx, "user.security_member_hannibal"),
       title: "Family travel",
@@ -609,7 +609,7 @@ async function seedSchedule(
       domain: "schedule_events",
       label: `event ${n}: ${title}`,
       payload: {
-        organization_id: ctx.churchId,
+        organization_id: ctx.organizationId,
         campus_id: campusId,
         title,
         description: worshipLike ? "Demo worship/service coverage event." : "Demo operational/security coverage event.",
@@ -634,7 +634,7 @@ async function seedSchedule(
       domain: "schedule_shifts",
       label: `shift for event ${n}`,
       payload: {
-        organization_id: ctx.churchId,
+        organization_id: ctx.organizationId,
         campus_id: campusId,
         event_id: event.id,
         title: `${title} — Security`,
@@ -690,7 +690,7 @@ async function seedSchedule(
         domain: "shift_assignments",
         label: `assignment event ${n} ${i === 0 ? "a" : "b"}`,
         payload: {
-          organization_id: ctx.churchId,
+          organization_id: ctx.organizationId,
           shift_id: shift.id,
           membership_id: membershipId(ctx, uk),
           user_id: userId(ctx, uk),
@@ -736,7 +736,7 @@ async function seedMedicalSupplies(ctx: DemoSeedContext): Promise<void> {
   for (const [seedKey, name, category, unit, qty, min, location_name] of defs) {
     const existingId = await getRegisteredId(ctx.admin, ctx.seedSource, seedKey);
     const payload: Record<string, unknown> = {
-      organization_id: ctx.churchId,
+      organization_id: ctx.organizationId,
       name,
       category,
       unit,
@@ -779,7 +779,7 @@ async function seedMedicalSupplies(ctx: DemoSeedContext): Promise<void> {
     const { data, error } = await ctx.admin
       .from("medical_supply_usage")
       .insert({
-        organization_id: ctx.churchId,
+        organization_id: ctx.organizationId,
         incident_id: incidentId,
         medical_supply_id: supplyId,
         quantity_used: qty,
@@ -829,7 +829,7 @@ async function seedSecurityEquipment(ctx: DemoSeedContext): Promise<void> {
       domain: "security_equipment",
       label: `equipment ${i}`,
       payload: {
-        organization_id: ctx.churchId,
+        organization_id: ctx.organizationId,
         campus_id: campusId,
         category,
         subcategory: category === "camera" ? "fixed" : null,

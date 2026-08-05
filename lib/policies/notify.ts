@@ -2,7 +2,7 @@ import { createNotification } from "@/lib/notifications/create-notification";
 import { formatChurchDate } from "@/lib/datetime/format";
 
 export async function notifyPolicyPublished(params: {
-  churchId: string;
+  organizationId: string;
   policyId: string;
   title: string;
   versionLabel: string;
@@ -10,7 +10,7 @@ export async function notifyPolicyPublished(params: {
 }) {
   try {
     await createNotification({
-      churchId: params.churchId,
+      organizationId: params.organizationId,
       notificationType: "policy.published",
       severity: "medium",
       entityType: "policy_document",
@@ -31,7 +31,7 @@ export async function notifyPolicyPublished(params: {
 }
 
 export async function notifyPolicyAcknowledgmentsRequired(params: {
-  churchId: string;
+  organizationId: string;
   policyId: string;
   title: string;
   versionLabel: string;
@@ -48,7 +48,7 @@ export async function notifyPolicyAcknowledgmentsRequired(params: {
 
   try {
     await createNotification({
-      churchId: params.churchId,
+      organizationId: params.organizationId,
       notificationType: "policy.acknowledgment_required",
       severity: "high",
       entityType: "policy_document",

@@ -20,20 +20,20 @@ type ChurchHit = {
 };
 
 export function PlatformSupportWorkspacePanel({
-  initialChurchId,
+  initialOrganizationId,
   initialChurchName,
 }: {
-  initialChurchId?: string | null;
+  initialOrganizationId?: string | null;
   initialChurchName?: string | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [query, setQuery] = useState(initialChurchName ?? "");
   const [hits, setHits] = useState<ChurchHit[]>(
-    initialChurchId && initialChurchName
+    initialOrganizationId && initialChurchName
       ? [
           {
-            id: initialChurchId,
+            id: initialOrganizationId,
             name: initialChurchName,
             slug: null,
             status: null,
@@ -41,8 +41,8 @@ export function PlatformSupportWorkspacePanel({
         ]
       : [],
   );
-  const [selectedChurchId, setSelectedChurchId] = useState(
-    initialChurchId ?? "",
+  const [selectedOrganizationId, setSelectedOrganizationId] = useState(
+    initialOrganizationId ?? "",
   );
   const [reason, setReason] = useState("");
   const [ticket, setTicket] = useState("");
@@ -62,7 +62,7 @@ export function PlatformSupportWorkspacePanel({
       }
       setHits(result.churches ?? []);
       if ((result.churches ?? []).length === 1) {
-        setSelectedChurchId(result.churches![0].id);
+        setSelectedOrganizationId(result.churches![0].id);
       }
     });
   }
@@ -71,7 +71,7 @@ export function PlatformSupportWorkspacePanel({
     setError(null);
     setMessage(null);
     const formData = new FormData();
-    formData.set("organization_id", selectedChurchId);
+    formData.set("organization_id", selectedOrganizationId);
     formData.set("reason", reason);
     formData.set("ticket_reference", ticket);
     formData.set("access_type", accessType);
@@ -86,8 +86,8 @@ export function PlatformSupportWorkspacePanel({
       setMessage(result.message ?? "Support session started.");
       setReason("");
       router.refresh();
-      if (selectedChurchId) {
-        router.push(`/platform/churches/${selectedChurchId}`);
+      if (selectedOrganizationId) {
+        router.push(`/platform/churches/${selectedOrganizationId}`);
       }
     });
   }
@@ -129,8 +129,8 @@ export function PlatformSupportWorkspacePanel({
                 <input
                   type="radio"
                   name="church"
-                  checked={selectedChurchId === church.id}
-                  onChange={() => setSelectedChurchId(church.id)}
+                  checked={selectedOrganizationId === church.id}
+                  onChange={() => setSelectedOrganizationId(church.id)}
                   className="mt-1"
                 />
                 <span>
@@ -199,7 +199,7 @@ export function PlatformSupportWorkspacePanel({
       <button
         type="button"
         disabled={
-          pending || !selectedChurchId || reason.trim().length < 8
+          pending || !selectedOrganizationId || reason.trim().length < 8
         }
         onClick={startSession}
         className="rounded-md bg-amber-600 px-4 py-2 text-sm font-medium text-slate-950 disabled:opacity-40"
@@ -215,9 +215,9 @@ export function PlatformSupportWorkspacePanel({
       {message ? (
         <p className="rounded border border-emerald-800 bg-emerald-950/30 px-3 py-2 text-sm text-emerald-200">
           {message}{" "}
-          {selectedChurchId ? (
+          {selectedOrganizationId ? (
             <Link
-              href={`/platform/churches/${selectedChurchId}`}
+              href={`/platform/churches/${selectedOrganizationId}`}
               className="underline"
             >
               Open church

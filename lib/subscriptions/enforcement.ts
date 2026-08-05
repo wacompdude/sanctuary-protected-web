@@ -19,14 +19,14 @@ export function entitlementErrorMessage(error: unknown): string | null {
 }
 
 export async function countActiveChurchMembers(
-  churchId: string,
+  organizationId: string,
   client?: SupabaseClient,
 ): Promise<number> {
   const supabase = client ?? (await createClient());
   const { count, error } = await supabase
     .from("organization_memberships")
     .select("id", { count: "exact", head: true })
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("status", "active");
 
   if (error) {
@@ -36,14 +36,14 @@ export async function countActiveChurchMembers(
 }
 
 export async function countActiveCampuses(
-  churchId: string,
+  organizationId: string,
   client?: SupabaseClient,
 ): Promise<number> {
   const supabase = client ?? (await createClient());
   const { count, error } = await supabase
     .from("campuses")
     .select("id", { count: "exact", head: true })
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("status", "active");
 
   if (error) {
@@ -54,17 +54,17 @@ export async function countActiveCampuses(
 
 /** Seat check for flows that create/reactivate an active membership. Pending invites are excluded. */
 export async function requireActiveSeatCapacity(params: {
-  churchId: string;
+  organizationId: string;
   requestedIncrease?: number;
   /** Use admin/service client when the caller is not yet a church member (invite accept). */
   client?: SupabaseClient;
 }): Promise<void> {
   const currentUsage = await countActiveChurchMembers(
-    params.churchId,
+    params.organizationId,
     params.client,
   );
   await requireFeatureCapacity({
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     featureKey: FEATURE_KEYS.USERS_ACTIVE_LIMIT,
     currentUsage,
     requestedIncrease: params.requestedIncrease ?? 1,
@@ -74,12 +74,12 @@ export async function requireActiveSeatCapacity(params: {
 export { NAV_FEATURE_REQUIREMENTS } from "@/lib/subscriptions/nav-features";
 
 export async function getEnabledFeatureKeys(
-  churchId: string,
+  organizationId: string,
   featureKeys: FeatureKey[],
 ): Promise<Set<FeatureKey>> {
   const results = await Promise.all(
     featureKeys.map(async (featureKey) => {
-      const access = await hasFeature({ churchId, featureKey });
+      const access = await hasFeature({ organizationId, featureKey });
       return access.allowed ? featureKey : null;
     }),
   );
@@ -92,18 +92,18 @@ export async function getEnabledFeatureKeys(
  * Numeric capacity applies only when the resulting campus will be active.
  */
 export async function requireCampusCreateCapacity(params: {
-  churchId: string;
+  organizationId: string;
   /** True when this write produces/keeps an active campus. */
   willBeActive?: boolean;
   client?: SupabaseClient;
 }): Promise<void> {
   const supabase = params.client ?? (await createClient());
-  const activeCount = await countActiveCampuses(params.churchId, supabase);
+  const activeCount = await countActiveCampuses(params.organizationId, supabase);
 
   const { count: existingCount, error } = await supabase
     .from("campuses")
     .select("id", { count: "exact", head: true })
-    .eq("organization_id", params.churchId);
+    .eq("organization_id", params.organizationId);
 
   if (error) {
     throw new Error("Unable to count campuses.");
@@ -111,14 +111,14 @@ export async function requireCampusCreateCapacity(params: {
 
   if ((existingCount ?? 0) >= 1) {
     await requireFeature({
-      churchId: params.churchId,
+      organizationId: params.organizationId,
       featureKey: FEATURE_KEYS.MULTI_CAMPUS,
     });
   }
 
   if (params.willBeActive !== false) {
     await requireFeatureCapacity({
-      churchId: params.churchId,
+      organizationId: params.organizationId,
       featureKey: FEATURE_KEYS.CAMPUS_LIMIT,
       currentUsage: activeCount,
       requestedIncrease: 1,
@@ -126,7 +126,7 @@ export async function requireCampusCreateCapacity(params: {
   }
 }
 
-export async function getIncidentPhotoEntitlements(churchId: string): Promise<{
+export async function getIncidentPhotoEntitlements(organizationId: string): Promise<{
   enabled: boolean;
   maxCount: number;
   maxSizeMb: number;
@@ -135,15 +135,15 @@ export async function getIncidentPhotoEntitlements(churchId: string): Promise<{
 }> {
   const [access, countLimit, sizeLimit] = await Promise.all([
     hasFeature({
-      churchId,
+      organizationId,
       featureKey: FEATURE_KEYS.INCIDENT_PHOTOS,
     }),
     getFeatureLimit({
-      churchId,
+      organizationId,
       featureKey: FEATURE_KEYS.INCIDENT_PHOTO_COUNT_LIMIT,
     }),
     getFeatureLimit({
-      churchId,
+      organizationId,
       featureKey: FEATURE_KEYS.INCIDENT_PHOTO_SIZE_LIMIT_MB,
     }),
   ]);
@@ -165,17 +165,17 @@ export async function getIncidentPhotoEntitlements(churchId: string): Promise<{
 }
 
 export async function requireIncidentPhotoUpload(params: {
-  churchId: string;
+  organizationId: string;
   existingCount: number;
   newCount: number;
   files: Array<{ size: number }>;
 }): Promise<{ maxCount: number; maxBytes: number; maxSizeMb: number }> {
   await requireFeature({
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     featureKey: FEATURE_KEYS.INCIDENT_PHOTOS,
   });
 
-  const limits = await getIncidentPhotoEntitlements(params.churchId);
+  const limits = await getIncidentPhotoEntitlements(params.organizationId);
   if (!limits.enabled) {
     throw new EntitlementError(
       limits.reason ??
@@ -188,7 +188,7 @@ export async function requireIncidentPhotoUpload(params: {
   }
 
   await requireFeatureCapacity({
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     featureKey: FEATURE_KEYS.INCIDENT_PHOTO_COUNT_LIMIT,
     currentUsage: params.existingCount,
     requestedIncrease: params.newCount,

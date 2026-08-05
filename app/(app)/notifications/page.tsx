@@ -39,7 +39,7 @@ async function NotificationsContent({
   const canCompose = canCreateOperationalNotifications(membership.role);
   const canViewHistory = canViewNotificationHistory(membership.role);
   const campusFilter = await resolveCampusFilter({
-    churchId: church.id,
+    organizationId: church.id,
     userId: user.id,
     role: membership.role,
   });
@@ -78,7 +78,7 @@ async function NotificationsContent({
 
   const [items, unreadCount] = await Promise.all([
     listUserNotifications(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       unreadOnly,
       limit: 100,

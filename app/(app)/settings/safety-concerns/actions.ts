@@ -28,7 +28,7 @@ export async function updateSafetyConcernChurchSettingsAction(
     }
 
     await requireFeature({
-      churchId: church.id,
+      organizationId: church.id,
       featureKey: FEATURE_KEYS.SAFETY_CONCERN_PROFILES,
     });
 
@@ -48,7 +48,7 @@ export async function updateSafetyConcernChurchSettingsAction(
 
     const supabase = await createClient();
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.SAFETY_CONCERN_SETTINGS_UPDATED,
       entityType: AuditEntityType.SAFETY_CONCERN_SETTINGS,

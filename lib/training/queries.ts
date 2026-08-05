@@ -76,7 +76,7 @@ function applyCategoryChurchState(
 }
 
 export async function listCategories(
-  churchId: string,
+  organizationId: string,
   options?: { includeSensitive?: boolean },
 ): Promise<TrainingCategoryWithState[]> {
   const supabase = await createClient();
@@ -86,12 +86,12 @@ export async function listCategories(
       supabase
         .from("training_categories")
         .select("*")
-        .or(`is_system.eq.true,organization_id.eq.${churchId}`)
+        .or(`is_system.eq.true,organization_id.eq.${organizationId}`)
         .order("display_order", { ascending: true }),
       supabase
         .from("training_category_church_state")
         .select("*")
-        .eq("organization_id", churchId),
+        .eq("organization_id", organizationId),
     ]);
 
   if (catError) {
@@ -121,7 +121,7 @@ export async function listCategories(
 }
 
 export async function listCourses(
-  churchId: string,
+  organizationId: string,
   options?: {
     categoryId?: string;
     includeSensitive?: boolean;
@@ -129,7 +129,7 @@ export async function listCourses(
   },
 ): Promise<TrainingCourse[]> {
   const supabase = await createClient();
-  const categories = await listCategories(churchId, {
+  const categories = await listCategories(organizationId, {
     includeSensitive: options?.includeSensitive,
   });
   const categoryIds = categories.map((category) => category.id);
@@ -143,7 +143,7 @@ export async function listCourses(
       category:training_categories ( id, name, sensitive )
     `,
     )
-    .or(`is_system.eq.true,organization_id.eq.${churchId}`)
+    .or(`is_system.eq.true,organization_id.eq.${organizationId}`)
     .in("training_category_id", categoryIds)
     .order("name", { ascending: true });
 
@@ -173,7 +173,7 @@ export async function listCourses(
 }
 
 export async function listEvents(
-  churchId: string,
+  organizationId: string,
   options?: {
     campusFilter?: CampusFilterSelection;
     status?: string;
@@ -196,7 +196,7 @@ export async function listEvents(
       category:training_categories ( id, name, sensitive, default_renewal_months )
     `,
     )
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .order("start_at", { ascending: true, nullsFirst: false });
 
   if (options?.campusFilter) {
@@ -225,7 +225,7 @@ export async function listEvents(
 }
 
 export async function getEvent(
-  churchId: string,
+  organizationId: string,
   eventId: string,
   options?: { includeSensitive?: boolean },
 ): Promise<TrainingEvent | null> {
@@ -240,7 +240,7 @@ export async function getEvent(
       category:training_categories ( id, name, sensitive, default_renewal_months )
     `,
     )
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("id", eventId)
     .maybeSingle();
 
@@ -258,7 +258,7 @@ export async function getEvent(
 }
 
 async function attachMemberNames<T extends { user_id: string }>(
-  churchId: string,
+  organizationId: string,
   rows: T[],
 ): Promise<Array<T & { member_name: string | null; member_email: string | null }>> {
   if (rows.length === 0) return [];
@@ -266,7 +266,7 @@ async function attachMemberNames<T extends { user_id: string }>(
   const supabase = await createClient();
   const userIds = [...new Set(rows.map((row) => row.user_id))];
   const { data } = await supabase.rpc("list_church_team_memberships", {
-    p_church_id: churchId,
+    p_church_id: organizationId,
   });
 
   const nameByUser = new Map<
@@ -305,14 +305,14 @@ async function attachMemberNames<T extends { user_id: string }>(
 }
 
 export async function listParticipants(
-  churchId: string,
+  organizationId: string,
   eventId: string,
 ): Promise<TrainingParticipant[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("training_participants")
     .select("*")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("training_event_id", eventId)
     .order("created_at", { ascending: true });
 
@@ -321,11 +321,11 @@ export async function listParticipants(
     throw new Error(error.message);
   }
 
-  return attachMemberNames(churchId, (data ?? []) as TrainingParticipant[]);
+  return attachMemberNames(organizationId, (data ?? []) as TrainingParticipant[]);
 }
 
 export async function listCompletionRecords(
-  churchId: string,
+  organizationId: string,
   options?: {
     userId?: string;
     categoryId?: string;
@@ -337,12 +337,12 @@ export async function listCompletionRecords(
   },
 ): Promise<TrainingCompletionRecord[]> {
   const supabase = await createClient();
-  const settings = await getSettings(churchId);
+  const settings = await getSettings(organizationId);
 
   let query = supabase
     .from("training_completion_records")
     .select("*")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .order("completed_at", { ascending: false });
 
   if (options?.userId) query = query.eq("user_id", options.userId);
@@ -368,7 +368,7 @@ export async function listCompletionRecords(
     records = records.filter((record) => !record.sensitive);
   }
 
-  const withNames = await attachMemberNames(churchId, records);
+  const withNames = await attachMemberNames(organizationId, records);
   return withNames.map((record) => ({
     ...record,
     renewal_status: classifyRenewalStatus({
@@ -380,7 +380,7 @@ export async function listCompletionRecords(
 }
 
 export async function getDashboardMetrics(
-  churchId: string,
+  organizationId: string,
   options?: {
     campusFilter?: CampusFilterSelection;
     includeSensitive?: boolean;
@@ -388,25 +388,25 @@ export async function getDashboardMetrics(
 ): Promise<TrainingDashboardMetrics> {
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-  const settings = await getSettings(churchId);
+  const settings = await getSettings(organizationId);
 
   const [events, completions, requirements, external, courses, audience] =
     await Promise.all([
-      listEvents(churchId, {
+      listEvents(organizationId, {
         campusFilter: options?.campusFilter,
         from: now.toISOString(),
         includeSensitive: options?.includeSensitive,
       }),
-      listCompletionRecords(churchId, {
+      listCompletionRecords(organizationId, {
         campusFilter: options?.campusFilter,
         includeSensitive: options?.includeSensitive,
       }),
-      listRequirements(churchId),
-      listExternalRecords(churchId, { pendingOnly: true }),
-      listCourses(churchId, {
+      listRequirements(organizationId),
+      listExternalRecords(organizationId, { pendingOnly: true }),
+      listCourses(organizationId, {
         includeSensitive: options?.includeSensitive,
       }),
-      loadRequiredTrainingAudience(churchId),
+      loadRequiredTrainingAudience(organizationId),
     ]);
 
   const upcomingEvents = events.filter(
@@ -454,7 +454,7 @@ export async function getDashboardMetrics(
 }
 
 export async function listRequirements(
-  churchId: string,
+  organizationId: string,
 ): Promise<TrainingRequirement[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -466,7 +466,7 @@ export async function listRequirements(
       category:training_categories ( id, name )
     `,
     )
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .order("name", { ascending: true });
 
   if (error) {
@@ -478,13 +478,13 @@ export async function listRequirements(
 }
 
 export async function getSettings(
-  churchId: string,
+  organizationId: string,
 ): Promise<TrainingChurchSettings> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("training_organization_settings")
     .select("*")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .maybeSingle();
 
   if (error && !isMissingTrainingTable(error.message)) {
@@ -504,7 +504,7 @@ export async function getSettings(
   }
 
   return {
-    organization_id: churchId,
+    organization_id: organizationId,
     due_soon_days: DEFAULT_DUE_SOON_DAYS,
     reminder_at_assignment: true,
     reminder_days_before: [30, 14, 7, 1],
@@ -519,23 +519,23 @@ export async function getSettings(
 }
 
 export async function ensureSettingsRow(
-  churchId: string,
+  organizationId: string,
 ): Promise<TrainingChurchSettings> {
   const supabase = await createClient();
   const { data: existing } = await supabase
     .from("training_organization_settings")
     .select("*")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .maybeSingle();
 
   if (existing) return existing as TrainingChurchSettings;
 
-  const defaults = await getSettings(churchId);
+  const defaults = await getSettings(organizationId);
   const { data, error } = await supabase
     .from("training_organization_settings")
     .upsert(
       {
-        organization_id: churchId,
+        organization_id: organizationId,
         due_soon_days: defaults.due_soon_days,
       },
       { onConflict: "organization_id" },
@@ -552,25 +552,25 @@ export async function ensureSettingsRow(
 }
 
 export async function getMemberTranscript(
-  churchId: string,
+  organizationId: string,
   userId: string,
   options?: { includeSensitive?: boolean },
 ): Promise<TrainingCompletionRecord[]> {
-  return listCompletionRecords(churchId, {
+  return listCompletionRecords(organizationId, {
     userId,
     includeSensitive: options?.includeSensitive,
   });
 }
 
 export async function listExternalRecords(
-  churchId: string,
+  organizationId: string,
   options?: { pendingOnly?: boolean; userId?: string },
 ): Promise<TrainingExternalRecord[]> {
   const supabase = await createClient();
   let query = supabase
     .from("training_external_records")
     .select("*")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .order("completion_date", { ascending: false });
 
   if (options?.userId) query = query.eq("user_id", options.userId);
@@ -587,15 +587,15 @@ export async function listExternalRecords(
     throw new Error(error.message);
   }
 
-  return attachMemberNames(churchId, (data ?? []) as TrainingExternalRecord[]);
+  return attachMemberNames(organizationId, (data ?? []) as TrainingExternalRecord[]);
 }
 
-export async function listCampusesForTraining(churchId: string) {
+export async function listCampusesForTraining(organizationId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("campuses")
     .select("id, name, short_name, is_primary, status")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .neq("status", "archived")
     .order("is_primary", { ascending: false })
     .order("name", { ascending: true });

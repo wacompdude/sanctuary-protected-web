@@ -41,7 +41,7 @@ async function ShiftsContent({
   const { church, membership, user } = await getAuthenticatedUserWithChurch();
   const canManage = canManageSchedule(membership.role);
   const campusFilter = await resolveCampusFilter({
-    churchId: church.id,
+    organizationId: church.id,
     userId: user.id,
     role: membership.role,
   });

@@ -77,18 +77,18 @@ function parseListOptions(params: {
 }
 
 async function loadListRows(
-  churchId: string,
+  organizationId: string,
   options: SafetyConcernListOptions,
 ): Promise<SafetyConcernListRow[]> {
   const supabase = await createClient();
-  const profiles = await listSafetyConcernProfiles(churchId, options, supabase);
+  const profiles = await listSafetyConcernProfiles(organizationId, options, supabase);
   if (profiles.length === 0) return [];
 
   const profileIds = profiles.map((profile) => profile.id);
   const { data: photoRows } = await supabase
     .from("safety_concern_photos")
     .select("*")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .in("profile_id", profileIds)
     .is("archived_at", null)
     .order("display_order", { ascending: true });
@@ -103,7 +103,7 @@ async function loadListRows(
 
   const signed = await attachSignedUrlsToSafetyConcernPhotos({
     supabase,
-    churchId,
+    organizationId,
     photos: [...primaryByProfile.values()],
   });
   const urlByProfile = new Map<string, string | null>();
@@ -114,7 +114,7 @@ async function loadListRows(
   const { data: campusLinkRows } = await supabase
     .from("safety_concern_profile_campuses")
     .select("profile_id, campus_id")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .in("profile_id", profileIds);
 
   const campusIds = [
@@ -127,7 +127,7 @@ async function loadListRows(
     const { data: campusRows } = await supabase
       .from("campuses")
       .select("id, name")
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .in("id", campusIds);
     for (const campus of campusRows ?? []) {
       campusNameById.set(String(campus.id), String(campus.name ?? ""));
@@ -168,7 +168,7 @@ async function SafetyConcernsContent({
   const { church, membership, user } = await getAuthenticatedUserWithChurch();
   const settings = await getSafetyConcernChurchSettings(church.id);
   const access = await getSafetyConcernAccess({
-    churchId: church.id,
+    organizationId: church.id,
     role: membership.role,
     allowSecurityMemberView: settings.allow_security_member_view,
   });
@@ -220,7 +220,7 @@ async function SafetyConcernsContent({
   };
 
   const { campuses } = await listAccessibleCampuses({
-    churchId: church.id,
+    organizationId: church.id,
     userId: user.id,
     role: membership.role,
   });

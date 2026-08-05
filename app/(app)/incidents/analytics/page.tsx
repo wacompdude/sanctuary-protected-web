@@ -67,7 +67,7 @@ async function IncidentAnalyticsContent() {
   const { church, membership, user, supabase } =
     await getAuthenticatedUserWithChurch();
   const access = await hasFeature({
-    churchId: church.id,
+    organizationId: church.id,
     featureKey: FEATURE_KEYS.INCIDENT_ANALYTICS,
   });
 
@@ -105,7 +105,7 @@ async function IncidentAnalyticsContent() {
   const preferences = parseAppPreferences(settingsRow?.settings);
   const sort = resolveIncidentListSort(preferences);
   const campusFilter = await resolveCampusFilter({
-    churchId: church.id,
+    organizationId: church.id,
     userId: user.id,
     role: membership.role,
   });

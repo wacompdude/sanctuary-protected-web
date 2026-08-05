@@ -17,7 +17,7 @@ export interface CertificationScanResult {
  * Designed to be called once per day from a cron job.
  */
 export async function scanCertificationExpirations(options?: {
-  churchId?: string;
+  organizationId?: string;
   now?: Date;
 }): Promise<CertificationScanResult> {
   const result: CertificationScanResult = {
@@ -40,8 +40,8 @@ export async function scanCertificationExpirations(options?: {
 
   // Load all churches (or a single one when testing).
   const churchQuery = admin.from("organizations").select("id, name").eq("is_active", true);
-  if (options?.churchId) {
-    churchQuery.eq("id", options.churchId);
+  if (options?.organizationId) {
+    churchQuery.eq("id", options.organizationId);
   }
   const { data: churches, error: churchError } = await churchQuery;
   if (churchError || !churches?.length) {
@@ -98,7 +98,7 @@ export async function scanCertificationExpirations(options?: {
 
       const notifyResult = await createNotification(
         {
-          churchId: church.id,
+          organizationId: church.id,
           notificationType,
           severity,
           entityType: "certification",

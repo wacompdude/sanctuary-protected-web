@@ -11,13 +11,13 @@ import { NAV_ENTITLEMENT_FEATURE_KEYS } from "@/lib/subscriptions/nav-features";
 
 export async function AppSidebar() {
   let churches: { id: string; name: string; role: string }[] = [];
-  let activeChurchId: string | null = null;
+  let activeOrganizationId: string | null = null;
   let role: MembershipRole | null = null;
   let enabledFeatures: Set<string> | undefined;
 
   try {
     const { church, memberships, membership } = await requireChurchMembership();
-    activeChurchId = church.id;
+    activeOrganizationId = church.id;
     role = membership.role;
     churches = memberships.map((item) => ({
       id: item.organization_id,
@@ -44,7 +44,7 @@ export async function AppSidebar() {
   return (
     <AppSidebarNav
       churches={churches}
-      activeChurchId={activeChurchId}
+      activeOrganizationId={activeOrganizationId}
       role={role}
       navSections={navSections}
     />

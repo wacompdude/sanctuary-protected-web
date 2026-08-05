@@ -559,7 +559,7 @@ export async function seedChurchTraining(ctx: DemoSeedContext): Promise<void> {
   {
     const seedKey = "training_settings.church";
     const payload = {
-      organization_id: ctx.churchId,
+      organization_id: ctx.organizationId,
       due_soon_days: 30,
       reminder_at_assignment: true,
       reminder_days_before: [30, 14, 7, 1],
@@ -573,7 +573,7 @@ export async function seedChurchTraining(ctx: DemoSeedContext): Promise<void> {
       const { error } = await ctx.admin
         .from("training_organization_settings")
         .update({ ...payload, updated_at: new Date().toISOString() })
-        .eq("organization_id", ctx.churchId);
+        .eq("organization_id", ctx.organizationId);
       if (error) {
         throw new Error(`training_church_settings update: ${error.message}`);
       }
@@ -589,7 +589,7 @@ export async function seedChurchTraining(ctx: DemoSeedContext): Promise<void> {
         admin: ctx.admin,
         seedSource: ctx.seedSource,
         entityTable: "training_organization_settings",
-        entityId: ctx.churchId,
+        entityId: ctx.organizationId,
         seedKey,
       });
       await track(ctx.summary, "training_settings", "created", "Created training church settings");
@@ -639,7 +639,7 @@ export async function seedChurchTraining(ctx: DemoSeedContext): Promise<void> {
       table: "training_courses",
       domain: "training_courses",
       payload: {
-        organization_id: ctx.churchId,
+        organization_id: ctx.organizationId,
         training_category_id: category.id,
         course_code: course.courseCode,
         name: course.name,
@@ -687,7 +687,7 @@ export async function seedChurchTraining(ctx: DemoSeedContext): Promise<void> {
       table: "training_events",
       domain: "training_events",
       payload: {
-        organization_id: ctx.churchId,
+        organization_id: ctx.organizationId,
         campus_id: campusId,
         training_course_id: courseId,
         training_category_id: category.id,
@@ -755,7 +755,7 @@ export async function seedChurchTraining(ctx: DemoSeedContext): Promise<void> {
       table: "training_requirements",
       domain: "training_requirements",
       payload: {
-        organization_id: ctx.churchId,
+        organization_id: ctx.organizationId,
         name: `Required: ${courseDef.name}`,
         training_course_id: courseId,
         training_category_id: category.id,
@@ -806,7 +806,7 @@ export async function seedChurchTraining(ctx: DemoSeedContext): Promise<void> {
         table: "training_participants",
         domain: "training_participants",
         payload: {
-          organization_id: ctx.churchId,
+          organization_id: ctx.organizationId,
           training_event_id: eventId,
           user_id: uid,
           enrollment_status: "assigned",
@@ -841,7 +841,7 @@ export async function seedChurchTraining(ctx: DemoSeedContext): Promise<void> {
         table: "training_completion_records",
         domain: "training_completions",
         payload: {
-          organization_id: ctx.churchId,
+          organization_id: ctx.organizationId,
           campus_id: campusId,
           user_id: uid,
           training_event_id: eventId,
@@ -882,7 +882,7 @@ export async function seedChurchTraining(ctx: DemoSeedContext): Promise<void> {
         table: "training_participants",
         domain: "training_participants",
         payload: {
-          organization_id: ctx.churchId,
+          organization_id: ctx.organizationId,
           training_event_id: eventId,
           user_id: uid,
           enrollment_status:
@@ -907,7 +907,7 @@ export async function seedChurchTraining(ctx: DemoSeedContext): Promise<void> {
       table: "training_external_records",
       domain: "training_external",
       payload: {
-        organization_id: ctx.churchId,
+        organization_id: ctx.organizationId,
         user_id: externalUser,
         training_category_id: traumaCategory.id,
         course_name: "Community CPR / AED Provider",
@@ -935,7 +935,7 @@ export async function seedChurchTraining(ctx: DemoSeedContext): Promise<void> {
       table: "training_completion_records",
       domain: "training_completions",
       payload: {
-        organization_id: ctx.churchId,
+        organization_id: ctx.organizationId,
         campus_id: ctx.primaryCampusId,
         user_id: externalUser,
         training_category_id: traumaCategory.id,

@@ -21,13 +21,13 @@ export {
 } from "@/lib/church/auth";
 
 export async function listIncidentsForChurch(
-  churchId: string,
+  organizationId: string,
   sort: IncidentListSort = "occurred_at_desc",
   options?: { campusFilterOr?: string | null },
 ) {
   const supabase = await createClient();
 
-  let query = supabase.from("incidents").select("*").eq("organization_id", churchId);
+  let query = supabase.from("incidents").select("*").eq("organization_id", organizationId);
 
   if (options?.campusFilterOr) {
     query = query.or(options.campusFilterOr);
@@ -56,7 +56,7 @@ export async function listIncidentsForChurch(
 
   if (error) {
     if (/campus_id/i.test(error.message) && options?.campusFilterOr) {
-      return listIncidentsForChurch(churchId, sort);
+      return listIncidentsForChurch(organizationId, sort);
     }
     throw new Error(error.message);
   }
@@ -153,9 +153,9 @@ export async function getIncidentWithUpdates(incidentId: string) {
 }
 
 export async function listActiveIncidentTeamMembers(
-  churchId: string,
+  organizationId: string,
 ): Promise<TeamMemberRow[]> {
-  const rows = await listChurchTeamMemberships(churchId);
+  const rows = await listChurchTeamMemberships(organizationId);
   return rows.filter(
     (member) =>
       member.status === "active" && hasMinRole(member.role, "security_member"),
@@ -163,14 +163,14 @@ export async function listActiveIncidentTeamMembers(
 }
 
 export async function listIncidentInvolvedMembers(
-  churchId: string,
+  organizationId: string,
   incidentId: string,
 ): Promise<IncidentInvolvedMember[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("incident_team_members")
     .select("id, incident_id, membership_id, created_at")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("incident_id", incidentId)
     .order("created_at", { ascending: true });
 
@@ -185,7 +185,7 @@ export async function listIncidentInvolvedMembers(
     throw new Error(error.message);
   }
 
-  const memberships = await listChurchTeamMemberships(churchId).catch(() => []);
+  const memberships = await listChurchTeamMemberships(organizationId).catch(() => []);
   const membershipMap = new Map(
     memberships.map((membership) => [membership.membershipId, membership]),
   );

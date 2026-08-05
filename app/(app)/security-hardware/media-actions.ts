@@ -80,7 +80,7 @@ export async function uploadEquipmentAttachments(
     }
 
     await requireFeature({
-      churchId: church.id,
+      organizationId: church.id,
       featureKey: FEATURE_KEYS.HARDWARE_INVENTORY,
     });
 
@@ -108,7 +108,7 @@ export async function uploadEquipmentAttachments(
     ) || kind === "photo";
     if (includesPhoto) {
       await requireFeature({
-        churchId: church.id,
+        organizationId: church.id,
         featureKey: FEATURE_KEYS.HARDWARE_PHOTOS,
       });
     }
@@ -133,7 +133,7 @@ export async function uploadEquipmentAttachments(
     for (const file of files) {
       const resolvedKind = kind ?? defaultKindForMime(file.type);
       const objectPath = equipmentAttachmentObjectPath({
-        churchId: church.id,
+        organizationId: church.id,
         equipmentId,
         kind: resolvedKind,
         mimeType: file.type,
@@ -189,7 +189,7 @@ export async function uploadEquipmentAttachments(
       uploaded += 1;
 
       await writeAuditLog(supabase, {
-        churchId: church.id,
+        organizationId: church.id,
         userId: user.id,
         action: AuditAction.EQUIPMENT_ATTACHMENT_UPLOADED,
         entityType: AuditEntityType.EQUIPMENT_ATTACHMENT,
@@ -271,7 +271,7 @@ export async function deleteEquipmentAttachment(
       .remove([attachment.storage_path]);
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.EQUIPMENT_ATTACHMENT_REMOVED,
       entityType: AuditEntityType.EQUIPMENT_ATTACHMENT,
@@ -372,7 +372,7 @@ export async function addEquipmentRelationship(
     }
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.EQUIPMENT_RELATIONSHIP_ADDED,
       entityType: AuditEntityType.EQUIPMENT_RELATIONSHIP,
@@ -432,7 +432,7 @@ export async function removeEquipmentRelationship(
     }
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.EQUIPMENT_RELATIONSHIP_REMOVED,
       entityType: AuditEntityType.EQUIPMENT_RELATIONSHIP,

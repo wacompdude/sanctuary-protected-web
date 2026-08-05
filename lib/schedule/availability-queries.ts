@@ -41,7 +41,7 @@ export function redactUnavailabilityNotes(
 }
 
 export async function listMyUnavailability(
-  churchId: string,
+  organizationId: string,
   userId: string,
 ): Promise<{ items: MemberUnavailability[]; tablesAvailable: boolean; hint?: string }> {
   try {
@@ -49,7 +49,7 @@ export async function listMyUnavailability(
     const { data, error } = await supabase
       .from("member_unavailability")
       .select("*")
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .eq("user_id", userId)
       .order("start_at", { ascending: false });
 
@@ -83,7 +83,7 @@ export async function listMyUnavailability(
 
 export async function getUnavailabilityById(
   id: string,
-  churchId: string,
+  organizationId: string,
   viewerUserId: string,
   canViewPrivateNotes: boolean,
 ): Promise<MemberUnavailability | null> {
@@ -93,7 +93,7 @@ export async function getUnavailabilityById(
       .from("member_unavailability")
       .select("*")
       .eq("id", id)
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .maybeSingle();
 
     if (error) {
@@ -114,7 +114,7 @@ export async function getUnavailabilityById(
 }
 
 export async function listTeamUnavailabilityInRange(
-  churchId: string,
+  organizationId: string,
   rangeStartIso: string,
   rangeEndIso: string,
   viewerUserId: string,
@@ -129,7 +129,7 @@ export async function listTeamUnavailabilityInRange(
     const { data, error } = await supabase
       .from("member_unavailability")
       .select("*")
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .eq("status", "active")
       .lt("start_at", rangeEndIso)
       .gt("end_at", rangeStartIso)
@@ -187,7 +187,7 @@ export async function listTeamUnavailabilityInRange(
 }
 
 export async function getTeamAvailabilityView(
-  churchId: string,
+  organizationId: string,
   rangeStartIso: string,
   rangeEndIso: string,
 ): Promise<{
@@ -197,7 +197,7 @@ export async function getTeamAvailabilityView(
 }> {
   try {
     const supabase = await createClient();
-    const team = await listChurchTeamMemberships(churchId);
+    const team = await listChurchTeamMemberships(organizationId);
     const active = team.filter((m) => m.status === "active");
 
     const { data: blocks, error: blockError } = await supabase
@@ -205,7 +205,7 @@ export async function getTeamAvailabilityView(
       .select(
         "id, membership_id, user_id, title, reason_category, start_at, end_at, all_day, status",
       )
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .eq("status", "active")
       .lt("start_at", rangeEndIso)
       .gt("end_at", rangeStartIso);
@@ -224,7 +224,7 @@ export async function getTeamAvailabilityView(
     const { data: assignments, error: assignError } = await supabase
       .from("shift_assignments")
       .select("id, membership_id, shift_id, status")
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .in("status", [...ACTIVE_ASSIGNMENT_STATUSES]);
 
     if (assignError) {
@@ -249,7 +249,7 @@ export async function getTeamAvailabilityView(
       const { data: shifts } = await supabase
         .from("schedule_shifts")
         .select("id, title, start_at, end_at, status")
-        .eq("organization_id", churchId)
+        .eq("organization_id", organizationId)
         .in("id", shiftIds)
         .neq("status", "cancelled");
       for (const shift of shifts ?? []) {
@@ -347,7 +347,7 @@ export async function getTeamAvailabilityView(
 }
 
 export async function listAvailabilityConflicts(
-  churchId: string,
+  organizationId: string,
   rangeStartIso: string,
   rangeEndIso: string,
 ): Promise<{
@@ -357,7 +357,7 @@ export async function listAvailabilityConflicts(
 }> {
   try {
     const teamView = await getTeamAvailabilityView(
-      churchId,
+      organizationId,
       rangeStartIso,
       rangeEndIso,
     );
@@ -373,7 +373,7 @@ export async function listAvailabilityConflicts(
     const { data: assignments } = await supabase
       .from("shift_assignments")
       .select("id, conflict_override")
-      .eq("organization_id", churchId);
+      .eq("organization_id", organizationId);
 
     const overrideById = new Map(
       (assignments ?? []).map((a) => [

@@ -11,7 +11,7 @@ export const LOGO_ALLOWED_MIME = new Set([
 export const LOGO_MAX_DIMENSION = 4096;
 
 export function churchLogoObjectPath(
-  churchId: string,
+  organizationId: string,
   mimeType: string,
 ): string {
   const ext =
@@ -22,14 +22,14 @@ export function churchLogoObjectPath(
         : mimeType === "image/gif"
           ? "gif"
           : "jpg";
-  return `churches/${churchId}/branding/logo.${ext}`;
+  return `churches/${organizationId}/branding/logo.${ext}`;
 }
 
 export function isChurchBrandingStoragePath(
   path: string,
-  churchId: string,
+  organizationId: string,
 ): boolean {
-  return path.startsWith(`churches/${churchId}/branding/`);
+  return path.startsWith(`churches/${organizationId}/branding/`);
 }
 
 export function publicUrlForLogoPath(logoPath: string | null | undefined): string | null {

@@ -130,11 +130,11 @@ function childIsActive(pathname: string, href: string, siblings: string[]): bool
 
 export function AppSidebarNav({
   churches,
-  activeChurchId,
+  activeOrganizationId,
   navSections,
 }: {
   churches: ChurchOption[];
-  activeChurchId: string | null;
+  activeOrganizationId: string | null;
   role?: MembershipRole | null;
   navSections: NavSection[];
 }) {
@@ -457,7 +457,7 @@ export function AppSidebarNav({
             </div>
           )}
 
-          {activeChurchId && churches.length > 0 && (
+          {activeOrganizationId && churches.length > 0 && (
             <div
               className={cn(
                 "border-b border-border p-3",
@@ -466,7 +466,7 @@ export function AppSidebarNav({
             >
               <ChurchSwitcher
                 churches={churches}
-                activeChurchId={activeChurchId}
+                activeOrganizationId={activeOrganizationId}
                 collapsed={desktopCompact}
               />
             </div>

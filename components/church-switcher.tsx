@@ -17,12 +17,12 @@ const initialState: ActionState = {};
 
 export function ChurchSwitcher({
   churches,
-  activeChurchId,
+  activeOrganizationId,
   collapsed = false,
   className,
 }: {
   churches: ChurchOption[];
-  activeChurchId: string;
+  activeOrganizationId: string;
   collapsed?: boolean;
   className?: string;
 }) {
@@ -87,9 +87,9 @@ export function ChurchSwitcher({
         <Building2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <select
           id="church-switcher"
-          key={activeChurchId}
+          key={activeOrganizationId}
           name="organization_id"
-          defaultValue={activeChurchId}
+          defaultValue={activeOrganizationId}
           disabled={pending || isPending}
           onChange={(event) => {
             event.currentTarget.form?.requestSubmit();
@@ -135,7 +135,7 @@ export function ChurchSwitcher({
           <select
             id="church-switcher-collapsed"
             name="organization_id"
-            defaultValue={activeChurchId}
+            defaultValue={activeOrganizationId}
             disabled={pending || isPending}
             onChange={(event) => {
               event.currentTarget.form?.requestSubmit();

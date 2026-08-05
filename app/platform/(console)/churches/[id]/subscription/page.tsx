@@ -102,7 +102,7 @@ async function SubscriptionContent({
 
       {canChangePlan || canCancel || canRestore ? (
         <PlatformSubscriptionAdminPanel
-          churchId={church.id}
+          organizationId={church.id}
           churchName={church.name}
           currentPlanKey={church.subscription?.planKey ?? null}
           cancelAtPeriodEnd={

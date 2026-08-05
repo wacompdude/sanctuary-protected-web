@@ -88,7 +88,7 @@ export async function createChurchOnboarding(
     if (isServiceRoleConfigured()) {
       try {
         await ensureChurchSubscription({
-          churchId: payload.organization_id,
+          organizationId: payload.organization_id,
           status: "trialing",
           periodDays: 30,
           userId: user.id,

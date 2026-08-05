@@ -14,7 +14,7 @@ export type AuditLogRow = {
 };
 
 export async function listRecentAuditLogs(
-  churchId: string,
+  organizationId: string,
   limit = 50,
 ): Promise<AuditLogRow[]> {
   const supabase = await createClient();
@@ -23,7 +23,7 @@ export async function listRecentAuditLogs(
     .select(
       "id, organization_id, user_id, action, entity_type, entity_id, metadata, created_at",
     )
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .order("created_at", { ascending: false })
     .limit(limit);
 

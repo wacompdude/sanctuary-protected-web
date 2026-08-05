@@ -31,7 +31,7 @@ async function NotificationPreferencesContent() {
   if (endpointsAvailable) {
     await syncMyNotificationEndpoints({
       supabase,
-      churchId: church.id,
+      organizationId: church.id,
       user,
       membershipId: membership.id,
     });
@@ -51,7 +51,7 @@ async function NotificationPreferencesContent() {
     listMyPreferenceRules(supabase, church.id, user.id),
     listPreferableGroupsForUser({
       supabase,
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       membershipId: membership.id,
       role: membership.role,

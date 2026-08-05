@@ -45,12 +45,12 @@ async function loadChurchRow(
   supabase: Awaited<
     ReturnType<typeof getAuthenticatedUserWithChurch>
   >["supabase"],
-  churchId: string,
+  organizationId: string,
 ): Promise<{ row?: ChurchSettingsRecord; error?: string }> {
   const { data, error } = await supabase
     .from("organizations")
     .select(CHURCH_SETTINGS_SELECT)
-    .eq("id", churchId)
+    .eq("id", organizationId)
     .maybeSingle();
 
   if (error) {
@@ -118,7 +118,7 @@ async function updateChurchSection(params: {
     }
 
     await auditChurchSettingsUpdated(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       changedFields,
       action: params.action,
@@ -346,25 +346,25 @@ export async function updateChurchPreferenceSettings(
     const prefs = validation.data.preferences;
     if (prefs.enable_sms_notifications) {
       await requireFeature({
-        churchId: editor.context.church.id,
+        organizationId: editor.context.church.id,
         featureKey: FEATURE_KEYS.SMS,
       });
     }
     if (prefs.enable_email_notifications) {
       await requireFeature({
-        churchId: editor.context.church.id,
+        organizationId: editor.context.church.id,
         featureKey: FEATURE_KEYS.EMAIL,
       });
     }
     if (prefs.enable_camera_integration) {
       await requireFeature({
-        churchId: editor.context.church.id,
+        organizationId: editor.context.church.id,
         featureKey: FEATURE_KEYS.CAMERAS,
       });
     }
     if (prefs.enable_iot_sensors) {
       await requireFeature({
-        churchId: editor.context.church.id,
+        organizationId: editor.context.church.id,
         featureKey: FEATURE_KEYS.SENSORS,
       });
     }
@@ -428,7 +428,7 @@ export async function changeChurchAccountStatus(
     }
 
     await auditChurchAccountStatusChanged(context.supabase, {
-      churchId: context.church.id,
+      organizationId: context.church.id,
       userId: context.user.id,
       fromStatus: loaded.row.status,
       toStatus: validation.data.nextStatus,
@@ -507,7 +507,7 @@ export async function uploadChurchLogo(
     }
 
     await auditChurchSettingsUpdated(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       changedFields: ["logo_path"],
       action: AuditAction.CHURCH_LOGO_UPDATED,
@@ -554,7 +554,7 @@ export async function removeChurchLogo(
     }
 
     await auditChurchSettingsUpdated(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       changedFields: ["logo_path"],
       action: AuditAction.CHURCH_LOGO_UPDATED,

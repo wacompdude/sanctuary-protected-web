@@ -15,10 +15,10 @@ export type SelectableChurch = {
 
 export function SelectChurchList({
   churches,
-  activeChurchId,
+  activeOrganizationId,
 }: {
   churches: SelectableChurch[];
-  activeChurchId: string;
+  activeOrganizationId: string;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -34,7 +34,7 @@ export function SelectChurchList({
   return (
     <ul className="divide-y divide-border rounded-md border border-border">
       {churches.map((church) => {
-        const isActive = church.id === activeChurchId;
+        const isActive = church.id === activeOrganizationId;
         return (
           <li
             key={church.id}

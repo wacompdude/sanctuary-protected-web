@@ -47,7 +47,7 @@ export async function createUnavailabilityAction(
   try {
     const { user, church, membership } = await getAuthenticatedUserWithChurch();
     await requireFeature({
-      churchId: church.id,
+      organizationId: church.id,
       featureKey: FEATURE_KEYS.TEAM_SCHEDULING,
     });
     const settings = await getChurchScheduleSettings(church.id);
@@ -125,7 +125,7 @@ export async function createUnavailabilityAction(
     }
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.SCHEDULE_UNAVAILABILITY_CREATED,
       entityType: AuditEntityType.MEMBER_UNAVAILABILITY,
@@ -157,7 +157,7 @@ export async function updateUnavailabilityAction(
   try {
     const { user, church, membership } = await getAuthenticatedUserWithChurch();
     await requireFeature({
-      churchId: church.id,
+      organizationId: church.id,
       featureKey: FEATURE_KEYS.TEAM_SCHEDULING,
     });
     const settings = await getChurchScheduleSettings(church.id);
@@ -228,7 +228,7 @@ export async function updateUnavailabilityAction(
     if (error) return { error: "Unable to update unavailability." };
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.SCHEDULE_UNAVAILABILITY_UPDATED,
       entityType: AuditEntityType.MEMBER_UNAVAILABILITY,
@@ -256,7 +256,7 @@ export async function cancelUnavailabilityAction(
   try {
     const { user, church, membership } = await getAuthenticatedUserWithChurch();
     await requireFeature({
-      churchId: church.id,
+      organizationId: church.id,
       featureKey: FEATURE_KEYS.TEAM_SCHEDULING,
     });
     const canManage = canManageSchedule(membership.role);
@@ -301,7 +301,7 @@ export async function cancelUnavailabilityAction(
     if (error) return { error: "Unable to cancel unavailability." };
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.SCHEDULE_UNAVAILABILITY_CANCELLED,
       entityType: AuditEntityType.MEMBER_UNAVAILABILITY,

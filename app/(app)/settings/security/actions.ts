@@ -138,17 +138,17 @@ export async function createSecurityGroupAction(input: CreateSecurityGroupInput)
     await requireMinChurchRole("administrator");
 
     const { membership } = await getActiveChurch();
-    const churchId = membership.organization_id;
+    const organizationId = membership.organization_id;
 
     // Create the group
-    const group = await createSecurityGroup(admin, churchId, input.name, input.description || null, user.id);
+    const group = await createSecurityGroup(admin, organizationId, input.name, input.description || null, user.id);
 
     if (!group) {
       return { error: "Failed to create security group" };
     }
 
     // Audit log
-    await logSecurityGroupCreated(admin, churchId, group.id, group.name, user.id);
+    await logSecurityGroupCreated(admin, organizationId, group.id, group.name, user.id);
 
     return { success: true, groupId: group.id };
   } catch (error) {
@@ -672,7 +672,7 @@ export async function addSecurityGroupPermissionAction(input: {
     }
 
     await writeSecurityAuditLog(admin, {
-      churchId: membership.organization_id,
+      organizationId: membership.organization_id,
       actorUserId: user.id,
       securityGroupId: input.groupId,
       permissionDefinitionId: input.permissionDefinitionId,
@@ -728,7 +728,7 @@ export async function removeSecurityGroupPermissionAction(input: {
     }
 
     await writeSecurityAuditLog(admin, {
-      churchId: membership.organization_id,
+      organizationId: membership.organization_id,
       actorUserId: user.id,
       securityGroupId: input.groupId,
       permissionDefinitionId: input.permissionDefinitionId,
@@ -849,12 +849,12 @@ export async function getSecurityOverviewMetricsAction() {
     await requireMinChurchRole("security_leader");
     const { membership } = await getActiveChurch();
     const admin = createAdminClient();
-    const churchId = membership.organization_id;
+    const organizationId = membership.organization_id;
 
     const [groups, churchMembers, userPermissions, catalog] = await Promise.all([
-      listSecurityGroups(admin, churchId),
-      listChurchTeamMemberships(churchId),
-      listChurchUserPermissions(admin, churchId),
+      listSecurityGroups(admin, organizationId),
+      listChurchTeamMemberships(organizationId),
+      listChurchUserPermissions(admin, organizationId),
       listAllPermissions(admin),
     ]);
 
@@ -936,7 +936,7 @@ export async function deactivateSecurityGroupAction(groupId: string) {
     if (!updated) return { error: "Failed to deactivate security group" };
 
     await writeSecurityAuditLog(admin, {
-      churchId: membership.organization_id,
+      organizationId: membership.organization_id,
       actorUserId: user.id,
       securityGroupId: groupId,
       eventType: "security_group.deactivated",
@@ -1012,12 +1012,12 @@ export async function listUsersAccessAction() {
     await requireMinChurchRole("security_leader");
     const { membership } = await getActiveChurch();
     const admin = createAdminClient();
-    const churchId = membership.organization_id;
+    const organizationId = membership.organization_id;
 
     const [churchMembers, allDirect, allGroups] = await Promise.all([
-      listChurchTeamMemberships(churchId),
-      listChurchUserPermissions(admin, churchId),
-      listSecurityGroups(admin, churchId, false),
+      listChurchTeamMemberships(organizationId),
+      listChurchUserPermissions(admin, organizationId),
+      listSecurityGroups(admin, organizationId, false),
     ]);
 
     const membershipsByUser = new Map<string, number>();
@@ -1079,11 +1079,11 @@ export async function getUserAccessDetailsAction(userId: string) {
     await requireMinChurchRole("security_leader");
     const { membership } = await getActiveChurch();
     const admin = createAdminClient();
-    const churchId = membership.organization_id;
+    const organizationId = membership.organization_id;
 
     const [groupMemberships, direct, catalog] = await Promise.all([
-      getUserSecurityGroupMemberships(admin, userId, churchId),
-      getUserDirectPermissions(admin, userId, churchId),
+      getUserSecurityGroupMemberships(admin, userId, organizationId),
+      getUserDirectPermissions(admin, userId, organizationId),
       listAllPermissions(admin),
     ]);
 
@@ -1477,7 +1477,7 @@ export async function listSecurityAuditLogsAction(input?: {
 
     const [{ logs }, churchMembers] = await Promise.all([
       querySecurityAuditLogs(admin, {
-        churchId: membership.organization_id,
+        organizationId: membership.organization_id,
         eventType: input?.eventType,
         result: input?.result,
         limit: input?.limit || 100,
@@ -1529,7 +1529,7 @@ export async function previewAccessAction(input: {
 
     const result = await canUserPerform(admin, {
       userId: input.userId,
-      churchId: membership.organization_id,
+      organizationId: membership.organization_id,
       campusId: input.campusId || null,
       permissionKey: input.permissionKey,
       actionDate: input.actionDate ? new Date(input.actionDate) : new Date(),
@@ -1571,11 +1571,11 @@ export async function listRolesCatalogAction() {
     await requireMinChurchRole("security_leader");
     const { membership } = await getActiveChurch();
     const admin = createAdminClient();
-    const churchId = membership.organization_id;
+    const organizationId = membership.organization_id;
 
     const [settings, anyRoleCounts, catalog] = await Promise.all([
-      listChurchRoleSettings(admin, churchId),
-      countMembersByAnyRole(admin, churchId),
+      listChurchRoleSettings(admin, organizationId),
+      countMembersByAnyRole(admin, organizationId),
       listAllPermissions(admin),
     ]);
 
@@ -1627,17 +1627,17 @@ export async function getRoleDetailAction(input: {
     await requireMinChurchRole("security_leader");
     const { membership } = await getActiveChurch();
     const admin = createAdminClient();
-    const churchId = membership.organization_id;
+    const organizationId = membership.organization_id;
 
     const entry = getSystemRoleEntry(input.roleKind, input.roleKey);
     if (!entry) return { error: "Role not found" };
 
     const [settings, catalog, team, history] = await Promise.all([
-      listChurchRoleSettings(admin, churchId),
+      listChurchRoleSettings(admin, organizationId),
       listAllPermissions(admin),
-      listChurchTeamMemberships(churchId),
+      listChurchTeamMemberships(organizationId),
       querySecurityAuditLogs(admin, {
-        churchId,
+        organizationId,
         limit: 40,
       }),
     ]);
@@ -1664,7 +1664,7 @@ export async function getRoleDetailAction(input: {
     if (input.roleKind === "church") {
       const roleMembers = await listMembersWithRole(
         admin,
-        churchId,
+        organizationId,
         input.roleKey,
       );
       const byUser = new Map(team.map((m) => [m.userId, m] as const));
@@ -1758,7 +1758,7 @@ export async function updateRoleCatalogAction(input: {
     );
 
     const updated = await upsertChurchRoleSetting(admin, {
-      churchId: membership.organization_id,
+      organizationId: membership.organization_id,
       roleKind: input.roleKind,
       roleKey: input.roleKey,
       displayNameOverride:
@@ -1772,7 +1772,7 @@ export async function updateRoleCatalogAction(input: {
     if (!updated) return { error: "Failed to update role" };
 
     await writeSecurityAuditLog(admin, {
-      churchId: membership.organization_id,
+      organizationId: membership.organization_id,
       actorUserId: user.id,
       eventType: "role.updated",
       previousValue: {
@@ -1824,7 +1824,7 @@ export async function setRoleCatalogStatusAction(input: {
     );
 
     const updated = await upsertChurchRoleSetting(admin, {
-      churchId: membership.organization_id,
+      organizationId: membership.organization_id,
       roleKind: input.roleKind,
       roleKey: input.roleKey,
       displayNameOverride: existing?.display_name_override ?? null,
@@ -1835,7 +1835,7 @@ export async function setRoleCatalogStatusAction(input: {
     if (!updated) return { error: "Failed to update role status" };
 
     await writeSecurityAuditLog(admin, {
-      churchId: membership.organization_id,
+      organizationId: membership.organization_id,
       actorUserId: user.id,
       eventType: input.status === "inactive" ? "role.deactivated" : "role.updated",
       previousValue: { roleKey: input.roleKey, status: existing?.status ?? "active" },
@@ -1902,7 +1902,7 @@ export async function duplicateRoleAsGroupAction(input: {
     );
 
     await writeSecurityAuditLog(admin, {
-      churchId: membership.organization_id,
+      organizationId: membership.organization_id,
       actorUserId: user.id,
       securityGroupId: created.id,
       eventType: "role.created",
@@ -1935,15 +1935,15 @@ export async function getUserMembershipEditorAction(userId: string) {
     await requireMinChurchRole("security_leader");
     const { membership: actorMembership } = await getActiveChurch();
     const admin = createAdminClient();
-    const churchId = actorMembership.organization_id;
+    const organizationId = actorMembership.organization_id;
 
-    const team = await listChurchTeamMemberships(churchId);
+    const team = await listChurchTeamMemberships(organizationId);
     const member = team.find((row) => row.userId === userId);
     if (!member) return { error: "Member not found" };
 
     const [roles, campusesResult, groupMemberships, direct, catalog, settings] =
       await Promise.all([
-        listActiveMembershipRolesForUser(admin, churchId, userId),
+        listActiveMembershipRolesForUser(admin, organizationId, userId),
         admin
           .from("campus_memberships")
           .select(
@@ -1952,13 +1952,13 @@ export async function getUserMembershipEditorAction(userId: string) {
             campuses ( id, name )
           `,
           )
-          .eq("organization_id", churchId)
+          .eq("organization_id", organizationId)
           .eq("user_id", userId)
           .neq("status", "removed"),
-        getUserSecurityGroupMemberships(admin, userId, churchId),
-        getUserDirectPermissions(admin, userId, churchId),
+        getUserSecurityGroupMemberships(admin, userId, organizationId),
+        getUserDirectPermissions(admin, userId, organizationId),
         listAllPermissions(admin),
-        listChurchRoleSettings(admin, churchId),
+        listChurchRoleSettings(admin, organizationId),
       ]);
 
     const inactiveRoles = new Set(
@@ -2049,9 +2049,9 @@ export async function updateUserMembershipRolesAction(input: {
 
     await requireMinChurchRole("administrator");
     const { membership: actorMembership } = await getActiveChurch();
-    const churchId = actorMembership.organization_id;
+    const organizationId = actorMembership.organization_id;
 
-    const team = await listChurchTeamMemberships(churchId);
+    const team = await listChurchTeamMemberships(organizationId);
     const member = team.find((row) => row.userId === input.userId);
     if (!member) return { error: "Member not found" };
 
@@ -2089,13 +2089,13 @@ export async function updateUserMembershipRolesAction(input: {
 
     const previousRoles = await listActiveMembershipRolesForUser(
       admin,
-      churchId,
+      organizationId,
       member.userId,
     );
 
     const result = await setMembershipRoles({
       admin,
-      churchId,
+      organizationId,
       membershipId: member.membershipId,
       userId: member.userId,
       primaryRole,
@@ -2106,7 +2106,7 @@ export async function updateUserMembershipRolesAction(input: {
     if (!result.ok) return { error: result.error };
 
     await writeSecurityAuditLog(admin, {
-      churchId,
+      organizationId,
       actorUserId: user.id,
       targetUserId: member.userId,
       eventType: "membership_role.primary_changed",
@@ -2144,9 +2144,9 @@ export async function updateUserMembershipStatusAction(input: {
 
     await requireMinChurchRole("administrator");
     const { membership: actorMembership } = await getActiveChurch();
-    const churchId = actorMembership.organization_id;
+    const organizationId = actorMembership.organization_id;
 
-    const team = await listChurchTeamMemberships(churchId);
+    const team = await listChurchTeamMemberships(organizationId);
     const member = team.find((row) => row.userId === input.userId);
     if (!member) return { error: "Member not found" };
 
@@ -2170,12 +2170,12 @@ export async function updateUserMembershipStatusAction(input: {
       .from("organization_memberships")
       .update({ status: nextStatus })
       .eq("id", member.membershipId)
-      .eq("organization_id", churchId);
+      .eq("organization_id", organizationId);
 
     if (error) return { error: error.message };
 
     await writeSecurityAuditLog(admin, {
-      churchId,
+      organizationId,
       actorUserId: user.id,
       targetUserId: member.userId,
       eventType: "membership.status_changed",

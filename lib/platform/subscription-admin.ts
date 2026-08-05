@@ -23,18 +23,18 @@ export type PlatformSubscriptionChangeResult = {
 };
 
 export async function previewPlatformPlanChange(params: {
-  churchId: string;
+  organizationId: string;
   targetPlanKey: string;
 }): Promise<DowngradeImpactReport> {
   return buildDowngradeImpactReport({
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     targetPlanKey: params.targetPlanKey,
   });
 }
 
 export async function applyPlatformPlanChange(params: {
   context: PlatformContext;
-  churchId: string;
+  organizationId: string;
   targetPlanKey: string;
   reason: string;
   confirmDowngrade: boolean;
@@ -54,7 +54,7 @@ export async function applyPlatformPlanChange(params: {
   const { data: church, error: churchError } = await admin
     .from("organizations")
     .select("id, name")
-    .eq("id", params.churchId)
+    .eq("id", params.organizationId)
     .maybeSingle();
 
   if (churchError || !church) {
@@ -62,7 +62,7 @@ export async function applyPlatformPlanChange(params: {
   }
 
   const impact = await buildDowngradeImpactReport({
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     targetPlanKey,
   });
 
@@ -105,7 +105,7 @@ export async function applyPlatformPlanChange(params: {
     console.info(
       "[platform] billing provider configured; applying audited manual plan change until provider changePlan API exists",
       {
-        churchId: params.churchId,
+        organizationId: params.organizationId,
         planKey: targetPlanKey,
         provider: provider.id,
       },
@@ -113,7 +113,7 @@ export async function applyPlatformPlanChange(params: {
   }
 
   const result = await changeChurchSubscriptionPlan({
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     planKey: targetPlanKey,
     userId: params.context.user.id,
     source: "platform_admin_console",
@@ -122,7 +122,7 @@ export async function applyPlatformPlanChange(params: {
   });
 
   const notify = await notifyChurchOwnersOfPlanChange({
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     churchName: String(church.name),
     oldPlanDisplayName: impact.fromPlanDisplayName,
     newPlanDisplayName: impact.toPlanDisplayName,
@@ -137,7 +137,7 @@ export async function applyPlatformPlanChange(params: {
       action: AuditAction.PLATFORM_SUBSCRIPTION_PLAN_CHANGED,
       targetType: AuditEntityType.CHURCH_SUBSCRIPTION,
       targetId: result.subscription.id,
-      churchId: params.churchId,
+      organizationId: params.organizationId,
       reason,
       metadata: {
         old_plan_key: impact.fromPlanKey,
@@ -164,7 +164,7 @@ export async function applyPlatformPlanChange(params: {
 
 export async function cancelPlatformChurchSubscription(params: {
   context: PlatformContext;
-  churchId: string;
+  organizationId: string;
   reason: string;
   confirm: boolean;
   typedConfirmation?: string;
@@ -181,7 +181,7 @@ export async function cancelPlatformChurchSubscription(params: {
   const { data: church } = await admin
     .from("organizations")
     .select("id, name")
-    .eq("id", params.churchId)
+    .eq("id", params.organizationId)
     .maybeSingle();
   if (!church) throw new Error("Church not found.");
 
@@ -199,7 +199,7 @@ export async function cancelPlatformChurchSubscription(params: {
   }
 
   const result = await scheduleChurchSubscriptionCancellation({
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     userId: params.context.user.id,
     source: "platform_admin_console",
     reason,
@@ -212,7 +212,7 @@ export async function cancelPlatformChurchSubscription(params: {
       action: AuditAction.PLATFORM_SUBSCRIPTION_CANCELLED,
       targetType: AuditEntityType.CHURCH_SUBSCRIPTION,
       targetId: result.subscription.id,
-      churchId: params.churchId,
+      organizationId: params.organizationId,
       reason,
       metadata: {
         cancel_at_period_end: true,
@@ -229,7 +229,7 @@ export async function cancelPlatformChurchSubscription(params: {
 
 export async function restorePlatformChurchSubscription(params: {
   context: PlatformContext;
-  churchId: string;
+  organizationId: string;
   reason: string;
 }): Promise<{ message: string }> {
   const reason = params.reason.trim();
@@ -238,7 +238,7 @@ export async function restorePlatformChurchSubscription(params: {
   }
 
   const result = await updateChurchSubscriptionStatus({
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     status: "active",
     userId: params.context.user.id,
     source: "platform_admin_console",
@@ -253,7 +253,7 @@ export async function restorePlatformChurchSubscription(params: {
       action: AuditAction.PLATFORM_SUBSCRIPTION_RESTORED,
       targetType: AuditEntityType.CHURCH_SUBSCRIPTION,
       targetId: result.subscription.id,
-      churchId: params.churchId,
+      organizationId: params.organizationId,
       reason,
       metadata: {
         plan_key: result.subscription.plan_key,
@@ -267,7 +267,7 @@ export async function restorePlatformChurchSubscription(params: {
 }
 
 export async function listPlatformSubscriptionHistory(
-  churchId: string,
+  organizationId: string,
   limit = 40,
 ): Promise<
   Array<{
@@ -287,7 +287,7 @@ export async function listPlatformSubscriptionHistory(
     .select(
       "id, change_type, reason, old_status, new_status, created_at, old_plan_id, new_plan_id",
     )
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .order("created_at", { ascending: false })
     .limit(limit);
 

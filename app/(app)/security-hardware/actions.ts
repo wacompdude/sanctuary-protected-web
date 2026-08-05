@@ -29,11 +29,11 @@ import { FEATURE_KEYS } from "@/lib/subscriptions/feature-keys";
 import { requireFeature } from "@/lib/subscriptions/resolver";
 
 async function assertCampusBelongsToChurch(
-  churchId: string,
+  organizationId: string,
   campusId: string | null,
 ): Promise<string | null> {
   if (!campusId) return null;
-  const campuses = await listCampusesForChurch(churchId);
+  const campuses = await listCampusesForChurch(organizationId);
   if (!campuses.some((campus) => campus.id === campusId)) {
     return "Selected campus does not belong to this church.";
   }
@@ -61,7 +61,7 @@ export async function createSecurityEquipment(
     }
 
     await requireFeature({
-      churchId: church.id,
+      organizationId: church.id,
       featureKey: FEATURE_KEYS.HARDWARE_INVENTORY,
     });
 
@@ -73,7 +73,7 @@ export async function createSecurityEquipment(
     const photoFiles = collectEquipmentPhotoFiles(formData);
     if (photoFiles.length > 0) {
       await requireFeature({
-        churchId: church.id,
+        organizationId: church.id,
         featureKey: FEATURE_KEYS.HARDWARE_PHOTOS,
       });
     }
@@ -105,7 +105,7 @@ export async function createSecurityEquipment(
     if (autoTag || !assetTag) {
       const warnings = await getChurchEquipmentWarningDays(church.id);
       assetTag = await suggestAssetTag({
-        churchId: church.id,
+        organizationId: church.id,
         campusId: input.campus_id,
         category: input.category,
         prefix: warnings.assetTagPrefix,
@@ -177,7 +177,7 @@ export async function createSecurityEquipment(
     if (details) {
       const detailError = await upsertCategoryDetails({
         supabase,
-        churchId: church.id,
+        organizationId: church.id,
         equipmentId,
         category: input.category,
         values: details.values,
@@ -190,7 +190,7 @@ export async function createSecurityEquipment(
     } else {
       await clearAllCategoryDetails({
         supabase,
-        churchId: church.id,
+        organizationId: church.id,
         equipmentId,
       });
     }
@@ -200,7 +200,7 @@ export async function createSecurityEquipment(
     if (photoFiles.length > 0) {
       const photoResult = await uploadEquipmentPhotoFiles({
         supabase,
-        churchId: church.id,
+        organizationId: church.id,
         equipmentId,
         userId: user.id,
         files: photoFiles,
@@ -212,7 +212,7 @@ export async function createSecurityEquipment(
     }
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.EQUIPMENT_CREATED,
       entityType: AuditEntityType.SECURITY_EQUIPMENT,
@@ -260,7 +260,7 @@ export async function updateSecurityEquipment(
     }
 
     await requireFeature({
-      churchId: church.id,
+      organizationId: church.id,
       featureKey: FEATURE_KEYS.HARDWARE_INVENTORY,
     });
 
@@ -339,7 +339,7 @@ export async function updateSecurityEquipment(
     if (details) {
       const detailError = await upsertCategoryDetails({
         supabase,
-        churchId: church.id,
+        organizationId: church.id,
         equipmentId,
         category: input.category,
         values: details.values,
@@ -350,13 +350,13 @@ export async function updateSecurityEquipment(
     } else {
       await clearAllCategoryDetails({
         supabase,
-        churchId: church.id,
+        organizationId: church.id,
         equipmentId,
       });
     }
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action:
         previousStatus !== input.status
@@ -420,7 +420,7 @@ export async function archiveSecurityEquipment(
     }
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.EQUIPMENT_ARCHIVED,
       entityType: AuditEntityType.SECURITY_EQUIPMENT,
@@ -452,7 +452,7 @@ export async function restoreSecurityEquipment(
     }
 
     await requireFeature({
-      churchId: church.id,
+      organizationId: church.id,
       featureKey: FEATURE_KEYS.HARDWARE_INVENTORY,
     });
 
@@ -476,7 +476,7 @@ export async function restoreSecurityEquipment(
     }
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.EQUIPMENT_RESTORED,
       entityType: AuditEntityType.SECURITY_EQUIPMENT,

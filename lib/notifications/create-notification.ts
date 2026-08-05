@@ -78,7 +78,7 @@ export async function createNotification(
   try {
     const settings = await getChurchNotificationSettings(
       supabase,
-      input.churchId,
+      input.organizationId,
     );
 
     const templateKey =
@@ -96,11 +96,11 @@ export async function createNotification(
     } | null = null;
 
     const churchName =
-      (await loadChurchName(supabase, input.churchId)) ?? "Your church";
+      (await loadChurchName(supabase, input.organizationId)) ?? "Your church";
 
     const template = await getNotificationTemplate(
       supabase,
-      input.churchId,
+      input.organizationId,
       templateKey,
       "email",
     );
@@ -157,7 +157,7 @@ export async function createNotification(
     const { data: notification, error: insertError } = await supabase
       .from("notifications")
       .insert({
-        organization_id: input.churchId,
+        organization_id: input.organizationId,
         campus_id: input.campusId ?? null,
         created_by: input.createdBy ?? null,
         notification_type: input.notificationType,
@@ -228,14 +228,14 @@ export async function createNotification(
 
     await writeNotificationTargets(
       supabase,
-      input.churchId,
+      input.organizationId,
       notificationId,
       targets,
     );
 
     const audience = await resolveNotificationAudience({
       supabase,
-      churchId: input.churchId,
+      organizationId: input.organizationId,
       notificationType: input.notificationType,
       severity,
       settings,
@@ -254,7 +254,7 @@ export async function createNotification(
       const { data: row, error: recipientError } = await supabase
         .from("notification_recipients")
         .insert({
-          organization_id: input.churchId,
+          organization_id: input.organizationId,
           notification_id: notificationId,
           user_id: member.userId,
           recipient_type: "user",
@@ -299,7 +299,7 @@ export async function createNotification(
 
         if (planned.channel === "in_app" && planned.status === "delivered") {
           deliveryInserts.push({
-            organization_id: input.churchId,
+            organization_id: input.organizationId,
             notification_id: notificationId,
             recipient_id: recipientId,
             channel: "in_app",
@@ -322,7 +322,7 @@ export async function createNotification(
 
         if (planned.channel === "email" && planned.status === "pending") {
           deliveryInserts.push({
-            organization_id: input.churchId,
+            organization_id: input.organizationId,
             notification_id: notificationId,
             recipient_id: recipientId,
             channel: "email",
@@ -342,7 +342,7 @@ export async function createNotification(
 
         if (planned.status === "suppressed") {
           deliveryInserts.push({
-            organization_id: input.churchId,
+            organization_id: input.organizationId,
             notification_id: notificationId,
             recipient_id: recipientId,
             channel: planned.channel,
@@ -478,7 +478,7 @@ async function buildNotificationTargets(
 
   const groupIds = await resolveSystemGroupIdsForRoles(
     supabase,
-    input.churchId,
+    input.organizationId,
     roles,
   );
 
@@ -491,7 +491,7 @@ async function buildNotificationTargets(
 
 async function writeNotificationTargets(
   supabase: SupabaseClient,
-  churchId: string,
+  organizationId: string,
   notificationId: string,
   targets: NotificationTargetInput,
 ): Promise<void> {
@@ -499,7 +499,7 @@ async function writeNotificationTargets(
 
   for (const groupId of targets.groupIds ?? []) {
     rows.push({
-      organization_id: churchId,
+      organization_id: organizationId,
       notification_id: notificationId,
       target_type: "group",
       group_id: groupId,
@@ -507,7 +507,7 @@ async function writeNotificationTargets(
   }
   for (const membershipId of targets.membershipIds ?? []) {
     rows.push({
-      organization_id: churchId,
+      organization_id: organizationId,
       notification_id: notificationId,
       target_type: "member",
       membership_id: membershipId,
@@ -515,7 +515,7 @@ async function writeNotificationTargets(
   }
   for (const userId of targets.userIds ?? []) {
     rows.push({
-      organization_id: churchId,
+      organization_id: organizationId,
       notification_id: notificationId,
       target_type: "user",
       user_id: userId,
@@ -523,7 +523,7 @@ async function writeNotificationTargets(
   }
   for (const role of targets.roles ?? []) {
     rows.push({
-      organization_id: churchId,
+      organization_id: organizationId,
       notification_id: notificationId,
       target_type: "role",
       role,
@@ -540,12 +540,12 @@ async function writeNotificationTargets(
 
 async function loadChurchName(
   supabase: SupabaseClient,
-  churchId: string,
+  organizationId: string,
 ): Promise<string | null> {
   const { data } = await supabase
     .from("organizations")
     .select("name, display_name")
-    .eq("id", churchId)
+    .eq("id", organizationId)
     .maybeSingle();
   if (!data) return null;
   const row = data as { name?: string; display_name?: string | null };
@@ -570,13 +570,13 @@ export async function markNotificationRead(params: {
 
 export async function markAllNotificationsRead(params: {
   supabase: SupabaseClient;
-  churchId: string;
+  organizationId: string;
   userId: string;
 }): Promise<{ ok: boolean; error?: string }> {
   const { error } = await params.supabase
     .from("notification_recipients")
     .update({ read_at: new Date().toISOString() })
-    .eq("organization_id", params.churchId)
+    .eq("organization_id", params.organizationId)
     .eq("user_id", params.userId)
     .is("read_at", null)
     .is("dismissed_at", null);
@@ -607,7 +607,7 @@ export async function acknowledgeNotification(params: {
 export async function cancelNotification(params: {
   supabase: SupabaseClient;
   notificationId: string;
-  churchId: string;
+  organizationId: string;
 }): Promise<{ ok: boolean; error?: string }> {
   const now = new Date().toISOString();
   const { error } = await params.supabase
@@ -617,7 +617,7 @@ export async function cancelNotification(params: {
       cancelled_at: now,
     })
     .eq("id", params.notificationId)
-    .eq("organization_id", params.churchId);
+    .eq("organization_id", params.organizationId);
 
   if (error) return { ok: false, error: error.message };
 

@@ -19,7 +19,7 @@ export type BillingPeriodBounds = {
 };
 
 export type UsageMeter = {
-  churchId: string;
+  organizationId: string;
   featureKey: FeatureKey | string;
   subscriptionId: string | null;
   periodStart: string | null;
@@ -37,7 +37,7 @@ export type UsageMeter = {
 };
 
 export type RecordUsageEventInput = {
-  churchId: string;
+  organizationId: string;
   featureKey: FeatureKey | string;
   usageKey: string;
   quantity: number;

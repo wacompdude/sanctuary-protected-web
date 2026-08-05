@@ -125,7 +125,7 @@ assert(
 );
 
 const payload = buildCompletionRecordPayload({
-  churchId: "church-1",
+  organizationId: "church-1",
   userId: "user-1",
   courseName: "Radio Communication",
   categoryName: "Policies and Communication",

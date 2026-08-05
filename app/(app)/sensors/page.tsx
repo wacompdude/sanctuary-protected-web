@@ -16,7 +16,7 @@ async function SensorsContent() {
   try {
     const { church } = await getAuthenticatedUserWithChurch();
     const access = await hasFeature({
-      churchId: church.id,
+      organizationId: church.id,
       featureKey: FEATURE_KEYS.SENSORS,
     });
     if (!access.allowed) {

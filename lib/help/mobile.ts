@@ -138,7 +138,7 @@ export type HelpMobileArticleService = {
     client: SupabaseClient;
     articleId: string;
     articleVersionId?: string | null;
-    churchId?: string | null;
+    organizationId?: string | null;
     userId?: string | null;
   }) => Promise<void>;
   submitFeedback: (params: {
@@ -148,7 +148,7 @@ export type HelpMobileArticleService = {
     rating: "yes" | "no";
     comment?: string | null;
     articleVersionId?: string | null;
-    churchId?: string | null;
+    organizationId?: string | null;
   }) => Promise<{ error: string | null }>;
 };
 
@@ -167,7 +167,7 @@ export const helpMobileArticleService: HelpMobileArticleService = {
       client: params.client,
       articleId: params.articleId,
       articleVersionId: params.articleVersionId,
-      churchId: params.churchId,
+      organizationId: params.organizationId,
       userId: params.userId,
     }),
   submitFeedback: (params) =>
@@ -178,7 +178,7 @@ export const helpMobileArticleService: HelpMobileArticleService = {
       rating: params.rating,
       comment: params.comment,
       articleVersionId: params.articleVersionId,
-      churchId: params.churchId,
+      organizationId: params.organizationId,
     }),
 };
 
@@ -192,7 +192,7 @@ export type HelpMobileSearchService = {
     client: SupabaseClient;
     query: string;
     resultCount: number;
-    churchId?: string | null;
+    organizationId?: string | null;
     userId?: string | null;
     selectedArticleId?: string | null;
   }) => Promise<void>;
@@ -205,7 +205,7 @@ export const helpMobileSearchService: HelpMobileSearchService = {
       client: params.client,
       query: params.query,
       resultCount: params.resultCount,
-      churchId: params.churchId,
+      organizationId: params.organizationId,
       userId: params.userId,
       selectedArticleId: params.selectedArticleId,
     }),

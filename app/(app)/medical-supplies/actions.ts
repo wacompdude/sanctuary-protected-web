@@ -41,7 +41,7 @@ export async function createMedicalSupply(
     }
 
     await requireFeature({
-      churchId: church.id,
+      organizationId: church.id,
       featureKey: FEATURE_KEYS.MEDICAL_INVENTORY,
     });
 
@@ -73,7 +73,7 @@ export async function createMedicalSupply(
     supplyId = data.id;
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.MEDICAL_SUPPLY_CREATED,
       entityType: AuditEntityType.MEDICAL_SUPPLY,
@@ -106,7 +106,7 @@ export async function updateMedicalSupply(
     }
 
     await requireFeature({
-      churchId: church.id,
+      organizationId: church.id,
       featureKey: FEATURE_KEYS.MEDICAL_INVENTORY,
     });
 
@@ -133,7 +133,7 @@ export async function updateMedicalSupply(
     }
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.MEDICAL_SUPPLY_UPDATED,
       entityType: AuditEntityType.MEDICAL_SUPPLY,
@@ -175,7 +175,7 @@ export async function archiveMedicalSupply(
     if (error) return { error: error.message };
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.MEDICAL_SUPPLY_ARCHIVED,
       entityType: AuditEntityType.MEDICAL_SUPPLY,
@@ -205,7 +205,7 @@ export async function restoreMedicalSupply(
     }
 
     await requireFeature({
-      churchId: church.id,
+      organizationId: church.id,
       featureKey: FEATURE_KEYS.MEDICAL_INVENTORY,
     });
 
@@ -221,7 +221,7 @@ export async function restoreMedicalSupply(
     if (error) return { error: error.message };
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.MEDICAL_SUPPLY_RESTORED,
       entityType: AuditEntityType.MEDICAL_SUPPLY,
@@ -253,7 +253,7 @@ export async function recordMedicalSupplyUsage(
     }
 
     await requireFeature({
-      churchId: church.id,
+      organizationId: church.id,
       featureKey: FEATURE_KEYS.MEDICAL_INCIDENT_USAGE,
     });
 
@@ -320,7 +320,7 @@ export async function recordMedicalSupplyUsage(
     }
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.MEDICAL_SUPPLY_USED,
       entityType: AuditEntityType.MEDICAL_SUPPLY_USAGE,
@@ -378,7 +378,7 @@ export async function removeMedicalSupplyUsage(
     if (error) return { error: error.message };
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.MEDICAL_SUPPLY_USAGE_REMOVED,
       entityType: AuditEntityType.MEDICAL_SUPPLY_USAGE,

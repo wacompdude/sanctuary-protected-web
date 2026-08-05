@@ -31,7 +31,7 @@ export async function submitHelpFeedbackAction(
     rating: validated.data.rating,
     comment: validated.data.comment,
     articleVersionId,
-    churchId: church.id,
+    organizationId: church.id,
     userId: user.id,
   });
 
@@ -55,7 +55,7 @@ export async function recordHelpArticleViewAction(params: {
     await recordHelpArticleView({
       articleId: params.articleId,
       articleVersionId: params.articleVersionId ?? null,
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
     });
   } catch {

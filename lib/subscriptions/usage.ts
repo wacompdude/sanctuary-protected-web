@@ -104,7 +104,7 @@ async function resolveFeatureId(
 }
 
 function buildMeter(params: {
-  churchId: string;
+  organizationId: string;
   featureKey: string;
   subscriptionId: string | null;
   periodStart: string | null;
@@ -123,7 +123,7 @@ function buildMeter(params: {
       : Math.max(0, params.limit - quantityCommitted);
 
   return {
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     featureKey: params.featureKey,
     subscriptionId: params.subscriptionId,
     periodStart: params.periodStart,
@@ -148,22 +148,22 @@ function buildMeter(params: {
  * Read period usage for a metered feature (authenticated SELECT or admin).
  */
 export async function getUsageMeter(params: {
-  churchId: string;
+  organizationId: string;
   featureKey: FeatureKey | string;
   client?: SupabaseClient;
 }): Promise<UsageMeter> {
-  const churchId = params.churchId.trim();
+  const organizationId = params.organizationId.trim();
   const featureKey = String(params.featureKey);
   const supabase = params.client ?? (await createClient());
 
   const [subscription, limitResult] = await Promise.all([
-    getChurchSubscription(churchId, supabase),
-    getFeatureLimit({ churchId, featureKey }),
+    getChurchSubscription(organizationId, supabase),
+    getFeatureLimit({ organizationId, featureKey }),
   ]);
 
   if (!subscription) {
     return buildMeter({
-      churchId,
+      organizationId,
       featureKey,
       subscriptionId: null,
       periodStart: null,
@@ -191,7 +191,7 @@ export async function getUsageMeter(params: {
 
   if (!feature) {
     return buildMeter({
-      churchId,
+      organizationId,
       featureKey,
       subscriptionId: subscription.id,
       periodStart: period.periodStart,
@@ -215,7 +215,7 @@ export async function getUsageMeter(params: {
     .maybeSingle();
 
   return buildMeter({
-    churchId,
+    organizationId,
     featureKey,
     subscriptionId: subscription.id,
     periodStart: period.periodStart,
@@ -232,7 +232,7 @@ export async function getUsageMeter(params: {
 async function applyAggregateDelta(
   admin: SupabaseClient,
   params: {
-    churchId: string;
+    organizationId: string;
     subscriptionId: string;
     featureId: string;
     periodStart: string;
@@ -254,7 +254,7 @@ async function applyAggregateDelta(
     const used = Math.max(0, params.usedDelta);
     const reserved = Math.max(0, params.reservedDelta);
     const { error } = await admin.from("subscription_usage").insert({
-      organization_id: params.churchId,
+      organization_id: params.organizationId,
       subscription_id: params.subscriptionId,
       feature_id: params.featureId,
       period_start: params.periodStart,
@@ -324,19 +324,19 @@ export async function recordUsageEvent(
   input: RecordUsageEventInput,
 ): Promise<RecordUsageEventResult> {
   const admin = requireAdmin();
-  const churchId = input.churchId.trim();
+  const organizationId = input.organizationId.trim();
   const featureKey = String(input.featureKey);
   const usageKey = input.usageKey.trim();
   const quantity = Number(input.quantity);
 
-  if (!churchId || !usageKey) {
-    throw new Error("churchId and usageKey are required.");
+  if (!organizationId || !usageKey) {
+    throw new Error("organizationId and usageKey are required.");
   }
   if (!Number.isFinite(quantity) || quantity === 0) {
     throw new Error("Usage quantity must be a non-zero number.");
   }
 
-  const subscription = await getChurchSubscription(churchId, admin);
+  const subscription = await getChurchSubscription(organizationId, admin);
   if (!subscription) {
     throw new EntitlementError(
       "No active church subscription is available for usage metering.",
@@ -354,13 +354,13 @@ export async function recordUsageEvent(
   const { data: existingEvent } = await admin
     .from("subscription_usage_events")
     .select("id")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("usage_key", usageKey)
     .maybeSingle();
 
   if (existingEvent) {
     const meter = await getUsageMeter({
-      churchId,
+      organizationId,
       featureKey,
       client: admin,
     });
@@ -380,7 +380,7 @@ export async function recordUsageEvent(
   const { data: inserted, error: insertError } = await admin
     .from("subscription_usage_events")
     .insert({
-      organization_id: churchId,
+      organization_id: organizationId,
       subscription_id: subscription.id,
       feature_id: featureId,
       usage_key: usageKey,
@@ -399,7 +399,7 @@ export async function recordUsageEvent(
   if (insertError) {
     if (insertError.code === "23505") {
       const meter = await getUsageMeter({
-        churchId,
+        organizationId,
         featureKey,
         client: admin,
       });
@@ -418,7 +418,7 @@ export async function recordUsageEvent(
     quantity,
   );
   await applyAggregateDelta(admin, {
-    churchId,
+    organizationId,
     subscriptionId: subscription.id,
     featureId,
     periodStart: period.periodStart,
@@ -428,7 +428,7 @@ export async function recordUsageEvent(
   });
 
   const meter = await getUsageMeter({
-    churchId,
+    organizationId,
     featureKey,
     client: admin,
   });
@@ -442,7 +442,7 @@ export async function recordUsageEvent(
 }
 
 export async function reserveUsage(params: {
-  churchId: string;
+  organizationId: string;
   featureKey: FeatureKey | string;
   usageKey: string;
   quantity: number;
@@ -458,7 +458,7 @@ export async function reserveUsage(params: {
 }
 
 export async function consumeUsage(params: {
-  churchId: string;
+  organizationId: string;
   featureKey: FeatureKey | string;
   usageKey: string;
   quantity: number;
@@ -474,7 +474,7 @@ export async function consumeUsage(params: {
 }
 
 export async function releaseUsage(params: {
-  churchId: string;
+  organizationId: string;
   featureKey: FeatureKey | string;
   usageKey: string;
   quantity: number;
@@ -494,14 +494,14 @@ export async function releaseUsage(params: {
  * Safe to re-run; overwrites quantity_used / quantity_reserved.
  */
 export async function reconcileUsageFromEvents(params: {
-  churchId: string;
+  organizationId: string;
   featureKey: FeatureKey | string;
 }): Promise<UsageMeter> {
   const admin = requireAdmin();
-  const churchId = params.churchId.trim();
+  const organizationId = params.organizationId.trim();
   const featureKey = String(params.featureKey);
 
-  const subscription = await getChurchSubscription(churchId, admin);
+  const subscription = await getChurchSubscription(organizationId, admin);
   if (!subscription) {
     throw new EntitlementError(
       "No active church subscription is available for usage reconciliation.",
@@ -519,7 +519,7 @@ export async function reconcileUsageFromEvents(params: {
   const { data: events, error } = await admin
     .from("subscription_usage_events")
     .select("quantity, event_type")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("subscription_id", subscription.id)
     .eq("feature_id", featureId)
     .eq("billing_period_start", period.periodStart)
@@ -564,7 +564,7 @@ export async function reconcileUsageFromEvents(params: {
     }
   } else if (used > 0 || reserved > 0) {
     const { error: insertError } = await admin.from("subscription_usage").insert({
-      organization_id: churchId,
+      organization_id: organizationId,
       subscription_id: subscription.id,
       feature_id: featureId,
       period_start: period.periodStart,
@@ -578,18 +578,18 @@ export async function reconcileUsageFromEvents(params: {
     }
   }
 
-  return getUsageMeter({ churchId, featureKey, client: admin });
+  return getUsageMeter({ organizationId, featureKey, client: admin });
 }
 
 /** Active seats are derived (not ledger-metered). */
-export async function getSeatUsageMeter(churchId: string): Promise<UsageMeter> {
+export async function getSeatUsageMeter(organizationId: string): Promise<UsageMeter> {
   const [activeSeats, limitResult, subscription] = await Promise.all([
-    countActiveChurchMembers(churchId),
+    countActiveChurchMembers(organizationId),
     getFeatureLimit({
-      churchId,
+      organizationId,
       featureKey: FEATURE_KEYS.USERS_ACTIVE_LIMIT,
     }),
-    getChurchSubscription(churchId),
+    getChurchSubscription(organizationId),
   ]);
 
   const period = subscription
@@ -601,7 +601,7 @@ export async function getSeatUsageMeter(churchId: string): Promise<UsageMeter> {
     : { periodStart: null, periodEnd: null };
 
   return buildMeter({
-    churchId,
+    organizationId,
     featureKey: FEATURE_KEYS.USERS_ACTIVE_LIMIT,
     subscriptionId: subscription?.id ?? null,
     periodStart: period.periodStart,
@@ -616,10 +616,10 @@ export async function getSeatUsageMeter(churchId: string): Promise<UsageMeter> {
 }
 
 export async function getSmsSegmentUsageMeter(
-  churchId: string,
+  organizationId: string,
 ): Promise<UsageMeter> {
   return getUsageMeter({
-    churchId,
+    organizationId,
     featureKey: FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT,
   });
 }
@@ -629,12 +629,12 @@ export async function getSmsSegmentUsageMeter(
  * Does not record usage — call reserve/consume when delivery is scheduled/sent.
  */
 export async function requireSmsSegmentCapacity(params: {
-  churchId: string;
+  organizationId: string;
   estimatedSegments: number;
 }): Promise<UsageMeter> {
-  const meter = await getSmsSegmentUsageMeter(params.churchId);
+  const meter = await getSmsSegmentUsageMeter(params.organizationId);
   await requireFeatureCapacity({
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     featureKey: FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT,
     currentUsage: meter.quantityCommitted,
     requestedIncrease: Math.max(0, params.estimatedSegments),
@@ -646,14 +646,14 @@ export async function requireSmsSegmentCapacity(params: {
  * Record consumed SMS segments for a successful delivery (idempotent by delivery id).
  */
 export async function recordSmsSegmentsConsumed(params: {
-  churchId: string;
+  organizationId: string;
   deliveryId: string;
   segments: number;
   notificationId?: string | null;
   metadata?: Record<string, unknown>;
 }): Promise<RecordUsageEventResult> {
   return consumeUsage({
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     featureKey: FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT,
     usageKey: `sms:consume:delivery:${params.deliveryId}`,
     quantity: Math.max(1, Math.floor(params.segments)),
@@ -667,7 +667,7 @@ export async function recordSmsSegmentsConsumed(params: {
 }
 
 export async function reserveSmsSegments(params: {
-  churchId: string;
+  organizationId: string;
   reservationKey: string;
   segments: number;
   sourceType?: string | null;
@@ -675,7 +675,7 @@ export async function reserveSmsSegments(params: {
   metadata?: Record<string, unknown>;
 }): Promise<RecordUsageEventResult> {
   return reserveUsage({
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     featureKey: FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT,
     usageKey: `sms:reserve:${params.reservationKey}`,
     quantity: Math.max(1, Math.floor(params.segments)),
@@ -686,7 +686,7 @@ export async function reserveSmsSegments(params: {
 }
 
 export async function releaseSmsSegmentReservation(params: {
-  churchId: string;
+  organizationId: string;
   reservationKey: string;
   segments: number;
   sourceType?: string | null;
@@ -694,7 +694,7 @@ export async function releaseSmsSegmentReservation(params: {
   metadata?: Record<string, unknown>;
 }): Promise<RecordUsageEventResult> {
   return releaseUsage({
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     featureKey: FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT,
     usageKey: `sms:release:${params.reservationKey}`,
     quantity: Math.max(1, Math.floor(params.segments)),

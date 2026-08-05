@@ -24,7 +24,7 @@ describe("getTrainingAccess", () => {
     const result = await getTrainingAccess("church-1");
     expect(result.allowed).toBe(true);
     expect(hasFeature).toHaveBeenCalledWith({
-      churchId: "church-1",
+      organizationId: "church-1",
       featureKey: FEATURE_KEYS.TRAINING_MANAGEMENT,
     });
   });

@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getDashboardBoxDefinition } from "@/lib/dashboard/dashboard-box-registry";
 import {
-  assertDashboardChurchId,
+  assertDashboardOrganizationId,
   collectObsoleteDashboardBoxKeys,
 } from "@/lib/dashboard/security";
 import { settingsMatchSystemDefault } from "@/lib/dashboard/validation";
@@ -12,16 +12,16 @@ import type {
 
 export async function replaceChurchDashboardBoxSettings(params: {
   supabase: SupabaseClient;
-  churchId: string;
+  organizationId: string;
   userId: string;
   settings: DashboardBoxSettingInput[];
 }): Promise<{ ok: true } | { ok: false; error: string }> {
-  const churchId = assertDashboardChurchId(params.churchId);
+  const organizationId = assertDashboardOrganizationId(params.organizationId);
   const { supabase, userId, settings } = params;
 
   const purge = await purgeObsoleteChurchDashboardBoxSettings({
     supabase,
-    churchId,
+    organizationId,
   });
   if (!purge.ok) {
     return purge;
@@ -30,7 +30,7 @@ export async function replaceChurchDashboardBoxSettings(params: {
   const { data: existingRows, error: existingError } = await supabase
     .from("dashboard_box_settings")
     .select("box_key")
-    .eq("organization_id", churchId);
+    .eq("organization_id", organizationId);
   if (existingError) {
     return { ok: false, error: friendlyDashboardDbError(existingError.message) };
   }
@@ -64,7 +64,7 @@ export async function replaceChurchDashboardBoxSettings(params: {
     }
 
     const payload = {
-      organization_id: churchId,
+      organization_id: organizationId,
       box_key: row.boxKey,
       is_visible: row.isVisible,
       display_order: row.displayOrder,
@@ -85,7 +85,7 @@ export async function replaceChurchDashboardBoxSettings(params: {
     const { error: deleteError } = await supabase
       .from("dashboard_box_settings")
       .delete()
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .in("box_key", toDeleteKeys);
     if (deleteError) {
       return { ok: false, error: friendlyDashboardDbError(deleteError.message) };
@@ -112,7 +112,7 @@ export async function replaceChurchDashboardBoxSettings(params: {
         use_automatic_text_color: row.use_automatic_text_color,
         updated_by: row.updated_by,
       })
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .eq("box_key", row.box_key);
     if (updateError) {
       return { ok: false, error: friendlyDashboardDbError(updateError.message) };
@@ -126,7 +126,7 @@ export async function replaceChurchDashboardBoxSettings(params: {
     const { error } = await supabase
       .from("dashboard_box_settings")
       .delete()
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .in("box_key", leftover);
     if (error) {
       return { ok: false, error: friendlyDashboardDbError(error.message) };
@@ -138,14 +138,14 @@ export async function replaceChurchDashboardBoxSettings(params: {
 
 export async function resetChurchDashboardBoxSetting(params: {
   supabase: SupabaseClient;
-  churchId: string;
+  organizationId: string;
   boxKey: string;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
-  const churchId = assertDashboardChurchId(params.churchId);
+  const organizationId = assertDashboardOrganizationId(params.organizationId);
   const { error } = await params.supabase
     .from("dashboard_box_settings")
     .delete()
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("box_key", params.boxKey);
 
   if (error) {
@@ -156,13 +156,13 @@ export async function resetChurchDashboardBoxSetting(params: {
 
 export async function resetAllChurchDashboardBoxSettings(params: {
   supabase: SupabaseClient;
-  churchId: string;
+  organizationId: string;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
-  const churchId = assertDashboardChurchId(params.churchId);
+  const organizationId = assertDashboardOrganizationId(params.organizationId);
   const { error } = await params.supabase
     .from("dashboard_box_settings")
     .delete()
-    .eq("organization_id", churchId);
+    .eq("organization_id", organizationId);
 
   if (error) {
     return { ok: false, error: friendlyDashboardDbError(error.message) };
@@ -172,20 +172,20 @@ export async function resetAllChurchDashboardBoxSettings(params: {
 
 /**
  * Delete override rows whose box_key is no longer in the app registry.
- * Safe no-op when none exist. Scoped strictly to churchId.
+ * Safe no-op when none exist. Scoped strictly to organizationId.
  */
 export async function purgeObsoleteChurchDashboardBoxSettings(params: {
   supabase: SupabaseClient;
-  churchId: string;
+  organizationId: string;
 }): Promise<
   | { ok: true; purgedKeys: string[] }
   | { ok: false; error: string }
 > {
-  const churchId = assertDashboardChurchId(params.churchId);
+  const organizationId = assertDashboardOrganizationId(params.organizationId);
   const { data, error } = await params.supabase
     .from("dashboard_box_settings")
     .select("box_key")
-    .eq("organization_id", churchId);
+    .eq("organization_id", organizationId);
 
   if (error) {
     return { ok: false, error: friendlyDashboardDbError(error.message) };
@@ -202,7 +202,7 @@ export async function purgeObsoleteChurchDashboardBoxSettings(params: {
   const { error: deleteError } = await params.supabase
     .from("dashboard_box_settings")
     .delete()
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .in("box_key", obsolete);
 
   if (deleteError) {

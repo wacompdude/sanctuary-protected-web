@@ -168,7 +168,7 @@ export type ResolvedRecipient = {
 };
 
 export type CreateNotificationInput = {
-  churchId: string;
+  organizationId: string;
   campusId?: string | null;
   createdBy?: string | null;
   notificationType: NotificationType | string;

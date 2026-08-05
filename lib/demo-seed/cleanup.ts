@@ -11,7 +11,7 @@ import { DEMO_CLEANUP_TABLE_ORDER } from "@/lib/demo-seed/registry";
 
 export type DemoCleanupSummary = {
   seedSource: string;
-  churchId: string | null;
+  organizationId: string | null;
   churchName: string;
   startedAt: string;
   finishedAt: string | null;
@@ -26,7 +26,7 @@ export type DemoCleanupSummary = {
 function emptyCleanupSummary(): DemoCleanupSummary {
   return {
     seedSource: DEMO_SEED_SOURCE,
-    churchId: null,
+    organizationId: null,
     churchName: DEMO_CHURCH_NAME,
     startedAt: new Date().toISOString(),
     finishedAt: null,
@@ -65,7 +65,7 @@ export async function cleanupFirstChurchDemoSeed(): Promise<DemoCleanupSummary> 
       .select("id")
       .eq("seed_source", DEMO_SEED_SOURCE)
       .maybeSingle();
-    summary.churchId = church?.id ? String(church.id) : null;
+    summary.organizationId = church?.id ? String(church.id) : null;
 
     const { data: records, error: listError } = await admin
       .from("demo_seed_records")
@@ -141,14 +141,14 @@ export async function cleanupFirstChurchDemoSeed(): Promise<DemoCleanupSummary> 
       await admin.from("demo_seed_records").delete().eq("id", row.id);
     }
 
-    if (summary.churchId || byTable.has("organizations")) {
-      const { data: deletedChurchId, error: churchDeleteError } = await admin.rpc(
+    if (summary.organizationId || byTable.has("organizations")) {
+      const { data: deletedOrganizationId, error: churchDeleteError } = await admin.rpc(
         "demo_seed_delete_church",
         { p_seed_source: DEMO_SEED_SOURCE },
       );
       if (churchDeleteError) {
         summary.warnings.push(`Church delete: ${churchDeleteError.message}`);
-      } else if (deletedChurchId) {
+      } else if (deletedOrganizationId) {
         bumpDeleted(summary, "organizations");
         summary.logs.push("Deleted demo church via service-role RPC");
         for (const row of byTable.get("organizations") ?? []) {

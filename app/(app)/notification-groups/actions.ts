@@ -96,7 +96,7 @@ export async function createNotificationGroupAction(
     createdId = data.id as string;
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.NOTIFICATION_GROUP_CREATED,
       entityType: AuditEntityType.NOTIFICATION_GROUP,
@@ -202,7 +202,7 @@ export async function updateNotificationGroupAction(
     }
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action:
         status === "archived"
@@ -317,7 +317,7 @@ export async function addNotificationGroupMembersAction(
     }
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.NOTIFICATION_GROUP_MEMBER_ADDED,
       entityType: AuditEntityType.NOTIFICATION_GROUP,
@@ -413,7 +413,7 @@ export async function removeNotificationGroupMemberAction(
     if (error) return { error: error.message };
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.NOTIFICATION_GROUP_MEMBER_REMOVED,
       entityType: AuditEntityType.NOTIFICATION_GROUP,
@@ -498,7 +498,7 @@ export async function upsertNotificationGroupDefaultAction(
     }
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.NOTIFICATION_GROUP_DEFAULTS_UPDATED,
       entityType: AuditEntityType.NOTIFICATION_GROUP,
@@ -551,7 +551,7 @@ export async function addNotificationGroupNestingAction(
 
     const result = await addGroupToGroup({
       supabase,
-      churchId: church.id,
+      organizationId: church.id,
       parentGroupId,
       childGroupId,
       addedBy: user.id,
@@ -561,7 +561,7 @@ export async function addNotificationGroupNestingAction(
 
     if (!result.ok) {
       await writeAuditLog(supabase, {
-        churchId: church.id,
+        organizationId: church.id,
         userId: user.id,
         action: AuditAction.NOTIFICATION_GROUP_NESTING_REJECTED,
         entityType: AuditEntityType.NOTIFICATION_GROUP,
@@ -575,7 +575,7 @@ export async function addNotificationGroupNestingAction(
     }
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.NOTIFICATION_GROUP_CHILD_ADDED,
       entityType: AuditEntityType.NOTIFICATION_GROUP,
@@ -630,14 +630,14 @@ export async function removeNotificationGroupNestingAction(
 
     const result = await removeGroupFromGroup({
       supabase,
-      churchId: church.id,
+      organizationId: church.id,
       parentGroupId,
       nestingId,
     });
     if (!result.ok) return { error: result.error };
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.NOTIFICATION_GROUP_CHILD_REMOVED,
       entityType: AuditEntityType.NOTIFICATION_GROUP,

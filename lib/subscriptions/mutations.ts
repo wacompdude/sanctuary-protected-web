@@ -155,7 +155,7 @@ function mapSubscriptionRow(
 
 async function getCurrentSubscription(
   admin: SupabaseClient,
-  churchId: string,
+  organizationId: string,
 ): Promise<ChurchSubscriptionRecord | null> {
   const { data, error } = await admin
     .from("organization_subscriptions")
@@ -181,7 +181,7 @@ async function getCurrentSubscription(
       )
     `,
     )
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .in("status", [...CURRENT_SUBSCRIPTION_STATUSES])
     .order("started_at", { ascending: false })
     .limit(1)
@@ -203,7 +203,7 @@ async function getCurrentSubscription(
 async function writeChangeHistory(
   admin: SupabaseClient,
   params: {
-    churchId: string;
+    organizationId: string;
     subscriptionId: string;
     oldPlanId?: string | null;
     newPlanId?: string | null;
@@ -216,7 +216,7 @@ async function writeChangeHistory(
   },
 ) {
   const { error } = await admin.from("subscription_change_history").insert({
-    organization_id: params.churchId,
+    organization_id: params.organizationId,
     subscription_id: params.subscriptionId,
     old_plan_id: params.oldPlanId ?? null,
     new_plan_id: params.newPlanId ?? null,
@@ -238,7 +238,7 @@ async function writeChangeHistory(
 async function syncChurchDisplayFields(
   admin: SupabaseClient,
   params: {
-    churchId: string;
+    organizationId: string;
     planKey: string;
     planDisplayName: string;
     trialEnd: string | null;
@@ -257,7 +257,7 @@ async function syncChurchDisplayFields(
       trial_ends_at:
         params.status === "trialing" ? params.trialEnd : null,
     })
-    .eq("id", params.churchId);
+    .eq("id", params.organizationId);
 
   if (error) {
     console.error("Failed to sync churches.plan_name / trial_ends_at:", error.message);
@@ -267,7 +267,7 @@ async function syncChurchDisplayFields(
 async function createSubscriptionRow(
   admin: SupabaseClient,
   params: {
-    churchId: string;
+    organizationId: string;
     plan: SubscriptionPlanRecord;
     status: ChurchSubscriptionStatus;
     periodDays: number;
@@ -285,7 +285,7 @@ async function createSubscriptionRow(
   const { data, error } = await admin
     .from("organization_subscriptions")
     .insert({
-      organization_id: params.churchId,
+      organization_id: params.organizationId,
       plan_id: params.plan.id,
       status: params.status,
       billing_interval: params.plan.billing_interval,
@@ -327,7 +327,7 @@ async function createSubscriptionRow(
   });
 
   await writeChangeHistory(admin, {
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     subscriptionId: subscription.id,
     newPlanId: params.plan.id,
     newStatus: params.status,
@@ -342,7 +342,7 @@ async function createSubscriptionRow(
   });
 
   await auditSubscriptionCreated(admin, {
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     userId: params.userId,
     subscriptionId: subscription.id,
     planKey: String(params.plan.plan_key),
@@ -351,7 +351,7 @@ async function createSubscriptionRow(
   });
 
   await syncChurchDisplayFields(admin, {
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     planKey: String(params.plan.plan_key),
     planDisplayName: params.plan.display_name,
     trialEnd: subscription.trial_end,
@@ -366,7 +366,7 @@ async function createSubscriptionRow(
  * Creates one when missing. Never auto-downgrades an existing plan.
  */
 export async function ensureChurchSubscription(params: {
-  churchId: string;
+  organizationId: string;
   planKey?: PlanKey | string;
   status?: ChurchSubscriptionStatus;
   periodDays?: number;
@@ -377,13 +377,13 @@ export async function ensureChurchSubscription(params: {
   recommendFromUsage?: boolean;
 }): Promise<SubscriptionMutationResult> {
   const admin = requireAdmin();
-  const churchId = params.churchId.trim();
-  if (!churchId) throw new Error("churchId is required.");
+  const organizationId = params.organizationId.trim();
+  if (!organizationId) throw new Error("organizationId is required.");
 
-  const existing = await getCurrentSubscription(admin, churchId);
+  const existing = await getCurrentSubscription(admin, organizationId);
   if (existing) {
     await syncChurchDisplayFields(admin, {
-      churchId,
+      organizationId,
       planKey: String(existing.plan_key),
       planDisplayName: existing.plan_display_name,
       trialEnd: existing.trial_end,
@@ -404,7 +404,7 @@ export async function ensureChurchSubscription(params: {
   if (params.planKey) {
     targetPlanKey = params.planKey;
   } else if (params.recommendFromUsage) {
-    const recommendation = await recommendPlanForChurch(admin, churchId);
+    const recommendation = await recommendPlanForChurch(admin, organizationId);
     targetPlanKey = recommendation.planKey;
     recommendedPlanKey = recommendation.planKey;
     recommendMeta = { usage_signals: recommendation.signals };
@@ -416,7 +416,7 @@ export async function ensureChurchSubscription(params: {
   const plan = await loadPlanByKey(admin, targetPlanKey);
   const status = params.status ?? "trialing";
   const subscription = await createSubscriptionRow(admin, {
-    churchId,
+    organizationId,
     plan,
     status,
     periodDays: params.periodDays ?? 30,
@@ -441,7 +441,7 @@ export async function ensureChurchSubscription(params: {
  * `allowDowngrade` is explicitly true.
  */
 export async function changeChurchSubscriptionPlan(params: {
-  churchId: string;
+  organizationId: string;
   planKey: PlanKey | string;
   status?: ChurchSubscriptionStatus;
   userId?: string | null;
@@ -451,15 +451,15 @@ export async function changeChurchSubscriptionPlan(params: {
   periodDays?: number;
 }): Promise<SubscriptionMutationResult> {
   const admin = requireAdmin();
-  const churchId = params.churchId.trim();
-  if (!churchId) throw new Error("churchId is required.");
+  const organizationId = params.organizationId.trim();
+  if (!organizationId) throw new Error("organizationId is required.");
 
   const newPlan = await loadPlanByKey(admin, params.planKey);
-  const existing = await getCurrentSubscription(admin, churchId);
+  const existing = await getCurrentSubscription(admin, organizationId);
 
   if (!existing) {
     const created = await createSubscriptionRow(admin, {
-      churchId,
+      organizationId,
       plan: newPlan,
       status: params.status ?? "active",
       periodDays: params.periodDays ?? 30,
@@ -539,7 +539,7 @@ export async function changeChurchSubscriptionPlan(params: {
 
   if (planChanged || statusChanged) {
     await writeChangeHistory(admin, {
-      churchId,
+      organizationId,
       subscriptionId: subscription.id,
       oldPlanId: existing.plan_id,
       newPlanId: newPlan.id,
@@ -558,7 +558,7 @@ export async function changeChurchSubscriptionPlan(params: {
 
   if (planChanged) {
     await auditSubscriptionPlanChanged(admin, {
-      churchId,
+      organizationId,
       userId: params.userId,
       subscriptionId: subscription.id,
       oldPlanKey: String(existing.plan_key),
@@ -571,7 +571,7 @@ export async function changeChurchSubscriptionPlan(params: {
 
   if (statusChanged) {
     await auditSubscriptionStatusChanged(admin, {
-      churchId,
+      organizationId,
       userId: params.userId,
       subscriptionId: subscription.id,
       oldStatus: existing.status,
@@ -582,7 +582,7 @@ export async function changeChurchSubscriptionPlan(params: {
   }
 
   await syncChurchDisplayFields(admin, {
-    churchId,
+    organizationId,
     planKey: String(newPlan.plan_key),
     planDisplayName: newPlan.display_name,
     trialEnd: subscription.trial_end,
@@ -602,16 +602,16 @@ export async function changeChurchSubscriptionPlan(params: {
  * Does not delete data or immediately revoke the current period.
  */
 export async function scheduleChurchSubscriptionCancellation(params: {
-  churchId: string;
+  organizationId: string;
   userId?: string | null;
   source?: string;
   reason?: string | null;
 }): Promise<SubscriptionMutationResult> {
   const admin = requireAdmin();
-  const churchId = params.churchId.trim();
-  if (!churchId) throw new Error("churchId is required.");
+  const organizationId = params.organizationId.trim();
+  if (!organizationId) throw new Error("organizationId is required.");
 
-  const existing = await getCurrentSubscription(admin, churchId);
+  const existing = await getCurrentSubscription(admin, organizationId);
   if (!existing) {
     throw new Error("Church has no current subscription to cancel.");
   }
@@ -663,7 +663,7 @@ export async function scheduleChurchSubscriptionCancellation(params: {
   });
 
   await writeChangeHistory(admin, {
-    churchId,
+    organizationId,
     subscriptionId: subscription.id,
     oldPlanId: existing.plan_id,
     newPlanId: existing.plan_id,
@@ -680,7 +680,7 @@ export async function scheduleChurchSubscriptionCancellation(params: {
   });
 
   await auditSubscriptionStatusChanged(admin, {
-    churchId,
+    organizationId,
     userId: params.userId,
     subscriptionId: subscription.id,
     oldStatus: existing.status,
@@ -698,17 +698,17 @@ export async function scheduleChurchSubscriptionCancellation(params: {
 }
 
 export async function updateChurchSubscriptionStatus(params: {
-  churchId: string;
+  organizationId: string;
   status: ChurchSubscriptionStatus;
   userId?: string | null;
   source?: string;
   reason?: string | null;
 }): Promise<SubscriptionMutationResult> {
   const admin = requireAdmin();
-  const churchId = params.churchId.trim();
-  if (!churchId) throw new Error("churchId is required.");
+  const organizationId = params.organizationId.trim();
+  if (!organizationId) throw new Error("organizationId is required.");
 
-  const existing = await getCurrentSubscription(admin, churchId);
+  const existing = await getCurrentSubscription(admin, organizationId);
   if (!existing) {
     throw new Error("Church has no current subscription to update.");
   }
@@ -772,7 +772,7 @@ export async function updateChurchSubscriptionStatus(params: {
   });
 
   await writeChangeHistory(admin, {
-    churchId,
+    organizationId,
     subscriptionId: subscription.id,
     oldPlanId: existing.plan_id,
     newPlanId: existing.plan_id,
@@ -787,7 +787,7 @@ export async function updateChurchSubscriptionStatus(params: {
   });
 
   await auditSubscriptionStatusChanged(admin, {
-    churchId,
+    organizationId,
     userId: params.userId,
     subscriptionId: subscription.id,
     oldStatus: existing.status,
@@ -797,7 +797,7 @@ export async function updateChurchSubscriptionStatus(params: {
   });
 
   await syncChurchDisplayFields(admin, {
-    churchId,
+    organizationId,
     planKey: String(existing.plan_key),
     planDisplayName: existing.plan_display_name,
     trialEnd: subscription.trial_end,

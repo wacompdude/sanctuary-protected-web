@@ -67,8 +67,8 @@ export {
   friendlyDashboardDbError,
 } from "@/lib/dashboard/mutations";
 export {
-  assertDashboardChurchId,
-  rejectBrowserSubmittedChurchId,
+  assertDashboardOrganizationId,
+  rejectBrowserSubmittedOrganizationId,
   collectObsoleteDashboardBoxKeys,
   countCustomizedDashboardSettings,
   sanitizeDashboardActionError,

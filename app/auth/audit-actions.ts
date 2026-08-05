@@ -26,7 +26,7 @@ export async function recordLoginSecurityEvent(): Promise<void> {
     .maybeSingle();
 
   await writeAuditLog(supabase, {
-    churchId: membership?.organization_id ?? null,
+    organizationId: membership?.organization_id ?? null,
     userId: user.id,
     action: AuditAction.AUTH_LOGIN,
     entityType: AuditEntityType.USER,
@@ -41,7 +41,7 @@ export async function recordLoginSecurityEvent(): Promise<void> {
     // If church-scoped insert is blocked (e.g. suspended church), retry as auth-only.
     if (!result.ok && membership?.organization_id) {
       await writeAuditLog(supabase, {
-        churchId: null,
+        organizationId: null,
         userId: user.id,
         action: AuditAction.AUTH_LOGIN,
         entityType: AuditEntityType.USER,

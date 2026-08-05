@@ -8,10 +8,10 @@ import {
   canViewDashboardScheduleManagerBoxes,
 } from "@/lib/dashboard/permissions";
 import {
-  assertDashboardChurchId,
+  assertDashboardOrganizationId,
   collectObsoleteDashboardBoxKeys,
   countCustomizedDashboardSettings,
-  rejectBrowserSubmittedChurchId,
+  rejectBrowserSubmittedOrganizationId,
   sanitizeDashboardActionError,
 } from "@/lib/dashboard/security";
 import { validateDashboardSettingsUpdate } from "@/lib/dashboard/validation";
@@ -51,12 +51,12 @@ assert(
 
 // --- Church id guards (cross-church spoofing) ---
 assert(
-  assertDashboardChurchId("11111111-1111-4111-8111-111111111111") ===
+  assertDashboardOrganizationId("11111111-1111-4111-8111-111111111111") ===
     "11111111-1111-4111-8111-111111111111",
   "valid uuid church id accepted",
 );
 try {
-  assertDashboardChurchId("not-a-church");
+  assertDashboardOrganizationId("not-a-church");
   throw new Error("expected invalid church id to throw");
 } catch (error) {
   assert(
@@ -68,7 +68,7 @@ try {
 const spoof = new FormData();
 spoof.set("organization_id", "22222222-2222-4222-8222-222222222222");
 try {
-  rejectBrowserSubmittedChurchId(spoof);
+  rejectBrowserSubmittedOrganizationId(spoof);
   throw new Error("expected browser organization_id to be rejected");
 } catch (error) {
   assert(
@@ -79,7 +79,7 @@ try {
 
 const clean = new FormData();
 clean.set("settings_json", "[]");
-rejectBrowserSubmittedChurchId(clean);
+rejectBrowserSubmittedOrganizationId(clean);
 
 // --- Obsolete keys ---
 assert(

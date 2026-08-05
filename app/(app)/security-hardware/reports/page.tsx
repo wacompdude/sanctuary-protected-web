@@ -25,7 +25,7 @@ import {
 async function ReportsContent() {
   const { church, membership, user } = await getAuthenticatedUserWithChurch();
   const campusFilter = await resolveCampusFilter({
-    churchId: church.id,
+    organizationId: church.id,
     userId: user.id,
     role: membership.role,
   });

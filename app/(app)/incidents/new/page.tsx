@@ -28,7 +28,7 @@ async function NewIncidentContent() {
     medicalUsage,
   ] = await Promise.all([
     resolveCampusFilter({
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       role: membership.role,
     }),
@@ -43,7 +43,7 @@ async function NewIncidentContent() {
     listActiveIncidentTeamMembers(church.id).catch(() => []),
     getIncidentPhotoEntitlements(church.id),
     hasFeature({
-      churchId: church.id,
+      organizationId: church.id,
       featureKey: FEATURE_KEYS.MEDICAL_INCIDENT_USAGE,
     }),
   ]);

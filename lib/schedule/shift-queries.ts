@@ -22,7 +22,7 @@ function isMissingRelation(message: string): boolean {
 }
 
 async function attachShiftMeta(
-  churchId: string,
+  organizationId: string,
   rows: ScheduleShift[],
 ): Promise<ScheduleShift[]> {
   if (rows.length === 0) return rows;
@@ -42,7 +42,7 @@ async function attachShiftMeta(
     const { data } = await supabase
       .from("campuses")
       .select("id, name")
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .in("id", campusIds);
     for (const row of data ?? []) {
       campusMap.set(row.id as string, row.name as string);
@@ -53,7 +53,7 @@ async function attachShiftMeta(
     const { data } = await supabase
       .from("schedule_events")
       .select("id, title")
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .in("id", eventIds);
     for (const row of data ?? []) {
       eventMap.set(row.id as string, row.title as string);
@@ -83,7 +83,7 @@ export type ListScheduleShiftsParams = {
 };
 
 export async function listScheduleShifts(
-  churchId: string,
+  organizationId: string,
   params: ListScheduleShiftsParams = {},
 ): Promise<ScheduleShiftListResult> {
   const page = Math.max(1, params.page ?? 1);
@@ -96,7 +96,7 @@ export async function listScheduleShifts(
     let query = supabase
       .from("schedule_shifts")
       .select("*", { count: "exact" })
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .order("start_at", { ascending: true })
       .range(from, to);
 
@@ -128,7 +128,7 @@ export async function listScheduleShifts(
       throw new Error(error.message);
     }
 
-    let items = await attachShiftMeta(churchId, (data ?? []) as ScheduleShift[]);
+    let items = await attachShiftMeta(organizationId, (data ?? []) as ScheduleShift[]);
     if (params.unfilledOnly) {
       items = items.filter((item) => (item.open_positions ?? 0) > 0);
     }
@@ -157,7 +157,7 @@ export async function listScheduleShifts(
 
 export async function getScheduleShiftById(
   shiftId: string,
-  churchId: string,
+  organizationId: string,
 ): Promise<ScheduleShift | null> {
   try {
     const supabase = await createClient();
@@ -165,7 +165,7 @@ export async function getScheduleShiftById(
       .from("schedule_shifts")
       .select("*")
       .eq("id", shiftId)
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .maybeSingle();
 
     if (error) {
@@ -173,7 +173,7 @@ export async function getScheduleShiftById(
       throw new Error(error.message);
     }
     if (!data) return null;
-    const [row] = await attachShiftMeta(churchId, [data as ScheduleShift]);
+    const [row] = await attachShiftMeta(organizationId, [data as ScheduleShift]);
     return row;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -184,14 +184,14 @@ export async function getScheduleShiftById(
 
 export async function listAssignmentsForShift(
   shiftId: string,
-  churchId: string,
+  organizationId: string,
 ): Promise<ShiftAssignment[]> {
   try {
     const supabase = await createClient();
     const { data, error } = await supabase
       .from("shift_assignments")
       .select("*")
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .eq("shift_id", shiftId)
       .order("assigned_at", { ascending: true });
 
@@ -235,7 +235,7 @@ export async function listAssignmentsForShift(
 }
 
 export async function listMyAssignments(
-  churchId: string,
+  organizationId: string,
   userId: string,
 ): Promise<ShiftAssignment[]> {
   try {
@@ -243,7 +243,7 @@ export async function listMyAssignments(
     const { data, error } = await supabase
       .from("shift_assignments")
       .select("*")
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .eq("user_id", userId)
       .order("assigned_at", { ascending: false });
 
@@ -259,7 +259,7 @@ export async function listMyAssignments(
     const { data: shifts } = await supabase
       .from("schedule_shifts")
       .select("id, title, start_at, end_at")
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .in("id", shiftIds);
 
     const shiftById = new Map(
@@ -283,14 +283,14 @@ export async function listMyAssignments(
 }
 
 export async function listEventOptionsForShifts(
-  churchId: string,
+  organizationId: string,
 ): Promise<Array<{ id: string; title: string; start_at: string }>> {
   try {
     const supabase = await createClient();
     const { data, error } = await supabase
       .from("schedule_events")
       .select("id, title, start_at")
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .not("status", "in", '("cancelled","archived")')
       .order("start_at", { ascending: true })
       .limit(200);
@@ -311,13 +311,13 @@ export async function listEventOptionsForShifts(
   }
 }
 
-export async function getChurchScheduleSettings(churchId: string) {
+export async function getChurchScheduleSettings(organizationId: string) {
   try {
     const supabase = await createClient();
     const { data, error } = await supabase
       .from("organization_schedule_settings")
       .select("*")
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .maybeSingle();
     if (error) {
       if (isMissingRelation(error.message)) return null;
@@ -332,20 +332,20 @@ export async function getChurchScheduleSettings(churchId: string) {
 }
 
 export async function listEligibleMembersForShift(
-  churchId: string,
+  organizationId: string,
   shift: ScheduleShift,
   options?: { allowOverride?: boolean },
 ): Promise<{ members: EligibleMemberOption[]; tablesAvailable: boolean; hint?: string }> {
   try {
     const supabase = await createClient();
-    const settings = await getChurchScheduleSettings(churchId);
-    const team = await listChurchTeamMemberships(churchId);
+    const settings = await getChurchScheduleSettings(organizationId);
+    const team = await listChurchTeamMemberships(organizationId);
     const active = team.filter((m) => m.status === "active");
 
     const { data: existing } = await supabase
       .from("shift_assignments")
       .select("membership_id, status")
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .eq("shift_id", shift.id)
       .not("status", "in", '("declined","cancelled")');
 
@@ -360,7 +360,7 @@ export async function listEligibleMembersForShift(
       if (assigned.has(member.membershipId)) continue;
 
       const conflicts = await validateShiftAssignment(supabase, {
-        churchId,
+        organizationId,
         shift,
         membershipId: member.membershipId,
         userId: member.userId,

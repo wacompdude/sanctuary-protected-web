@@ -51,7 +51,7 @@ async function syncProfileCampuses(params: {
   supabase: Awaited<
     ReturnType<typeof getOperationalChurchContext>
   >["supabase"];
-  churchId: string;
+  organizationId: string;
   profileId: string;
   scopeType: string;
   primaryCampusId: string | null;
@@ -60,7 +60,7 @@ async function syncProfileCampuses(params: {
   await params.supabase
     .from("safety_concern_profile_campuses")
     .delete()
-    .eq("organization_id", params.churchId)
+    .eq("organization_id", params.organizationId)
     .eq("profile_id", params.profileId);
 
   const ids = new Set<string>();
@@ -77,7 +77,7 @@ async function syncProfileCampuses(params: {
     .from("safety_concern_profile_campuses")
     .insert(
       [...ids].map((campus_id) => ({
-        organization_id: params.churchId,
+        organization_id: params.organizationId,
         profile_id: params.profileId,
         campus_id,
       })),
@@ -111,7 +111,7 @@ export async function createSafetyConcernProfile(
     }
 
     await requireSafetyConcernWrite({
-      churchId: church.id,
+      organizationId: church.id,
       role: membership.role,
     });
 
@@ -125,7 +125,7 @@ export async function createSafetyConcernProfile(
 
     if (input.profile_status === "active") {
       const blockers = await getSafetyConcernActivationBlockers({
-        churchId: church.id,
+        organizationId: church.id,
         profileId: null,
         settings,
         client: supabase,
@@ -136,7 +136,7 @@ export async function createSafetyConcernProfile(
 
       const activeCount = await countActiveSafetyConcernProfiles(church.id);
       await requireSafetyConcernProfileCapacity({
-        churchId: church.id,
+        organizationId: church.id,
         role: membership.role,
         currentActiveCount: activeCount,
       });
@@ -192,7 +192,7 @@ export async function createSafetyConcernProfile(
 
     await syncProfileCampuses({
       supabase,
-      churchId: church.id,
+      organizationId: church.id,
       profileId,
       scopeType: input.scope_type,
       primaryCampusId: input.primary_campus_id,
@@ -200,7 +200,7 @@ export async function createSafetyConcernProfile(
     });
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.SAFETY_CONCERN_PROFILE_CREATED,
       entityType: AuditEntityType.SAFETY_CONCERN_PROFILE,
@@ -242,7 +242,7 @@ export async function updateSafetyConcernProfile(
     }
 
     await requireSafetyConcernWrite({
-      churchId: church.id,
+      organizationId: church.id,
       role: membership.role,
     });
 
@@ -261,7 +261,7 @@ export async function updateSafetyConcernProfile(
     if (becomingActive) {
       const settings = await getSafetyConcernChurchSettings(church.id);
       const blockers = await getSafetyConcernActivationBlockers({
-        churchId: church.id,
+        organizationId: church.id,
         profileId,
         settings,
         client: supabase,
@@ -272,7 +272,7 @@ export async function updateSafetyConcernProfile(
 
       const activeCount = await countActiveSafetyConcernProfiles(church.id);
       await requireSafetyConcernProfileCapacity({
-        churchId: church.id,
+        organizationId: church.id,
         role: membership.role,
         currentActiveCount: activeCount,
       });
@@ -320,7 +320,7 @@ export async function updateSafetyConcernProfile(
 
     await syncProfileCampuses({
       supabase,
-      churchId: church.id,
+      organizationId: church.id,
       profileId,
       scopeType: input.scope_type,
       primaryCampusId: input.primary_campus_id,
@@ -332,7 +332,7 @@ export async function updateSafetyConcernProfile(
       existing.restriction_status !== input.restriction_status;
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: restrictionChanged
         ? AuditAction.SAFETY_CONCERN_RESTRICTION_UPDATED
@@ -369,7 +369,7 @@ export async function archiveSafetyConcernProfile(
       await getOperationalChurchContext();
 
     await requireSafetyConcernWrite({
-      churchId: church.id,
+      organizationId: church.id,
       role: membership.role,
     });
 
@@ -389,7 +389,7 @@ export async function archiveSafetyConcernProfile(
     if (error) return { error: error.message };
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.SAFETY_CONCERN_PROFILE_ARCHIVED,
       entityType: AuditEntityType.SAFETY_CONCERN_PROFILE,
@@ -418,7 +418,7 @@ export async function restoreSafetyConcernProfile(
     await getOperationalChurchContext();
 
   await requireSafetyConcernWrite({
-    churchId: church.id,
+    organizationId: church.id,
     role: membership.role,
   });
 
@@ -439,7 +439,7 @@ export async function restoreSafetyConcernProfile(
   }
 
   await writeAuditLog(supabase, {
-    churchId: church.id,
+    organizationId: church.id,
     userId: user.id,
     action: AuditAction.SAFETY_CONCERN_PROFILE_RESTORED,
     entityType: AuditEntityType.SAFETY_CONCERN_PROFILE,
@@ -463,7 +463,7 @@ export async function uploadSafetyConcernPhoto(
       await getOperationalChurchContext();
 
     await requireSafetyConcernWrite({
-      churchId: church.id,
+      organizationId: church.id,
       role: membership.role,
     });
 
@@ -477,7 +477,7 @@ export async function uploadSafetyConcernPhoto(
 
     const existing = await listSafetyConcernPhotos(church.id, profileId);
     const limits = await requireSafetyConcernPhotoUpload({
-      churchId: church.id,
+      organizationId: church.id,
       role: membership.role,
       existingCount: existing.length,
       newCount: files.length,
@@ -500,7 +500,7 @@ export async function uploadSafetyConcernPhoto(
       }
 
       const objectPath = safetyConcernPhotoObjectPath({
-        churchId: church.id,
+        organizationId: church.id,
         profileId,
         mimeType: bytesCheck.mimeType,
       });
@@ -564,7 +564,7 @@ export async function uploadSafetyConcernPhoto(
       }
 
       await writeAuditLog(supabase, {
-        churchId: church.id,
+        organizationId: church.id,
         userId: user.id,
         action: AuditAction.SAFETY_CONCERN_PHOTO_UPLOADED,
         entityType: AuditEntityType.SAFETY_CONCERN_PHOTO,
@@ -610,7 +610,7 @@ export async function archiveSafetyConcernPhoto(
     await getOperationalChurchContext();
 
   await requireSafetyConcernWrite({
-    churchId: church.id,
+    organizationId: church.id,
     role: membership.role,
   });
 
@@ -629,7 +629,7 @@ export async function archiveSafetyConcernPhoto(
   }
 
   await writeAuditLog(supabase, {
-    churchId: church.id,
+    organizationId: church.id,
     userId: user.id,
     action: AuditAction.SAFETY_CONCERN_PHOTO_ARCHIVED,
     entityType: AuditEntityType.SAFETY_CONCERN_PHOTO,
@@ -651,7 +651,7 @@ export async function linkSafetyConcernIncident(
       await getOperationalChurchContext();
 
     await requireSafetyConcernWrite({
-      churchId: church.id,
+      organizationId: church.id,
       role: membership.role,
     });
 
@@ -689,7 +689,7 @@ export async function linkSafetyConcernIncident(
     }
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.SAFETY_CONCERN_INCIDENT_LINKED,
       entityType: AuditEntityType.SAFETY_CONCERN_INCIDENT,
@@ -723,7 +723,7 @@ export async function unlinkSafetyConcernIncident(
     await getOperationalChurchContext();
 
   await requireSafetyConcernWrite({
-    churchId: church.id,
+    organizationId: church.id,
     role: membership.role,
   });
 
@@ -739,7 +739,7 @@ export async function unlinkSafetyConcernIncident(
   }
 
   await writeAuditLog(supabase, {
-    churchId: church.id,
+    organizationId: church.id,
     userId: user.id,
     action: AuditAction.SAFETY_CONCERN_INCIDENT_UNLINKED,
     entityType: AuditEntityType.SAFETY_CONCERN_INCIDENT,
@@ -761,7 +761,7 @@ export async function reviewSafetyConcernProfile(
       await getOperationalChurchContext();
 
     await requireSafetyConcernWrite({
-      churchId: church.id,
+      organizationId: church.id,
       role: membership.role,
     });
 
@@ -797,7 +797,7 @@ export async function reviewSafetyConcernProfile(
       existing.profile_status !== "active"
     ) {
       const blockers = await getSafetyConcernActivationBlockers({
-        churchId: church.id,
+        organizationId: church.id,
         profileId,
         settings,
         client: supabase,
@@ -843,7 +843,7 @@ export async function reviewSafetyConcernProfile(
     if (error) return { error: error.message };
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.SAFETY_CONCERN_REVIEW_COMPLETED,
       entityType: AuditEntityType.SAFETY_CONCERN_REVIEW,

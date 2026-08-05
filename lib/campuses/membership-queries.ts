@@ -58,7 +58,7 @@ export async function areCampusMembershipTablesAvailable(): Promise<boolean> {
 }
 
 export async function listCampusMembers(
-  churchId: string,
+  organizationId: string,
   campusId: string,
   options?: { includeRemoved?: boolean },
 ): Promise<CampusMembership[]> {
@@ -66,7 +66,7 @@ export async function listCampusMembers(
   let query = supabase
     .from("campus_memberships")
     .select(MEMBERSHIP_SELECT)
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("campus_id", campusId)
     .order("assigned_at", { ascending: false });
 
@@ -102,7 +102,7 @@ export async function listCampusMembers(
     supabase
       .from("organization_memberships")
       .select("id, role, user_id")
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .in("id", membershipIds),
     supabase
       .from("profiles")
@@ -138,7 +138,7 @@ export async function listCampusMembers(
 }
 
 export async function getActorCampusMembership(
-  churchId: string,
+  organizationId: string,
   campusId: string,
   userId: string,
 ): Promise<CampusMembership | null> {
@@ -146,7 +146,7 @@ export async function getActorCampusMembership(
   const { data, error } = await supabase
     .from("campus_memberships")
     .select(MEMBERSHIP_SELECT)
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("campus_id", campusId)
     .eq("user_id", userId)
     .eq("status", "active")
@@ -161,7 +161,7 @@ export async function getActorCampusMembership(
 }
 
 export async function canActorManageCampusMemberships(params: {
-  churchId: string;
+  organizationId: string;
   campusId: string;
   userId: string;
   churchRole: MembershipRole;
@@ -170,7 +170,7 @@ export async function canActorManageCampusMemberships(params: {
     return true;
   }
   const own = await getActorCampusMembership(
-    params.churchId,
+    params.organizationId,
     params.campusId,
     params.userId,
   );
@@ -279,13 +279,13 @@ export async function listOwnCampusMemberships(
   // Add synthetic "all campuses" rows for roles with implicit access when
   // they have no explicit memberships (or always as an info marker).
   const implicitExtras: OwnCampusMembership[] = [];
-  for (const [churchId, info] of byChurch) {
+  for (const [organizationId, info] of byChurch) {
     if (!hasImplicitAllCampusAccess(info.role as MembershipRole)) continue;
-    const hasExplicit = explicit.some((row) => row.organization_id === churchId);
+    const hasExplicit = explicit.some((row) => row.organization_id === organizationId);
     if (hasExplicit) continue;
     implicitExtras.push({
-      id: `implicit-${churchId}`,
-      organization_id: churchId,
+      id: `implicit-${organizationId}`,
+      organization_id: organizationId,
       church_name: info.church_name,
       campus_id: "",
       campus_name: "All campuses",

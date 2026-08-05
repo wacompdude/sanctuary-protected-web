@@ -55,7 +55,7 @@ async function requireScheduleManager() {
     );
   }
   await requireFeature({
-    churchId: ctx.church.id,
+    organizationId: ctx.church.id,
     featureKey: FEATURE_KEYS.TEAM_SCHEDULING,
   });
   return ctx;
@@ -110,7 +110,7 @@ export async function createScheduleShiftAction(
     }
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.SCHEDULE_SHIFT_CREATED,
       entityType: AuditEntityType.SCHEDULE_SHIFT,
@@ -176,7 +176,7 @@ export async function updateScheduleShiftAction(
     }
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.SCHEDULE_SHIFT_UPDATED,
       entityType: AuditEntityType.SCHEDULE_SHIFT,
@@ -233,7 +233,7 @@ export async function cancelScheduleShiftAction(
       .not("status", "in", '("declined","cancelled","completed")');
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.SCHEDULE_SHIFT_CANCELLED,
       entityType: AuditEntityType.SCHEDULE_SHIFT,
@@ -250,7 +250,7 @@ export async function cancelScheduleShiftAction(
       ),
     ];
     await notifyShiftCancelled({
-      churchId: church.id,
+      organizationId: church.id,
       createdBy: user.id,
       timeZone: church.timezone,
       shift: existing,
@@ -300,7 +300,7 @@ export async function assignMemberToShiftAction(
 
     const settings = await getChurchScheduleSettings(church.id);
     const conflicts = await validateShiftAssignment(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       shift: shift as ScheduleShift,
       membershipId: targetMembership.id,
       userId: targetMembership.user_id,
@@ -369,7 +369,7 @@ export async function assignMemberToShiftAction(
     }
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: validated.data.conflict_override
         ? AuditAction.SCHEDULE_ASSIGNMENT_OVERRIDE
@@ -390,7 +390,7 @@ export async function assignMemberToShiftAction(
         ?.assignment_invitation_email_enabled !== false;
     if (inviteEmailEnabled) {
       await notifyAssignmentCreated({
-        churchId: church.id,
+        organizationId: church.id,
         createdBy: user.id,
         timeZone: church.timezone,
         shift,
@@ -441,7 +441,7 @@ export async function cancelShiftAssignmentAction(
     if (error) return { error: "Unable to cancel the assignment." };
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.SCHEDULE_ASSIGNMENT_CANCELLED,
       entityType: AuditEntityType.SHIFT_ASSIGNMENT,
@@ -453,7 +453,7 @@ export async function cancelShiftAssignmentAction(
     const shift = await getScheduleShiftById(shiftId, church.id);
     if (shift && existing?.user_id) {
       await notifyAssignmentCancelled({
-        churchId: church.id,
+        organizationId: church.id,
         createdBy: user.id,
         timeZone: church.timezone,
         shift,
@@ -478,7 +478,7 @@ export async function respondToAssignmentAction(
   try {
     const { user, church } = await getAuthenticatedUserWithChurch();
     await requireFeature({
-      churchId: church.id,
+      organizationId: church.id,
       featureKey: FEATURE_KEYS.TEAM_SCHEDULING,
     });
     const validated = validateAssignmentResponseForm(formData);
@@ -542,7 +542,7 @@ export async function respondToAssignmentAction(
     if (error) return { error: "Unable to save your response." };
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action:
         validated.data.decision === "accept"
@@ -576,7 +576,7 @@ export async function respondToAssignmentAction(
       "A team member";
 
     await notifyAssignmentResponse({
-      churchId: church.id,
+      organizationId: church.id,
       createdBy: user.id,
       timeZone: church.timezone,
       shiftId: assignment.shift_id,

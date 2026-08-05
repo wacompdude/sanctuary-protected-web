@@ -5,7 +5,7 @@ import { getRequestIpAddress, writeAuditLog } from "@/lib/audit/log";
 export async function auditNotificationCreated(
   supabase: SupabaseClient,
   params: {
-    churchId: string;
+    organizationId: string;
     userId: string;
     notificationId: string;
     notificationType: string;
@@ -14,7 +14,7 @@ export async function auditNotificationCreated(
   },
 ) {
   return writeAuditLog(supabase, {
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     userId: params.userId,
     action: AuditAction.NOTIFICATION_CREATED,
     entityType: AuditEntityType.NOTIFICATION,
@@ -31,14 +31,14 @@ export async function auditNotificationCreated(
 export async function auditNotificationQueued(
   supabase: SupabaseClient,
   params: {
-    churchId: string;
+    organizationId: string;
     userId: string;
     notificationId: string;
     deliveryCount: number;
   },
 ) {
   return writeAuditLog(supabase, {
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     userId: params.userId,
     action: AuditAction.NOTIFICATION_QUEUED,
     entityType: AuditEntityType.NOTIFICATION,
@@ -51,13 +51,13 @@ export async function auditNotificationQueued(
 export async function auditNotificationCancelled(
   supabase: SupabaseClient,
   params: {
-    churchId: string;
+    organizationId: string;
     userId: string;
     notificationId: string;
   },
 ) {
   return writeAuditLog(supabase, {
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     userId: params.userId,
     action: AuditAction.NOTIFICATION_CANCELLED,
     entityType: AuditEntityType.NOTIFICATION,
@@ -69,13 +69,13 @@ export async function auditNotificationCancelled(
 export async function auditNotificationAcknowledged(
   supabase: SupabaseClient,
   params: {
-    churchId: string;
+    organizationId: string;
     userId: string;
     notificationId: string;
   },
 ) {
   return writeAuditLog(supabase, {
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     userId: params.userId,
     action: AuditAction.NOTIFICATION_ACKNOWLEDGED,
     entityType: AuditEntityType.NOTIFICATION,
@@ -87,7 +87,7 @@ export async function auditNotificationAcknowledged(
 export async function auditNotificationDeliverySent(
   supabase: SupabaseClient,
   params: {
-    churchId: string;
+    organizationId: string;
     userId: string;
     deliveryId: string;
     notificationId: string;
@@ -96,7 +96,7 @@ export async function auditNotificationDeliverySent(
   },
 ) {
   return writeAuditLog(supabase, {
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     userId: params.userId,
     action: AuditAction.NOTIFICATION_DELIVERY_SENT,
     entityType: AuditEntityType.NOTIFICATION_DELIVERY,
@@ -113,7 +113,7 @@ export async function auditNotificationDeliverySent(
 export async function auditNotificationDeliveryFailed(
   supabase: SupabaseClient,
   params: {
-    churchId: string;
+    organizationId: string;
     userId: string;
     deliveryId: string;
     notificationId: string;
@@ -122,7 +122,7 @@ export async function auditNotificationDeliveryFailed(
   },
 ) {
   return writeAuditLog(supabase, {
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     userId: params.userId,
     action: AuditAction.NOTIFICATION_DELIVERY_FAILED,
     entityType: AuditEntityType.NOTIFICATION_DELIVERY,
@@ -139,13 +139,13 @@ export async function auditNotificationDeliveryFailed(
 export async function auditNotificationTestEmailSent(
   supabase: SupabaseClient,
   params: {
-    churchId: string;
+    organizationId: string;
     userId: string;
     notificationId: string;
   },
 ) {
   return writeAuditLog(supabase, {
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     userId: params.userId,
     action: AuditAction.NOTIFICATION_TEST_EMAIL_SENT,
     entityType: AuditEntityType.NOTIFICATION,
@@ -157,7 +157,7 @@ export async function auditNotificationTestEmailSent(
 export async function auditEmailSenderTestSent(
   supabase: SupabaseClient,
   params: {
-    churchId: string;
+    organizationId: string;
     userId: string;
     notificationId: string;
     senderCategory: string;
@@ -165,7 +165,7 @@ export async function auditEmailSenderTestSent(
   },
 ) {
   return writeAuditLog(supabase, {
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     userId: params.userId,
     action: AuditAction.EMAIL_SENDER_TEST_SENT,
     entityType: AuditEntityType.EMAIL_SENDER,
@@ -182,18 +182,18 @@ export async function auditEmailSenderTestSent(
 export async function auditEmailSenderTestFailed(
   supabase: SupabaseClient,
   params: {
-    churchId: string;
+    organizationId: string;
     userId: string;
     senderCategory: string;
     errorCode?: string | null;
   },
 ) {
   return writeAuditLog(supabase, {
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     userId: params.userId,
     action: AuditAction.EMAIL_SENDER_TEST_FAILED,
     entityType: AuditEntityType.EMAIL_SENDER,
-    entityId: params.churchId,
+    entityId: params.organizationId,
     metadata: {
       sender_category: params.senderCategory,
       error_code: params.errorCode ?? null,
@@ -205,16 +205,16 @@ export async function auditEmailSenderTestFailed(
 export async function auditEmailSenderConfigurationViewed(
   supabase: SupabaseClient,
   params: {
-    churchId: string;
+    organizationId: string;
     userId: string;
   },
 ) {
   return writeAuditLog(supabase, {
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     userId: params.userId,
     action: AuditAction.EMAIL_SENDER_CONFIGURATION_VIEWED,
     entityType: AuditEntityType.EMAIL_SENDER,
-    entityId: params.churchId,
+    entityId: params.organizationId,
     metadata: { viewed: true },
     ipAddress: await getRequestIpAddress(),
   });

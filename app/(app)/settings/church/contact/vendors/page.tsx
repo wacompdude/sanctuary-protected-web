@@ -17,7 +17,7 @@ export default function ChurchContactVendorsPage() {
       >
         {({ church, canEdit }) => (
           <ChurchDirectoryGroupLoader
-            churchId={church.id}
+            organizationId={church.id}
             canEdit={canEdit}
             contactTypes={[...group.contactTypes]}
           />

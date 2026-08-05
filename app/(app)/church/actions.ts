@@ -9,14 +9,14 @@ export async function switchActiveChurch(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const churchId = String(formData.get("organization_id") ?? "").trim();
+  const organizationId = String(formData.get("organization_id") ?? "").trim();
 
-  if (!churchId) {
+  if (!organizationId) {
     return { error: "Select a church to continue." };
   }
 
   try {
-    await setActiveChurchForUser(churchId);
+    await setActiveChurchForUser(organizationId);
   } catch (error) {
     if (error instanceof ChurchAccessError) {
       return { error: error.message };
@@ -31,8 +31,8 @@ export async function switchActiveChurch(
 }
 
 /** Persist a server-validated church id into the httpOnly cookie. */
-export async function syncActiveChurchCookie(churchId: string): Promise<void> {
-  const id = churchId.trim();
+export async function syncActiveChurchCookie(organizationId: string): Promise<void> {
+  const id = organizationId.trim();
   if (!id) return;
   await setActiveChurchForUser(id);
 }

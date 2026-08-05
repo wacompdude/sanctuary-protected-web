@@ -65,7 +65,7 @@ export async function createCertification(
     }
 
     await writeAuditLog(supabase, {
-      churchId: profile.organization_id,
+      organizationId: profile.organization_id,
       userId: user.id,
       action: AuditAction.CERTIFICATION_CREATED,
       entityType: AuditEntityType.CERTIFICATION,

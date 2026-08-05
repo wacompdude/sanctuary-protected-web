@@ -35,7 +35,7 @@ describe("Authorization Service", () => {
 
       const result = await canUserPerform(mockSupabase, {
         userId: "user-1",
-        churchId: "church-1",
+        organizationId: "church-1",
         permissionKey: PERMISSION_KEYS.INCIDENTS_VIEW,
       });
 
@@ -83,7 +83,7 @@ describe("Authorization Service", () => {
 
       const result = await canUserPerform(mockSupabase, {
         userId: "user-1",
-        churchId: "church-1",
+        organizationId: "church-1",
         permissionKey: PERMISSION_KEYS.INCIDENTS_VIEW,
       });
 

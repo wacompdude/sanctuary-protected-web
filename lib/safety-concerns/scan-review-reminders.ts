@@ -16,7 +16,7 @@ export type SafetyConcernReviewScanResult = {
  * Does not include display names or photos in notification content.
  */
 export async function scanSafetyConcernReviewReminders(options?: {
-  churchId?: string;
+  organizationId?: string;
   now?: Date;
 }): Promise<SafetyConcernReviewScanResult> {
   const result: SafetyConcernReviewScanResult = {
@@ -42,8 +42,8 @@ export async function scanSafetyConcernReviewReminders(options?: {
     .from("organizations")
     .select("id, name")
     .eq("is_active", true);
-  if (options?.churchId) {
-    churchQuery.eq("id", options.churchId);
+  if (options?.organizationId) {
+    churchQuery.eq("id", options.organizationId);
   }
 
   const { data: churches, error: churchError } = await churchQuery;
@@ -58,7 +58,7 @@ export async function scanSafetyConcernReviewReminders(options?: {
     result.churchesScanned++;
 
     const entitlement = await hasFeature({
-      churchId: church.id,
+      organizationId: church.id,
       featureKey: FEATURE_KEYS.SAFETY_CONCERN_PROFILES,
     }).catch(() => ({ allowed: false as const }));
 
@@ -142,7 +142,7 @@ export async function scanSafetyConcernReviewReminders(options?: {
       for (const item of notifications) {
         const notifyResult = await createNotification(
           {
-            churchId: church.id,
+            organizationId: church.id,
             notificationType: item.type,
             severity: item.severity,
             entityType: "safety_concern_profile",

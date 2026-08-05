@@ -29,7 +29,7 @@ export async function syncMyEndpointsAction(): Promise<ActionState> {
       await getAuthenticatedUserWithChurch();
     const result = await syncMyNotificationEndpoints({
       supabase,
-      churchId: church.id,
+      organizationId: church.id,
       user,
       membershipId: membership.id,
     });
@@ -92,7 +92,7 @@ export async function setPrimaryEndpointAction(
     if (error) return { error: error.message };
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.NOTIFICATION_ENDPOINT_VERIFIED,
       entityType: AuditEntityType.NOTIFICATION_ENDPOINT,
@@ -134,7 +134,7 @@ export async function disableEndpointAction(
     if (error) return { error: error.message };
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.NOTIFICATION_ENDPOINT_DISABLED,
       entityType: AuditEntityType.NOTIFICATION_ENDPOINT,
@@ -198,7 +198,7 @@ export async function updateSmsConsentAction(
     if (error) return { error: error.message };
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: optIn
         ? AuditAction.NOTIFICATION_SMS_OPTED_IN
@@ -294,7 +294,7 @@ export async function upsertGroupPreferenceRuleAction(
     }
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.NOTIFICATION_PREFERENCES_UPDATED,
       entityType: AuditEntityType.NOTIFICATION_SETTINGS,

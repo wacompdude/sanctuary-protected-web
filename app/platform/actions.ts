@@ -466,13 +466,13 @@ export type PlatformSubscriptionActionState = {
 };
 
 export async function previewPlatformPlanChangeAction(
-  churchId: string,
+  organizationId: string,
   planKey: string,
 ): Promise<PlatformSubscriptionActionState> {
   try {
     await requirePlatformPermission("subscriptions.read_all");
     const impact = await previewPlatformPlanChange({
-      churchId,
+      organizationId,
       targetPlanKey: planKey,
     });
     return { success: true, impact };
@@ -494,7 +494,7 @@ export async function applyPlatformPlanChangeAction(
     await requireRecentPlatformAuthentication();
     const context = await requirePlatformPermission("subscriptions.change_plan");
 
-    const churchId = String(formData.get("organization_id") ?? "").trim();
+    const organizationId = String(formData.get("organization_id") ?? "").trim();
     const planKey = String(formData.get("plan_key") ?? "").trim();
     const reason = String(formData.get("reason") ?? "").trim();
     const confirmDowngrade = formData.get("confirm_downgrade") === "1";
@@ -502,21 +502,21 @@ export async function applyPlatformPlanChangeAction(
       formData.get("typed_confirmation") ?? "",
     ).trim();
 
-    if (!churchId || !planKey) {
+    if (!organizationId || !planKey) {
       return { error: "Church and plan are required." };
     }
 
     const result = await applyPlatformPlanChange({
       context,
-      churchId,
+      organizationId,
       targetPlanKey: planKey,
       reason,
       confirmDowngrade,
       typedConfirmation,
     });
 
-    revalidatePath(`/platform/churches/${churchId}`);
-    revalidatePath(`/platform/churches/${churchId}/subscription`);
+    revalidatePath(`/platform/churches/${organizationId}`);
+    revalidatePath(`/platform/churches/${organizationId}/subscription`);
     revalidatePath("/platform/subscriptions");
     revalidatePath("/platform/audit");
 
@@ -547,25 +547,25 @@ export async function cancelPlatformSubscriptionAction(
     await requireRecentPlatformAuthentication();
     const context = await requirePlatformPermission("subscriptions.cancel");
 
-    const churchId = String(formData.get("organization_id") ?? "").trim();
+    const organizationId = String(formData.get("organization_id") ?? "").trim();
     const reason = String(formData.get("reason") ?? "").trim();
     const confirm = formData.get("confirm") === "1";
     const typedConfirmation = String(
       formData.get("typed_confirmation") ?? "",
     ).trim();
 
-    if (!churchId) return { error: "Church is required." };
+    if (!organizationId) return { error: "Church is required." };
 
     const result = await cancelPlatformChurchSubscription({
       context,
-      churchId,
+      organizationId,
       reason,
       confirm,
       typedConfirmation,
     });
 
-    revalidatePath(`/platform/churches/${churchId}`);
-    revalidatePath(`/platform/churches/${churchId}/subscription`);
+    revalidatePath(`/platform/churches/${organizationId}`);
+    revalidatePath(`/platform/churches/${organizationId}/subscription`);
     revalidatePath("/platform/subscriptions");
     revalidatePath("/platform/audit");
 
@@ -588,18 +588,18 @@ export async function restorePlatformSubscriptionAction(
     await requireRecentPlatformAuthentication();
     const context = await requirePlatformPermission("subscriptions.restore");
 
-    const churchId = String(formData.get("organization_id") ?? "").trim();
+    const organizationId = String(formData.get("organization_id") ?? "").trim();
     const reason = String(formData.get("reason") ?? "").trim();
-    if (!churchId) return { error: "Church is required." };
+    if (!organizationId) return { error: "Church is required." };
 
     const result = await restorePlatformChurchSubscription({
       context,
-      churchId,
+      organizationId,
       reason,
     });
 
-    revalidatePath(`/platform/churches/${churchId}`);
-    revalidatePath(`/platform/churches/${churchId}/subscription`);
+    revalidatePath(`/platform/churches/${organizationId}`);
+    revalidatePath(`/platform/churches/${organizationId}/subscription`);
     revalidatePath("/platform/subscriptions");
     revalidatePath("/platform/audit");
 
@@ -635,12 +635,12 @@ export async function startPlatformSupportSessionAction(
     await requireRecentPlatformAuthentication();
     const context = await requirePlatformPermission("churches.support_access");
 
-    const churchId = String(formData.get("organization_id") ?? "").trim();
-    if (!churchId) return { error: "Select a church." };
+    const organizationId = String(formData.get("organization_id") ?? "").trim();
+    if (!organizationId) return { error: "Select a church." };
 
     const session = await startPlatformSupportSession({
       context,
-      churchId,
+      organizationId,
       reason: String(formData.get("reason") ?? ""),
       ticketReference: String(formData.get("ticket_reference") ?? ""),
       accessType: String(formData.get("access_type") ?? "read_only"),
@@ -649,7 +649,7 @@ export async function startPlatformSupportSessionAction(
 
     revalidatePath("/platform");
     revalidatePath("/platform/support");
-    revalidatePath(`/platform/churches/${churchId}`);
+    revalidatePath(`/platform/churches/${organizationId}`);
     revalidatePath("/platform/audit");
 
     return {

@@ -106,7 +106,7 @@ async function ensureAuthUser(params: {
 
 async function ensureMembership(params: {
   admin: SupabaseClient;
-  churchId: string;
+  organizationId: string;
   userId: string;
   role: string;
   seedSource: string;
@@ -115,7 +115,7 @@ async function ensureMembership(params: {
   // allows mutations only when app.bypass_membership_guards is set.
   // demo_seed_upsert_membership is service_role-only and sets that flag.
   const { data, error } = await params.admin.rpc("demo_seed_upsert_membership", {
-    p_church_id: params.churchId,
+    p_church_id: params.organizationId,
     p_user_id: params.userId,
     p_role: params.role,
     p_seed_source: params.seedSource,
@@ -173,7 +173,7 @@ export async function seedChurchCore(params: {
   log(summary, `Using platform owner ${DEMO_OWNER_PLATFORM_EMAIL}`);
 
   // Church upsert by seed_source
-  let churchId = (
+  let organizationId = (
     await admin
       .from("organizations")
       .select("id")
@@ -205,11 +205,11 @@ export async function seedChurchCore(params: {
     updated_at: new Date().toISOString(),
   };
 
-  if (churchId) {
+  if (organizationId) {
     const { error } = await admin
       .from("organizations")
       .update(churchPayload)
-      .eq("id", churchId);
+      .eq("id", organizationId);
     if (error) throw new Error(`Church update failed: ${error.message}`);
     await track(summary, "church", "updated", `Updated church ${DEMO_CHURCH_NAME}`);
   } else {
@@ -224,7 +224,7 @@ export async function seedChurchCore(params: {
     if (error || !data) {
       throw new Error(`Church create failed: ${error?.message ?? "unknown"}`);
     }
-    churchId = String(data.id);
+    organizationId = String(data.id);
     await track(summary, "church", "created", `Created church ${DEMO_CHURCH_NAME}`);
   }
 
@@ -232,12 +232,12 @@ export async function seedChurchCore(params: {
     admin,
     seedSource,
     entityTable: "organizations",
-    entityId: churchId,
+    entityId: organizationId,
     seedKey: "church.root",
     metadata: { slug: DEMO_CHURCH_SLUG },
   });
 
-  summary.churchId = churchId;
+  summary.organizationId = organizationId;
 
   // Campuses
   async function upsertCampus(
@@ -245,7 +245,7 @@ export async function seedChurchCore(params: {
   ): Promise<string> {
     const registered = await getRegisteredId(admin, seedSource, def.seedKey);
     const payload = {
-      organization_id: churchId!,
+      organization_id: organizationId!,
       name: def.name,
       slug: def.slug,
       address_line_1: def.address_line_1,
@@ -273,7 +273,7 @@ export async function seedChurchCore(params: {
     const { data: bySlug } = await admin
       .from("campuses")
       .select("id")
-      .eq("organization_id", churchId!)
+      .eq("organization_id", organizationId!)
       .eq("slug", def.slug)
       .maybeSingle();
 
@@ -315,7 +315,7 @@ export async function seedChurchCore(params: {
   // Omni Enterprise
   try {
     await changeChurchSubscriptionPlan({
-      churchId,
+      organizationId,
       planKey: PLAN_KEYS.OMNI_ENTERPRISE,
       status: "active",
       userId: ownerUserId,
@@ -339,7 +339,7 @@ export async function seedChurchCore(params: {
   // Owner membership
   const ownerMembership = await ensureMembership({
     admin,
-    churchId,
+    organizationId,
     userId: ownerUserId,
     role: "owner",
     seedSource,
@@ -398,7 +398,7 @@ export async function seedChurchCore(params: {
 
     const membership = await ensureMembership({
       admin,
-      churchId,
+      organizationId,
       userId: ensured.userId,
       role: person.role,
       seedSource,
@@ -430,7 +430,7 @@ export async function seedChurchCore(params: {
         const prefKey = `pref.${person.seedKey}.${notificationType}`;
         const existingPrefId = await getRegisteredId(admin, seedSource, prefKey);
         const prefPayload = {
-          organization_id: churchId,
+          organization_id: organizationId,
           user_id: ensured.userId,
           notification_type: notificationType,
           email_enabled: true,
@@ -452,7 +452,7 @@ export async function seedChurchCore(params: {
           const { data: existing } = await admin
             .from("notification_preferences")
             .select("id")
-            .eq("organization_id", churchId)
+            .eq("organization_id", organizationId)
             .eq("user_id", ensured.userId)
             .eq("notification_type", notificationType)
             .maybeSingle();
@@ -529,7 +529,7 @@ export async function seedChurchCore(params: {
 
     const membership = await ensureMembership({
       admin,
-      churchId,
+      organizationId,
       userId: ensured.userId,
       role: "security_member",
       seedSource,
@@ -562,7 +562,7 @@ export async function seedChurchCore(params: {
   const existingContact = await getRegisteredId(admin, seedSource, contactKey);
   // Prefer head_of_security contact row as a visible directory entry
   const contactPayload = {
-    organization_id: churchId,
+    organization_id: organizationId,
     contact_type: "head_of_security",
     organization_name: DEMO_CHURCH_NAME,
     full_name: "John Doe",
@@ -607,7 +607,7 @@ export async function seedChurchCore(params: {
     tempPassword,
     ownerUserId,
     summary,
-    churchId,
+    organizationId,
     primaryCampusId,
     sunshineCampusId,
     userIds,

@@ -61,12 +61,12 @@ function mapSettingsRow(row: Record<string, unknown>): ChurchNotificationSetting
 
 export async function getChurchNotificationSettings(
   supabase: SupabaseClient,
-  churchId: string,
+  organizationId: string,
 ): Promise<ChurchNotificationSettings> {
   const { data, error } = await supabase
     .from("organization_notification_settings")
     .select("*")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .maybeSingle();
 
   if (error) {
@@ -83,7 +83,7 @@ export async function getChurchNotificationSettings(
 
   const { data: inserted, error: insertError } = await supabase
     .from("organization_notification_settings")
-    .insert({ organization_id: churchId })
+    .insert({ organization_id: organizationId })
     .select("*")
     .single();
 
@@ -91,7 +91,7 @@ export async function getChurchNotificationSettings(
     // Fall back to in-memory defaults if insert is blocked by RLS for the caller.
     return {
       id: "default",
-      organization_id: churchId,
+      organization_id: organizationId,
       default_sender_name: null,
       reply_to_email: null,
       email_notifications_enabled: true,
@@ -117,14 +117,14 @@ export async function getChurchNotificationSettings(
 
 export async function getNotificationTemplate(
   supabase: SupabaseClient,
-  churchId: string,
+  organizationId: string,
   templateKey: string,
   channel: "email" | "sms" | "push" | "in_app" = "email",
 ): Promise<NotificationTemplate | null> {
   const { data: churchTemplate } = await supabase
     .from("notification_templates")
     .select("*")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("template_key", templateKey)
     .eq("channel", channel)
     .eq("is_active", true)

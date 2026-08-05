@@ -9,7 +9,7 @@ export type WritePlatformAdminActionInput = {
   action: string;
   targetType?: string | null;
   targetId?: string | null;
-  churchId?: string | null;
+  organizationId?: string | null;
   reason?: string | null;
   success?: boolean;
   correlationId?: string | null;
@@ -39,7 +39,7 @@ export async function writePlatformAdminAction(
     action: input.action,
     target_type: input.targetType ?? null,
     target_id: input.targetId ?? null,
-    organization_id: input.churchId ?? null,
+    organization_id: input.organizationId ?? null,
     reason: input.reason ?? null,
     success: input.success !== false,
     correlation_id: input.correlationId ?? null,

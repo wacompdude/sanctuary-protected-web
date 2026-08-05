@@ -57,7 +57,7 @@ export function shouldCreateCompletion(
 }
 
 export type CompletionRecordShapeInput = {
-  churchId: string;
+  organizationId: string;
   userId: string;
   campusId?: string | null;
   eventId?: string | null;
@@ -85,7 +85,7 @@ export type CompletionRecordShapeInput = {
 /** Pure helper for building completion record insert payloads. */
 export function buildCompletionRecordPayload(input: CompletionRecordShapeInput) {
   return {
-    organization_id: input.churchId,
+    organization_id: input.organizationId,
     campus_id: input.campusId ?? null,
     user_id: input.userId,
     training_event_id: input.eventId ?? null,

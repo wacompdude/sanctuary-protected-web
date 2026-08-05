@@ -52,13 +52,13 @@ function revalidateCampusPaths(campusId?: string) {
 
 async function clearOtherPrimaries(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  churchId: string,
+  organizationId: string,
   exceptCampusId?: string,
 ) {
   let query = supabase
     .from("campuses")
     .update({ is_primary: false })
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("is_primary", true);
   if (exceptCampusId) {
     query = query.neq("id", exceptCampusId);
@@ -81,7 +81,7 @@ export async function createCampusAction(
     }
 
     await requireCampusCreateCapacity({
-      churchId: church.id,
+      organizationId: church.id,
       willBeActive: validated.data.status === "active",
     });
 
@@ -135,7 +135,7 @@ export async function createCampusAction(
     }
 
     await auditCampusCreated(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       campusId: data.id,
       name: validated.data.name,
@@ -236,7 +236,7 @@ export async function updateCampusAction(
     }
 
     await auditCampusUpdated(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       campusId,
       changedFields: Object.keys(validated.data),
@@ -244,7 +244,7 @@ export async function updateCampusAction(
 
     if (existing.status !== validated.data.status) {
       await writeAuditLog(supabase, {
-        churchId: church.id,
+        organizationId: church.id,
         userId: user.id,
         action: AuditAction.CAMPUS_STATUS_CHANGED,
         entityType: AuditEntityType.CAMPUS,
@@ -259,7 +259,7 @@ export async function updateCampusAction(
 
     if (!existing.is_primary && validated.data.is_primary) {
       await writeAuditLog(supabase, {
-        churchId: church.id,
+        organizationId: church.id,
         userId: user.id,
         action: AuditAction.CAMPUS_PRIMARY_CHANGED,
         entityType: AuditEntityType.CAMPUS,
@@ -329,7 +329,7 @@ export async function updateCampusStatusAction(
 
     if (status === "active" && existing.status !== "active") {
       await requireCampusCreateCapacity({
-        churchId: church.id,
+        organizationId: church.id,
         willBeActive: true,
       });
     }
@@ -354,7 +354,7 @@ export async function updateCampusStatusAction(
     }
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action:
         status === "archived"
@@ -422,7 +422,7 @@ export async function setPrimaryCampusAction(
     }
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.CAMPUS_PRIMARY_CHANGED,
       entityType: AuditEntityType.CAMPUS,

@@ -39,7 +39,7 @@ assert(
 );
 assert(
   SAFETY_CONCERN_EXPO_INTEGRATION_POINTS.includes(
-    "data.listSafetyConcernBrowseItems(churchId, options, client)",
+    "data.listSafetyConcernBrowseItems(organizationId, options, client)",
   ),
   "browse helper listed as Expo integration point",
 );

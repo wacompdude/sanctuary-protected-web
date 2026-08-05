@@ -3,7 +3,7 @@ import { requireChurchMembership } from "@/lib/church/auth";
 import { ChurchAccessError } from "@/lib/church/errors";
 import { rethrowOrRedirectForChurchAccess } from "@/lib/church/access-guard";
 import { ChurchSwitcher } from "@/components/church-switcher";
-import { ChurchIdentity } from "@/components/church-identity";
+import { OrganizationIdentity } from "@/components/church-identity";
 import { CampusSelector } from "@/components/campuses/campus-selector";
 import { SyncActiveChurchCookie } from "@/components/sync-active-church-cookie";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,7 @@ export async function AppChurchHeader() {
       church,
       membership,
       memberships,
-      cookieSyncChurchId,
+      cookieSyncOrganizationId,
     } = await requireChurchMembership();
 
     const { data: branding } = await supabase
@@ -44,7 +44,7 @@ export async function AppChurchHeader() {
     }));
 
     const campusFilter = await resolveCampusFilter({
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       role: membership.role,
     });
@@ -54,7 +54,7 @@ export async function AppChurchHeader() {
         () => 0,
       ),
       listUserNotifications(supabase, {
-        churchId: church.id,
+        organizationId: church.id,
         userId: user.id,
         unreadOnly: true,
         limit: 8,
@@ -64,15 +64,15 @@ export async function AppChurchHeader() {
 
     return (
       <header className="mb-4 flex flex-col gap-3 border-b border-border pb-3 sm:mb-6 sm:pb-4">
-        {cookieSyncChurchId ? (
-          <SyncActiveChurchCookie churchId={cookieSyncChurchId} />
+        {cookieSyncOrganizationId ? (
+          <SyncActiveChurchCookie organizationId={cookieSyncOrganizationId} />
         ) : null}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Active church
             </p>
-            <ChurchIdentity name={church.name} logoPath={logoPath} />
+            <OrganizationIdentity name={church.name} logoPath={logoPath} />
           </div>
           <div className="flex w-full items-center justify-end gap-2 sm:max-w-sm sm:flex-col sm:items-end">
             <NotificationBell
@@ -83,7 +83,7 @@ export async function AppChurchHeader() {
               <div className="hidden w-full sm:block">
                 <ChurchSwitcher
                   churches={churchOptions}
-                  activeChurchId={church.id}
+                  activeOrganizationId={church.id}
                 />
               </div>
             ) : null}

@@ -57,7 +57,7 @@ export class UnconfiguredBillingProvider implements BillingProvider {
       error: "No billing provider is configured to accept webhooks.",
       eventType: "unconfigured",
       providerEventId: null,
-      churchId: null,
+      organizationId: null,
       metadata: {},
     };
   }

@@ -8,7 +8,7 @@ import { isPlanUpgrade } from "@/lib/subscriptions/status";
 import type { PlanKey } from "@/lib/subscriptions/plan-keys";
 
 export type ChurchSubscriptionMigrationRow = {
-  churchId: string;
+  organizationId: string;
   created: boolean;
   planChanged: boolean;
   planKey: string;
@@ -33,7 +33,7 @@ export type MigrateChurchSubscriptionsResult = {
  * - Never auto-downgrades.
  */
 export async function migrateAllChurchSubscriptions(options?: {
-  churchIds?: string[];
+  organizationIds?: string[];
   status?: "trialing" | "active";
   periodDays?: number;
   /** When true (default), upgrade existing lower plans to the recommended plan. */
@@ -58,8 +58,8 @@ export async function migrateAllChurchSubscriptions(options?: {
     .select("id")
     .order("created_at", { ascending: true });
 
-  if (options?.churchIds?.length) {
-    churchQuery = churchQuery.in("id", options.churchIds);
+  if (options?.organizationIds?.length) {
+    churchQuery = churchQuery.in("id", options.organizationIds);
   }
 
   const { data: churches, error } = await churchQuery;
@@ -77,14 +77,14 @@ export async function migrateAllChurchSubscriptions(options?: {
   };
 
   for (const church of churches ?? []) {
-    const churchId = String((church as { id: string }).id);
+    const organizationId = String((church as { id: string }).id);
     result.processed += 1;
 
     try {
       if (options?.dryRun) {
-        const recommendation = await recommendPlanForChurch(admin, churchId);
+        const recommendation = await recommendPlanForChurch(admin, organizationId);
         result.rows.push({
-          churchId,
+          organizationId,
           created: false,
           planChanged: false,
           planKey: recommendation.planKey,
@@ -96,7 +96,7 @@ export async function migrateAllChurchSubscriptions(options?: {
       }
 
       const ensured = await ensureChurchSubscription({
-        churchId,
+        organizationId,
         status,
         periodDays,
         userId: options?.userId,
@@ -108,7 +108,7 @@ export async function migrateAllChurchSubscriptions(options?: {
       if (ensured.created) {
         result.created += 1;
         result.rows.push({
-          churchId,
+          organizationId,
           created: true,
           planChanged: false,
           planKey: String(ensured.subscription.plan_key),
@@ -118,7 +118,7 @@ export async function migrateAllChurchSubscriptions(options?: {
       }
 
       if (upgradeIfRecommended) {
-        const recommendation = await recommendPlanForChurch(admin, churchId);
+        const recommendation = await recommendPlanForChurch(admin, organizationId);
         if (
           isPlanUpgrade(
             String(ensured.subscription.plan_key),
@@ -126,7 +126,7 @@ export async function migrateAllChurchSubscriptions(options?: {
           )
         ) {
           const changed = await changeChurchSubscriptionPlan({
-            churchId,
+            organizationId,
             planKey: recommendation.planKey,
             userId: options?.userId,
             source,
@@ -136,7 +136,7 @@ export async function migrateAllChurchSubscriptions(options?: {
           if (changed.planChanged) {
             result.upgraded += 1;
             result.rows.push({
-              churchId,
+              organizationId,
               created: false,
               planChanged: true,
               planKey: String(changed.subscription.plan_key),
@@ -149,7 +149,7 @@ export async function migrateAllChurchSubscriptions(options?: {
 
       result.unchanged += 1;
       result.rows.push({
-        churchId,
+        organizationId,
         created: false,
         planChanged: false,
         planKey: String(ensured.subscription.plan_key),
@@ -157,7 +157,7 @@ export async function migrateAllChurchSubscriptions(options?: {
     } catch (err) {
       result.failed += 1;
       result.rows.push({
-        churchId,
+        organizationId,
         created: false,
         planChanged: false,
         planKey: "",

@@ -29,7 +29,7 @@ export async function setActiveCampusFilterAction(
     }
 
     const { campuses } = await listAccessibleCampuses({
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       role: membership.role,
     });

@@ -66,7 +66,7 @@ export async function markAllNotificationsReadAction(): Promise<ActionState> {
     const { supabase, user, church } = await getAuthenticatedUserWithChurch();
     const result = await markAllNotificationsRead({
       supabase,
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
     });
     if (!result.ok) {
@@ -135,7 +135,7 @@ export async function acknowledgeNotificationAction(
     if (!result.ok) return { error: result.error ?? "Unable to acknowledge." };
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.NOTIFICATION_ACKNOWLEDGED,
       entityType: AuditEntityType.NOTIFICATION,
@@ -230,7 +230,7 @@ export async function updateMyNotificationPreferencesAction(
     if (error) return { error: error.message };
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.NOTIFICATION_PREFERENCES_UPDATED,
       entityType: AuditEntityType.NOTIFICATION_SETTINGS,
@@ -269,7 +269,7 @@ export async function updateChurchNotificationSettingsAction(
       const { FEATURE_KEYS } = await import("@/lib/subscriptions/feature-keys");
       const { requireFeature } = await import("@/lib/subscriptions/resolver");
       await requireFeature({
-        churchId: church.id,
+        organizationId: church.id,
         featureKey: FEATURE_KEYS.SMS,
       });
     }
@@ -278,7 +278,7 @@ export async function updateChurchNotificationSettingsAction(
       const { FEATURE_KEYS } = await import("@/lib/subscriptions/feature-keys");
       const { requireFeature } = await import("@/lib/subscriptions/resolver");
       await requireFeature({
-        churchId: church.id,
+        organizationId: church.id,
         featureKey: FEATURE_KEYS.EMAIL,
       });
     }
@@ -314,7 +314,7 @@ export async function updateChurchNotificationSettingsAction(
     if (error) return { error: error.message };
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.NOTIFICATION_SETTINGS_UPDATED,
       entityType: AuditEntityType.NOTIFICATION_SETTINGS,
@@ -343,14 +343,14 @@ async function assertSenderTestRateLimit(params: {
   supabase: Awaited<
     ReturnType<typeof getAuthenticatedUserWithChurch>
   >["supabase"];
-  churchId: string;
+  organizationId: string;
   userId: string;
 }): Promise<string | null> {
   const since = new Date(Date.now() - SENDER_TEST_WINDOW_MS).toISOString();
   const { data, error } = await params.supabase
     .from("audit_logs")
     .select("id, created_at, metadata")
-    .eq("organization_id", params.churchId)
+    .eq("organization_id", params.organizationId)
     .eq("user_id", params.userId)
     .eq("action", AuditAction.EMAIL_SENDER_TEST_SENT)
     .gte("created_at", since)
@@ -401,7 +401,7 @@ export async function sendEmailSenderTestAction(
       resolveEmailSender(categoryRaw);
     } catch {
       await auditEmailSenderTestFailed(supabase, {
-        churchId: church.id,
+        organizationId: church.id,
         userId: user.id,
         senderCategory: categoryRaw,
         errorCode: "sender_not_configured",
@@ -413,14 +413,14 @@ export async function sendEmailSenderTestAction(
 
     const rateLimitError = await assertSenderTestRateLimit({
       supabase,
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
     });
     if (rateLimitError) return { error: rateLimitError };
 
     const result = await createNotification(
       {
-        churchId: church.id,
+        organizationId: church.id,
         createdBy: user.id,
         notificationType: "notification.test",
         severity: "informational",
@@ -449,7 +449,7 @@ export async function sendEmailSenderTestAction(
 
     if (!result.notificationId) {
       await auditEmailSenderTestFailed(supabase, {
-        churchId: church.id,
+        organizationId: church.id,
         userId: user.id,
         senderCategory: categoryRaw,
         errorCode: "create_failed",
@@ -458,13 +458,13 @@ export async function sendEmailSenderTestAction(
     }
 
     await auditEmailSenderTestSent(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       notificationId: result.notificationId,
       senderCategory: categoryRaw,
     });
     await auditNotificationTestEmailSent(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       notificationId: result.notificationId,
     });
@@ -505,7 +505,7 @@ export async function sendTestNotificationEmailAction(
 
     const result = await createNotification(
       {
-        churchId: church.id,
+        organizationId: church.id,
         createdBy: user.id,
         notificationType: "notification.test",
         severity: "informational",
@@ -525,7 +525,7 @@ export async function sendTestNotificationEmailAction(
     }
 
     await auditNotificationTestEmailSent(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       notificationId: result.notificationId,
     });
@@ -554,11 +554,11 @@ export async function retryNotificationDeliveryAction(
     if (!deliveryId) return { error: "Delivery is required." };
 
     const { retryFailedDelivery } = await import("@/lib/notifications");
-    const result = await retryFailedDelivery({ deliveryId, churchId: church.id });
+    const result = await retryFailedDelivery({ deliveryId, organizationId: church.id });
     if (!result.ok) return { error: result.error ?? "Retry failed." };
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.NOTIFICATION_DELIVERY_RETRIED,
       entityType: AuditEntityType.NOTIFICATION_DELIVERY,

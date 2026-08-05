@@ -24,13 +24,13 @@ import { listScheduleEvents } from "@/lib/schedule/queries";
 import { listScheduleShifts } from "@/lib/schedule/shift-queries";
 import { SCHEDULE_MIGRATION_HINT } from "@/lib/schedule/constants";
 
-async function listRecentScheduleNotifications(churchId: string) {
+async function listRecentScheduleNotifications(organizationId: string) {
   const { createClient } = await import("@/lib/supabase/server");
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("notifications")
     .select("id, title, notification_type, severity, status, created_at")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .like("notification_type", "schedule.%")
     .order("created_at", { ascending: false })
     .limit(25);

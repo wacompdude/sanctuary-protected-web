@@ -64,7 +64,7 @@ export async function provisionChurchMember(
       };
     }
 
-    await requireActiveSeatCapacity({ churchId: church.id });
+    await requireActiveSeatCapacity({ organizationId: church.id });
 
     const { data: emailTaken, error: emailCheckError } = await supabase.rpc(
       "church_has_active_member_email",
@@ -209,7 +209,7 @@ export async function provisionChurchMember(
         : undefined;
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.MEMBER_PROVISIONED,
       entityType: AuditEntityType.CHURCH_MEMBERSHIP,

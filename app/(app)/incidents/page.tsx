@@ -51,7 +51,7 @@ async function IncidentsList({ showAll }: { showAll: boolean }) {
   const preferences = parseAppPreferences(settingsRow?.settings);
   const sort = resolveIncidentListSort(preferences);
   const campusFilter = await resolveCampusFilter({
-    churchId: church.id,
+    organizationId: church.id,
     userId: user.id,
     role: membership.role,
   });
@@ -91,7 +91,7 @@ async function IncidentsList({ showAll }: { showAll: boolean }) {
 
   const filterLabel = campusFilterLabel(campusFilter);
   const analyticsAccess = await hasFeature({
-    churchId: church.id,
+    organizationId: church.id,
     featureKey: FEATURE_KEYS.INCIDENT_ANALYTICS,
   });
 

@@ -55,7 +55,7 @@ export async function areDashboardBoxSettingsAvailable(): Promise<boolean> {
 }
 
 export async function listChurchDashboardBoxSettings(
-  churchId: string,
+  organizationId: string,
 ): Promise<DashboardBoxSettingRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -63,7 +63,7 @@ export async function listChurchDashboardBoxSettings(
     .select(
       "id, organization_id, box_key, is_visible, display_order, background_color, text_color, use_automatic_text_color, created_by, updated_by, created_at, updated_at",
     )
-    .eq("organization_id", churchId);
+    .eq("organization_id", organizationId);
 
   if (error) {
     if (isMissingTable(error.message)) return [];
@@ -80,9 +80,9 @@ export async function listChurchDashboardBoxSettings(
 }
 
 export async function getChurchDashboardBoxSetting(
-  churchId: string,
+  organizationId: string,
   boxKey: DashboardBoxKey,
 ): Promise<DashboardBoxSettingRow | null> {
-  const rows = await listChurchDashboardBoxSettings(churchId);
+  const rows = await listChurchDashboardBoxSettings(organizationId);
   return rows.find((row) => row.box_key === boxKey) ?? null;
 }

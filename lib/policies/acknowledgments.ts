@@ -45,7 +45,7 @@ function mapAck(row: Record<string, unknown>): PolicyAcknowledgment {
 }
 
 export async function listMyPendingPolicyAcknowledgments(
-  churchId: string,
+  organizationId: string,
   userId: string,
 ): Promise<PolicyAcknowledgment[]> {
   const supabase = await createClient();
@@ -58,7 +58,7 @@ export async function listMyPendingPolicyAcknowledgments(
        policy_documents ( title ),
        policy_versions ( version_label )`,
     )
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("user_id", userId)
     .in("acknowledgment_status", ["assigned", "viewed", "overdue"])
     .order("due_at", { ascending: true, nullsFirst: false });
@@ -80,7 +80,7 @@ export async function listMyPendingPolicyAcknowledgments(
 }
 
 export async function getMyPolicyAcknowledgment(
-  churchId: string,
+  organizationId: string,
   policyId: string,
   userId: string,
 ): Promise<PolicyAcknowledgment | null> {
@@ -88,7 +88,7 @@ export async function getMyPolicyAcknowledgment(
   const { data: policy } = await supabase
     .from("policy_documents")
     .select("current_version_id")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("id", policyId)
     .maybeSingle();
 
@@ -101,7 +101,7 @@ export async function getMyPolicyAcknowledgment(
        acknowledgment_status, assigned_at, due_at, viewed_at, acknowledged_at,
        acknowledgment_text, waived_by, waived_at, waiver_reason, created_at, updated_at`,
     )
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("policy_document_id", policyId)
     .eq("policy_version_id", policy.current_version_id)
     .eq("user_id", userId)
@@ -115,7 +115,7 @@ export async function getMyPolicyAcknowledgment(
 }
 
 export async function getPolicyAcknowledgmentReport(
-  churchId: string,
+  organizationId: string,
   policyId: string,
 ): Promise<PolicyAcknowledgmentReport> {
   const empty: PolicyAcknowledgmentReport = {
@@ -135,7 +135,7 @@ export async function getPolicyAcknowledgmentReport(
        acknowledgment_status, assigned_at, due_at, viewed_at, acknowledged_at,
        acknowledgment_text, waived_by, waived_at, waiver_reason, created_at, updated_at`,
     )
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("policy_document_id", policyId)
     .order("acknowledgment_status", { ascending: true })
     .order("due_at", { ascending: true, nullsFirst: false });
@@ -265,7 +265,7 @@ export async function ensureMyPolicyAcknowledgment(
 }
 
 export async function listPolicyAssignments(
-  churchId: string,
+  organizationId: string,
   policyId: string,
 ): Promise<PolicyAssignment[]> {
   const supabase = await createClient();
@@ -275,7 +275,7 @@ export async function listPolicyAssignments(
       `id, organization_id, policy_document_id, policy_version_id, assignment_type,
        role, campus_id, user_id, due_days, created_by, created_at, revoked_at`,
     )
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("policy_document_id", policyId)
     .is("revoked_at", null)
     .order("created_at", { ascending: true });
@@ -314,7 +314,7 @@ export async function listPolicyAssignments(
     const { data: campuses } = await supabase
       .from("campuses")
       .select("id, name")
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .in("id", campusIds);
     for (const campus of campuses ?? []) {
       nameByCampus.set(String(campus.id), String(campus.name));
@@ -345,12 +345,12 @@ export async function listPolicyAssignments(
   }));
 }
 
-export async function listActiveChurchMembersForPolicies(churchId: string) {
+export async function listActiveChurchMembersForPolicies(organizationId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("organization_memberships")
     .select("id, user_id, role")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("status", "active")
     .order("role", { ascending: true });
 

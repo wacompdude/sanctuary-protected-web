@@ -4,18 +4,18 @@ import type { ChurchContactType } from "@/lib/church/contacts";
 import { Card, CardContent } from "@/components/ui/card";
 
 export async function ChurchDirectoryGroupLoader({
-  churchId,
+  organizationId,
   canEdit,
   contactTypes,
   intro,
 }: {
-  churchId: string;
+  organizationId: string;
   canEdit: boolean;
   contactTypes: ChurchContactType[];
   intro?: string;
 }) {
   const { contacts, error } = await listChurchContactsForTypes(
-    churchId,
+    organizationId,
     contactTypes,
   );
 

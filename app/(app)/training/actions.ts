@@ -71,7 +71,7 @@ async function requireTrainingContext(options?: {
   const ctx = await getAuthenticatedUserWithChurch();
   try {
     await requireFeature({
-      churchId: ctx.church.id,
+      organizationId: ctx.church.id,
       featureKey: FEATURE_KEYS.TRAINING_MANAGEMENT,
     });
   } catch (error) {
@@ -142,7 +142,7 @@ function readBoolean(formData: FormData, key: string): boolean {
 
 async function maybeCreateCertification(params: {
   supabase: Awaited<ReturnType<typeof createClient>>;
-  churchId: string;
+  organizationId: string;
   userId: string;
   actorUserId: string;
   certificationType: string | null | undefined;
@@ -154,7 +154,7 @@ async function maybeCreateCertification(params: {
   if (!certType) return;
 
   const teamMember = await ensureTeamMemberForChurchMember({
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     createdBy: params.actorUserId,
     fullName: params.memberName,
     email: params.memberEmail,
@@ -163,7 +163,7 @@ async function maybeCreateCertification(params: {
   const { data: existing } = await params.supabase
     .from("certifications")
     .select("id")
-    .eq("organization_id", params.churchId)
+    .eq("organization_id", params.organizationId)
     .eq("team_member_id", teamMember.id)
     .eq("certification_type", certType)
     .maybeSingle();
@@ -175,7 +175,7 @@ async function maybeCreateCertification(params: {
   expiration.setFullYear(expiration.getFullYear() + 1);
 
   await params.supabase.from("certifications").insert({
-    organization_id: params.churchId,
+    organization_id: params.organizationId,
     team_member_id: teamMember.id,
     certification_type: certType,
     issuer: "Training Management",
@@ -189,7 +189,7 @@ async function maybeCreateCertification(params: {
 
 async function completeParticipantInternal(params: {
   supabase: Awaited<ReturnType<typeof createClient>>;
-  churchId: string;
+  organizationId: string;
   actorUserId: string;
   participantId: string;
   completionStatus?: TrainingCompletionStatus;
@@ -212,7 +212,7 @@ async function completeParticipantInternal(params: {
     `,
     )
     .eq("id", params.participantId)
-    .eq("organization_id", params.churchId)
+    .eq("organization_id", params.organizationId)
     .maybeSingle();
 
   if (participantError || !participant) {
@@ -286,7 +286,7 @@ async function completeParticipantInternal(params: {
     .eq("id", params.participantId);
 
   const payload = buildCompletionRecordPayload({
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     userId: participant.user_id,
     campusId: event.campus_id,
     eventId: event.id,
@@ -321,7 +321,7 @@ async function completeParticipantInternal(params: {
 
   const ipAddress = await getRequestIpAddress();
   await auditTrainingCompletionRecorded(params.supabase, {
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     userId: params.actorUserId,
     completionRecordId: record.id,
     participantId: params.participantId,
@@ -334,11 +334,11 @@ async function completeParticipantInternal(params: {
   const certType = event.certification_type || event.course?.certification_type;
 
   if (createsCert) {
-    const members = await listChurchTeamMemberships(params.churchId);
+    const members = await listChurchTeamMemberships(params.organizationId);
     const member = members.find((m) => m.userId === participant.user_id);
     await maybeCreateCertification({
       supabase: params.supabase,
-      churchId: params.churchId,
+      organizationId: params.organizationId,
       userId: participant.user_id,
       actorUserId: params.actorUserId,
       certificationType: certType,
@@ -400,7 +400,7 @@ export async function createTrainingEvent(
     if (error) throw new Error(error.message);
 
     await auditTrainingEventCreated(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       eventId: data.id,
       name: payload.name,
@@ -463,7 +463,7 @@ export async function updateTrainingEvent(
     if (error) throw new Error(error.message);
 
     await auditTrainingEventUpdated(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       eventId,
       metadata: { name: payload.name, status: payload.status },
@@ -497,7 +497,7 @@ export async function cancelTrainingEvent(
     if (error) throw new Error(error.message);
 
     await auditTrainingEventCancelled(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       eventId,
       ipAddress: await getRequestIpAddress(),
@@ -630,7 +630,7 @@ export async function completeParticipant(
 
     const result = await completeParticipantInternal({
       supabase,
-      churchId: church.id,
+      organizationId: church.id,
       actorUserId: user.id,
       participantId,
       ...options,
@@ -661,7 +661,7 @@ export async function markParticipantsComplete(
     for (const participantId of participantIds) {
       const result = await completeParticipantInternal({
         supabase,
-        churchId: church.id,
+        organizationId: church.id,
         actorUserId: user.id,
         participantId,
         completionStatus: "completed",
@@ -966,7 +966,7 @@ export async function verifyExternalTraining(
     }
 
     const payload = buildCompletionRecordPayload({
-      churchId: church.id,
+      organizationId: church.id,
       userId: external.user_id,
       categoryId,
       courseName: external.course_name,
@@ -1006,7 +1006,7 @@ export async function verifyExternalTraining(
       .eq("organization_id", church.id);
 
     await auditTrainingExternalVerified(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       externalRecordId,
       completionRecordId: record.id,
@@ -1060,7 +1060,7 @@ export async function updateTrainingSettings(
     if (error) throw new Error(error.message);
 
     await auditTrainingSettingsUpdated(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       metadata: payload,
       ipAddress: await getRequestIpAddress(),

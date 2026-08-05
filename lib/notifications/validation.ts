@@ -49,7 +49,7 @@ export function sanitizeNotificationMetadata(
 export function validateCreateNotificationInput(
   input: CreateNotificationInput,
 ): { error?: string; severity?: NotificationSeverity; channels?: NotificationChannel[] } {
-  if (!isUuid(input.churchId)) {
+  if (!isUuid(input.organizationId)) {
     return { error: "A valid church is required." };
   }
   if (!input.notificationType?.trim()) {

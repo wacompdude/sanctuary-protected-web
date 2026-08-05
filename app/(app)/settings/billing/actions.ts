@@ -44,7 +44,7 @@ export async function previewPlanChangeImpactAction(
       return { error: "Select a valid plan." };
     }
     const impact = await buildDowngradeImpactReport({
-      churchId: church.id,
+      organizationId: church.id,
       targetPlanKey: planKey,
     });
     return { success: true, impact };
@@ -78,7 +78,7 @@ export async function startCheckoutAction(
     const headerStore = await headers();
     const origin = appOriginFromHeaders(headerStore);
     const session = await provider.createCheckoutSession({
-      churchId: church.id,
+      organizationId: church.id,
       planKey,
       successUrl: `${origin}/settings/billing?checkout=success`,
       cancelUrl: `${origin}/settings/billing?checkout=cancelled`,
@@ -111,7 +111,7 @@ export async function openCustomerPortalAction(): Promise<BillingActionState> {
     const headerStore = await headers();
     const origin = appOriginFromHeaders(headerStore);
     const session = await provider.createCustomerPortalSession({
-      churchId: church.id,
+      organizationId: church.id,
       returnUrl: `${origin}/settings/billing`,
     });
     return { success: true, url: session.url };
@@ -150,7 +150,7 @@ export async function applyPlanWithoutProviderAction(
     if (!planKey) return { error: "Select a plan." };
 
     const impact = await buildDowngradeImpactReport({
-      churchId: church.id,
+      organizationId: church.id,
       targetPlanKey: planKey,
     });
 
@@ -166,7 +166,7 @@ export async function applyPlanWithoutProviderAction(
     }
 
     await changeChurchSubscriptionPlan({
-      churchId: church.id,
+      organizationId: church.id,
       planKey,
       status: "active",
       userId: user.id,
@@ -220,7 +220,7 @@ export async function requestCancellationAction(
 
     // Soft-cancel at period end until a provider owns lifecycle.
     const result = await scheduleChurchSubscriptionCancellation({
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       source: "billing_settings_manual",
       reason: "Cancel at period end requested from billing settings (no provider)",

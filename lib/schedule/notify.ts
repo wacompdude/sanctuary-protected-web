@@ -5,7 +5,7 @@ import { labelForScheduleAssignmentRole } from "@/lib/schedule/constants";
 import type { ScheduleShift } from "@/lib/schedule/types";
 
 type ScheduleNotifyBase = {
-  churchId: string;
+  organizationId: string;
   createdBy?: string | null;
   timeZone?: string | null;
   customMessage?: string | null;
@@ -27,7 +27,7 @@ export async function notifyScheduleSafe(
     if (result.error) {
       console.error("schedule notification failed:", result.error, {
         type: input.notificationType,
-        churchId: input.churchId,
+        organizationId: input.organizationId,
       });
     }
   } catch (error) {
@@ -50,7 +50,7 @@ export async function notifyAssignmentCreated(params: ScheduleNotifyBase & {
   const responseRequired = !params.conflictOverride;
 
   await notifyScheduleSafe({
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     createdBy: params.createdBy,
     notificationType: type,
     severity: params.conflictOverride ? "high" : "medium",
@@ -79,7 +79,7 @@ export async function notifyAssignmentCreated(params: ScheduleNotifyBase & {
 
   if (responseRequired) {
     await notifyScheduleSafe({
-      churchId: params.churchId,
+      organizationId: params.organizationId,
       createdBy: params.createdBy,
       notificationType: "schedule.assignment_response_required",
       severity: "high",
@@ -104,7 +104,7 @@ export async function notifyAssignmentCancelled(params: ScheduleNotifyBase & {
   recipientUserId: string;
 }): Promise<void> {
   await notifyScheduleSafe({
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     createdBy: params.createdBy,
     notificationType: "schedule.assignment_cancelled",
     severity: "high",
@@ -133,7 +133,7 @@ export async function notifyAssignmentResponse(params: ScheduleNotifyBase & {
 }): Promise<void> {
   if (params.schedulerUserIds.length === 0) return;
   await notifyScheduleSafe({
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     createdBy: params.createdBy,
     notificationType:
       params.decision === "accept"
@@ -168,7 +168,7 @@ export async function notifyShiftCancelled(params: ScheduleNotifyBase & {
 }): Promise<void> {
   if (params.recipientUserIds.length === 0) return;
   await notifyScheduleSafe({
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     createdBy: params.createdBy,
     notificationType: "schedule.shift_cancelled",
     severity: "high",
@@ -199,7 +199,7 @@ export async function notifyEventCancelled(params: ScheduleNotifyBase & {
 }): Promise<void> {
   if (params.recipientUserIds.length === 0) return;
   await notifyScheduleSafe({
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     createdBy: params.createdBy,
     notificationType: "schedule.event_cancelled",
     severity: "high",

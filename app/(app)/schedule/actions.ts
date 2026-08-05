@@ -29,7 +29,7 @@ async function requireScheduleManager() {
     );
   }
   await requireFeature({
-    churchId: ctx.church.id,
+    organizationId: ctx.church.id,
     featureKey: FEATURE_KEYS.TEAM_SCHEDULING,
   });
   return ctx;
@@ -37,7 +37,7 @@ async function requireScheduleManager() {
 
 async function writeScheduleChangeHistory(input: {
   supabase: Awaited<ReturnType<typeof createClient>>;
-  churchId: string;
+  organizationId: string;
   entityId: string;
   eventId: string;
   action: string;
@@ -48,7 +48,7 @@ async function writeScheduleChangeHistory(input: {
   changedFields?: string[];
 }) {
   await input.supabase.from("schedule_change_history").insert({
-    organization_id: input.churchId,
+    organization_id: input.organizationId,
     entity_type: "event",
     entity_id: input.entityId,
     event_id: input.eventId,
@@ -99,7 +99,7 @@ export async function createScheduleEventAction(
 
     const ipAddress = await getRequestIpAddress();
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.SCHEDULE_EVENT_CREATED,
       entityType: AuditEntityType.SCHEDULE_EVENT,
@@ -114,7 +114,7 @@ export async function createScheduleEventAction(
 
     await writeScheduleChangeHistory({
       supabase,
-      churchId: church.id,
+      organizationId: church.id,
       entityId: data.id,
       eventId: data.id,
       action: "schedule.event_created",
@@ -206,7 +206,7 @@ export async function updateScheduleEventAction(
 
     const ipAddress = await getRequestIpAddress();
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.SCHEDULE_EVENT_UPDATED,
       entityType: AuditEntityType.SCHEDULE_EVENT,
@@ -221,7 +221,7 @@ export async function updateScheduleEventAction(
 
     await writeScheduleChangeHistory({
       supabase,
-      churchId: church.id,
+      organizationId: church.id,
       entityId: eventId,
       eventId,
       action: "schedule.event_updated",
@@ -351,7 +351,7 @@ export async function cancelScheduleEventAction(
 
     const ipAddress = await getRequestIpAddress();
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.SCHEDULE_EVENT_CANCELLED,
       entityType: AuditEntityType.SCHEDULE_EVENT,
@@ -362,7 +362,7 @@ export async function cancelScheduleEventAction(
 
     await writeScheduleChangeHistory({
       supabase,
-      churchId: church.id,
+      organizationId: church.id,
       entityId: eventId,
       eventId,
       action: "schedule.event_cancelled",
@@ -374,7 +374,7 @@ export async function cancelScheduleEventAction(
     });
 
     await notifyEventCancelled({
-      churchId: church.id,
+      organizationId: church.id,
       createdBy: user.id,
       timeZone: church.timezone,
       eventId,

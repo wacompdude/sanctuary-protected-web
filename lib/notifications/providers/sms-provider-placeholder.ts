@@ -7,7 +7,7 @@ import type {
 /**
  * Placeholder until SMS consent + provider are configured.
  * When a real provider succeeds, call
- * `recordSmsSegmentsConsumed({ churchId, deliveryId, segments })`
+ * `recordSmsSegmentsConsumed({ organizationId, deliveryId, segments })`
  * from the dispatch path (idempotent by delivery id).
  */
 export class SmsProviderPlaceholder implements NotificationProvider {

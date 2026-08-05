@@ -26,14 +26,14 @@ function migrationHint(error: { message?: string; code?: string }): boolean {
 }
 
 export async function listMedicalSupplies(
-  churchId: string,
+  organizationId: string,
   options: { includeArchived?: boolean; lowStockOnly?: boolean } = {},
 ): Promise<MedicalSupply[]> {
   const supabase = await createClient();
   let query = supabase
     .from("medical_supplies")
     .select(SUPPLY_SELECT)
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .order("name", { ascending: true });
 
   if (!options.includeArchived) {
@@ -62,14 +62,14 @@ export async function listMedicalSupplies(
 
 export async function getMedicalSupplyById(
   id: string,
-  churchId: string,
+  organizationId: string,
 ): Promise<MedicalSupply | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("medical_supplies")
     .select(SUPPLY_SELECT)
     .eq("id", id)
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .maybeSingle();
 
   if (error) {
@@ -78,12 +78,12 @@ export async function getMedicalSupplyById(
   return (data as MedicalSupply | null) ?? null;
 }
 
-export async function getMedicalSupplySummary(churchId: string): Promise<{
+export async function getMedicalSupplySummary(organizationId: string): Promise<{
   total: number;
   lowStock: number;
   outOfStock: number;
 }> {
-  const supplies = await listMedicalSupplies(churchId);
+  const supplies = await listMedicalSupplies(organizationId);
   return {
     total: supplies.length,
     lowStock: supplies.filter(
@@ -94,7 +94,7 @@ export async function getMedicalSupplySummary(churchId: string): Promise<{
 }
 
 export async function getRestockReport(
-  churchId: string,
+  organizationId: string,
 ): Promise<RestockReportRow[]> {
   const supabase = await createClient();
   const cutoff = new Date();
@@ -105,13 +105,13 @@ export async function getRestockReport(
     supabase
       .from("medical_supplies")
       .select(SUPPLY_SELECT)
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .is("archived_at", null)
       .order("name", { ascending: true }),
     supabase
       .from("medical_supply_usage")
       .select("medical_supply_id, quantity_used, incident_id")
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .gte("created_at", cutoffIso),
   ]);
 
@@ -150,7 +150,7 @@ export async function getRestockReport(
 }
 
 export async function listUsageForIncident(
-  churchId: string,
+  organizationId: string,
   incidentId: string,
 ): Promise<MedicalSupplyUsage[]> {
   const supabase = await createClient();
@@ -163,7 +163,7 @@ export async function listUsageForIncident(
       medical_supplies ( name, unit )
     `,
     )
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("incident_id", incidentId)
     .order("created_at", { ascending: false });
 
@@ -194,8 +194,8 @@ export async function listUsageForIncident(
 }
 
 export async function listAvailableSuppliesForIncident(
-  churchId: string,
+  organizationId: string,
 ): Promise<MedicalSupply[]> {
-  const supplies = await listMedicalSupplies(churchId);
+  const supplies = await listMedicalSupplies(organizationId);
   return supplies.filter((row) => row.quantity_on_hand > 0);
 }

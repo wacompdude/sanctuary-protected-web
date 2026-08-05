@@ -16,14 +16,14 @@ async function loadTargetMembership(
   supabase: Awaited<
     ReturnType<typeof getOperationalChurchContext>
   >["supabase"],
-  churchId: string,
+  organizationId: string,
   membershipId: string,
 ) {
   const { data, error } = await supabase
     .from("organization_memberships")
     .select("id, organization_id, user_id, role, status")
     .eq("id", membershipId)
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .maybeSingle();
 
   if (error || !data) {
@@ -43,12 +43,12 @@ async function countActiveOwners(
   supabase: Awaited<
     ReturnType<typeof getOperationalChurchContext>
   >["supabase"],
-  churchId: string,
+  organizationId: string,
 ): Promise<number> {
   const { count } = await supabase
     .from("organization_memberships")
     .select("id", { count: "exact", head: true })
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("role", "owner")
     .eq("status", "active");
   return count ?? 0;
@@ -116,7 +116,7 @@ export async function updateTeamMemberRole(
     }
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.MEMBERSHIP_ROLE_CHANGED,
       entityType: AuditEntityType.CHURCH_MEMBERSHIP,
@@ -200,7 +200,7 @@ export async function updateTeamMemberStatus(
       const { requireActiveSeatCapacity } = await import(
         "@/lib/subscriptions/enforcement"
       );
-      await requireActiveSeatCapacity({ churchId: church.id });
+      await requireActiveSeatCapacity({ organizationId: church.id });
     }
 
     const { error: updateError } = await supabase
@@ -224,7 +224,7 @@ export async function updateTeamMemberStatus(
           : AuditAction.MEMBERSHIP_REACTIVATED;
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: statusAction,
       entityType: AuditEntityType.CHURCH_MEMBERSHIP,

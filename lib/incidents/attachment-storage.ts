@@ -22,21 +22,21 @@ export function extensionForIncidentPhotoMime(mimeType: string): string | null {
 }
 
 export function incidentPhotoObjectPath(params: {
-  churchId: string;
+  organizationId: string;
   incidentId: string;
   mimeType: string;
 }): string | null {
   const ext = extensionForIncidentPhotoMime(params.mimeType);
   if (!ext) return null;
-  return `churches/${params.churchId}/incidents/${params.incidentId}/${randomUUID()}.${ext}`;
+  return `churches/${params.organizationId}/incidents/${params.incidentId}/${randomUUID()}.${ext}`;
 }
 
 export function isIncidentMediaStoragePath(
   path: string,
-  churchId: string,
+  organizationId: string,
   incidentId?: string,
 ): boolean {
-  const prefix = `churches/${churchId}/incidents/`;
+  const prefix = `churches/${organizationId}/incidents/`;
   if (!path.startsWith(prefix)) return false;
   if (!incidentId) return true;
   return path.startsWith(`${prefix}${incidentId}/`);

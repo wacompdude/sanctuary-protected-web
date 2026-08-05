@@ -13,12 +13,12 @@ import {
 } from "@/lib/platform/support-session-options";
 
 export function PlatformSupportSessionForm({
-  churchId,
+  organizationId,
   churchName,
   canStart,
   activeSessionId,
 }: {
-  churchId: string;
+  organizationId: string;
   churchName: string;
   canStart: boolean;
   activeSessionId?: string | null;
@@ -38,7 +38,7 @@ export function PlatformSupportSessionForm({
     setError(null);
     setMessage(null);
     const formData = new FormData();
-    formData.set("organization_id", churchId);
+    formData.set("organization_id", organizationId);
     formData.set("reason", reason);
     formData.set("ticket_reference", ticket);
     formData.set("access_type", accessType);
@@ -91,7 +91,7 @@ export function PlatformSupportSessionForm({
           </p>
           <div className="flex flex-wrap gap-2">
             <Link
-              href={`/platform/churches/${churchId}`}
+              href={`/platform/churches/${organizationId}`}
               className="rounded-md border border-slate-700 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-900"
             >
               Open church workspace

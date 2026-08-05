@@ -63,7 +63,7 @@ async function countExact(
 
 export async function collectChurchUsageSignals(
   supabase: SupabaseClient,
-  churchId: string,
+  organizationId: string,
 ): Promise<ChurchUsageSignals> {
   const [
     activeCampusCount,
@@ -73,13 +73,13 @@ export async function collectChurchUsageSignals(
     photoCount,
   ] = await Promise.all([
     countExact(supabase, "campuses", {
-      organization_id: churchId,
+      organization_id: organizationId,
       status: "active",
     }),
-    countExact(supabase, "policy_documents", { organization_id: churchId }),
-    countExact(supabase, "medical_supplies", { organization_id: churchId }),
-    countExact(supabase, "security_equipment", { organization_id: churchId }),
-    countExact(supabase, "incident_attachments", { organization_id: churchId }),
+    countExact(supabase, "policy_documents", { organization_id: organizationId }),
+    countExact(supabase, "medical_supplies", { organization_id: organizationId }),
+    countExact(supabase, "security_equipment", { organization_id: organizationId }),
+    countExact(supabase, "incident_attachments", { organization_id: organizationId }),
   ]);
 
   return {
@@ -93,9 +93,9 @@ export async function collectChurchUsageSignals(
 
 export async function recommendPlanForChurch(
   supabase: SupabaseClient,
-  churchId: string,
+  organizationId: string,
 ): Promise<{ planKey: PlanKey; signals: ChurchUsageSignals }> {
-  const signals = await collectChurchUsageSignals(supabase, churchId);
+  const signals = await collectChurchUsageSignals(supabase, organizationId);
   return {
     planKey: recommendPlanFromSignals(signals),
     signals,

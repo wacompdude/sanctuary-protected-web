@@ -19,10 +19,10 @@ type ThreatLevelRow = {
 };
 
 async function mapThreatLevelHistory(
-  churchId: string,
+  organizationId: string,
   rows: ThreatLevelRow[],
 ): Promise<ChurchThreatLevelHistoryEntry[]> {
-  const memberships = await listChurchTeamMemberships(churchId).catch(() => []);
+  const memberships = await listChurchTeamMemberships(organizationId).catch(() => []);
   const byUserId = new Map(
     memberships.map((membership) => [membership.userId, membership]),
   );
@@ -39,7 +39,7 @@ async function mapThreatLevelHistory(
 }
 
 export async function listChurchThreatLevels(
-  churchId: string,
+  organizationId: string,
   limit = 12,
 ): Promise<ChurchThreatLevelHistoryEntry[]> {
   const supabase = await createClient();
@@ -48,7 +48,7 @@ export async function listChurchThreatLevels(
     .select(
       "id, organization_id, week_start, threat_level, notes, changed_by, created_at, updated_at, updated_by",
     )
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .order("week_start", { ascending: false })
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -62,7 +62,7 @@ export async function listChurchThreatLevels(
       const legacy = await supabase
         .from("organization_threat_levels")
         .select("id, organization_id, week_start, threat_level, notes, changed_by, created_at")
-        .eq("organization_id", churchId)
+        .eq("organization_id", organizationId)
         .order("week_start", { ascending: false })
         .order("created_at", { ascending: false })
         .limit(limit);
@@ -75,7 +75,7 @@ export async function listChurchThreatLevels(
             .select(
               "id, organization_id, week_start, threat_level, changed_by, created_at",
             )
-            .eq("organization_id", churchId)
+            .eq("organization_id", organizationId)
             .order("week_start", { ascending: false })
             .order("created_at", { ascending: false })
             .limit(limit);
@@ -88,7 +88,7 @@ export async function listChurchThreatLevels(
           }
 
           return mapThreatLevelHistory(
-            churchId,
+            organizationId,
             ((older.data ?? []) as Omit<ThreatLevelRow, "notes">[]).map(
               (row) => ({
                 ...row,
@@ -107,7 +107,7 @@ export async function listChurchThreatLevels(
       }
 
       return mapThreatLevelHistory(
-        churchId,
+        organizationId,
         ((legacy.data ?? []) as ThreatLevelRow[]).map((row) => ({
           ...row,
           notes: row.notes ?? null,
@@ -122,12 +122,12 @@ export async function listChurchThreatLevels(
     );
   }
 
-  return mapThreatLevelHistory(churchId, (data ?? []) as ThreatLevelRow[]);
+  return mapThreatLevelHistory(organizationId, (data ?? []) as ThreatLevelRow[]);
 }
 
 export async function getCurrentChurchThreatLevel(
-  churchId: string,
+  organizationId: string,
 ): Promise<ChurchThreatLevelHistoryEntry | null> {
-  const [current] = await listChurchThreatLevels(churchId, 1);
+  const [current] = await listChurchThreatLevels(organizationId, 1);
   return current ?? null;
 }

@@ -9,9 +9,9 @@ export {
 } from "@/lib/training/compliance-shared";
 
 export async function loadRequiredTrainingAudience(
-  churchId: string,
+  organizationId: string,
 ): Promise<Array<{ userId: string; name: string; role: MembershipRole }>> {
-  const team = await listChurchTeamMemberships(churchId).catch(() => []);
+  const team = await listChurchTeamMemberships(organizationId).catch(() => []);
   return team
     .filter(
       (row) =>

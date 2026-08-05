@@ -19,20 +19,20 @@ function isMissingRelation(message: string): boolean {
 }
 
 export async function listScheduleCampuses(
-  churchId: string,
+  organizationId: string,
 ): Promise<CampusOption[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("campuses")
     .select("id, name, status")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .order("name", { ascending: true });
   if (error) throw new Error(error.message);
   return (data ?? []) as CampusOption[];
 }
 
 async function attachCampusNames(
-  churchId: string,
+  organizationId: string,
   rows: ScheduleEvent[],
 ): Promise<ScheduleEvent[]> {
   const campusIds = [
@@ -44,7 +44,7 @@ async function attachCampusNames(
   const { data } = await supabase
     .from("campuses")
     .select("id, name")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .in("id", campusIds);
   const nameById = new Map(
     (data ?? []).map((campus) => [campus.id as string, campus.name as string]),
@@ -69,7 +69,7 @@ export type ListScheduleEventsParams = {
 };
 
 export async function listScheduleEvents(
-  churchId: string,
+  organizationId: string,
   params: ListScheduleEventsParams = {},
 ): Promise<ScheduleEventListResult> {
   const page = Math.max(1, params.page ?? 1);
@@ -82,7 +82,7 @@ export async function listScheduleEvents(
     let query = supabase
       .from("schedule_events")
       .select("*", { count: "exact" })
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .order("start_at", { ascending: true })
       .range(from, to);
 
@@ -126,7 +126,7 @@ export async function listScheduleEvents(
     }
 
     const items = await attachCampusNames(
-      churchId,
+      organizationId,
       (data ?? []) as ScheduleEvent[],
     );
     return {
@@ -153,7 +153,7 @@ export async function listScheduleEvents(
 
 export async function getScheduleEventById(
   eventId: string,
-  churchId: string,
+  organizationId: string,
 ): Promise<ScheduleEvent | null> {
   try {
     const supabase = await createClient();
@@ -161,7 +161,7 @@ export async function getScheduleEventById(
       .from("schedule_events")
       .select("*")
       .eq("id", eventId)
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .maybeSingle();
 
     if (error) {
@@ -170,14 +170,14 @@ export async function getScheduleEventById(
     }
     if (!data) return null;
 
-    const [withCampus] = await attachCampusNames(churchId, [
+    const [withCampus] = await attachCampusNames(organizationId, [
       data as ScheduleEvent,
     ]);
 
     const { count } = await supabase
       .from("schedule_shifts")
       .select("id", { count: "exact", head: true })
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .eq("event_id", eventId)
       .neq("status", "cancelled");
 
@@ -193,7 +193,7 @@ export async function getScheduleEventById(
 }
 
 export async function listScheduleCalendarItems(
-  churchId: string,
+  organizationId: string,
   rangeStartIso: string,
   rangeEndIso: string,
   filters?: {
@@ -210,7 +210,7 @@ export async function listScheduleCalendarItems(
       .select(
         "id, title, start_at, end_at, all_day, event_type, status, risk_level, campus_id, location_name",
       )
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .lt("start_at", rangeEndIso)
       .gt("end_at", rangeStartIso)
       .order("start_at", { ascending: true });
@@ -255,10 +255,10 @@ export async function listScheduleCalendarItems(
     }>;
 
     const withNames = await attachCampusNames(
-      churchId,
+      organizationId,
       rows.map((row) => ({
         ...row,
-        organization_id: churchId,
+        organization_id: organizationId,
         description: null,
         building: null,
         room: null,

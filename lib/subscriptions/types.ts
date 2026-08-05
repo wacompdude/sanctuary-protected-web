@@ -95,7 +95,7 @@ export type EntitlementValue =
   | { kind: "missing"; value: null };
 
 export type ChurchEntitlements = {
-  churchId: string;
+  organizationId: string;
   subscription: ChurchSubscriptionRecord | null;
   plan: SubscriptionPlanRecord | null;
   /** True when no church_subscriptions row exists and default plan was used. */

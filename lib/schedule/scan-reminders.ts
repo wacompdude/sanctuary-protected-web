@@ -12,7 +12,7 @@ export type ScheduleScanResult = {
 };
 
 async function claimReminderKey(input: {
-  churchId: string;
+  organizationId: string;
   dedupeKey: string;
   reminderKind: string;
   shiftId?: string | null;
@@ -20,7 +20,7 @@ async function claimReminderKey(input: {
 }): Promise<boolean> {
   const admin = createAdminClient();
   const { error } = await admin.from("schedule_reminder_keys").insert({
-    organization_id: input.churchId,
+    organization_id: input.organizationId,
     dedupe_key: input.dedupeKey,
     reminder_kind: input.reminderKind,
     shift_id: input.shiftId ?? null,
@@ -38,7 +38,7 @@ async function claimReminderKey(input: {
  * Uses schedule_reminder_keys for idempotent dedupe.
  */
 export async function scanScheduleReminders(options?: {
-  churchId?: string;
+  organizationId?: string;
   now?: Date;
 }): Promise<ScheduleScanResult> {
   const result: ScheduleScanResult = {
@@ -63,8 +63,8 @@ export async function scanScheduleReminders(options?: {
     .from("organizations")
     .select("id, name, timezone")
     .in("status", ["trial", "active"]);
-  if (options?.churchId) {
-    churchQuery = churchQuery.eq("id", options.churchId);
+  if (options?.organizationId) {
+    churchQuery = churchQuery.eq("id", options.organizationId);
   }
 
   const { data: churches, error: churchError } = await churchQuery;
@@ -149,7 +149,7 @@ export async function scanScheduleReminders(options?: {
           let claimed = false;
           try {
             claimed = await claimReminderKey({
-              churchId: church.id,
+              organizationId: church.id,
               dedupeKey,
               reminderKind: `assignment_reminder_${window.kind}`,
               shiftId: shift.id as string,
@@ -168,7 +168,7 @@ export async function scanScheduleReminders(options?: {
           }
 
           const notifyResult = await createNotification({
-            churchId: church.id,
+            organizationId: church.id,
             notificationType: "schedule.assignment_reminder",
             severity: "medium",
             entityType: "shift_assignment",
@@ -222,7 +222,7 @@ export async function scanScheduleReminders(options?: {
         let claimed = false;
         try {
           claimed = await claimReminderKey({
-            churchId: church.id,
+            organizationId: church.id,
             dedupeKey,
             reminderKind: "unfilled_shift_warning",
             shiftId: shift.id as string,
@@ -262,7 +262,7 @@ export async function scanScheduleReminders(options?: {
         if (managerIds.length === 0) continue;
 
         const notifyResult = await createNotification({
-          churchId: church.id,
+          organizationId: church.id,
           notificationType: "schedule.unfilled_shift_warning",
           severity: "high",
           entityType: "schedule_shift",

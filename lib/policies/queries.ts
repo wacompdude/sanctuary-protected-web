@@ -223,7 +223,7 @@ async function loadVersionsByIds(
 }
 
 export async function listPolicyCategories(
-  churchId: string,
+  organizationId: string,
 ): Promise<PolicyCategory[]> {
   const supabase = await createClient();
   const available = await arePolicyTablesAvailable(supabase);
@@ -231,7 +231,7 @@ export async function listPolicyCategories(
 
   try {
     await supabase.rpc("ensure_default_policy_categories", {
-      p_church_id: churchId,
+      p_church_id: organizationId,
     });
   } catch {
     // Seed is best-effort when RPC is unavailable.
@@ -242,7 +242,7 @@ export async function listPolicyCategories(
     .select(
       "id, organization_id, key, label, description, is_system, sort_order, archived_at",
     )
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .is("archived_at", null)
     .order("sort_order", { ascending: true });
 
@@ -254,7 +254,7 @@ export async function listPolicyCategories(
 }
 
 export async function countMyPendingPolicyAcknowledgments(
-  churchId: string,
+  organizationId: string,
   userId: string,
 ): Promise<number> {
   const supabase = await createClient();
@@ -264,7 +264,7 @@ export async function countMyPendingPolicyAcknowledgments(
   const { count, error } = await supabase
     .from("policy_acknowledgments")
     .select("id", { count: "exact", head: true })
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("user_id", userId)
     .in("acknowledgment_status", ["assigned", "viewed", "overdue"]);
 
@@ -277,7 +277,7 @@ export async function countMyPendingPolicyAcknowledgments(
 
 async function enrichDocuments(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  churchId: string,
+  organizationId: string,
   rows: DocumentRow[],
   userId?: string | null,
 ): Promise<PolicyDocumentListItem[]> {
@@ -292,7 +292,7 @@ async function enrichDocuments(
     const { data: acks } = await supabase
       .from("policy_acknowledgments")
       .select("policy_document_id, acknowledgment_status")
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .eq("user_id", userId)
       .in("policy_document_id", ids);
     for (const ack of acks ?? []) {
@@ -308,7 +308,7 @@ async function enrichDocuments(
     const { data: tagRows } = await supabase
       .from("policy_document_tags")
       .select("policy_document_id, policy_tags ( name )")
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .in("policy_document_id", ids);
     for (const row of tagRows ?? []) {
       const docId = String(row.policy_document_id);
@@ -332,7 +332,7 @@ async function enrichDocuments(
 }
 
 export async function getPublishedPolicies(
-  churchId: string,
+  organizationId: string,
   filters: PolicyLibraryFilters = {},
 ): Promise<PolicyLibraryResult> {
   const supabase = await createClient();
@@ -363,7 +363,7 @@ export async function getPublishedPolicies(
   let query = supabase
     .from("policy_documents")
     .select(DOCUMENT_SELECT, { count: "exact" })
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("status", "published");
 
   if (filters.documentType) query = query.eq("document_type", filters.documentType);
@@ -401,14 +401,14 @@ export async function getPublishedPolicies(
   }
 
   const rows = (data ?? []) as unknown as DocumentRow[];
-  const items = await enrichDocuments(supabase, churchId, rows, user?.id);
+  const items = await enrichDocuments(supabase, organizationId, rows, user?.id);
 
   const [{ data: emergencyRows }, { data: featuredRows }, { data: recentRows }] =
     await Promise.all([
       supabase
         .from("policy_documents")
         .select(DOCUMENT_SELECT)
-        .eq("organization_id", churchId)
+        .eq("organization_id", organizationId)
         .eq("status", "published")
         .eq("is_emergency_document", true)
         .order("updated_at", { ascending: false })
@@ -416,7 +416,7 @@ export async function getPublishedPolicies(
       supabase
         .from("policy_documents")
         .select(DOCUMENT_SELECT)
-        .eq("organization_id", churchId)
+        .eq("organization_id", organizationId)
         .eq("status", "published")
         .eq("is_featured", true)
         .order("updated_at", { ascending: false })
@@ -424,7 +424,7 @@ export async function getPublishedPolicies(
       supabase
         .from("policy_documents")
         .select(DOCUMENT_SELECT)
-        .eq("organization_id", churchId)
+        .eq("organization_id", organizationId)
         .eq("status", "published")
         .order("updated_at", { ascending: false })
         .limit(6),
@@ -434,24 +434,24 @@ export async function getPublishedPolicies(
     await Promise.all([
       enrichDocuments(
         supabase,
-        churchId,
+        organizationId,
         (emergencyRows ?? []) as unknown as DocumentRow[],
         user?.id,
       ),
       enrichDocuments(
         supabase,
-        churchId,
+        organizationId,
         (featuredRows ?? []) as unknown as DocumentRow[],
         user?.id,
       ),
       enrichDocuments(
         supabase,
-        churchId,
+        organizationId,
         (recentRows ?? []) as unknown as DocumentRow[],
         user?.id,
       ),
       user
-        ? countMyPendingPolicyAcknowledgments(churchId, user.id)
+        ? countMyPendingPolicyAcknowledgments(organizationId, user.id)
         : Promise.resolve(0),
     ]);
 
@@ -469,7 +469,7 @@ export async function getPublishedPolicies(
 }
 
 export async function getPolicyById(
-  churchId: string,
+  organizationId: string,
   policyId: string,
 ): Promise<PolicyDocumentDetail | null> {
   const supabase = await createClient();
@@ -479,7 +479,7 @@ export async function getPolicyById(
   const { data, error } = await supabase
     .from("policy_documents")
     .select(DOCUMENT_SELECT)
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("id", policyId)
     .maybeSingle();
 
@@ -496,7 +496,7 @@ export async function getPolicyById(
 
   const [listItem] = await enrichDocuments(
     supabase,
-    churchId,
+    organizationId,
     [row],
     user?.id,
   );
@@ -517,27 +517,27 @@ export async function getPolicyById(
 }
 
 export async function getCurrentPolicyVersion(
-  churchId: string,
+  organizationId: string,
   policyId: string,
 ): Promise<PolicyVersion | null> {
-  const detail = await getPolicyById(churchId, policyId);
+  const detail = await getPolicyById(organizationId, policyId);
   return detail?.current_version ?? null;
 }
 
 export async function searchPolicies(
-  churchId: string,
+  organizationId: string,
   query: string,
   filters: Omit<PolicyLibraryFilters, "q"> = {},
 ) {
-  return getPublishedPolicies(churchId, { ...filters, q: query });
+  return getPublishedPolicies(organizationId, { ...filters, q: query });
 }
 
-export async function listCampusesForPolicies(churchId: string) {
+export async function listCampusesForPolicies(organizationId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("campuses")
     .select("id, name, status")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .order("name", { ascending: true });
 
   if (error) return [];
@@ -545,7 +545,7 @@ export async function listCampusesForPolicies(churchId: string) {
 }
 
 export async function listManagedPolicies(
-  churchId: string,
+  organizationId: string,
   filters: PolicyManageFilters = {},
 ): Promise<PolicyManageResult> {
   const supabase = await createClient();
@@ -568,7 +568,7 @@ export async function listManagedPolicies(
   let query = supabase
     .from("policy_documents")
     .select(DOCUMENT_SELECT, { count: "exact" })
-    .eq("organization_id", churchId);
+    .eq("organization_id", organizationId);
 
   if (filters.status) query = query.eq("status", filters.status);
   if (filters.documentType) {
@@ -604,7 +604,7 @@ export async function listManagedPolicies(
   }
 
   const rows = (data ?? []) as unknown as DocumentRow[];
-  const items = await enrichDocuments(supabase, churchId, rows);
+  const items = await enrichDocuments(supabase, organizationId, rows);
 
   return {
     items,
@@ -616,7 +616,7 @@ export async function listManagedPolicies(
 }
 
 export async function listPolicyVersions(
-  churchId: string,
+  organizationId: string,
   policyId: string,
 ): Promise<PolicyVersion[]> {
   const supabase = await createClient();
@@ -631,7 +631,7 @@ export async function listPolicyVersions(
        created_by, created_at, submitted_for_review_at, approved_by, approved_at,
        published_at, superseded_at, status, word_count, checksum`,
     )
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("policy_document_id", policyId)
     .order("version_number", { ascending: false });
 
@@ -644,7 +644,7 @@ export async function listPolicyVersions(
 }
 
 export async function listPolicyApprovals(
-  churchId: string,
+  organizationId: string,
   policyId: string,
 ): Promise<PolicyApproval[]> {
   const supabase = await createClient();
@@ -656,7 +656,7 @@ export async function listPolicyApprovals(
     .select(
       "id, organization_id, policy_document_id, policy_version_id, decision, notes, actor_user_id, created_at",
     )
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("policy_document_id", policyId)
     .order("created_at", { ascending: false })
     .limit(50);
@@ -673,7 +673,7 @@ export async function listPolicyApprovals(
 }
 
 export async function getDefaultReviewPeriodDays(
-  churchId: string,
+  organizationId: string,
 ): Promise<number> {
   const supabase = await createClient();
   const available = await arePolicyTablesAvailable(supabase);
@@ -682,7 +682,7 @@ export async function getDefaultReviewPeriodDays(
   const { data, error } = await supabase
     .from("organization_policy_settings")
     .select("default_review_period_days")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .maybeSingle();
 
   if (error || !data) return 365;
@@ -690,7 +690,7 @@ export async function getDefaultReviewPeriodDays(
 }
 
 export async function listPolicyAttachments(
-  churchId: string,
+  organizationId: string,
   policyId: string,
 ): Promise<PolicyAttachment[]> {
   const supabase = await createClient();
@@ -704,7 +704,7 @@ export async function listPolicyAttachments(
        storage_path, mime_type, size_bytes, attachment_type, description,
        uploaded_by, created_at, archived_at`,
     )
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("policy_document_id", policyId)
     .is("archived_at", null)
     .order("created_at", { ascending: false });

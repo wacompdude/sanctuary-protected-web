@@ -76,17 +76,17 @@ async function ProfileContent() {
     listOwnCertifications(),
     listOwnCampusMemberships(user.id).catch(() => []),
   ]);
-  const timezoneByChurchId = new Map(
+  const timezoneByOrganizationId = new Map(
     memberships.map((membership) => [
       membership.organization_id,
       membership.church.timezone,
     ]),
   );
-  const campusesByChurchId = new Map<string, typeof campusMemberships>();
+  const campusesByOrganizationId = new Map<string, typeof campusMemberships>();
   for (const row of campusMemberships) {
-    const list = campusesByChurchId.get(row.organization_id) ?? [];
+    const list = campusesByOrganizationId.get(row.organization_id) ?? [];
     list.push(row);
-    campusesByChurchId.set(row.organization_id, list);
+    campusesByOrganizationId.set(row.organization_id, list);
   }
 
   return (
@@ -151,7 +151,7 @@ async function ProfileContent() {
                     </p>
                     {(() => {
                       const campuses =
-                        campusesByChurchId.get(membership.organization_id) ?? [];
+                        campusesByOrganizationId.get(membership.organization_id) ?? [];
                       if (campuses.length === 0) {
                         return (
                           <p className="mt-1 text-xs text-muted-foreground">
@@ -265,7 +265,7 @@ async function ProfileContent() {
                     <p className="text-xs text-muted-foreground">
                       Expires{" "}
                       {formatChurchDate(cert.expiration_date, {
-                        timeZone: timezoneByChurchId.get(cert.organization_id),
+                        timeZone: timezoneByOrganizationId.get(cert.organization_id),
                       })}
                       {cert.certificate_number
                         ? ` · #${cert.certificate_number}`

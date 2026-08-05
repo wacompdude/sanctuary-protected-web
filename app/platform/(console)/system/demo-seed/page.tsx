@@ -8,7 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 async function DemoSeedContent() {
   await requirePlatformPermission("developer.tools.access");
 
-  let churchId: string | null = null;
+  let organizationId: string | null = null;
   try {
     const admin = createAdminClient();
     const { data } = await admin
@@ -16,9 +16,9 @@ async function DemoSeedContent() {
       .select("id")
       .eq("seed_source", DEMO_SEED_SOURCE)
       .maybeSingle();
-    churchId = data?.id ? String(data.id) : null;
+    organizationId = data?.id ? String(data.id) : null;
   } catch {
-    churchId = null;
+    organizationId = null;
   }
 
   return (
@@ -34,7 +34,7 @@ async function DemoSeedContent() {
       </div>
       <DemoSeedPanel
         environmentAllowed={isDemoSeedEnvironmentAllowed()}
-        churchId={churchId}
+        organizationId={organizationId}
       />
     </div>
   );

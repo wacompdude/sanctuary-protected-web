@@ -9,7 +9,7 @@ import { getRequestIpAddress, writeAuditLog } from "@/lib/audit/log";
 export async function auditChurchSettingsUpdated(
   supabase: SupabaseClient,
   params: {
-    churchId: string;
+    organizationId: string;
     userId: string;
     changedFields: string[];
     action?:
@@ -24,11 +24,11 @@ export async function auditChurchSettingsUpdated(
   },
 ) {
   return writeAuditLog(supabase, {
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     userId: params.userId,
     action: params.action ?? AuditAction.CHURCH_SETTINGS_UPDATED,
     entityType: AuditEntityType.CHURCH,
-    entityId: params.churchId,
+    entityId: params.organizationId,
     metadata: { changed_fields: params.changedFields },
     ipAddress: await getRequestIpAddress(),
   });
@@ -37,7 +37,7 @@ export async function auditChurchSettingsUpdated(
 export async function auditChurchAccountStatusChanged(
   supabase: SupabaseClient,
   params: {
-    churchId: string;
+    organizationId: string;
     userId: string;
     fromStatus: string;
     toStatus: string;
@@ -51,11 +51,11 @@ export async function auditChurchAccountStatusChanged(
         : AuditAction.CHURCH_ACCOUNT_REACTIVATED;
 
   return writeAuditLog(supabase, {
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     userId: params.userId,
     action,
     entityType: AuditEntityType.CHURCH,
-    entityId: params.churchId,
+    entityId: params.organizationId,
     metadata: {
       from_status: params.fromStatus,
       to_status: params.toStatus,
@@ -67,7 +67,7 @@ export async function auditChurchAccountStatusChanged(
 export async function auditChurchThreatLevelUpdated(
   supabase: SupabaseClient,
   params: {
-    churchId: string;
+    organizationId: string;
     userId: string;
     threatLevelId: string;
     weekStart: string;
@@ -76,7 +76,7 @@ export async function auditChurchThreatLevelUpdated(
   },
 ) {
   return writeAuditLog(supabase, {
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     userId: params.userId,
     action: AuditAction.CHURCH_THREAT_LEVEL_UPDATED,
     entityType: AuditEntityType.CHURCH_THREAT_LEVEL,
@@ -93,7 +93,7 @@ export async function auditChurchThreatLevelUpdated(
 export async function auditChurchThreatLevelEdited(
   supabase: SupabaseClient,
   params: {
-    churchId: string;
+    organizationId: string;
     userId: string;
     threatLevelId: string;
     weekStart: string;
@@ -105,7 +105,7 @@ export async function auditChurchThreatLevelEdited(
   },
 ) {
   return writeAuditLog(supabase, {
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     userId: params.userId,
     action: AuditAction.CHURCH_THREAT_LEVEL_EDITED,
     entityType: AuditEntityType.CHURCH_THREAT_LEVEL,
@@ -125,7 +125,7 @@ export async function auditChurchThreatLevelEdited(
 export async function auditChurchThreatLevelDeleted(
   supabase: SupabaseClient,
   params: {
-    churchId: string;
+    organizationId: string;
     userId: string;
     threatLevelId: string;
     weekStart: string;
@@ -133,7 +133,7 @@ export async function auditChurchThreatLevelDeleted(
   },
 ) {
   return writeAuditLog(supabase, {
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     userId: params.userId,
     action: AuditAction.CHURCH_THREAT_LEVEL_DELETED,
     entityType: AuditEntityType.CHURCH_THREAT_LEVEL,
@@ -148,10 +148,10 @@ export async function auditChurchThreatLevelDeleted(
 
 export async function auditCampusCreated(
   supabase: SupabaseClient,
-  params: { churchId: string; userId: string; campusId: string; name: string },
+  params: { organizationId: string; userId: string; campusId: string; name: string },
 ) {
   return writeAuditLog(supabase, {
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     userId: params.userId,
     action: AuditAction.CAMPUS_CREATED,
     entityType: AuditEntityType.CAMPUS,
@@ -164,14 +164,14 @@ export async function auditCampusCreated(
 export async function auditCampusUpdated(
   supabase: SupabaseClient,
   params: {
-    churchId: string;
+    organizationId: string;
     userId: string;
     campusId: string;
     changedFields: string[];
   },
 ) {
   return writeAuditLog(supabase, {
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     userId: params.userId,
     action: AuditAction.CAMPUS_UPDATED,
     entityType: AuditEntityType.CAMPUS,
@@ -184,18 +184,18 @@ export async function auditCampusUpdated(
 export async function auditOwnershipTransferInitiated(
   supabase: SupabaseClient,
   params: {
-    churchId: string;
+    organizationId: string;
     userId: string;
     fromUserId: string;
     toUserId: string;
   },
 ) {
   return writeAuditLog(supabase, {
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     userId: params.userId,
     action: AuditAction.OWNERSHIP_TRANSFER_INITIATED,
     entityType: AuditEntityType.CHURCH,
-    entityId: params.churchId,
+    entityId: params.organizationId,
     metadata: {
       from_user_id: params.fromUserId,
       to_user_id: params.toUserId,
@@ -207,18 +207,18 @@ export async function auditOwnershipTransferInitiated(
 export async function auditOwnershipTransferCompleted(
   supabase: SupabaseClient,
   params: {
-    churchId: string;
+    organizationId: string;
     userId: string;
     fromUserId: string;
     toUserId: string;
   },
 ) {
   return writeAuditLog(supabase, {
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     userId: params.userId,
     action: AuditAction.OWNERSHIP_TRANSFER_COMPLETED,
     entityType: AuditEntityType.CHURCH,
-    entityId: params.churchId,
+    entityId: params.organizationId,
     metadata: {
       from_user_id: params.fromUserId,
       to_user_id: params.toUserId,
@@ -230,14 +230,14 @@ export async function auditOwnershipTransferCompleted(
 export async function auditCertificationUpdated(
   supabase: SupabaseClient,
   params: {
-    churchId: string;
+    organizationId: string;
     userId: string;
     certificationId: string;
     changedFields: string[];
   },
 ) {
   return writeAuditLog(supabase, {
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     userId: params.userId,
     action: AuditAction.CERTIFICATION_UPDATED,
     entityType: AuditEntityType.CERTIFICATION,
@@ -249,10 +249,10 @@ export async function auditCertificationUpdated(
 
 export async function auditCertificationArchived(
   supabase: SupabaseClient,
-  params: { churchId: string; userId: string; certificationId: string },
+  params: { organizationId: string; userId: string; certificationId: string },
 ) {
   return writeAuditLog(supabase, {
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     userId: params.userId,
     action: AuditAction.CERTIFICATION_ARCHIVED,
     entityType: AuditEntityType.CERTIFICATION,
@@ -264,10 +264,10 @@ export async function auditCertificationArchived(
 
 export async function auditCertificationDeleted(
   supabase: SupabaseClient,
-  params: { churchId: string; userId: string; certificationId: string },
+  params: { organizationId: string; userId: string; certificationId: string },
 ) {
   return writeAuditLog(supabase, {
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     userId: params.userId,
     action: AuditAction.CERTIFICATION_DELETED,
     entityType: AuditEntityType.CERTIFICATION,

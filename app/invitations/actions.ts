@@ -55,7 +55,7 @@ export async function acceptChurchInvitation(
           new Date(invitation.expires_at).getTime() >= Date.now())
       ) {
         await requireActiveSeatCapacity({
-          churchId: String(invitation.organization_id),
+          organizationId: String(invitation.organization_id),
           client: admin,
         });
       }
@@ -105,16 +105,16 @@ export async function acceptChurchInvitation(
     return { error: message };
   }
 
-  const churchId =
+  const organizationId =
     data && typeof data === "object" && "organization_id" in data
       ? String((data as { organization_id: string }).organization_id)
       : null;
 
-  if (churchId) {
+  if (organizationId) {
     try {
-      await setActiveChurchForUser(churchId);
+      await setActiveChurchForUser(organizationId);
     } catch {
-      await writeActiveChurchCookie(churchId);
+      await writeActiveChurchCookie(organizationId);
     }
   }
 

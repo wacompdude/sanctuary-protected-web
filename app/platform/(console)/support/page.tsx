@@ -51,7 +51,7 @@ async function SupportContent() {
 
       {permissions.has("churches.support_access") ? (
         <PlatformSupportWorkspacePanel
-          initialChurchId={active?.organization_id}
+          initialOrganizationId={active?.organization_id}
           initialChurchName={active?.church_name}
         />
       ) : null}

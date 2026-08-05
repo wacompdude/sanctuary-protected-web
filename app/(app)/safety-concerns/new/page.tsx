@@ -22,7 +22,7 @@ async function NewSafetyConcernContent() {
   const { church, membership, user } = await getAuthenticatedUserWithChurch();
   const settings = await getSafetyConcernChurchSettings(church.id);
   const access = await getSafetyConcernAccess({
-    churchId: church.id,
+    organizationId: church.id,
     role: membership.role,
     allowSecurityMemberView: settings.allow_security_member_view,
   });
@@ -40,7 +40,7 @@ async function NewSafetyConcernContent() {
   }
 
   const campusFilter = await resolveCampusFilter({
-    churchId: church.id,
+    organizationId: church.id,
     userId: user.id,
     role: membership.role,
   });

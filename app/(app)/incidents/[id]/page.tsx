@@ -88,7 +88,7 @@ async function IncidentDetailContent({
       : Promise.resolve([]),
     getIncidentPhotoEntitlements(church.id),
     hasFeature({
-      churchId: church.id,
+      organizationId: church.id,
       featureKey: FEATURE_KEYS.MEDICAL_INCIDENT_USAGE,
     }),
   ]);

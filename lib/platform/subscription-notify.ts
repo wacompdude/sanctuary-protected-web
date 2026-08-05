@@ -12,7 +12,7 @@ export type NotifyChurchOwnersResult = {
  * Uses billing sender category. Never includes secrets.
  */
 export async function notifyChurchOwnersOfPlanChange(params: {
-  churchId: string;
+  organizationId: string;
   churchName: string;
   oldPlanDisplayName: string;
   newPlanDisplayName: string;
@@ -23,7 +23,7 @@ export async function notifyChurchOwnersOfPlanChange(params: {
   const { data: memberships, error } = await admin
     .from("organization_memberships")
     .select("user_id, role")
-    .eq("organization_id", params.churchId)
+    .eq("organization_id", params.organizationId)
     .eq("status", "active")
     .in("role", ["owner", "co_owner"]);
 

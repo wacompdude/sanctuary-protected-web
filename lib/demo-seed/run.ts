@@ -15,7 +15,7 @@ import { emptyBucket, log } from "@/lib/demo-seed/types";
 export function createEmptyDemoSeedSummary(): DemoSeedSummary {
   return {
     seedSource: DEMO_SEED_SOURCE,
-    churchId: null,
+    organizationId: null,
     churchName: DEMO_CHURCH_NAME,
     startedAt: new Date().toISOString(),
     finishedAt: null,

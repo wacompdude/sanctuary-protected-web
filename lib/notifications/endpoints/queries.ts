@@ -28,13 +28,13 @@ function mapEndpoint(row: Record<string, unknown>): NotificationEndpoint {
 
 export async function listMyNotificationEndpoints(
   supabase: SupabaseClient,
-  churchId: string,
+  organizationId: string,
   userId: string,
 ): Promise<NotificationEndpoint[]> {
   const { data, error } = await supabase
     .from("notification_endpoints")
     .select("*")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("user_id", userId)
     .neq("status", "revoked")
     .order("channel", { ascending: true })

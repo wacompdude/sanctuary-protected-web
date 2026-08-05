@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { SecurityEvent } from "./types";
 
 export async function listEventsForChurch(
-  churchId: string,
+  organizationId: string,
   options?: { campusFilterOr?: string | null },
 ) {
   const supabase = await createClient();
@@ -10,7 +10,7 @@ export async function listEventsForChurch(
   let query = supabase
     .from("events")
     .select("*")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .order("event_timestamp", { ascending: false });
 
   if (options?.campusFilterOr) {
@@ -21,7 +21,7 @@ export async function listEventsForChurch(
 
   if (error) {
     if (/campus_id/i.test(error.message) && options?.campusFilterOr) {
-      return listEventsForChurch(churchId);
+      return listEventsForChurch(organizationId);
     }
     throw new Error(error.message);
   }
@@ -30,7 +30,7 @@ export async function listEventsForChurch(
 }
 
 export async function getUnacknowledgedEventCount(
-  churchId: string,
+  organizationId: string,
   options?: { campusFilterOr?: string | null },
 ) {
   const supabase = await createClient();
@@ -38,7 +38,7 @@ export async function getUnacknowledgedEventCount(
   let query = supabase
     .from("events")
     .select("*", { count: "exact", head: true })
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("acknowledgment_status", "unacknowledged");
 
   if (options?.campusFilterOr) {
@@ -53,7 +53,7 @@ export async function getUnacknowledgedEventCount(
       const fallback = await supabase
         .from("events")
         .select("*", { count: "exact", head: true })
-        .eq("organization_id", churchId)
+        .eq("organization_id", organizationId)
         .eq("acknowledgment_status", "unacknowledged");
       if (fallback.error) throw new Error(fallback.error.message);
       return fallback.count ?? 0;

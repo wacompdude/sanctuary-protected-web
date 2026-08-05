@@ -4,7 +4,7 @@ import { hasFeature } from "@/lib/subscriptions/resolver";
 
 /** Resolve live entitlement notices for Help article feature keys. */
 export async function resolveHelpFeatureNoticesForChurch(params: {
-  churchId: string;
+  organizationId: string;
   featureKeys: readonly string[];
   planKeysOverride?: readonly string[] | null;
 }): Promise<HelpFeatureNotice[]> {
@@ -14,7 +14,7 @@ export async function resolveHelpFeatureNoticesForChurch(params: {
   await Promise.all(
     params.featureKeys.map(async (featureKey) => {
       const access = await hasFeature({
-        churchId: params.churchId,
+        organizationId: params.organizationId,
         featureKey,
       });
       includedByFeatureKey.set(featureKey, access.allowed);

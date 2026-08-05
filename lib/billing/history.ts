@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { BillingHistoryItem } from "@/lib/billing/types";
 
 export async function listBillingHistory(
-  churchId: string,
+  organizationId: string,
   limit = 25,
 ): Promise<BillingHistoryItem[]> {
   const supabase = await createClient();
@@ -14,7 +14,7 @@ export async function listBillingHistory(
       .select(
         "id, change_type, reason, old_status, new_status, created_at, metadata",
       )
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .order("created_at", { ascending: false })
       .limit(take),
     supabase
@@ -22,7 +22,7 @@ export async function listBillingHistory(
       .select(
         "id, event_type, processing_status, created_at, billing_provider, error_message",
       )
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .order("created_at", { ascending: false })
       .limit(take),
   ]);

@@ -24,9 +24,9 @@ import { createClient } from "@/lib/supabase/server";
 import { FEATURE_KEYS } from "@/lib/subscriptions/feature-keys";
 import { requireFeature } from "@/lib/subscriptions/resolver";
 
-async function requireSchedulingFeature(churchId: string) {
+async function requireSchedulingFeature(organizationId: string) {
   await requireFeature({
-    churchId,
+    organizationId,
     featureKey: FEATURE_KEYS.TEAM_SCHEDULING,
   });
 }
@@ -97,7 +97,7 @@ export async function createScheduleTemplateAction(
 
     const ipAddress = await getRequestIpAddress();
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.SCHEDULE_TEMPLATE_CREATED,
       entityType: AuditEntityType.SCHEDULE_TEMPLATE,
@@ -161,7 +161,7 @@ export async function updateScheduleTemplateAction(
 
     const ipAddress = await getRequestIpAddress();
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.SCHEDULE_TEMPLATE_UPDATED,
       entityType: AuditEntityType.SCHEDULE_TEMPLATE,
@@ -201,7 +201,7 @@ export async function archiveScheduleTemplateAction(
 
   const ipAddress = await getRequestIpAddress();
   await writeAuditLog(supabase, {
-    churchId: church.id,
+    organizationId: church.id,
     userId: user.id,
     action: AuditAction.SCHEDULE_TEMPLATE_ARCHIVED,
     entityType: AuditEntityType.SCHEDULE_TEMPLATE,
@@ -325,7 +325,7 @@ export async function applyScheduleTemplateAction(
 
     const ipAddress = await getRequestIpAddress();
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.SCHEDULE_TEMPLATE_APPLIED,
       entityType: AuditEntityType.SCHEDULE_TEMPLATE,
@@ -338,7 +338,7 @@ export async function applyScheduleTemplateAction(
       ipAddress,
     });
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.SCHEDULE_EVENT_CREATED,
       entityType: AuditEntityType.SCHEDULE_EVENT,

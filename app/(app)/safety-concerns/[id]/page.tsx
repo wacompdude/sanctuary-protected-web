@@ -39,7 +39,7 @@ async function ProfileDetailContent({ id }: { id: string }) {
   const { church, membership } = await getAuthenticatedUserWithChurch();
   const settings = await getSafetyConcernChurchSettings(church.id);
   const access = await getSafetyConcernAccess({
-    churchId: church.id,
+    organizationId: church.id,
     role: membership.role,
     allowSecurityMemberView: settings.allow_security_member_view,
   });

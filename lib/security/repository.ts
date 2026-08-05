@@ -40,10 +40,10 @@ export async function getSecurityGroup(
  */
 export async function listSecurityGroups(
   admin: SupabaseClient,
-  churchId: string,
+  organizationId: string,
   activeOnly: boolean = true,
 ): Promise<SecurityGroup[]> {
-  let query = admin.from("security_groups").select("*").eq("organization_id", churchId);
+  let query = admin.from("security_groups").select("*").eq("organization_id", organizationId);
 
   if (activeOnly) {
     query = query.eq("status", "active");
@@ -89,7 +89,7 @@ export async function getSecurityGroupMembers(
 export async function getUserSecurityGroupMemberships(
   admin: SupabaseClient,
   userId: string,
-  churchId: string,
+  organizationId: string,
 ): Promise<
   Array<{
     group: SecurityGroup;
@@ -110,7 +110,7 @@ export async function getUserSecurityGroupMemberships(
   return (data || [])
     .map((item: Record<string, unknown>) => {
       const group = item.security_groups as SecurityGroup | null;
-      if (!group || group.organization_id !== churchId) return null;
+      if (!group || group.organization_id !== organizationId) return null;
       const membership: SecurityGroupMember = {
         id: String(item.id),
         security_group_id: String(item.security_group_id),
@@ -141,9 +141,9 @@ export async function getUserSecurityGroupMemberships(
 export async function getUserSecurityGroups(
   admin: SupabaseClient,
   userId: string,
-  churchId: string,
+  organizationId: string,
 ): Promise<SecurityGroup[]> {
-  const rows = await getUserSecurityGroupMemberships(admin, userId, churchId);
+  const rows = await getUserSecurityGroupMemberships(admin, userId, organizationId);
   return rows.map((row) => row.group);
 }
 
@@ -152,7 +152,7 @@ export async function getUserSecurityGroups(
  */
 export async function listPermissionGrantHolders(
   admin: SupabaseClient,
-  churchId: string,
+  organizationId: string,
   permissionDefinitionId: string,
 ): Promise<{
   direct: Array<{
@@ -182,7 +182,7 @@ export async function listPermissionGrantHolders(
         .select(
           "user_id, permission_effect, status, expires_at, assigned_at, reason",
         )
-        .eq("organization_id", churchId)
+        .eq("organization_id", organizationId)
         .eq("permission_definition_id", permissionDefinitionId)
         .neq("status", "revoked"),
       admin
@@ -239,7 +239,7 @@ export async function listPermissionGrantHolders(
       const group = Array.isArray(row.security_groups)
         ? row.security_groups[0]
         : row.security_groups;
-      if (!group || group.organization_id !== churchId || group.status !== "active") {
+      if (!group || group.organization_id !== organizationId || group.status !== "active") {
         return null;
       }
       return {
@@ -303,13 +303,13 @@ export async function getSecurityGroupPermissions(
 export async function getUserDirectPermissions(
   admin: SupabaseClient,
   userId: string,
-  churchId: string,
+  organizationId: string,
 ): Promise<UserPermission[]> {
   const { data, error } = await admin
     .from("user_permissions")
     .select("*")
     .eq("user_id", userId)
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .neq("status", "revoked");
 
   if (error) {
@@ -384,7 +384,7 @@ export async function listAllPermissions(admin: SupabaseClient): Promise<Permiss
  */
 export async function createSecurityGroup(
   admin: SupabaseClient,
-  churchId: string,
+  organizationId: string,
   name: string,
   description: string | null,
   createdBy: string,
@@ -392,7 +392,7 @@ export async function createSecurityGroup(
   const { data, error } = await admin
     .from("security_groups")
     .insert({
-      organization_id: churchId,
+      organization_id: organizationId,
       name,
       description,
       created_by: createdBy,
@@ -550,7 +550,7 @@ export async function removePermissionFromSecurityGroup(
 export async function grantUserPermission(
   admin: SupabaseClient,
   userId: string,
-  churchId: string,
+  organizationId: string,
   permissionDefinitionId: string,
   assignedBy: string,
   scopeType: string = "all_current_future_campuses",
@@ -564,7 +564,7 @@ export async function grantUserPermission(
     .from("user_permissions")
     .insert({
       user_id: userId,
-      organization_id: churchId,
+      organization_id: organizationId,
       permission_definition_id: permissionDefinitionId,
       permission_effect: "grant",
       scope_type: scopeType,
@@ -591,7 +591,7 @@ export async function grantUserPermission(
 export async function denyUserPermission(
   admin: SupabaseClient,
   userId: string,
-  churchId: string,
+  organizationId: string,
   permissionDefinitionId: string,
   assignedBy: string,
   scopeType: string = "all_current_future_campuses",
@@ -605,7 +605,7 @@ export async function denyUserPermission(
     .from("user_permissions")
     .insert({
       user_id: userId,
-      organization_id: churchId,
+      organization_id: organizationId,
       permission_definition_id: permissionDefinitionId,
       permission_effect: "deny",
       scope_type: scopeType,
@@ -688,13 +688,13 @@ export async function updateUserPermission(
 export async function getUserPermissionById(
   admin: SupabaseClient,
   permissionId: string,
-  churchId: string,
+  organizationId: string,
 ): Promise<UserPermission | null> {
   const { data, error } = await admin
     .from("user_permissions")
     .select("*")
     .eq("id", permissionId)
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .maybeSingle();
 
   if (error) {
@@ -735,13 +735,13 @@ export async function revokeUserPermission(
  */
 export async function listChurchUserPermissions(
   admin: SupabaseClient,
-  churchId: string,
+  organizationId: string,
   options?: { temporaryOnly?: boolean },
 ): Promise<UserPermission[]> {
   let query = admin
     .from("user_permissions")
     .select("*")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .neq("status", "revoked")
     .order("assigned_at", { ascending: false });
 

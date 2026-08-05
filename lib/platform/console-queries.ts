@@ -173,7 +173,7 @@ export async function listPlatformChurches(input: {
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
-  let planFilteredChurchIds: string[] | null = null;
+  let planFilteredOrganizationIds: string[] | null = null;
   if (input.planKey && input.planKey !== "all") {
     const { data: planRow } = await admin
       .from("subscription_plans")
@@ -188,10 +188,10 @@ export async function listPlatformChurches(input: {
       .select("organization_id")
       .eq("plan_id", planRow.id)
       .in("status", [...CURRENT_SUBSCRIPTION_STATUSES]);
-    planFilteredChurchIds = [
+    planFilteredOrganizationIds = [
       ...new Set((subRows ?? []).map((row) => String(row.organization_id))),
     ];
-    if (planFilteredChurchIds.length === 0) {
+    if (planFilteredOrganizationIds.length === 0) {
       return { items: [], total: 0, page, pageSize };
     }
   }
@@ -209,8 +209,8 @@ export async function listPlatformChurches(input: {
   if (input.status && input.status !== "all") {
     query = query.eq("status", input.status);
   }
-  if (planFilteredChurchIds) {
-    query = query.in("id", planFilteredChurchIds);
+  if (planFilteredOrganizationIds) {
+    query = query.in("id", planFilteredOrganizationIds);
   }
 
   const { data, error, count } = await query;
@@ -219,29 +219,29 @@ export async function listPlatformChurches(input: {
   }
 
   const churches = data ?? [];
-  const churchIds = churches.map((c) => String(c.id));
+  const organizationIds = churches.map((c) => String(c.id));
 
   const [campusesRes, membersRes, subsRes] = await Promise.all([
-    churchIds.length
+    organizationIds.length
       ? admin
           .from("campuses")
           .select("id, organization_id")
-          .in("organization_id", churchIds)
+          .in("organization_id", organizationIds)
       : Promise.resolve({ data: [] as Array<{ id: string; organization_id: string }> }),
-    churchIds.length
+    organizationIds.length
       ? admin
           .from("organization_memberships")
           .select("id, organization_id")
-          .in("organization_id", churchIds)
+          .in("organization_id", organizationIds)
           .eq("status", "active")
       : Promise.resolve({ data: [] as Array<{ id: string; organization_id: string }> }),
-    churchIds.length
+    organizationIds.length
       ? admin
           .from("organization_subscriptions")
           .select(
             "organization_id, status, subscription_plans ( plan_key, display_name )",
           )
-          .in("organization_id", churchIds)
+          .in("organization_id", organizationIds)
           .in("status", [...CURRENT_SUBSCRIPTION_STATUSES])
       : Promise.resolve({ data: [] as Array<Record<string, unknown>> }),
   ]);
@@ -264,13 +264,13 @@ export async function listPlatformChurches(input: {
   >();
   for (const row of subsRes.data ?? []) {
     const record = row as Record<string, unknown>;
-    const churchId = String(record.organization_id);
+    const organizationId = String(record.organization_id);
     const planJoin = record.subscription_plans as
       | { plan_key?: string; display_name?: string }
       | { plan_key?: string; display_name?: string }[]
       | null;
     const plan = Array.isArray(planJoin) ? planJoin[0] : planJoin;
-    subByChurch.set(churchId, {
+    subByChurch.set(organizationId, {
       planKey: plan?.plan_key ?? null,
       planDisplayName: plan?.display_name ?? null,
       status: (record.status as string | null) ?? null,
@@ -303,19 +303,19 @@ export async function listPlatformChurches(input: {
 }
 
 export async function getPlatformChurchDetail(
-  churchId: string,
+  organizationId: string,
 ): Promise<PlatformChurchDetail | null> {
   const context = await requirePlatformPermission("platform.console.access");
   const { assertPlatformChurchReadable } = await import(
     "@/lib/platform/support-sessions"
   );
-  await assertPlatformChurchReadable(context, churchId);
+  await assertPlatformChurchReadable(context, organizationId);
   const admin = requirePlatformAdminClient();
 
   const { data: church, error } = await admin
     .from("organizations")
     .select("id, name, status, slug, timezone, created_at")
-    .eq("id", churchId)
+    .eq("id", organizationId)
     .maybeSingle();
 
   if (error) {
@@ -327,12 +327,12 @@ export async function getPlatformChurchDetail(
     admin
       .from("campuses")
       .select("id, name, status")
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .order("name", { ascending: true }),
     admin
       .from("organization_memberships")
       .select("id, user_id, role, status")
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .eq("status", "active")
       .order("role", { ascending: true })
       .limit(100),
@@ -341,7 +341,7 @@ export async function getPlatformChurchDetail(
       .select(
         "id, status, trial_end, current_period_end, cancel_at_period_end, subscription_plans ( plan_key, display_name )",
       )
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .in("status", [...CURRENT_SUBSCRIPTION_STATUSES])
       .maybeSingle(),
   ]);
@@ -588,7 +588,7 @@ export async function listCurrentSubscriptions(input: {
 }): Promise<{
   items: Array<{
     id: string;
-    churchId: string;
+    organizationId: string;
     churchName: string;
     status: string;
     planKey: string;
@@ -633,7 +633,7 @@ export async function listCurrentSubscriptions(input: {
     const plan = Array.isArray(planJoin) ? planJoin[0] : planJoin;
     return {
       id: String(record.id),
-      churchId: String(record.organization_id),
+      organizationId: String(record.organization_id),
       churchName: String(church?.name ?? "Unknown church"),
       status: String(record.status ?? ""),
       planKey: String(plan?.plan_key ?? ""),

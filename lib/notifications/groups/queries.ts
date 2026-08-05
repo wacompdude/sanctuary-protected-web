@@ -48,7 +48,7 @@ export async function areNotificationGroupTablesAvailable(): Promise<boolean> {
 }
 
 export async function listNotificationGroups(
-  churchId: string,
+  organizationId: string,
   options?: {
     includeArchived?: boolean;
     campusFilterOr?: string | null;
@@ -60,7 +60,7 @@ export async function listNotificationGroups(
     .select(
       "id, organization_id, campus_id, name, description, group_type, status, is_system_group, dynamic_rule_type, dynamic_rule_value, allow_member_self_join, allow_member_self_leave, default_notification_severity, created_by, updated_by, created_at, updated_at, archived_at",
     )
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .order("name", { ascending: true });
 
   if (!options?.includeArchived) {
@@ -96,13 +96,13 @@ export async function listNotificationGroups(
       supabase
         .from("notification_group_members")
         .select("group_id")
-        .eq("organization_id", churchId)
+        .eq("organization_id", organizationId)
         .eq("status", "active")
         .in("group_id", groupIds),
       campusIds.length > 0
         ? supabase.from("campuses").select("id, name").in("id", campusIds)
         : Promise.resolve({ data: [] as Array<{ id: string; name: string }> }),
-      listActiveNestingEdges(churchId, supabase),
+      listActiveNestingEdges(organizationId, supabase),
     ]);
 
   const counts = new Map<string, number>();
@@ -143,14 +143,14 @@ export async function listNotificationGroups(
 }
 
 export async function getNotificationGroup(
-  churchId: string,
+  organizationId: string,
   groupId: string,
 ): Promise<NotificationGroup | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("notification_groups")
     .select("*")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("id", groupId)
     .maybeSingle();
 
@@ -162,7 +162,7 @@ export async function getNotificationGroup(
 }
 
 export async function listNotificationGroupMembers(
-  churchId: string,
+  organizationId: string,
   groupId: string,
 ): Promise<NotificationGroupMember[]> {
   const supabase = await createClient();
@@ -171,7 +171,7 @@ export async function listNotificationGroupMembers(
     .select(
       "id, organization_id, group_id, membership_id, user_id, status, added_by, added_at, removed_at",
     )
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("group_id", groupId)
     .eq("status", "active")
     .order("added_at", { ascending: false });
@@ -192,7 +192,7 @@ export async function listNotificationGroupMembers(
 
   if (rows.length === 0) return [];
 
-  return enrichGroupMembers(supabase, churchId, rows);
+  return enrichGroupMembers(supabase, organizationId, rows);
 }
 
 /**
@@ -202,7 +202,7 @@ export async function listNotificationGroupMembers(
  * listEffectiveGroupUsersWithSources / getEffectiveGroupUsers).
  */
 export async function listEffectiveNotificationGroupMembers(
-  churchId: string,
+  organizationId: string,
   group: Pick<
     NotificationGroup,
     | "id"
@@ -213,13 +213,13 @@ export async function listEffectiveNotificationGroupMembers(
   >,
 ): Promise<NotificationGroupMember[]> {
   if (!group.is_system_group || !group.dynamic_rule_type) {
-    return listNotificationGroupMembers(churchId, group.id);
+    return listNotificationGroupMembers(organizationId, group.id);
   }
 
-  const effective = await getEffectiveGroupUsers(churchId, group.id);
+  const effective = await getEffectiveGroupUsers(organizationId, group.id);
   return effective.map((user) => ({
     id: `dynamic:${user.membershipId}`,
-    organization_id: churchId,
+    organization_id: organizationId,
     group_id: group.id,
     membership_id: user.membershipId,
     user_id: user.userId,
@@ -233,15 +233,15 @@ export async function listEffectiveNotificationGroupMembers(
 }
 
 export async function listEffectiveGroupUsersWithSources(
-  churchId: string,
+  organizationId: string,
   groupId: string,
 ): Promise<EffectiveGroupUser[]> {
-  return getEffectiveGroupUsers(churchId, groupId);
+  return getEffectiveGroupUsers(organizationId, groupId);
 }
 
 async function enrichGroupMembers(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  churchId: string,
+  organizationId: string,
   rows: Array<{
     id: string;
     organization_id: string;
@@ -261,7 +261,7 @@ async function enrichGroupMembers(
     supabase
       .from("organization_memberships")
       .select("id, role")
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .in("id", membershipIds),
     supabase
       .from("profiles")
@@ -303,14 +303,14 @@ async function enrichGroupMembers(
 }
 
 export async function listNotificationGroupDefaults(
-  churchId: string,
+  organizationId: string,
   groupId: string,
 ): Promise<NotificationGroupDefault[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("notification_group_defaults")
     .select("*")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("group_id", groupId)
     .order("notification_type", { ascending: true });
 

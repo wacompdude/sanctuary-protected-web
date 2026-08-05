@@ -4,10 +4,10 @@ import { TRAINING_UPGRADE_MESSAGE } from "@/lib/training/constants";
 import type { TrainingAccessResult } from "@/lib/training/types";
 
 export async function getTrainingAccess(
-  churchId: string,
+  organizationId: string,
 ): Promise<TrainingAccessResult> {
   const featureAccess = await hasFeature({
-    churchId,
+    organizationId,
     featureKey: FEATURE_KEYS.TRAINING_MANAGEMENT,
   });
 

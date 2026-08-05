@@ -13,7 +13,7 @@ import type { SafetyConcernPhoto } from "@/lib/safety-concerns/types";
  */
 export async function createSafetyConcernPhotoSignedUrl(params: {
   supabase: SupabaseClient;
-  churchId: string;
+  organizationId: string;
   profileId: string;
   storagePath: string;
   expiresInSeconds?: number;
@@ -21,7 +21,7 @@ export async function createSafetyConcernPhotoSignedUrl(params: {
   if (
     !isSafetyConcernPhotoStoragePath(
       params.storagePath,
-      params.churchId,
+      params.organizationId,
       params.profileId,
     )
   ) {
@@ -44,7 +44,7 @@ export async function createSafetyConcernPhotoSignedUrl(params: {
 /** Attach signed URLs for photos that will be displayed (not the full catalog). */
 export async function attachSignedUrlsToSafetyConcernPhotos(params: {
   supabase: SupabaseClient;
-  churchId: string;
+  organizationId: string;
   photos: SafetyConcernPhoto[];
   expiresInSeconds?: number;
 }): Promise<SafetyConcernPhoto[]> {
@@ -58,7 +58,7 @@ export async function attachSignedUrlsToSafetyConcernPhotos(params: {
 
     const signedUrl = await createSafetyConcernPhotoSignedUrl({
       supabase: params.supabase,
-      churchId: params.churchId,
+      organizationId: params.organizationId,
       profileId: photo.profile_id,
       storagePath: photo.storage_path,
       expiresInSeconds: params.expiresInSeconds,

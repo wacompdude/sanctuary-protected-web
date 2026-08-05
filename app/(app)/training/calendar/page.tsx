@@ -15,7 +15,7 @@ async function TrainingCalendarContent() {
   if (!access.allowed) return null;
 
   const campusFilter = await resolveCampusFilter({
-    churchId: church.id,
+    organizationId: church.id,
     userId: user.id,
     role: membership.role,
   });

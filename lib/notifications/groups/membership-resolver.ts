@@ -101,7 +101,7 @@ function pathNames(
 
 async function loadGroupsByIds(
   supabase: SupabaseClient,
-  churchId: string,
+  organizationId: string,
   groupIds: string[],
 ): Promise<GroupRow[]> {
   if (groupIds.length === 0) return [];
@@ -110,7 +110,7 @@ async function loadGroupsByIds(
     .select(
       "id, name, status, is_system_group, dynamic_rule_type, dynamic_rule_value",
     )
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .in("id", groupIds)
     .eq("status", "active");
 
@@ -120,7 +120,7 @@ async function loadGroupsByIds(
 
 async function collectMembersFromGroups(
   supabase: SupabaseClient,
-  churchId: string,
+  organizationId: string,
   groups: GroupRow[],
 ): Promise<MemberHit[]> {
   const hits: MemberHit[] = [];
@@ -135,7 +135,7 @@ async function collectMembersFromGroups(
     const { data: memberRows, error } = await supabase
       .from("notification_group_members")
       .select("group_id, membership_id, user_id")
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .eq("status", "active")
       .in(
         "group_id",
@@ -156,7 +156,7 @@ async function collectMembersFromGroups(
       const { data: memberships, error: membershipError } = await supabase
         .from("organization_memberships")
         .select("id, user_id, role, status")
-        .eq("organization_id", churchId)
+        .eq("organization_id", organizationId)
         .eq("status", "active")
         .in("id", membershipIds);
 
@@ -193,7 +193,7 @@ async function collectMembersFromGroups(
     let query = supabase
       .from("organization_memberships")
       .select("id, user_id, role, status")
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .eq("status", "active");
 
     if (group.dynamic_rule_type === "role" && group.dynamic_rule_value) {
@@ -237,7 +237,7 @@ async function collectMembersFromGroups(
  * Deduplicates users and preserves all inheritance sources/paths.
  */
 export async function getEffectiveGroupUsers(
-  churchId: string,
+  organizationId: string,
   rootGroupId: string,
   options?: {
     client?: SupabaseClient;
@@ -248,15 +248,15 @@ export async function getEffectiveGroupUsers(
   const supabase = options?.client ?? (await createClient());
   const maxDepth = options?.maxDepth ?? NOTIFICATION_GROUP_MAX_NESTING_DEPTH;
   const edges =
-    options?.edges ?? (await listActiveNestingEdges(churchId, supabase));
+    options?.edges ?? (await listActiveNestingEdges(organizationId, supabase));
 
   const descendantIds = expandGroupDescendantIds(rootGroupId, edges, maxDepth);
-  const groups = await loadGroupsByIds(supabase, churchId, descendantIds);
+  const groups = await loadGroupsByIds(supabase, organizationId, descendantIds);
   if (groups.length === 0) return [];
 
   const nameById = new Map(groups.map((group) => [group.id, group.name]));
   const parentOf = buildParentPointers(rootGroupId, edges, maxDepth);
-  const hits = await collectMembersFromGroups(supabase, churchId, groups);
+  const hits = await collectMembersFromGroups(supabase, organizationId, groups);
 
   const byUser = new Map<
     string,
@@ -323,12 +323,12 @@ export async function getEffectiveGroupUsers(
 }
 
 export async function getNotificationGroupCounts(
-  churchId: string,
+  organizationId: string,
   group: Pick<NotificationGroup, "id" | "is_system_group">,
   options?: { client?: SupabaseClient },
 ): Promise<NotificationGroupCounts> {
   const supabase = options?.client ?? (await createClient());
-  const edges = await listActiveNestingEdges(churchId, supabase);
+  const edges = await listActiveNestingEdges(organizationId, supabase);
 
   const includedGroups = edges.filter(
     (edge) => edge.parentGroupId === group.id,
@@ -345,14 +345,14 @@ export async function getNotificationGroupCounts(
     const { count, error } = await supabase
       .from("notification_group_members")
       .select("id", { count: "exact", head: true })
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .eq("group_id", group.id)
       .eq("status", "active");
     if (error) throw new Error(error.message);
     directUsers = count ?? 0;
   }
 
-  const effective = await getEffectiveGroupUsers(churchId, group.id, {
+  const effective = await getEffectiveGroupUsers(organizationId, group.id, {
     client: supabase,
     edges,
   });
@@ -371,7 +371,7 @@ export async function getNotificationGroupCounts(
  */
 export async function resolveEffectiveMembersForGroups(
   supabase: SupabaseClient,
-  churchId: string,
+  organizationId: string,
   rootGroupIds: string[],
 ): Promise<
   Map<
@@ -396,7 +396,7 @@ export async function resolveEffectiveMembersForGroups(
 
   if (rootGroupIds.length === 0) return members;
 
-  const edges = await listActiveNestingEdges(churchId, supabase);
+  const edges = await listActiveNestingEdges(organizationId, supabase);
   const allGroupIds = new Set<string>();
   const rootsByLeaf = new Map<string, Set<string>>();
 
@@ -414,9 +414,9 @@ export async function resolveEffectiveMembersForGroups(
     }
   }
 
-  const groups = await loadGroupsByIds(supabase, churchId, [...allGroupIds]);
+  const groups = await loadGroupsByIds(supabase, organizationId, [...allGroupIds]);
   const nameById = new Map(groups.map((group) => [group.id, group.name]));
-  const hits = await collectMembersFromGroups(supabase, churchId, groups);
+  const hits = await collectMembersFromGroups(supabase, organizationId, groups);
 
   for (const hit of hits) {
     const rootIds = rootsByLeaf.get(hit.leafGroupId) ?? new Set<string>();

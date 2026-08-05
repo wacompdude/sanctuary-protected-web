@@ -115,7 +115,7 @@ export async function updateTemplateSenderCategoryAction(
     }
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.EMAIL_SENDER_CATEGORY_CHANGED,
       entityType: AuditEntityType.NOTIFICATION_TEMPLATE,

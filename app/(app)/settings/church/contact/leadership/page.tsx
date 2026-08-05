@@ -17,7 +17,7 @@ export default function ChurchContactLeadershipPage() {
       >
         {({ church, canEdit }) => (
           <ChurchDirectoryGroupLoader
-            churchId={church.id}
+            organizationId={church.id}
             canEdit={canEdit}
             contactTypes={[...group.contactTypes]}
           />

@@ -63,7 +63,7 @@ export async function markPolicyViewed(policyId: string): Promise<ActionState> {
     if (error) return { error: error.message };
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.POLICY_ACKNOWLEDGMENT_VIEWED,
       entityType: AuditEntityType.POLICY_ACKNOWLEDGMENT,
@@ -139,7 +139,7 @@ export async function acknowledgePolicy(
     if (error) return { error: error.message };
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.POLICY_ACKNOWLEDGED,
       entityType: AuditEntityType.POLICY_ACKNOWLEDGMENT,
@@ -202,7 +202,7 @@ export async function waivePolicyAcknowledgment(
     if (error) return { error: error.message };
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.POLICY_ACKNOWLEDGMENT_WAIVED,
       entityType: AuditEntityType.POLICY_ACKNOWLEDGMENT,
@@ -251,7 +251,7 @@ export async function runAssignPolicyAcknowledgments(
     const userIds = await assignPolicyAcknowledgments(policyId);
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.POLICY_ACKNOWLEDGMENTS_ASSIGNED,
       entityType: AuditEntityType.POLICY_DOCUMENT,
@@ -273,7 +273,7 @@ export async function runAssignPolicyAcknowledgments(
           : null;
 
       await notifyPolicyAcknowledgmentsRequired({
-        churchId: church.id,
+        organizationId: church.id,
         policyId,
         title: policy.title,
         versionLabel: policy.version_label ?? "1.0",
@@ -357,7 +357,7 @@ export async function addPolicyAssignment(
     }
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.POLICY_ASSIGNMENT_ADDED,
       entityType: AuditEntityType.POLICY_ASSIGNMENT,
@@ -407,7 +407,7 @@ export async function revokePolicyAssignment(
     if (error) return { error: error.message };
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.POLICY_ASSIGNMENT_REVOKED,
       entityType: AuditEntityType.POLICY_ASSIGNMENT,

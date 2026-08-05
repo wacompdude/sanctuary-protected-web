@@ -44,23 +44,23 @@ export function extensionForSafetyConcernPhotoMime(
   return null;
 }
 
-/** Path: churches/{churchId}/safety-concerns/{profileId}/{uuid}.{ext} */
+/** Path: churches/{organizationId}/safety-concerns/{profileId}/{uuid}.{ext} */
 export function safetyConcernPhotoObjectPath(params: {
-  churchId: string;
+  organizationId: string;
   profileId: string;
   mimeType: string;
 }): string | null {
   const ext = extensionForSafetyConcernPhotoMime(params.mimeType);
   if (!ext) return null;
-  return `churches/${params.churchId}/safety-concerns/${params.profileId}/${newPhotoObjectId()}.${ext}`;
+  return `churches/${params.organizationId}/safety-concerns/${params.profileId}/${newPhotoObjectId()}.${ext}`;
 }
 
 export function isSafetyConcernPhotoStoragePath(
   path: string,
-  churchId: string,
+  organizationId: string,
   profileId?: string,
 ): boolean {
-  const prefix = `churches/${churchId}/safety-concerns/`;
+  const prefix = `churches/${organizationId}/safety-concerns/`;
   if (!path.startsWith(prefix)) return false;
   if (!profileId) return true;
   return path.startsWith(`${prefix}${profileId}/`);

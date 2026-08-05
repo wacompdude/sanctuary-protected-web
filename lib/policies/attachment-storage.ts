@@ -78,22 +78,22 @@ export function resolvePolicyAttachmentMime(file: {
 }
 
 export function policyAttachmentObjectPath(params: {
-  churchId: string;
+  organizationId: string;
   policyId: string;
   versionId: string;
   mimeType: string;
 }): string | null {
   const ext = extensionForPolicyAttachmentMime(params.mimeType);
   if (!ext) return null;
-  return `churches/${params.churchId}/policies/${params.policyId}/versions/${params.versionId}/attachments/${randomUUID()}.${ext}`;
+  return `churches/${params.organizationId}/policies/${params.policyId}/versions/${params.versionId}/attachments/${randomUUID()}.${ext}`;
 }
 
 export function isPolicyMediaStoragePath(
   path: string,
-  churchId: string,
+  organizationId: string,
   policyId?: string,
 ): boolean {
-  const prefix = `churches/${churchId}/policies/`;
+  const prefix = `churches/${organizationId}/policies/`;
   if (!path.startsWith(prefix)) return false;
   if (!policyId) return true;
   return path.startsWith(`${prefix}${policyId}/`);
@@ -134,7 +134,7 @@ export function defaultPolicyAttachmentType(
 
 export async function uploadPolicyAttachmentFiles(params: {
   supabase: SupabaseClient;
-  churchId: string;
+  organizationId: string;
   policyId: string;
   versionId: string;
   userId: string;
@@ -143,7 +143,7 @@ export async function uploadPolicyAttachmentFiles(params: {
 }): Promise<{ uploaded: number; error?: string }> {
   const {
     supabase,
-    churchId,
+    organizationId,
     policyId,
     versionId,
     userId,
@@ -169,7 +169,7 @@ export async function uploadPolicyAttachmentFiles(params: {
     }
 
     const objectPath = policyAttachmentObjectPath({
-      churchId,
+      organizationId,
       policyId,
       versionId,
       mimeType,
@@ -201,7 +201,7 @@ export async function uploadPolicyAttachmentFiles(params: {
     const { data: row, error: insertError } = await supabase
       .from("policy_attachments")
       .insert({
-        organization_id: churchId,
+        organization_id: organizationId,
         policy_document_id: policyId,
         policy_version_id: versionId,
         file_name: file.name?.slice(0, 255) || "attachment",

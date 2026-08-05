@@ -78,7 +78,7 @@ function parseDeliverableChannels(formData: FormData): NotificationChannel[] {
 }
 
 async function loadGroupNames(
-  churchId: string,
+  organizationId: string,
   groupIds: string[],
 ): Promise<Array<{ id: string; name: string }>> {
   if (groupIds.length === 0) return [];
@@ -87,7 +87,7 @@ async function loadGroupNames(
   const { data } = await supabase
     .from("notification_groups")
     .select("id, name")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .in("id", groupIds);
   return ((data ?? []) as Array<{ id: string; name: string }>).map((row) => ({
     id: row.id,
@@ -125,7 +125,7 @@ export async function previewNotificationAudienceAction(
 
     const audience = await resolveNotificationAudience({
       supabase,
-      churchId: church.id,
+      organizationId: church.id,
       notificationType,
       severity,
       settings,
@@ -229,19 +229,19 @@ export async function sendComposedNotificationAction(
     const channels = parseDeliverableChannels(formData);
     if (requestedChannels.includes("email")) {
       await requireFeature({
-        churchId: church.id,
+        organizationId: church.id,
         featureKey: FEATURE_KEYS.EMAIL,
       });
     }
     if (requestedChannels.includes("sms")) {
       await requireFeature({
-        churchId: church.id,
+        organizationId: church.id,
         featureKey: FEATURE_KEYS.SMS,
       });
       const settings = await getChurchNotificationSettings(supabase, church.id);
       const audience = await resolveNotificationAudience({
         supabase,
-        churchId: church.id,
+        organizationId: church.id,
         notificationType,
         severity: severityRaw,
         settings,
@@ -260,14 +260,14 @@ export async function sendComposedNotificationAction(
       });
       if (estimatedSegments > 0) {
         await requireSmsSegmentCapacity({
-          churchId: church.id,
+          organizationId: church.id,
           estimatedSegments,
         });
       }
     }
     if (targets.groupIds?.length) {
       await requireFeature({
-        churchId: church.id,
+        organizationId: church.id,
         featureKey: FEATURE_KEYS.GROUP_EMAIL,
       });
     }
@@ -281,7 +281,7 @@ export async function sendComposedNotificationAction(
 
     const result = await createNotification(
       {
-        churchId: church.id,
+        organizationId: church.id,
         createdBy: user.id,
         notificationType,
         severity: severityRaw,
@@ -316,7 +316,7 @@ export async function sendComposedNotificationAction(
     notificationId = result.notificationId;
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.NOTIFICATION_CREATED,
       entityType: AuditEntityType.NOTIFICATION,

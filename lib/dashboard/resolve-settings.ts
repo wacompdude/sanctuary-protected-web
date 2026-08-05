@@ -70,7 +70,7 @@ function mergeBox(
 export async function resolveDashboardBoxSettings(
   input: ResolveDashboardBoxSettingsInput,
 ): Promise<ResolvedDashboardBoxSetting[]> {
-  const overrides = await listChurchDashboardBoxSettings(input.churchId);
+  const overrides = await listChurchDashboardBoxSettings(input.organizationId);
   const overrideByKey = new Map(
     overrides.map((row) => [row.box_key, row] as const),
   );
@@ -104,11 +104,11 @@ export async function resolveDashboardBoxSettings(
  * including hidden ones, merged with overrides.
  */
 export async function resolveDashboardBoxSettingsForEditor(
-  churchId: string,
+  organizationId: string,
   userRole: ResolveDashboardBoxSettingsInput["userRole"],
 ): Promise<ResolvedDashboardBoxSetting[]> {
   return resolveDashboardBoxSettings({
-    churchId,
+    organizationId,
     userRole,
     canManageSchedule: true,
     includeHidden: true,

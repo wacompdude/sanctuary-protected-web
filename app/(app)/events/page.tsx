@@ -36,7 +36,7 @@ async function EventsContent() {
   const { church, membership, user, canManageCertifications } =
     await getAuthenticatedUserWithChurch();
   const campusFilter = await resolveCampusFilter({
-    churchId: church.id,
+    organizationId: church.id,
     userId: user.id,
     role: membership.role,
   });

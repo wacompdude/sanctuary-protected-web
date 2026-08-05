@@ -32,25 +32,25 @@ export type SafetyConcernAccess = SafetyConcernAccessDecision & {
 export type SafetyConcernRouteMode = "read" | "write";
 
 export async function getSafetyConcernAccess(params: {
-  churchId: string;
+  organizationId: string;
   role: MembershipRole;
   allowSecurityMemberView?: boolean;
 }): Promise<SafetyConcernAccess> {
   const [featureAccess, photoCount, photoSize, profileLimit] = await Promise.all([
     hasFeature({
-      churchId: params.churchId,
+      organizationId: params.organizationId,
       featureKey: FEATURE_KEYS.SAFETY_CONCERN_PROFILES,
     }),
     getFeatureLimit({
-      churchId: params.churchId,
+      organizationId: params.organizationId,
       featureKey: FEATURE_KEYS.SAFETY_CONCERN_PHOTO_LIMIT,
     }),
     getFeatureLimit({
-      churchId: params.churchId,
+      organizationId: params.organizationId,
       featureKey: FEATURE_KEYS.SAFETY_CONCERN_PHOTO_SIZE_MB,
     }),
     getFeatureLimit({
-      churchId: params.churchId,
+      organizationId: params.organizationId,
       featureKey: FEATURE_KEYS.SAFETY_CONCERN_PROFILE_LIMIT,
     }),
   ]);
@@ -86,7 +86,7 @@ export async function getSafetyConcernAccess(params: {
  * - write: requires active entitlement + manage role (checked separately)
  */
 export async function resolveSafetyConcernRouteAccess(params: {
-  churchId: string;
+  organizationId: string;
   role: MembershipRole;
   mode: SafetyConcernRouteMode;
   allowSecurityMemberView?: boolean;
@@ -96,7 +96,7 @@ export async function resolveSafetyConcernRouteAccess(params: {
   reason?: string;
 }> {
   const access = await getSafetyConcernAccess({
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     role: params.role,
     allowSecurityMemberView: params.allowSecurityMemberView,
   });
@@ -124,11 +124,11 @@ export async function resolveSafetyConcernRouteAccess(params: {
 
 /** Throws unless the church may create/edit/upload Safety Concern records. */
 export async function requireSafetyConcernWrite(params: {
-  churchId: string;
+  organizationId: string;
   role: MembershipRole;
 }): Promise<SafetyConcernAccess> {
   const route = await resolveSafetyConcernRouteAccess({
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     role: params.role,
     mode: "write",
   });
@@ -145,7 +145,7 @@ export async function requireSafetyConcernWrite(params: {
   }
 
   await requireFeature({
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     featureKey: FEATURE_KEYS.SAFETY_CONCERN_PROFILES,
   });
 
@@ -153,14 +153,14 @@ export async function requireSafetyConcernWrite(params: {
 }
 
 export async function requireSafetyConcernPhotoUpload(params: {
-  churchId: string;
+  organizationId: string;
   role: MembershipRole;
   existingCount: number;
   newCount: number;
   files: Array<{ size: number }>;
 }): Promise<{ maxCount: number; maxBytes: number; maxSizeMb: number }> {
   const access = await requireSafetyConcernWrite({
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     role: params.role,
   });
 
@@ -175,7 +175,7 @@ export async function requireSafetyConcernPhotoUpload(params: {
   }
 
   await requireFeatureCapacity({
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     featureKey: FEATURE_KEYS.SAFETY_CONCERN_PHOTO_LIMIT,
     currentUsage: params.existingCount,
     requestedIncrease: params.newCount,
@@ -201,17 +201,17 @@ export async function requireSafetyConcernPhotoUpload(params: {
 }
 
 export async function requireSafetyConcernProfileCapacity(params: {
-  churchId: string;
+  organizationId: string;
   role: MembershipRole;
   currentActiveCount: number;
 }): Promise<void> {
   await requireSafetyConcernWrite({
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     role: params.role,
   });
 
   await requireFeatureCapacity({
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     featureKey: FEATURE_KEYS.SAFETY_CONCERN_PROFILE_LIMIT,
     currentUsage: params.currentActiveCount,
     requestedIncrease: 1,

@@ -63,7 +63,7 @@ export async function transferOwnershipToCoOwnerAction(
     }
 
     await auditOwnershipTransferInitiated(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       fromUserId: user.id,
       toUserId: target.user_id as string,
@@ -80,7 +80,7 @@ export async function transferOwnershipToCoOwnerAction(
 
     const result = (data ?? {}) as Record<string, unknown>;
     await auditOwnershipTransferCompleted(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       fromUserId: user.id,
       toUserId: String(result.to_user_id ?? target.user_id),

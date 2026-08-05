@@ -79,7 +79,7 @@ export async function uploadPolicyAttachments(
 
     const result = await uploadPolicyAttachmentFiles({
       supabase,
-      churchId: church.id,
+      organizationId: church.id,
       policyId,
       versionId: policy.current_version_id,
       userId: user.id,
@@ -93,7 +93,7 @@ export async function uploadPolicyAttachments(
 
     if (result.uploaded > 0) {
       await writeAuditLog(supabase, {
-        churchId: church.id,
+        organizationId: church.id,
         userId: user.id,
         action: AuditAction.POLICY_ATTACHMENT_UPLOADED,
         entityType: AuditEntityType.POLICY_ATTACHMENT,
@@ -163,7 +163,7 @@ export async function archivePolicyAttachment(
     }
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.POLICY_ATTACHMENT_REMOVED,
       entityType: AuditEntityType.POLICY_ATTACHMENT,

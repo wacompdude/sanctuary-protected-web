@@ -7,7 +7,7 @@ type AuditClient = SupabaseClient;
 export async function auditTrainingEventCreated(
   supabase: AuditClient,
   params: {
-    churchId: string;
+    organizationId: string;
     userId: string;
     eventId: string;
     name: string;
@@ -15,7 +15,7 @@ export async function auditTrainingEventCreated(
   },
 ) {
   await writeAuditLog(supabase, {
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     userId: params.userId,
     action: AuditAction.TRAINING_EVENT_CREATED,
     entityType: AuditEntityType.TRAINING_EVENT,
@@ -28,7 +28,7 @@ export async function auditTrainingEventCreated(
 export async function auditTrainingEventUpdated(
   supabase: AuditClient,
   params: {
-    churchId: string;
+    organizationId: string;
     userId: string;
     eventId: string;
     metadata?: Record<string, unknown>;
@@ -36,7 +36,7 @@ export async function auditTrainingEventUpdated(
   },
 ) {
   await writeAuditLog(supabase, {
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     userId: params.userId,
     action: AuditAction.TRAINING_EVENT_UPDATED,
     entityType: AuditEntityType.TRAINING_EVENT,
@@ -49,14 +49,14 @@ export async function auditTrainingEventUpdated(
 export async function auditTrainingEventCancelled(
   supabase: AuditClient,
   params: {
-    churchId: string;
+    organizationId: string;
     userId: string;
     eventId: string;
     ipAddress?: string | null;
   },
 ) {
   await writeAuditLog(supabase, {
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     userId: params.userId,
     action: AuditAction.TRAINING_EVENT_CANCELLED,
     entityType: AuditEntityType.TRAINING_EVENT,
@@ -69,7 +69,7 @@ export async function auditTrainingEventCancelled(
 export async function auditTrainingCompletionRecorded(
   supabase: AuditClient,
   params: {
-    churchId: string;
+    organizationId: string;
     userId: string;
     completionRecordId: string;
     participantId?: string | null;
@@ -78,7 +78,7 @@ export async function auditTrainingCompletionRecorded(
   },
 ) {
   await writeAuditLog(supabase, {
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     userId: params.userId,
     action: AuditAction.TRAINING_COMPLETION_RECORDED,
     entityType: AuditEntityType.TRAINING_COMPLETION_RECORD,
@@ -94,18 +94,18 @@ export async function auditTrainingCompletionRecorded(
 export async function auditTrainingSettingsUpdated(
   supabase: AuditClient,
   params: {
-    churchId: string;
+    organizationId: string;
     userId: string;
     metadata?: Record<string, unknown>;
     ipAddress?: string | null;
   },
 ) {
   await writeAuditLog(supabase, {
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     userId: params.userId,
     action: AuditAction.TRAINING_SETTINGS_UPDATED,
     entityType: AuditEntityType.TRAINING_SETTINGS,
-    entityId: params.churchId,
+    entityId: params.organizationId,
     metadata: params.metadata ?? {},
     ipAddress: params.ipAddress ?? null,
   });
@@ -114,7 +114,7 @@ export async function auditTrainingSettingsUpdated(
 export async function auditTrainingExternalVerified(
   supabase: AuditClient,
   params: {
-    churchId: string;
+    organizationId: string;
     userId: string;
     externalRecordId: string;
     completionRecordId?: string | null;
@@ -122,7 +122,7 @@ export async function auditTrainingExternalVerified(
   },
 ) {
   await writeAuditLog(supabase, {
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     userId: params.userId,
     action: AuditAction.TRAINING_EXTERNAL_VERIFIED,
     entityType: AuditEntityType.TRAINING_EXTERNAL_RECORD,

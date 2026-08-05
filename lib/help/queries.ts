@@ -617,7 +617,7 @@ export async function searchHelpArticles(
 export async function recordHelpSearchEvent(params: {
   query: string;
   resultCount: number;
-  churchId?: string | null;
+  organizationId?: string | null;
   userId?: string | null;
   selectedArticleId?: string | null;
   client?: SupabaseClient;
@@ -629,7 +629,7 @@ export async function recordHelpSearchEvent(params: {
   const { error } = await supabase.from("help_search_events").insert({
     query_text: query,
     result_count: Math.max(0, Math.floor(params.resultCount)),
-    organization_id: params.churchId ?? null,
+    organization_id: params.organizationId ?? null,
     user_id: params.userId ?? null,
     selected_article_id: params.selectedArticleId ?? null,
   });
@@ -643,7 +643,7 @@ export async function recordHelpSearchEvent(params: {
 export async function recordHelpArticleView(params: {
   articleId: string;
   articleVersionId?: string | null;
-  churchId?: string | null;
+  organizationId?: string | null;
   userId?: string | null;
   client?: SupabaseClient;
 }): Promise<void> {
@@ -651,7 +651,7 @@ export async function recordHelpArticleView(params: {
   const { error } = await supabase.from("help_article_views").insert({
     article_id: params.articleId,
     article_version_id: params.articleVersionId ?? null,
-    organization_id: params.churchId ?? null,
+    organization_id: params.organizationId ?? null,
     user_id: params.userId ?? null,
   });
 
@@ -665,7 +665,7 @@ export async function submitHelpArticleFeedback(params: {
   rating: HelpFeedbackRating;
   comment?: string | null;
   articleVersionId?: string | null;
-  churchId?: string | null;
+  organizationId?: string | null;
   userId: string;
   client?: SupabaseClient;
 }): Promise<{ error: string | null }> {
@@ -675,7 +675,7 @@ export async function submitHelpArticleFeedback(params: {
     article_version_id: params.articleVersionId ?? null,
     rating: params.rating,
     comment: params.comment?.trim().slice(0, 2000) || null,
-    organization_id: params.churchId ?? null,
+    organization_id: params.organizationId ?? null,
     user_id: params.userId,
   });
 

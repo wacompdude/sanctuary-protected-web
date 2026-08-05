@@ -27,7 +27,7 @@ function formatPrice(cents: number | null): string {
 }
 
 export function PlatformSubscriptionAdminPanel({
-  churchId,
+  organizationId,
   churchName,
   currentPlanKey,
   cancelAtPeriodEnd,
@@ -38,7 +38,7 @@ export function PlatformSubscriptionAdminPanel({
   canCancel,
   canRestore,
 }: {
-  churchId: string;
+  organizationId: string;
   churchName: string;
   currentPlanKey: string | null;
   cancelAtPeriodEnd: boolean;
@@ -72,7 +72,7 @@ export function PlatformSubscriptionAdminPanel({
     setError(null);
     setMessage(null);
     startTransition(async () => {
-      const result = await previewPlatformPlanChangeAction(churchId, planKey);
+      const result = await previewPlatformPlanChangeAction(organizationId, planKey);
       if (result.error) {
         setError(result.error);
         setImpact(null);
@@ -86,7 +86,7 @@ export function PlatformSubscriptionAdminPanel({
     setError(null);
     setMessage(null);
     const formData = new FormData();
-    formData.set("organization_id", churchId);
+    formData.set("organization_id", organizationId);
     formData.set("plan_key", selectedPlanKey);
     formData.set("reason", reason);
     if (confirmDowngrade) formData.set("confirm_downgrade", "1");
@@ -112,7 +112,7 @@ export function PlatformSubscriptionAdminPanel({
     setError(null);
     setMessage(null);
     const formData = new FormData();
-    formData.set("organization_id", churchId);
+    formData.set("organization_id", organizationId);
     formData.set("reason", cancelReason);
     if (cancelConfirm) formData.set("confirm", "1");
     formData.set("typed_confirmation", cancelTyped);
@@ -135,7 +135,7 @@ export function PlatformSubscriptionAdminPanel({
     setError(null);
     setMessage(null);
     const formData = new FormData();
-    formData.set("organization_id", churchId);
+    formData.set("organization_id", organizationId);
     formData.set("reason", restoreReason);
 
     startTransition(async () => {

@@ -1,6 +1,6 @@
 import { publicUrlForLogoPath } from "@/lib/church/logo-storage";
 
-export function ChurchIdentity({
+export function OrganizationIdentity({
   name,
   logoPath,
   size = "md",

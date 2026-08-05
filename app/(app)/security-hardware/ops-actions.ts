@@ -24,9 +24,9 @@ import {
 import { FEATURE_KEYS } from "@/lib/subscriptions/feature-keys";
 import { requireFeature } from "@/lib/subscriptions/resolver";
 
-async function requireHardwareInventory(churchId: string) {
+async function requireHardwareInventory(organizationId: string) {
   await requireFeature({
-    churchId,
+    organizationId,
     featureKey: FEATURE_KEYS.HARDWARE_INVENTORY,
   });
 }
@@ -117,7 +117,7 @@ export async function scheduleEquipmentMaintenance(
       .eq("organization_id", church.id);
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.EQUIPMENT_MAINTENANCE_SCHEDULED,
       entityType: AuditEntityType.EQUIPMENT_MAINTENANCE,
@@ -239,7 +239,7 @@ export async function completeEquipmentMaintenance(
       .eq("organization_id", church.id);
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action:
         nextStatus === "failed_inspection"
@@ -335,7 +335,7 @@ export async function assignEquipment(
       .eq("organization_id", church.id);
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.EQUIPMENT_ASSIGNED,
       entityType: AuditEntityType.EQUIPMENT_ASSIGNMENT,
@@ -425,7 +425,7 @@ export async function returnEquipmentAssignment(
       .eq("organization_id", church.id);
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action:
         nextStatus === "lost"
@@ -510,7 +510,7 @@ export async function reportEquipmentLostOrStolen(
     }
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action:
         nextStatus === "stolen"

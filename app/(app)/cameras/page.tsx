@@ -16,7 +16,7 @@ async function CamerasContent() {
   try {
     const { church } = await getAuthenticatedUserWithChurch();
     const access = await hasFeature({
-      churchId: church.id,
+      organizationId: church.id,
       featureKey: FEATURE_KEYS.CAMERAS,
     });
     if (!access.allowed) {

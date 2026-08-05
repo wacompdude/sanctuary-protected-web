@@ -56,34 +56,41 @@ export function membershipStatusAllowsAssignment(
   return status === "active" || status === "on_leave";
 }
 
-export type ChurchStatus = "trial" | "active" | "suspended" | "closed";
+/** Tenant lifecycle status (DB enum remains church_status until Phase C). */
+export type OrganizationStatus = "trial" | "active" | "suspended" | "closed";
+/** @deprecated UI alias — product presents organizations as churches */
+export type ChurchStatus = OrganizationStatus;
 
-export interface Church {
+/** Internal tenant entity. Presented as "Church" in the Sanctuary UI. */
+export interface Organization {
   id: string;
   name: string;
-  status?: ChurchStatus | null;
+  status?: OrganizationStatus | null;
   slug?: string | null;
-  /** IANA timezone used for all church-scoped timestamps (e.g. America/Chicago). */
+  /** IANA timezone used for all organization-scoped timestamps. */
   timezone?: string | null;
   /**
-   * First day of the church calendar week: 0=Sunday … 6=Saturday.
+   * First day of the organization calendar week: 0=Sunday … 6=Saturday.
    * Used by weekly threat levels and other week-scoped features.
    */
   week_starts_on?: number | null;
 }
 
+/** @deprecated UI alias for Organization */
+export type Church = Organization;
+
 export interface Profile {
   id: string;
-  /** Active church from resolved context (not stored on profiles). */
+  /** Active organization from resolved context (not stored on profiles). */
   organization_id: string;
   first_name: string | null;
   last_name: string | null;
   full_name: string | null;
-  /** Role from the active church membership. */
+  /** Role from the active organization membership. */
   role: MembershipRole;
 }
 
-export interface ChurchMembership {
+export interface OrganizationMembership {
   id: string;
   organization_id: string;
   user_id: string;
@@ -93,9 +100,17 @@ export interface ChurchMembership {
   created_at: string | null;
 }
 
-export interface ChurchMembershipWithChurch extends ChurchMembership {
-  church: Church;
+/** @deprecated Prefer OrganizationMembership */
+export type ChurchMembership = OrganizationMembership;
+
+export interface OrganizationMembershipWithOrganization
+  extends OrganizationMembership {
+  /** UI still exposes this as `church` for presentation components. */
+  church: Organization;
 }
+
+/** @deprecated Prefer OrganizationMembershipWithOrganization */
+export type ChurchMembershipWithChurch = OrganizationMembershipWithOrganization;
 
 export type ActionState = {
   error?: string | null;
@@ -140,15 +155,21 @@ export function normalizeMembershipRole(
   }
 }
 
-export function isUsableChurchStatus(
+export function isUsableOrganizationStatus(
   status: string | null | undefined,
 ): boolean {
   return !status || status === "trial" || status === "active";
 }
 
-/** Ownership-tier members may keep context on suspended/closed churches for recovery. */
-export function isOwnerRecoveryChurchStatus(
+/** @deprecated Prefer isUsableOrganizationStatus */
+export const isUsableChurchStatus = isUsableOrganizationStatus;
+
+/** Ownership-tier members may keep context on suspended/closed orgs for recovery. */
+export function isOwnerRecoveryOrganizationStatus(
   status: string | null | undefined,
 ): boolean {
   return status === "suspended" || status === "closed";
 }
+
+/** @deprecated Prefer isOwnerRecoveryOrganizationStatus */
+export const isOwnerRecoveryChurchStatus = isOwnerRecoveryOrganizationStatus;

@@ -280,7 +280,7 @@ async function upsertSecurityGroup(
 ): Promise<string> {
   const existingId = await getRegisteredId(ctx.admin, ctx.seedSource, spec.seedKey);
   const payload = {
-    organization_id: ctx.churchId,
+    organization_id: ctx.organizationId,
     name: spec.name,
     description: spec.description,
     status: "active" as const,
@@ -463,7 +463,7 @@ async function upsertTempPermission(
 
   const useSelectedCampus = Boolean(campusId) && permission.supports_campus_scope;
   const payload = {
-    organization_id: ctx.churchId,
+    organization_id: ctx.organizationId,
     user_id: userId(ctx, spec.userSeedKey),
     permission_definition_id: permission.id,
     permission_effect: "grant" as const,

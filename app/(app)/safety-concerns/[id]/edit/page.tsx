@@ -24,7 +24,7 @@ async function EditSafetyConcernContent({ id }: { id: string }) {
   const { church, membership, user } = await getAuthenticatedUserWithChurch();
   const settings = await getSafetyConcernChurchSettings(church.id);
   const access = await getSafetyConcernAccess({
-    churchId: church.id,
+    organizationId: church.id,
     role: membership.role,
     allowSecurityMemberView: settings.allow_security_member_view,
   });
@@ -54,7 +54,7 @@ async function EditSafetyConcernContent({ id }: { id: string }) {
 
   const [campusFilter, campusLinks] = await Promise.all([
     resolveCampusFilter({
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       role: membership.role,
     }),

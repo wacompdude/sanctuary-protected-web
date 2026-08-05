@@ -24,7 +24,7 @@ describe("shouldCreateCompletion", () => {
 describe("buildCompletionRecordPayload", () => {
   it("builds denormalized completion history shape", () => {
     const payload = buildCompletionRecordPayload({
-      churchId: "church-1",
+      organizationId: "church-1",
       userId: "user-1",
       eventId: "event-1",
       courseId: "course-1",

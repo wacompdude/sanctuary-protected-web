@@ -26,12 +26,12 @@ type RpcRow = {
 };
 
 export async function listChurchTeamMemberships(
-  churchId: string,
+  organizationId: string,
 ): Promise<TeamMemberRow[]> {
   const { supabase } = await getAuthenticatedUserWithChurch();
 
   const { data, error } = await supabase.rpc("list_church_team_memberships", {
-    p_church_id: churchId,
+    p_church_id: organizationId,
   });
 
   if (error) {

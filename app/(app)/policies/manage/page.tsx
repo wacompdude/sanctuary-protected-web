@@ -38,7 +38,7 @@ async function ManagePoliciesContent({
   const { church, membership, user } =
     await requireMinChurchRole("security_leader");
   const campusFilter = await resolveCampusFilter({
-    churchId: church.id,
+    organizationId: church.id,
     userId: user.id,
     role: membership.role,
   });

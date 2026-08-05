@@ -107,7 +107,7 @@ export async function updateChurchThreatLevel(
     }
 
     await auditChurchThreatLevelUpdated(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       threatLevelId: inserted.id,
       weekStart: resolvedWeekStart,
@@ -214,7 +214,7 @@ export async function editChurchThreatLevelEntry(
     }
 
     await auditChurchThreatLevelEdited(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       threatLevelId: entryId,
       weekStart: resolvedWeekStart,
@@ -291,7 +291,7 @@ export async function deleteChurchThreatLevelEntry(
     }
 
     await auditChurchThreatLevelDeleted(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       threatLevelId: entryId,
       weekStart: String(existing.week_start),

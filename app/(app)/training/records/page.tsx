@@ -34,7 +34,7 @@ async function TrainingRecordsContent() {
 
   const includeSensitive = canViewSensitive(membership.role);
   const campusFilter = await resolveCampusFilter({
-    churchId: church.id,
+    organizationId: church.id,
     userId: user.id,
     role: membership.role,
   });

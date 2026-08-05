@@ -6,13 +6,13 @@ import type {
   TeamMember,
 } from "./types";
 
-export async function listTeamMembersForChurch(churchId: string) {
+export async function listTeamMembersForChurch(organizationId: string) {
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("team_members")
     .select("*")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("is_active", true)
     .order("full_name", { ascending: true });
 
@@ -28,7 +28,7 @@ export async function listTeamMembersForChurch(churchId: string) {
  * Matches by email first (case-insensitive), then by exact full name.
  */
 export async function ensureTeamMemberForChurchMember(params: {
-  churchId: string;
+  organizationId: string;
   createdBy: string;
   fullName: string;
   email: string | null;
@@ -47,7 +47,7 @@ export async function ensureTeamMemberForChurchMember(params: {
     const { data: byEmail, error: emailError } = await supabase
       .from("team_members")
       .select("*")
-      .eq("organization_id", params.churchId)
+      .eq("organization_id", params.organizationId)
       .eq("is_active", true)
       .ilike("email", email)
       .order("created_at", { ascending: true })
@@ -65,7 +65,7 @@ export async function ensureTeamMemberForChurchMember(params: {
   const { data: byName, error: nameError } = await supabase
     .from("team_members")
     .select("*")
-    .eq("organization_id", params.churchId)
+    .eq("organization_id", params.organizationId)
     .eq("is_active", true)
     .eq("full_name", fullName)
     .order("created_at", { ascending: true })
@@ -82,7 +82,7 @@ export async function ensureTeamMemberForChurchMember(params: {
   const { data: created, error: createError } = await supabase
     .from("team_members")
     .insert({
-      organization_id: params.churchId,
+      organization_id: params.organizationId,
       full_name: fullName.slice(0, 200),
       email,
       title: title ? title.slice(0, 200) : null,
@@ -98,7 +98,7 @@ export async function ensureTeamMemberForChurchMember(params: {
   return created as TeamMember;
 }
 
-export async function listCertificationsForChurch(churchId: string) {
+export async function listCertificationsForChurch(organizationId: string) {
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -114,7 +114,7 @@ export async function listCertificationsForChurch(churchId: string) {
       )
     `,
     )
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .order("expiration_date", { ascending: true });
 
   if (error) {
@@ -138,8 +138,8 @@ export async function listCertificationsForChurch(churchId: string) {
   });
 }
 
-export async function getCertificationCounts(churchId: string) {
-  const certifications = await listCertificationsForChurch(churchId);
+export async function getCertificationCounts(organizationId: string) {
+  const certifications = await listCertificationsForChurch(organizationId);
 
   return {
     total: certifications.length,

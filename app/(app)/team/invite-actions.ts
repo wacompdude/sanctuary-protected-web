@@ -132,7 +132,7 @@ export async function createChurchInvitation(
     });
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.MEMBER_INVITED,
       entityType: AuditEntityType.CHURCH_INVITATION,
@@ -262,7 +262,7 @@ export async function resendChurchInvitation(
     });
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.INVITATION_RESENT,
       entityType: AuditEntityType.CHURCH_INVITATION,
@@ -345,7 +345,7 @@ export async function revokeChurchInvitation(
     }
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.INVITATION_REVOKED,
       entityType: AuditEntityType.CHURCH_INVITATION,

@@ -29,7 +29,7 @@ async function SafetyConcernSettingsContent() {
   const canEdit = canManageSafetyConcernSettings(membership.role);
   const settings = await getSafetyConcernChurchSettings(church.id);
   const access = await getSafetyConcernAccess({
-    churchId: church.id,
+    organizationId: church.id,
     role: membership.role,
     allowSecurityMemberView: settings.allow_security_member_view,
   });

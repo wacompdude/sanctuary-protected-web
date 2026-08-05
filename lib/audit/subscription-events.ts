@@ -5,7 +5,7 @@ import { getRequestIpAddress, writeAuditLog } from "@/lib/audit/log";
 export async function auditSubscriptionCreated(
   supabase: SupabaseClient,
   params: {
-    churchId: string;
+    organizationId: string;
     userId?: string | null;
     subscriptionId: string;
     planKey: string;
@@ -14,7 +14,7 @@ export async function auditSubscriptionCreated(
   },
 ) {
   return writeAuditLog(supabase, {
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     userId: params.userId ?? null,
     action:
       params.status === "trialing"
@@ -34,7 +34,7 @@ export async function auditSubscriptionCreated(
 export async function auditSubscriptionPlanChanged(
   supabase: SupabaseClient,
   params: {
-    churchId: string;
+    organizationId: string;
     userId?: string | null;
     subscriptionId: string;
     oldPlanKey: string | null;
@@ -45,7 +45,7 @@ export async function auditSubscriptionPlanChanged(
   },
 ) {
   return writeAuditLog(supabase, {
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     userId: params.userId ?? null,
     action: AuditAction.SUBSCRIPTION_PLAN_CHANGED,
     entityType: AuditEntityType.CHURCH_SUBSCRIPTION,
@@ -64,7 +64,7 @@ export async function auditSubscriptionPlanChanged(
 export async function auditSubscriptionStatusChanged(
   supabase: SupabaseClient,
   params: {
-    churchId: string;
+    organizationId: string;
     userId?: string | null;
     subscriptionId: string;
     oldStatus: string | null;
@@ -86,7 +86,7 @@ export async function auditSubscriptionStatusChanged(
           : AuditAction.SUBSCRIPTION_STATUS_CHANGED;
 
   return writeAuditLog(supabase, {
-    churchId: params.churchId,
+    organizationId: params.organizationId,
     userId: params.userId ?? null,
     action,
     entityType: AuditEntityType.CHURCH_SUBSCRIPTION,

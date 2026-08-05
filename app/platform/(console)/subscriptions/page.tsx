@@ -40,7 +40,7 @@ async function SubscriptionsContent({
               <tr key={item.id} className="border-t border-slate-800">
                 <td className="px-3 py-2">
                   <Link
-                    href={`/platform/churches/${item.churchId}`}
+                    href={`/platform/churches/${item.organizationId}`}
                     className="text-amber-300 hover:underline"
                   >
                     {item.churchName}

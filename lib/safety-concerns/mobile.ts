@@ -115,7 +115,7 @@ export function orderSafetyConcernPhotosForBrowse<
  */
 export const SAFETY_CONCERN_EXPO_INTEGRATION_POINTS = [
   "auth.supabase_session",
-  "data.listSafetyConcernBrowseItems(churchId, options, client)",
+  "data.listSafetyConcernBrowseItems(organizationId, options, client)",
   "images.createSafetyConcernPhotoSignedUrl",
   "cache.SAFETY_CONCERN_MOBILE_CACHE_POLICY",
   "rls.can_view_safety_concern_profile",

@@ -75,7 +75,7 @@ function inQuietHours(
 
 export async function resolveUsersByChurchRole(
   supabase: SupabaseClient,
-  churchId: string,
+  organizationId: string,
   roles: MembershipRole[],
 ): Promise<ResolvedRecipient[]> {
   if (roles.length === 0) return [];
@@ -83,7 +83,7 @@ export async function resolveUsersByChurchRole(
   const { data: memberships, error } = await supabase
     .from("organization_memberships")
     .select("id, user_id, role, status")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("status", "active")
     .in("role", roles);
 
@@ -96,7 +96,7 @@ export async function resolveUsersByChurchRole(
 
 export async function resolveUsersByIds(
   supabase: SupabaseClient,
-  churchId: string,
+  organizationId: string,
   userIds: string[],
 ): Promise<ResolvedRecipient[]> {
   const unique = [...new Set(userIds.filter(Boolean))];
@@ -105,7 +105,7 @@ export async function resolveUsersByIds(
   const { data: memberships, error } = await supabase
     .from("organization_memberships")
     .select("id, user_id, role, status")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("status", "active")
     .in("user_id", unique);
 
@@ -192,7 +192,7 @@ async function lookupEmails(
 
 export async function applyRecipientPreferences(params: {
   supabase: SupabaseClient;
-  churchId: string;
+  organizationId: string;
   notificationType: string;
   severity: NotificationSeverity;
   settings: ChurchNotificationSettings;
@@ -204,7 +204,7 @@ export async function applyRecipientPreferences(params: {
 }> {
   const {
     supabase,
-    churchId,
+    organizationId,
     notificationType,
     severity,
     settings,
@@ -222,7 +222,7 @@ export async function applyRecipientPreferences(params: {
     .select(
       "user_id, notification_type, email_enabled, in_app_enabled, minimum_severity, quiet_hours_enabled, quiet_hours_start, quiet_hours_end, digest_frequency",
     )
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .in("user_id", userIds)
     .in("notification_type", [notificationType, "*"]);
 
@@ -289,7 +289,7 @@ function isValidEmailLocal(value: string): boolean {
 
 export async function resolveIncidentNotificationRecipients(
   supabase: SupabaseClient,
-  churchId: string,
+  organizationId: string,
   settings: ChurchNotificationSettings,
   severity: NotificationSeverity,
 ): Promise<ResolvedRecipient[]> {
@@ -299,7 +299,7 @@ export async function resolveIncidentNotificationRecipients(
       : settings.default_incident_notification_roles
   ) as MembershipRole[];
 
-  return resolveUsersByChurchRole(supabase, churchId, roles);
+  return resolveUsersByChurchRole(supabase, organizationId, roles);
 }
 
 export async function dedupeRecipients(

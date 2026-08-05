@@ -84,7 +84,7 @@ async function expireStaleSessionsForAccount(
 
 export async function startPlatformSupportSession(params: {
   context: PlatformContext;
-  churchId: string;
+  organizationId: string;
   reason: string;
   ticketReference?: string | null;
   accessType?: string;
@@ -113,7 +113,7 @@ export async function startPlatformSupportSession(params: {
   const { data: church, error: churchError } = await admin
     .from("organizations")
     .select("id, name")
-    .eq("id", params.churchId)
+    .eq("id", params.organizationId)
     .maybeSingle();
 
   if (churchError || !church) {
@@ -167,7 +167,7 @@ export async function startPlatformSupportSession(params: {
       action: AuditAction.PLATFORM_SUPPORT_SESSION_STARTED,
       targetType: AuditEntityType.PLATFORM_ACCESS_SESSION,
       targetId: String(session.id),
-      churchId: String(church.id),
+      organizationId: String(church.id),
       reason,
       metadata: {
         access_type: accessType,
@@ -247,7 +247,7 @@ export async function endPlatformSupportSession(params: {
         action: AuditAction.PLATFORM_SUPPORT_SESSION_ENDED,
         targetType: AuditEntityType.PLATFORM_ACCESS_SESSION,
         targetId: String(session.id),
-        churchId: String(session.organization_id),
+        organizationId: String(session.organization_id),
         reason: params.reason?.trim() || "Support session ended",
         metadata: {
           access_type: session.access_type,
@@ -331,10 +331,10 @@ export async function getActivePlatformSupportSession(
 
 export async function requireActiveSupportSessionForChurch(
   context: PlatformContext,
-  churchId: string,
+  organizationId: string,
 ): Promise<PlatformSupportSessionRecord> {
   const session = await getActivePlatformSupportSession(context);
-  if (!session || session.organization_id !== churchId) {
+  if (!session || session.organization_id !== organizationId) {
     throw new PlatformAccessError(
       "An active support session for this church is required.",
       "FORBIDDEN_PERMISSION",
@@ -349,7 +349,7 @@ export async function requireActiveSupportSessionForChurch(
  */
 export async function assertPlatformChurchReadable(
   context: PlatformContext,
-  churchId: string,
+  organizationId: string,
 ): Promise<void> {
   if (context.permissions.has("churches.read_all")) return;
   if (!context.permissions.has("churches.support_access")) {
@@ -358,7 +358,7 @@ export async function assertPlatformChurchReadable(
       "FORBIDDEN_PERMISSION",
     );
   }
-  await requireActiveSupportSessionForChurch(context, churchId);
+  await requireActiveSupportSessionForChurch(context, organizationId);
 }
 
 export async function lookupChurchesForSupportAccess(params: {
@@ -435,15 +435,15 @@ export async function listRecentSupportSessionsForAccount(
 
   if (error) throw new Error(error.message);
 
-  const churchIds = [
+  const organizationIds = [
     ...new Set((data ?? []).map((row) => String(row.organization_id))),
   ];
   const nameById = new Map<string, string>();
-  if (churchIds.length) {
+  if (organizationIds.length) {
     const { data: churches } = await admin
       .from("organizations")
       .select("id, name")
-      .in("id", churchIds);
+      .in("id", organizationIds);
     for (const church of churches ?? []) {
       nameById.set(String(church.id), String(church.name));
     }

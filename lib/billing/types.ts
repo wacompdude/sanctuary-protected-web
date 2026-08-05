@@ -5,7 +5,7 @@ export type BillingProviderId = "none" | "stripe" | "manual";
 export type BillingCheckoutMode = "subscription" | "setup";
 
 export type BillingCheckoutRequest = {
-  churchId: string;
+  organizationId: string;
   planKey: PlanKey | string;
   successUrl: string;
   cancelUrl: string;
@@ -20,7 +20,7 @@ export type BillingCheckoutSession = {
 };
 
 export type BillingPortalRequest = {
-  churchId: string;
+  organizationId: string;
   returnUrl: string;
   providerCustomerId?: string | null;
 };
@@ -75,7 +75,7 @@ export type BillingProvider = {
     error?: string;
     providerEventId?: string | null;
     eventType: string;
-    churchId?: string | null;
+    organizationId?: string | null;
     metadata?: Record<string, unknown>;
   }>;
 };

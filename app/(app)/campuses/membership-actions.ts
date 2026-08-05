@@ -26,7 +26,7 @@ function revalidateMembershipPaths(campusId: string) {
 async function requireMembershipManager(campusId: string) {
   const ctx = await getAuthenticatedUserWithChurch();
   const allowed = await canActorManageCampusMemberships({
-    churchId: ctx.church.id,
+    organizationId: ctx.church.id,
     campusId,
     userId: ctx.user.id,
     churchRole: ctx.membership.role,
@@ -177,7 +177,7 @@ export async function addCampusMembersAction(
     }
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.CAMPUS_MEMBERSHIP_ADDED,
       entityType: AuditEntityType.CAMPUS,
@@ -242,7 +242,7 @@ export async function updateCampusMemberRoleAction(
     }
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.CAMPUS_MEMBERSHIP_ROLE_CHANGED,
       entityType: AuditEntityType.CAMPUS_MEMBERSHIP,
@@ -314,7 +314,7 @@ export async function setMemberPrimaryCampusAction(
     }
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.CAMPUS_MEMBERSHIP_PRIMARY_CHANGED,
       entityType: AuditEntityType.CAMPUS_MEMBERSHIP,
@@ -368,7 +368,7 @@ export async function removeCampusMemberAction(
     }
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.CAMPUS_MEMBERSHIP_REMOVED,
       entityType: AuditEntityType.CAMPUS_MEMBERSHIP,

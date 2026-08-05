@@ -33,7 +33,7 @@ function isMissingTableError(error: { message?: string; code?: string } | null) 
 }
 
 export async function getSafetyConcernChurchSettings(
-  churchId: string,
+  organizationId: string,
   client?: SupabaseClient,
 ): Promise<SafetyConcernChurchSettings> {
   const supabase = client ?? (await getServerSupabaseClient());
@@ -42,7 +42,7 @@ export async function getSafetyConcernChurchSettings(
     .select(
       "safety_concerns_allow_security_member_view, safety_concerns_review_interval_days, safety_concerns_require_linked_incident, safety_concerns_require_photo_to_activate",
     )
-    .eq("id", churchId)
+    .eq("id", organizationId)
     .maybeSingle();
 
   if (error || !data) {
@@ -71,7 +71,7 @@ export async function getSafetyConcernChurchSettings(
 }
 
 export async function updateSafetyConcernChurchSettings(
-  churchId: string,
+  organizationId: string,
   settings: SafetyConcernChurchSettings,
   client?: SupabaseClient,
 ): Promise<{ error: string | null }> {
@@ -86,7 +86,7 @@ export async function updateSafetyConcernChurchSettings(
       safety_concerns_require_photo_to_activate:
         settings.require_photo_to_activate,
     })
-    .eq("id", churchId);
+    .eq("id", organizationId);
 
   if (error) {
     if (isMissingTableError(error)) {
@@ -105,7 +105,7 @@ export async function updateSafetyConcernChurchSettings(
  * Pass `profileId: null` for create-as-active (photo/link cannot exist yet).
  */
 export async function getSafetyConcernActivationBlockers(params: {
-  churchId: string;
+  organizationId: string;
   profileId: string | null;
   settings: SafetyConcernChurchSettings;
   client?: SupabaseClient;
@@ -122,7 +122,7 @@ export async function getSafetyConcernActivationBlockers(params: {
       const { count, error } = await supabase
         .from("safety_concern_photos")
         .select("id", { count: "exact", head: true })
-        .eq("organization_id", params.churchId)
+        .eq("organization_id", params.organizationId)
         .eq("profile_id", params.profileId)
         .is("archived_at", null);
       if (error && !isMissingTableError(error)) {
@@ -142,7 +142,7 @@ export async function getSafetyConcernActivationBlockers(params: {
       const { count, error } = await supabase
         .from("safety_concern_incidents")
         .select("id", { count: "exact", head: true })
-        .eq("organization_id", params.churchId)
+        .eq("organization_id", params.organizationId)
         .eq("profile_id", params.profileId);
       if (error && !isMissingTableError(error)) {
         blockers.push(error.message);
@@ -158,7 +158,7 @@ export async function getSafetyConcernActivationBlockers(params: {
 }
 
 export async function listSafetyConcernProfiles(
-  churchId: string,
+  organizationId: string,
   options: SafetyConcernListOptions = {},
   client?: SupabaseClient,
 ): Promise<SafetyConcernProfile[]> {
@@ -166,7 +166,7 @@ export async function listSafetyConcernProfiles(
   let query = supabase
     .from("safety_concern_profiles")
     .select("*")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .order("updated_at", { ascending: false });
 
   if (!options.includeInactive) {
@@ -216,7 +216,7 @@ export async function listSafetyConcernProfiles(
     const { data: linkRows, error: linkError } = await supabase
       .from("safety_concern_incidents")
       .select("profile_id")
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .eq("incident_id", options.linkedIncidentId);
     if (linkError && !isMissingTableError(linkError)) {
       throw new Error(linkError.message);
@@ -233,7 +233,7 @@ export async function listSafetyConcernProfiles(
     const { data: campusRows, error: campusError } = await supabase
       .from("safety_concern_profile_campuses")
       .select("profile_id")
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .eq("campus_id", campusId)
       .in("profile_id", profileIds);
     if (campusError && !isMissingTableError(campusError)) {
@@ -260,7 +260,7 @@ export async function listSafetyConcernProfiles(
  * Never returns names or photo metadata — id/count only.
  */
 export async function countActiveSafetyConcernProfiles(
-  churchId: string,
+  organizationId: string,
   options: { campusId?: string | null } = {},
   client?: SupabaseClient,
 ): Promise<number> {
@@ -271,7 +271,7 @@ export async function countActiveSafetyConcernProfiles(
     const { count, error } = await supabase
       .from("safety_concern_profiles")
       .select("id", { count: "exact", head: true })
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .eq("profile_status", "active")
       .is("archived_at", null);
 
@@ -285,7 +285,7 @@ export async function countActiveSafetyConcernProfiles(
   const { data, error } = await supabase
     .from("safety_concern_profiles")
     .select("id, scope_type, primary_campus_id")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("profile_status", "active")
     .is("archived_at", null);
 
@@ -304,7 +304,7 @@ export async function countActiveSafetyConcernProfiles(
   const { data: campusRows, error: campusError } = await supabase
     .from("safety_concern_profile_campuses")
     .select("profile_id")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("campus_id", campusId)
     .in("profile_id", profileIds);
 
@@ -325,7 +325,7 @@ export async function countActiveSafetyConcernProfiles(
 }
 
 export async function getSafetyConcernProfile(
-  churchId: string,
+  organizationId: string,
   profileId: string,
   client?: SupabaseClient,
 ): Promise<SafetyConcernProfile | null> {
@@ -333,7 +333,7 @@ export async function getSafetyConcernProfile(
   const { data, error } = await supabase
     .from("safety_concern_profiles")
     .select("*")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("id", profileId)
     .maybeSingle();
 
@@ -345,7 +345,7 @@ export async function getSafetyConcernProfile(
 }
 
 export async function listSafetyConcernPhotos(
-  churchId: string,
+  organizationId: string,
   profileId: string,
   options?: { includeArchived?: boolean; withSignedUrls?: boolean },
   client?: SupabaseClient,
@@ -354,7 +354,7 @@ export async function listSafetyConcernPhotos(
   let query = supabase
     .from("safety_concern_photos")
     .select("*")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("profile_id", profileId)
     .order("display_order", { ascending: true })
     .order("created_at", { ascending: true });
@@ -374,13 +374,13 @@ export async function listSafetyConcernPhotos(
 
   return attachSignedUrlsToSafetyConcernPhotos({
     supabase,
-    churchId,
+    organizationId,
     photos,
   });
 }
 
 export async function listSafetyConcernProfileCampuses(
-  churchId: string,
+  organizationId: string,
   profileId: string,
   client?: SupabaseClient,
 ): Promise<SafetyConcernProfileCampus[]> {
@@ -388,7 +388,7 @@ export async function listSafetyConcernProfileCampuses(
   const { data, error } = await supabase
     .from("safety_concern_profile_campuses")
     .select("*")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("profile_id", profileId);
 
   if (error) {
@@ -399,7 +399,7 @@ export async function listSafetyConcernProfileCampuses(
 }
 
 export async function listSafetyConcernIncidentLinks(
-  churchId: string,
+  organizationId: string,
   profileId: string,
   client?: SupabaseClient,
 ): Promise<SafetyConcernIncidentLink[]> {
@@ -407,7 +407,7 @@ export async function listSafetyConcernIncidentLinks(
   const { data, error } = await supabase
     .from("safety_concern_incidents")
     .select("*")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("profile_id", profileId)
     .order("created_at", { ascending: false });
 
@@ -419,7 +419,7 @@ export async function listSafetyConcernIncidentLinks(
 }
 
 export async function listSafetyConcernReviews(
-  churchId: string,
+  organizationId: string,
   profileId: string,
   client?: SupabaseClient,
 ): Promise<SafetyConcernReview[]> {
@@ -427,7 +427,7 @@ export async function listSafetyConcernReviews(
   const { data, error } = await supabase
     .from("safety_concern_reviews")
     .select("*")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("profile_id", profileId)
     .order("reviewed_at", { ascending: false });
 
@@ -439,7 +439,7 @@ export async function listSafetyConcernReviews(
 }
 
 export async function getSafetyConcernProfileDetail(
-  churchId: string,
+  organizationId: string,
   profileId: string,
   options?: { withSignedUrls?: boolean },
   client?: SupabaseClient,
@@ -451,19 +451,19 @@ export async function getSafetyConcernProfileDetail(
   reviews: SafetyConcernReview[];
 } | null> {
   const supabase = client ?? (await getServerSupabaseClient());
-  const profile = await getSafetyConcernProfile(churchId, profileId, supabase);
+  const profile = await getSafetyConcernProfile(organizationId, profileId, supabase);
   if (!profile) return null;
 
   const [photos, campuses, incidents, reviews] = await Promise.all([
     listSafetyConcernPhotos(
-      churchId,
+      organizationId,
       profileId,
       { withSignedUrls: options?.withSignedUrls ?? true },
       supabase,
     ),
-    listSafetyConcernProfileCampuses(churchId, profileId, supabase),
-    listSafetyConcernIncidentLinks(churchId, profileId, supabase),
-    listSafetyConcernReviews(churchId, profileId, supabase),
+    listSafetyConcernProfileCampuses(organizationId, profileId, supabase),
+    listSafetyConcernIncidentLinks(organizationId, profileId, supabase),
+    listSafetyConcernReviews(organizationId, profileId, supabase),
   ]);
 
   return { profile, photos, campuses, incidents, reviews };
@@ -474,19 +474,19 @@ export async function getSafetyConcernProfileDetail(
  * Prefer calling this for the active browse set (not unbounded archives).
  */
 export async function listSafetyConcernBrowseItems(
-  churchId: string,
+  organizationId: string,
   options: SafetyConcernListOptions = {},
   client?: SupabaseClient,
 ): Promise<SafetyConcernBrowseItem[]> {
   const supabase = client ?? (await getServerSupabaseClient());
-  const profiles = await listSafetyConcernProfiles(churchId, options, supabase);
+  const profiles = await listSafetyConcernProfiles(organizationId, options, supabase);
   if (profiles.length === 0) return [];
 
   const profileIds = profiles.map((profile) => profile.id);
   const { data: photoRows, error: photoError } = await supabase
     .from("safety_concern_photos")
     .select("*")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .in("profile_id", profileIds)
     .is("archived_at", null)
     .order("display_order", { ascending: true });
@@ -505,7 +505,7 @@ export async function listSafetyConcernBrowseItems(
   const { data: campusLinkRows } = await supabase
     .from("safety_concern_profile_campuses")
     .select("profile_id, campus_id")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .in("profile_id", profileIds);
 
   const campusIds = [
@@ -518,7 +518,7 @@ export async function listSafetyConcernBrowseItems(
     const { data: campusRows } = await supabase
       .from("campuses")
       .select("id, name")
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .in("id", campusIds);
     for (const campus of campusRows ?? []) {
       campusNameById.set(String(campus.id), String(campus.name ?? ""));
@@ -541,7 +541,7 @@ export async function listSafetyConcernBrowseItems(
     const photos = photosByProfile.get(profile.id) ?? [];
     const signedPhotos = await attachSignedUrlsToSafetyConcernPhotos({
       supabase,
-      churchId,
+      organizationId,
       photos,
     });
     const ordered = orderSafetyConcernPhotosForBrowse(signedPhotos);

@@ -25,12 +25,12 @@ export type ChurchRoleSettingRow = {
 
 export async function listChurchRoleSettings(
   admin: SupabaseClient,
-  churchId: string,
+  organizationId: string,
 ): Promise<ChurchRoleSettingRow[]> {
   const { data, error } = await admin
     .from("organization_role_settings")
     .select("*")
-    .eq("organization_id", churchId);
+    .eq("organization_id", organizationId);
 
   if (error) {
     console.error("Failed to list church role settings:", error);
@@ -42,7 +42,7 @@ export async function listChurchRoleSettings(
 export async function upsertChurchRoleSetting(
   admin: SupabaseClient,
   input: {
-    churchId: string;
+    organizationId: string;
     roleKind: RoleTemplateKind;
     roleKey: string;
     displayNameOverride?: string | null;
@@ -55,7 +55,7 @@ export async function upsertChurchRoleSetting(
     .from("organization_role_settings")
     .upsert(
       {
-        organization_id: input.churchId,
+        organization_id: input.organizationId,
         role_kind: input.roleKind,
         role_key: input.roleKey,
         display_name_override: input.displayNameOverride ?? null,
@@ -78,13 +78,13 @@ export async function upsertChurchRoleSetting(
 
 export async function listActiveMembershipRolesForUser(
   admin: SupabaseClient,
-  churchId: string,
+  organizationId: string,
   userId: string,
 ): Promise<ChurchMembershipRoleRow[]> {
   const { data, error } = await admin
     .from("organization_membership_roles")
     .select("*")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("user_id", userId)
     .eq("status", "active")
     .order("is_primary", { ascending: false });
@@ -98,7 +98,7 @@ export async function listActiveMembershipRolesForUser(
 
 export async function listMembersWithRole(
   admin: SupabaseClient,
-  churchId: string,
+  organizationId: string,
   roleKey: string,
 ): Promise<
   Array<{
@@ -112,7 +112,7 @@ export async function listMembersWithRole(
   const { data, error } = await admin
     .from("organization_membership_roles")
     .select("id, organization_membership_id, user_id, is_primary, assigned_at")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("role", roleKey)
     .eq("status", "active");
 
@@ -132,12 +132,12 @@ export async function listMembersWithRole(
 
 export async function countMembersByPrimaryRole(
   admin: SupabaseClient,
-  churchId: string,
+  organizationId: string,
 ): Promise<Record<string, number>> {
   const { data, error } = await admin
     .from("organization_memberships")
     .select("role")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .neq("status", "removed");
 
   if (error) {
@@ -155,12 +155,12 @@ export async function countMembersByPrimaryRole(
 
 export async function countMembersByAnyRole(
   admin: SupabaseClient,
-  churchId: string,
+  organizationId: string,
 ): Promise<Record<string, number>> {
   const { data, error } = await admin
     .from("organization_membership_roles")
     .select("role")
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("status", "active");
 
   if (error) {
@@ -181,7 +181,7 @@ export async function countMembersByAnyRole(
  */
 export async function setMembershipRoles(params: {
   admin: SupabaseClient;
-  churchId: string;
+  organizationId: string;
   membershipId: string;
   userId: string;
   primaryRole: MembershipRole;
@@ -190,7 +190,7 @@ export async function setMembershipRoles(params: {
 }): Promise<{ ok: true } | { ok: false; error: string }> {
   const {
     admin,
-    churchId,
+    organizationId,
     membershipId,
     userId,
     primaryRole,
@@ -208,7 +208,7 @@ export async function setMembershipRoles(params: {
 
   // Soft-remove roles no longer assigned
   const desired = new Set<MembershipRole>([primaryRole, ...uniqueSecondary]);
-  const existing = await listActiveMembershipRolesForUser(admin, churchId, userId);
+  const existing = await listActiveMembershipRolesForUser(admin, organizationId, userId);
 
   for (const row of existing) {
     if (!desired.has(row.role as MembershipRole)) {
@@ -233,7 +233,7 @@ export async function setMembershipRoles(params: {
     .from("organization_memberships")
     .update({ role: primaryRole })
     .eq("id", membershipId)
-    .eq("organization_id", churchId);
+    .eq("organization_id", organizationId);
 
   if (membershipError) {
     return { ok: false, error: membershipError.message };
@@ -259,7 +259,7 @@ export async function setMembershipRoles(params: {
     }
 
     const { error } = await admin.from("organization_membership_roles").insert({
-      organization_id: churchId,
+      organization_id: organizationId,
       organization_membership_id: membershipId,
       user_id: userId,
       role,

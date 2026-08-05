@@ -81,7 +81,7 @@ export async function upsertChurchContact(
       if (!data) return { error: "Contact not found." };
 
       await writeAuditLog(supabase, {
-        churchId: church.id,
+        organizationId: church.id,
         userId: user.id,
         action: AuditAction.CHURCH_CONTACT_UPDATED,
         entityType: AuditEntityType.CHURCH_CONTACT,
@@ -110,7 +110,7 @@ export async function upsertChurchContact(
         if (error) return { error: safeContactError(error.message) };
 
         await writeAuditLog(supabase, {
-          churchId: church.id,
+          organizationId: church.id,
           userId: user.id,
           action: AuditAction.CHURCH_CONTACT_UPDATED,
           entityType: AuditEntityType.CHURCH_CONTACT,
@@ -137,7 +137,7 @@ export async function upsertChurchContact(
         }
 
         await writeAuditLog(supabase, {
-          churchId: church.id,
+          organizationId: church.id,
           userId: user.id,
           action: AuditAction.CHURCH_CONTACT_CREATED,
           entityType: AuditEntityType.CHURCH_CONTACT,
@@ -165,7 +165,7 @@ export async function upsertChurchContact(
       }
 
       await writeAuditLog(supabase, {
-        churchId: church.id,
+        organizationId: church.id,
         userId: user.id,
         action: AuditAction.CHURCH_CONTACT_CREATED,
         entityType: AuditEntityType.CHURCH_CONTACT,
@@ -219,7 +219,7 @@ export async function deleteChurchContact(
     if (error) return { error: safeContactError(error.message) };
 
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.CHURCH_CONTACT_REMOVED,
       entityType: AuditEntityType.CHURCH_CONTACT,

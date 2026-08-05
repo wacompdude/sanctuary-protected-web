@@ -2,9 +2,9 @@ import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { ChurchAccessError } from "@/lib/church/errors";
 import {
-  clearActiveChurchCookie,
-  readActiveChurchCookie,
-  writeActiveChurchCookie,
+  clearActiveOrganizationCookie,
+  readActiveOrganizationCookie,
+  writeActiveOrganizationCookie,
 } from "@/lib/church/cookie";
 import { clearActiveCampusCookie } from "@/lib/campuses/filter-cookie";
 import type {
@@ -48,17 +48,21 @@ export type CurrentUser = {
   supabase: Awaited<ReturnType<typeof createClient>>;
 };
 
-export type ActiveChurchContext = {
+export type ActiveOrganizationContext = {
   supabase: Awaited<ReturnType<typeof createClient>>;
   user: User;
   profile: Profile;
+  /** UI presentation name for the active organization. */
   church: Church;
   membership: ChurchMembershipWithChurch;
   memberships: ChurchMembershipWithChurch[];
   canManageCertifications: boolean;
   /** Persist via Server Action — not written during RSC render. */
-  cookieSyncChurchId: string | null;
+  cookieSyncOrganizationId: string | null;
 };
+
+/** @deprecated Prefer ActiveOrganizationContext */
+export type ActiveChurchContext = ActiveOrganizationContext;
 
 function sortMemberships(
   rows: ChurchMembershipWithChurch[],
@@ -203,11 +207,11 @@ export async function getUserMemberships(
   const rows = (memberships ?? []) as MembershipQueryRow[];
   if (rows.length === 0) return [];
 
-  const churchIds = [...new Set(rows.map((row) => row.organization_id))];
+  const organizationIds = [...new Set(rows.map((row) => row.organization_id))];
   const { data: churches, error: churchError } = await supabase
     .from("organizations")
     .select("id, name, status, slug, timezone, week_starts_on")
-    .in("id", churchIds);
+    .in("id", organizationIds);
 
   if (churchError) {
     // Older DBs without week_starts_on still load; default Sunday in mapping.
@@ -230,7 +234,7 @@ export async function getUserMemberships(
     const fallback = await supabase
       .from("organizations")
       .select("id, name, status, slug, timezone")
-      .in("id", churchIds);
+      .in("id", organizationIds);
     if (fallback.error) {
       throw new ChurchAccessError(
         `Unable to load your churches. (${fallback.error.message})`,
@@ -319,11 +323,11 @@ export async function getUserMemberships(
  * setActiveChurchForUser / SyncActiveChurchCookie (cookie writes are not
  * allowed during Server Component render).
  */
-export async function getActiveChurch(): Promise<{
+export async function getActiveOrganization(): Promise<{
   membership: ChurchMembershipWithChurch;
   memberships: ChurchMembershipWithChurch[];
-  /** When set, persist this church id to the httpOnly cookie via a Server Action. */
-  cookieSyncChurchId: string | null;
+  /** When set, persist this organization id to the httpOnly cookie via a Server Action. */
+  cookieSyncOrganizationId: string | null;
 }> {
   const memberships = await getUserMemberships();
 
@@ -334,42 +338,45 @@ export async function getActiveChurch(): Promise<{
     );
   }
 
-  const cookieChurchId = await readActiveChurchCookie();
+  const cookieOrganizationId = await readActiveOrganizationCookie();
 
   if (memberships.length === 1) {
     const only = memberships[0];
     return {
       membership: only,
       memberships,
-      cookieSyncChurchId:
-        cookieChurchId !== only.organization_id ? only.organization_id : null,
+      cookieSyncOrganizationId:
+        cookieOrganizationId !== only.organization_id ? only.organization_id : null,
     };
   }
 
-  const matched = cookieChurchId
-    ? memberships.find((item) => item.organization_id === cookieChurchId)
+  const matched = cookieOrganizationId
+    ? memberships.find((item) => item.organization_id === cookieOrganizationId)
     : null;
 
   if (matched) {
-    return { membership: matched, memberships, cookieSyncChurchId: null };
+    return { membership: matched, memberships, cookieSyncOrganizationId: null };
   }
 
-  // Invalid or missing cookie — prefer an operational church, then any recovery church.
+  // Invalid or missing cookie — prefer an operational org, then any recovery org.
   const fallback =
     memberships.find((item) => !isChurchOperationallyLocked(item.church.status)) ??
     memberships[0];
   return {
     membership: fallback,
     memberships,
-    cookieSyncChurchId: fallback.organization_id,
+    cookieSyncOrganizationId: fallback.organization_id,
   };
 }
 
-/** Require auth + an active (validated) church membership. */
-export async function requireChurchMembership(): Promise<ActiveChurchContext> {
+/** @deprecated Prefer getActiveOrganization */
+export const getActiveChurch = getActiveOrganization;
+
+/** Require auth + an active (validated) organization membership. */
+export async function requireOrganizationMembership(): Promise<ActiveOrganizationContext> {
   const { supabase, user, profile } = await getCurrentUser();
-  const { membership, memberships, cookieSyncChurchId } =
-    await getActiveChurch();
+  const { membership, memberships, cookieSyncOrganizationId } =
+    await getActiveOrganization();
 
   return {
     supabase,
@@ -383,16 +390,20 @@ export async function requireChurchMembership(): Promise<ActiveChurchContext> {
     membership,
     memberships,
     canManageCertifications: canManageCertifications(membership.role),
-    cookieSyncChurchId,
+    cookieSyncOrganizationId,
   };
 }
 
+/** @deprecated Prefer requireOrganizationMembership */
+export const requireChurchMembership = requireOrganizationMembership;
+
 /**
- * Require a church that is operationally usable (trial/active).
- * Owners of suspended/closed churches must use recovery routes instead.
+ * Require an organization that is operationally usable (trial/active).
+ * Owners of suspended/closed orgs must use recovery routes instead.
+ * UI error copy remains church-specific.
  */
-export async function requireOperationalChurch(): Promise<ActiveChurchContext> {
-  const context = await requireChurchMembership();
+export async function requireOperationalOrganization(): Promise<ActiveOrganizationContext> {
+  const context = await requireOrganizationMembership();
   if (isChurchOperationallyLocked(context.church.status)) {
     throw new ChurchAccessError(
       context.church.status === "closed"
@@ -404,11 +415,14 @@ export async function requireOperationalChurch(): Promise<ActiveChurchContext> {
   return context;
 }
 
+/** @deprecated Prefer requireOperationalOrganization */
+export const requireOperationalChurch = requireOperationalOrganization;
+
 /** Require membership with at least the given role (rank-based). */
-export async function requireMinChurchRole(
+export async function requireMinOrganizationRole(
   minimum: MembershipRole,
-): Promise<ActiveChurchContext> {
-  const context = await requireChurchMembership();
+): Promise<ActiveOrganizationContext> {
+  const context = await requireOrganizationMembership();
   if (!hasMinRole(context.membership.role, minimum)) {
     throw new ChurchAccessError(
       "You do not have permission to access this page.",
@@ -418,11 +432,14 @@ export async function requireMinChurchRole(
   return context;
 }
 
+/** @deprecated Prefer requireMinOrganizationRole */
+export const requireMinChurchRole = requireMinOrganizationRole;
+
 /** Require membership plus one of the allowed roles. */
-export async function requireChurchRole(
+export async function requireOrganizationRole(
   allowedRoles: MembershipRole[],
-): Promise<ActiveChurchContext> {
-  const context = await requireChurchMembership();
+): Promise<ActiveOrganizationContext> {
+  const context = await requireOrganizationMembership();
   if (!allowedRoles.includes(context.membership.role)) {
     throw new ChurchAccessError(
       "You do not have permission to perform this action.",
@@ -432,23 +449,31 @@ export async function requireChurchRole(
   return context;
 }
 
+/** @deprecated Prefer requireOrganizationRole */
+export const requireChurchRole = requireOrganizationRole;
+
 /**
- * Validate a requested church id against the user's active memberships and
+ * Validate a requested organization id against the user's active memberships and
  * persist it in the httpOnly cookie. Never trusts the id without membership proof.
  */
-export async function setActiveChurchForUser(churchId: string): Promise<void> {
+export async function setActiveOrganizationForUser(
+  organizationId: string,
+): Promise<void> {
   const memberships = await getUserMemberships();
-  const match = memberships.find((item) => item.organization_id === churchId);
+  const match = memberships.find((item) => item.organization_id === organizationId);
 
   if (!match) {
-    await clearActiveChurchCookie();
+    await clearActiveOrganizationCookie();
     throw new ChurchAccessError(
       "You do not have access to that church.",
       "FORBIDDEN_ROLE",
     );
   }
 
-  await writeActiveChurchCookie(match.organization_id);
-  // Campus filter is church-scoped — reset to All Campuses on switch.
+  await writeActiveOrganizationCookie(match.organization_id);
+  // Campus filter is organization-scoped — reset to All Campuses on switch.
   await clearActiveCampusCookie();
 }
+
+/** @deprecated Prefer setActiveOrganizationForUser */
+export const setActiveChurchForUser = setActiveOrganizationForUser;

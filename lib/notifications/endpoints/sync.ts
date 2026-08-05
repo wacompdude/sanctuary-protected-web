@@ -10,18 +10,18 @@ import {
  */
 export async function syncMyNotificationEndpoints(params: {
   supabase: SupabaseClient;
-  churchId: string;
+  organizationId: string;
   user: User;
   membershipId: string;
 }): Promise<{ synced: number; error?: string }> {
-  const { supabase, churchId, user, membershipId } = params;
+  const { supabase, organizationId, user, membershipId } = params;
   let synced = 0;
 
   const email = normalizeEmail(user.email ?? "");
   if (email) {
     const verified = Boolean(user.email_confirmed_at);
     const result = await upsertEndpoint(supabase, {
-      organization_id: churchId,
+      organization_id: organizationId,
       user_id: user.id,
       membership_id: membershipId,
       channel: "email",
@@ -52,7 +52,7 @@ export async function syncMyNotificationEndpoints(params: {
   const phone = phoneRaw ? normalizePhoneE164(phoneRaw) : null;
   if (phone) {
     const result = await upsertEndpoint(supabase, {
-      organization_id: churchId,
+      organization_id: organizationId,
       user_id: user.id,
       membership_id: membershipId,
       channel: "sms",

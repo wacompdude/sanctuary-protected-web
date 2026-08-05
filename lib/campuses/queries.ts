@@ -94,7 +94,7 @@ function formatAddress(campus: Campus): string {
 export { formatAddress };
 
 export async function listCampuses(
-  churchId: string,
+  organizationId: string,
   options?: { includeArchived?: boolean },
 ): Promise<CampusListResult> {
   try {
@@ -106,7 +106,7 @@ export async function listCampuses(
     const extendedResult = await supabase
       .from("campuses")
       .select(EXTENDED_SELECT)
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .order("is_primary", { ascending: false })
       .order("name", { ascending: true });
 
@@ -118,7 +118,7 @@ export async function listCampuses(
       const legacy = await supabase
         .from("campuses")
         .select(LEGACY_SELECT)
-        .eq("organization_id", churchId)
+        .eq("organization_id", organizationId)
         .order("name", { ascending: true });
       data = (legacy.data as Record<string, unknown>[] | null) ?? null;
       error = legacy.error;
@@ -149,7 +149,7 @@ export async function listCampuses(
       const { data: memberships } = await supabase
         .from("campus_memberships")
         .select("campus_id")
-        .eq("organization_id", churchId)
+        .eq("organization_id", organizationId)
         .eq("status", "active");
       const counts = new Map<string, number>();
       for (const row of memberships ?? []) {
@@ -182,7 +182,7 @@ export async function listCampuses(
 }
 
 export async function getCampus(
-  churchId: string,
+  organizationId: string,
   campusId: string,
 ): Promise<{ campus: Campus | null; extendedSchema: boolean }> {
   const supabase = await createClient();
@@ -193,7 +193,7 @@ export async function getCampus(
   const extendedResult = await supabase
     .from("campuses")
     .select(EXTENDED_SELECT)
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .eq("id", campusId)
     .maybeSingle();
 
@@ -205,7 +205,7 @@ export async function getCampus(
     const legacy = await supabase
       .from("campuses")
       .select(LEGACY_SELECT)
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .eq("id", campusId)
       .maybeSingle();
     data = (legacy.data as Record<string, unknown> | null) ?? null;
@@ -225,7 +225,7 @@ export async function getCampus(
     const { count } = await supabase
       .from("campus_memberships")
       .select("id", { count: "exact", head: true })
-      .eq("organization_id", churchId)
+      .eq("organization_id", organizationId)
       .eq("campus_id", campusId)
       .eq("status", "active");
     campus.member_count = count ?? 0;

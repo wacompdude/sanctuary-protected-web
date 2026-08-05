@@ -93,7 +93,7 @@ export type DashboardBoxSettingInput = {
 };
 
 export type ResolveDashboardBoxSettingsInput = {
-  churchId: string;
+  organizationId: string;
   userRole: MembershipRole;
   /** When false, schedule manager-only boxes are omitted. */
   canManageSchedule?: boolean;

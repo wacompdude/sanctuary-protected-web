@@ -213,7 +213,7 @@ const CURRENT_SUBSCRIPTION_STATUSES = [
 ] as const;
 
 export async function getChurchSubscription(
-  churchId: string,
+  organizationId: string,
   client?: SupabaseClient,
 ): Promise<ChurchSubscriptionRecord | null> {
   const supabase = client ?? (await createClient());
@@ -241,7 +241,7 @@ export async function getChurchSubscription(
       )
     `,
     )
-    .eq("organization_id", churchId)
+    .eq("organization_id", organizationId)
     .in("status", [...CURRENT_SUBSCRIPTION_STATUSES])
     .order("started_at", { ascending: false })
     .limit(1)

@@ -23,7 +23,7 @@ import {
 } from "@/lib/dashboard";
 import {
   countCustomizedDashboardSettings,
-  rejectBrowserSubmittedChurchId,
+  rejectBrowserSubmittedOrganizationId,
   sanitizeDashboardActionError,
 } from "@/lib/dashboard/security";
 import { createClient } from "@/lib/supabase/server";
@@ -42,7 +42,7 @@ export async function saveDashboardBoxSettingsAction(
   try {
     const { user, church, membership } = await getAuthenticatedUserWithChurch();
     assertCanManageDashboardCustomization(membership.role);
-    rejectBrowserSubmittedChurchId(formData);
+    rejectBrowserSubmittedOrganizationId(formData);
 
     const rawJson = String(formData.get("settings_json") ?? "").trim();
     let parsed: unknown;
@@ -79,7 +79,7 @@ export async function saveDashboardBoxSettingsAction(
     const supabase = await createClient();
     const result = await replaceChurchDashboardBoxSettings({
       supabase,
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       settings: validated.settings,
     });
@@ -88,7 +88,7 @@ export async function saveDashboardBoxSettingsAction(
     }
 
     await auditDashboardBoxSettingsUpdated(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       boxCount: validated.settings.length,
       visibleCount: validated.settings.filter((row) => row.isVisible).length,
@@ -118,7 +118,7 @@ export async function resetDashboardBoxSettingAction(
   try {
     const { user, church, membership } = await getAuthenticatedUserWithChurch();
     assertCanManageDashboardCustomization(membership.role);
-    rejectBrowserSubmittedChurchId(formData);
+    rejectBrowserSubmittedOrganizationId(formData);
 
     const boxKey = parseDashboardBoxKey(formData.get("box_key"));
     if (!boxKey) {
@@ -128,7 +128,7 @@ export async function resetDashboardBoxSettingAction(
     const supabase = await createClient();
     const result = await resetChurchDashboardBoxSetting({
       supabase,
-      churchId: church.id,
+      organizationId: church.id,
       boxKey,
     });
     if (!result.ok) {
@@ -136,7 +136,7 @@ export async function resetDashboardBoxSettingAction(
     }
 
     await auditDashboardBoxSettingReset(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       boxKey,
     });
@@ -165,20 +165,20 @@ export async function resetAllDashboardBoxSettingsAction(
     const { user, church, membership } = await getAuthenticatedUserWithChurch();
     assertCanManageDashboardCustomization(membership.role);
     if (formData) {
-      rejectBrowserSubmittedChurchId(formData);
+      rejectBrowserSubmittedOrganizationId(formData);
     }
 
     const supabase = await createClient();
     const result = await resetAllChurchDashboardBoxSettings({
       supabase,
-      churchId: church.id,
+      organizationId: church.id,
     });
     if (!result.ok) {
       return { error: result.error };
     }
 
     await auditDashboardBoxSettingsResetAll(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
     });
 
@@ -207,7 +207,7 @@ export async function purgeObsoleteDashboardBoxSettingsAction(): Promise<Dashboa
     const supabase = await createClient();
     const result = await purgeObsoleteChurchDashboardBoxSettings({
       supabase,
-      churchId: church.id,
+      organizationId: church.id,
     });
     if (!result.ok) {
       return { error: result.error };
@@ -215,7 +215,7 @@ export async function purgeObsoleteDashboardBoxSettingsAction(): Promise<Dashboa
 
     if (result.purgedKeys.length > 0) {
       await auditDashboardObsoleteKeysPurged(supabase, {
-        churchId: church.id,
+        organizationId: church.id,
         userId: user.id,
         obsoleteKeys: result.purgedKeys,
       });

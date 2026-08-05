@@ -57,13 +57,13 @@ function labelFor(featureKey: string): string {
  * Downgrade never deletes data — items describe write blocks / feature loss.
  */
 export async function buildDowngradeImpactReport(params: {
-  churchId: string;
+  organizationId: string;
   targetPlanKey: string;
 }): Promise<DowngradeImpactReport> {
-  const churchId = params.churchId.trim();
+  const organizationId = params.organizationId.trim();
   const targetPlanKey = params.targetPlanKey.trim();
 
-  const current = await getChurchEntitlements(churchId);
+  const current = await getChurchEntitlements(organizationId);
   const fromPlanKey = current.plan
     ? String(current.plan.plan_key)
     : "servant_standard";
@@ -120,9 +120,9 @@ export async function buildDowngradeImpactReport(params: {
   }
 
   const [activeSeats, activeCampuses, smsMeter] = await Promise.all([
-    countActiveChurchMembers(churchId),
-    countActiveCampuses(churchId),
-    getSmsSegmentUsageMeter(churchId),
+    countActiveChurchMembers(organizationId),
+    countActiveCampuses(organizationId),
+    getSmsSegmentUsageMeter(organizationId),
   ]);
 
   const seatLimit = readIntegerEntitlement(

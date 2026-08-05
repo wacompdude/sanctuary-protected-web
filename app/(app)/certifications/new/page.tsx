@@ -56,7 +56,7 @@ async function NewCertificationContent({
         ensureError = "Selected church member was not found.";
       } else {
         const contact = await ensureTeamMemberForChurchMember({
-          churchId: church.id,
+          organizationId: church.id,
           createdBy: user.id,
           fullName: member.name,
           email: member.email,

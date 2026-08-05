@@ -31,7 +31,7 @@ export async function updateScheduleSettingsAction(
     }
 
     await requireFeature({
-      churchId: church.id,
+      organizationId: church.id,
       featureKey: FEATURE_KEYS.TEAM_SCHEDULING,
     });
 
@@ -73,7 +73,7 @@ export async function updateScheduleSettingsAction(
 
     const ipAddress = await getRequestIpAddress();
     await writeAuditLog(supabase, {
-      churchId: church.id,
+      organizationId: church.id,
       userId: user.id,
       action: AuditAction.SCHEDULE_SETTINGS_UPDATED,
       entityType: AuditEntityType.SCHEDULE_SETTINGS,

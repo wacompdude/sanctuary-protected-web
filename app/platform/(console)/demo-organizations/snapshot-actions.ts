@@ -209,3 +209,140 @@ export async function archiveDemoSnapshotAction(
     };
   }
 }
+
+export async function updateDemoSnapshotMetadataAction(
+  _prev: DemoSnapshotActionState,
+  formData: FormData,
+): Promise<DemoSnapshotActionState> {
+  try {
+    const ctx = await requirePlatformPermission("demo_snapshots.create");
+    const organizationId = String(formData.get("organization_id") || "").trim();
+    const snapshotId = String(formData.get("snapshot_id") || "").trim();
+    const name = String(formData.get("name") || "").trim();
+    const description = String(formData.get("description") || "").trim();
+    const versionLabel = String(formData.get("version_label") || "").trim();
+    const tagsRaw = String(formData.get("tags") || "").trim();
+    const tags = tagsRaw
+      ? tagsRaw.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean)
+      : [];
+
+    const { updateDemoSnapshotMetadata } = await import(
+      "@/lib/platform/demo-snapshots/retention"
+    );
+    await updateDemoSnapshotMetadata({
+      organizationId,
+      snapshotId,
+      name,
+      description: description || null,
+      versionLabel: versionLabel || null,
+      tags,
+    });
+
+    await writePlatformAdminAction({
+      platformAccountId: ctx.account.id,
+      actorUserId: ctx.user.id,
+      action: AuditAction.DEMO_SNAPSHOT_METADATA_UPDATED,
+      targetType: "demo_organization_snapshot",
+      targetId: snapshotId,
+      organizationId,
+      metadata: { name, version_label: versionLabel, tags },
+    });
+
+    revalidatePath(`/platform/demo-organizations/${organizationId}/snapshots`);
+    revalidatePath(
+      `/platform/demo-organizations/${organizationId}/snapshots/${snapshotId}`,
+    );
+    return { success: "Snapshot metadata updated." };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error ? error.message : "Unable to update metadata.",
+    };
+  }
+}
+
+export async function deleteDemoSnapshotAction(
+  _prev: DemoSnapshotActionState,
+  formData: FormData,
+): Promise<DemoSnapshotActionState> {
+  try {
+    const ctx = await requirePlatformPermission("demo_snapshots.delete");
+    const organizationId = String(formData.get("organization_id") || "").trim();
+    const snapshotId = String(formData.get("snapshot_id") || "").trim();
+    const confirmProtected =
+      String(formData.get("confirm_protected") || "").trim() ===
+      "DELETE PROTECTED SNAPSHOT";
+
+    const { deleteDemoSnapshot } = await import(
+      "@/lib/platform/demo-snapshots/retention"
+    );
+    await deleteDemoSnapshot({
+      organizationId,
+      snapshotId,
+      allowProtected: confirmProtected,
+    });
+
+    await writePlatformAdminAction({
+      platformAccountId: ctx.account.id,
+      actorUserId: ctx.user.id,
+      action: AuditAction.DEMO_SNAPSHOT_DELETED,
+      targetType: "demo_organization_snapshot",
+      targetId: snapshotId,
+      organizationId,
+    });
+
+    revalidatePath(`/platform/demo-organizations/${organizationId}/snapshots`);
+    return { success: "Snapshot deleted (or archived if still referenced)." };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error ? error.message : "Unable to delete snapshot.",
+    };
+  }
+}
+
+export async function applyDemoSnapshotRetentionAction(
+  _prev: DemoSnapshotActionState,
+  formData: FormData,
+): Promise<DemoSnapshotActionState> {
+  try {
+    const ctx = await requirePlatformPermission("demo_snapshots.archive");
+    const organizationId = String(formData.get("organization_id") || "").trim();
+    const daysRaw = String(formData.get("retention_days") || "").trim();
+    const retentionDays = daysRaw ? Number(daysRaw) : undefined;
+
+    const { applyDemoSnapshotRetention } = await import(
+      "@/lib/platform/demo-snapshots/retention"
+    );
+    const result = await applyDemoSnapshotRetention({
+      organizationId,
+      retentionDays:
+        retentionDays && Number.isFinite(retentionDays)
+          ? retentionDays
+          : undefined,
+    });
+
+    await writePlatformAdminAction({
+      platformAccountId: ctx.account.id,
+      actorUserId: ctx.user.id,
+      action: AuditAction.DEMO_SNAPSHOT_RETENTION_APPLIED,
+      targetType: "organization",
+      targetId: organizationId,
+      organizationId,
+      metadata: {
+        archived_count: result.archived.length,
+        evaluated: result.evaluated,
+      },
+    });
+
+    revalidatePath(`/platform/demo-organizations/${organizationId}/snapshots`);
+    return {
+      success: `Retention applied: archived ${result.archived.length} of ${result.evaluated} automatic snapshot(s).`,
+    };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error ? error.message : "Unable to apply retention.",
+    };
+  }
+}

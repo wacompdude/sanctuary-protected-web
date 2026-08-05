@@ -1,6 +1,6 @@
 # Demo Organization Snapshot & Restore — Phase 2 Architecture
 
-Status: **Phase 6 complete (manual rollback, emergency unlock, lock expiry, recovery, alerts).**  
+Status: **Phase 7 complete (version management: badges, filters, retention, metadata edit).**  
 UI terminology remains **Church / Demo Church**. Internal code uses **organization**.
 
 Related artifacts:
@@ -265,9 +265,21 @@ Nav label: **Demo Environments** (platform console only).
 | Platform alerts via `platform_admin_actions` | Done |
 | Recovery UI on restore-history | Done |
 
-## Phase 7 (next)
+## Phase 7 checklist
 
-Version labels, tier badges, tags, feature summaries, retention rules, search/filtering.
+| Item | Status |
+|------|--------|
+| Version labels + tier badges on list/detail | Done |
+| Tags + feature summaries | Done |
+| Snapshot search / filter UI | Done |
+| Metadata edit (immutable contents) | Done |
+| Default reset version controls | Done (existing + surfaced) |
+| Safety snapshot retention rules | Done |
+| Delete with baseline/protected/history safeguards | Done |
+
+## Phase 8 (next)
+
+Final validation report: demo config, restore/rollback tests, remaining risks, operating procedure.
 
 ---
 

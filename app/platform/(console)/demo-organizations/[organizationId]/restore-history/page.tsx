@@ -15,8 +15,10 @@ export const maxDuration = 300;
 
 export default async function DemoRestoreHistoryPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ organizationId: string }>;
+  searchParams: Promise<{ q?: string; status?: string; type?: string }>;
 }) {
   try {
     await requirePlatformPermission("demo_snapshots.read");
@@ -25,6 +27,7 @@ export default async function DemoRestoreHistoryPage({
   }
 
   const { organizationId } = await params;
+  const sp = await searchParams;
   const canUnlock = await hasPlatformPermission("demo_restores.unlock").catch(
     () => false,
   );
@@ -44,7 +47,7 @@ export default async function DemoRestoreHistoryPage({
   try {
     org = await getDemoOrganizationById(organizationId);
     if (org?.is_demo_organization) {
-      ops = await listDemoRestoreOperations(organizationId);
+      ops = await listDemoRestoreOperations(organizationId, 100);
       recovery = await getDemoRecoveryStatus(organizationId);
       alerts = await listDemoPlatformAlerts({
         organizationId,
@@ -59,6 +62,17 @@ export default async function DemoRestoreHistoryPage({
     notFound();
   }
 
+  const q = (sp.q ?? "").trim().toLowerCase();
+  const filtered = ops.filter((op) => {
+    if (sp.status && op.status !== sp.status) return false;
+    if (sp.type && op.operation_type !== sp.type) return false;
+    if (q) {
+      const hay = `${op.reason} ${op.status} ${op.operation_type} ${op.safe_error_summary ?? ""} ${op.id}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
   return (
     <div className="space-y-6">
       <div>
@@ -72,7 +86,8 @@ export default async function DemoRestoreHistoryPage({
           Restore history &amp; recovery
         </h1>
         <p className="mt-1 text-sm text-slate-400">
-          Operation history, manual rollback, emergency unlock, and lock recovery.
+          Operation history, manual rollback, emergency unlock, and lock
+          recovery.
         </p>
       </div>
 
@@ -93,11 +108,61 @@ export default async function DemoRestoreHistoryPage({
         />
       ) : null}
 
-      {ops.length === 0 && !loadError ? (
-        <p className="text-sm text-slate-400">No restore operations yet.</p>
+      <form
+        method="get"
+        className="grid gap-3 rounded-lg border border-slate-800 bg-slate-900/40 p-4 md:grid-cols-4"
+      >
+        <label className="block text-sm md:col-span-2">
+          <span className="mb-1 block text-slate-400">Search</span>
+          <input
+            name="q"
+            defaultValue={sp.q ?? ""}
+            placeholder="Reason, status, operation id…"
+            className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
+          />
+        </label>
+        <label className="block text-sm">
+          <span className="mb-1 block text-slate-400">Status</span>
+          <select
+            name="status"
+            defaultValue={sp.status ?? ""}
+            className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
+          >
+            <option value="">Any</option>
+            <option value="completed">completed</option>
+            <option value="failed">failed</option>
+            <option value="rolled_back">rolled_back</option>
+            <option value="cancelled">cancelled</option>
+          </select>
+        </label>
+        <label className="block text-sm">
+          <span className="mb-1 block text-slate-400">Type</span>
+          <select
+            name="type"
+            defaultValue={sp.type ?? ""}
+            className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
+          >
+            <option value="">Any</option>
+            <option value="restore">restore</option>
+            <option value="rollback">rollback</option>
+            <option value="emergency_unlock">emergency_unlock</option>
+          </select>
+        </label>
+        <div className="md:col-span-4">
+          <button
+            type="submit"
+            className="rounded-md bg-slate-100 px-3 py-2 text-sm font-medium text-slate-900"
+          >
+            Apply filters
+          </button>
+        </div>
+      </form>
+
+      {filtered.length === 0 && !loadError ? (
+        <p className="text-sm text-slate-400">No restore operations match.</p>
       ) : null}
 
-      {ops.length > 0 ? (
+      {filtered.length > 0 ? (
         <div className="overflow-hidden rounded-lg border border-slate-800">
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-900/80 text-slate-400">
@@ -110,12 +175,12 @@ export default async function DemoRestoreHistoryPage({
               </tr>
             </thead>
             <tbody>
-              {ops.map((op) => (
+              {filtered.map((op) => (
                 <tr
                   key={op.id}
-                  className="border-t border-slate-800/80 text-slate-200 align-top"
+                  className="border-t border-slate-800/80 align-top text-slate-200"
                 >
-                  <td className="px-3 py-2 text-slate-400 whitespace-nowrap">
+                  <td className="whitespace-nowrap px-3 py-2 text-slate-400">
                     {new Date(op.created_at).toLocaleString()}
                     <div className="font-mono text-[10px] text-slate-600">
                       {op.id.slice(0, 8)}

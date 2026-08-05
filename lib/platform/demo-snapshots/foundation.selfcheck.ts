@@ -23,6 +23,11 @@ import {
 } from "@/lib/platform/demo-snapshots/snapshot-table-registry";
 import { SNAPSHOT_STORAGE_REFS } from "@/lib/platform/demo-snapshots/storage-refs";
 import { DEMO_EMERGENCY_UNLOCK_PHRASE } from "@/lib/platform/demo-snapshots/phrases";
+import {
+  buildSnapshotFeatureSummary,
+  filterDemoSnapshots,
+  tierBadgeLabel,
+} from "@/lib/platform/demo-snapshots/versioning";
 import { PLATFORM_PERMISSIONS } from "@/lib/platform/permission-keys";
 
 function assert(condition: boolean, message: string) {
@@ -148,4 +153,52 @@ assert(
   "emergency unlock phrase",
 );
 
-console.log("demo-snapshots Phase 6 foundation self-check passed");
+assert(tierBadgeLabel("omni_enterprise") === "Omni Enterprise", "tier badge");
+assert(tierBadgeLabel(null) === "No plan", "tier badge empty");
+
+const summary = buildSnapshotFeatureSummary({
+  record_counts: { campuses: 2, incidents: 5 },
+  feature_entitlement_snapshot: { overrides: [{ id: 1 }] },
+  file_count: 3,
+});
+assert(summary.totalRecords === 7, "feature total");
+assert(summary.labels.some((l) => l.includes("Campuses")), "feature campuses");
+assert(summary.overrideCount === 1, "override count");
+
+const filtered = filterDemoSnapshots(
+  [
+    {
+      id: "1",
+      organization_id: "o",
+      name: "Clean Starting Demo",
+      slug: "clean",
+      description: null,
+      version_label: "v1",
+      tags: ["sales"],
+      snapshot_status: "ready",
+      snapshot_format_version: 1,
+      database_schema_version: "081",
+      subscription_plan_id: null,
+      subscription_plan_key_snapshot: "omni_enterprise",
+      feature_entitlement_snapshot: {},
+      record_counts: {},
+      file_count: 0,
+      total_file_size_bytes: 0,
+      snapshot_manifest_path: null,
+      snapshot_data_path: null,
+      checksum: null,
+      created_by_platform_account_id: null,
+      created_at: new Date().toISOString(),
+      validated_at: null,
+      last_restored_at: null,
+      is_default: true,
+      is_protected: false,
+      is_automatic: false,
+      archived_at: null,
+    },
+  ],
+  { q: "clean", onlyDefault: true },
+);
+assert(filtered.length === 1, "filter match");
+
+console.log("demo-snapshots Phase 7 foundation self-check passed");

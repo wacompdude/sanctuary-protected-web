@@ -149,7 +149,7 @@ High-risk actions also require MFA + ≤15 minute session (`requireRecentPlatfor
 |-------|--------|
 | `npm run selfcheck:demo-snapshots` | Passed |
 | `npm run lint` | Fails on **pre-existing** `lib/security/*` unused/any issues — not introduced by demo-snapshots |
-| `npm run build` | Compiled; TypeScript failed until duplicate Phase 7 forms were removed from `demo-snapshot-forms.tsx` (fixed); re-run build as part of operator checklist |
+| `npm run build` | Passed (after removing duplicate forms from `demo-snapshot-forms.tsx`) |
 | `npm test` | No project `test` script; use `selfcheck:*` scripts |
 
 ---

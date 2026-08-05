@@ -5,16 +5,11 @@
 --
 -- CREATE OR REPLACE cannot change param names (42P13), so we:
 --   1) RENAME each target aside (_mig076_<oid>) — RLS keeps working via OID
---      (OID-based aside names avoid Postgres 63-char identifier truncation)
 --   2) CREATE replacement with new param names under the original name
 --   3) Rebind policies + dependent function bodies to the new OID
 --   4) DROP aside functions
 --
--- Note: all mutation logic is in one DO block so a staging table stays visible
--- even when the SQL editor commits between top-level statements.
---
--- APPLY WITH the app deploy that sends p_organization_id in .rpc() calls.
--- Prefer: run 076, then deploy app immediately (short RPC window).
+-- Idempotent: safe after a partial apply (SQL editor may auto-commit DO blocks).
 -- =============================================================================
 
 BEGIN;
@@ -24,6 +19,7 @@ DECLARE
   r record;
   pair record;
   aside text;
+  original_name text;
   new_def text;
   def text;
   qual text;
@@ -34,6 +30,7 @@ DECLARE
   updated integer := 0;
   dropped integer := 0;
   leftover text;
+  church_param_count integer;
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_proc p
@@ -49,6 +46,67 @@ BEGIN
     aside_name text NOT NULL,
     args text NOT NULL
   ) ON COMMIT DROP;
+
+  -- -------------------------------------------------------------------------
+  -- 0. Repair leftovers from earlier failed 076 attempts
+  -- -------------------------------------------------------------------------
+  FOR r IN
+    SELECT
+      p.oid,
+      p.proname,
+      pg_get_function_identity_arguments(p.oid) AS args
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public'
+      AND p.prokind = 'f'
+      AND (
+        p.proname LIKE '\_mig076\_%' ESCAPE '\'
+        OR p.proname LIKE '%\_\_church_par%' ESCAPE '\'
+      )
+  LOOP
+    -- Recover original name from truncated "__church_params" aside when possible
+    IF r.proname LIKE '%\_\_church_par%' ESCAPE '\' THEN
+      original_name := regexp_replace(r.proname, '__church_par.*$', '');
+    ELSIF r.proname LIKE '\_mig076\_%' ESCAPE '\' THEN
+      original_name := NULL; -- OID aside; drop if replacement exists, else keep for step 1
+    ELSE
+      original_name := NULL;
+    END IF;
+
+    IF original_name IS NOT NULL AND EXISTS (
+      SELECT 1 FROM pg_proc p2
+      JOIN pg_namespace n2 ON n2.oid = p2.pronamespace
+      WHERE n2.nspname = 'public'
+        AND p2.proname = original_name
+        AND pg_get_function_identity_arguments(p2.oid) = r.args
+    ) THEN
+      -- Replacement already exists — drop leftover aside
+      EXECUTE format('DROP FUNCTION public.%I(%s)', r.proname, r.args);
+      dropped := dropped + 1;
+      RAISE NOTICE '076 cleaned leftover aside %(%)', r.proname, r.args;
+    ELSIF original_name IS NOT NULL THEN
+      -- Replacement missing — rename aside back so step 1 can process it
+      EXECUTE format(
+        'ALTER FUNCTION public.%I(%s) RENAME TO %I',
+        r.proname,
+        r.args,
+        original_name
+      );
+      RAISE NOTICE '076 restored aside % → %', r.proname, original_name;
+    ELSE
+      -- _mig076_<oid> with no recoverable name: drop only if args match an
+      -- already-migrated organization-param function of the same signature
+      -- (conservative: just drop orphans that still have church param names
+      -- when any migrated twin exists is hard — drop church-param asides only)
+      IF pg_get_function_identity_arguments(
+        (SELECT p3.oid FROM pg_proc p3 WHERE p3.oid = r.oid)
+      ) ~ 'p_church_id|requested_church_id' THEN
+        EXECUTE format('DROP FUNCTION public.%I(%s)', r.proname, r.args);
+        dropped := dropped + 1;
+        RAISE NOTICE '076 dropped orphan aside %(%)', r.proname, r.args;
+      END IF;
+    END IF;
+  END LOOP;
 
   -- -------------------------------------------------------------------------
   -- 1. Rename-aside + recreate with new param names
@@ -126,7 +184,29 @@ BEGIN
   END LOOP;
 
   IF recreated = 0 THEN
-    RAISE EXCEPTION '076 failed — no functions recreated (already applied?)';
+    -- Already applied (or only leftovers were cleaned). Verify and exit cleanly.
+    SELECT count(*) INTO church_param_count
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public'
+      AND p.prokind = 'f'
+      AND pg_get_function_identity_arguments(p.oid) ~ 'p_church_id|requested_church_id';
+
+    IF church_param_count = 0
+       AND pg_get_function_identity_arguments(
+         'public.is_active_organization_member(uuid)'::regprocedure
+       ) ~ 'requested_organization_id' THEN
+      RAISE NOTICE '076 already applied — nothing to recreate';
+      BEGIN
+        PERFORM pg_notify('pgrst', 'reload schema');
+      EXCEPTION WHEN others THEN
+        NULL;
+      END;
+      RETURN;
+    END IF;
+
+    RAISE EXCEPTION
+      '076 failed — no functions recreated and church params still present';
   END IF;
 
   RAISE NOTICE '076 recreated % function(s) with organization param names', recreated;
@@ -189,6 +269,8 @@ BEGIN
       AND (
         COALESCE(pg_get_expr(p.polqual, p.polrelid), '') LIKE '%_mig076_%'
         OR COALESCE(pg_get_expr(p.polwithcheck, p.polrelid), '') LIKE '%_mig076_%'
+        OR COALESCE(pg_get_expr(p.polqual, p.polrelid), '') LIKE '%__church_par%'
+        OR COALESCE(pg_get_expr(p.polwithcheck, p.polrelid), '') LIKE '%__church_par%'
       )
   LOOP
     qual := r.qual;
@@ -208,6 +290,14 @@ BEGIN
         new_with_check := replace(new_with_check, pair.aside_name, pair.original_name);
       END IF;
     END LOOP;
+
+    -- Also strip truncated "__church_params" suffix remnants in policy text
+    IF new_qual IS NOT NULL THEN
+      new_qual := regexp_replace(new_qual, '__church_par[a-z]*', '', 'g');
+    END IF;
+    IF new_with_check IS NOT NULL THEN
+      new_with_check := regexp_replace(new_with_check, '__church_par[a-z]*', '', 'g');
+    END IF;
 
     IF new_qual IS DISTINCT FROM qual AND new_qual IS NOT NULL THEN
       EXECUTE format(

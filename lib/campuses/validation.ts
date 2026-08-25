@@ -9,6 +9,11 @@ import type {
   CampusStatus,
   CampusType,
 } from "@/lib/campuses/types";
+import { isValidIanaTimeZone } from "@/lib/datetime/timezones";
+import {
+  isValidOrganizationSlug,
+  SLUG_FORMAT_MESSAGE,
+} from "@/lib/organization/slug";
 
 function text(formData: FormData, key: string, max: number): string | null {
   const raw = String(formData.get(key) ?? "").trim();
@@ -38,9 +43,8 @@ export function validateCampusForm(
   let slug = text(formData, "slug", 80);
   if (slug) {
     slug = slug.toLowerCase();
-    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
-      fieldErrors.slug =
-        "Use lowercase letters, numbers, and hyphens only.";
+    if (!isValidOrganizationSlug(slug)) {
+      fieldErrors.slug = SLUG_FORMAT_MESSAGE;
     }
   } else if (name) {
     slug = slugifyCampusName(name);
@@ -76,6 +80,9 @@ export function validateCampusForm(
   const postal_code = text(formData, "postal_code", 20);
   const country = text(formData, "country", 80) ?? "US";
   const timezone = text(formData, "timezone", 64);
+  if (timezone && !isValidIanaTimeZone(timezone)) {
+    fieldErrors.timezone = "Select a valid time zone.";
+  }
 
   const emergency_contact_name = text(formData, "emergency_contact_name", 200);
   const emergency_contact_phone = text(formData, "emergency_contact_phone", 40);

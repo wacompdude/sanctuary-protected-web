@@ -99,7 +99,7 @@ export function PlatformSupportWorkspacePanel({
           Start a support session
         </h2>
         <p className="mt-1 text-xs text-slate-500">
-          Look up a church by name, slug, or id. Sessions expire automatically
+          Look up a church by name, URL name, or id. Sessions expire automatically
           and show a console banner while active.
         </p>
       </div>
@@ -109,7 +109,7 @@ export function PlatformSupportWorkspacePanel({
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           className="min-w-[16rem] flex-1 rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
-          placeholder="Church name, slug, or UUID"
+          placeholder="Church name, URL name, or UUID"
         />
         <button
           type="button"

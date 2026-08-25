@@ -1,10 +1,12 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { createChurchOnboarding } from "@/app/onboarding/church/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { FieldLabelWithHelp } from "@/components/ui/field-help";
+import { SlugField } from "@/components/ui/slug-field";
 import {
   Card,
   CardContent,
@@ -13,8 +15,18 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { ActionState } from "@/lib/organization/types";
-import { ONBOARDING_TIMEZONES } from "@/lib/organization/onboarding";
-import { selectClassName } from "@/components/incidents/incident-badges";
+import { TimeZoneSelector } from "@/components/ui/timezone-select";
+import {
+  PHONE_HELP,
+  PRIMARY_EMAIL_HELP,
+  SLUG_HELP,
+  TIMEZONE_HELP,
+} from "@/lib/organization/field-help";
+import {
+  slugAfterNameChange,
+  slugifyOrganizationName,
+  type OrganizationSlugMode,
+} from "@/lib/organization/slug";
 
 const initialState: ActionState = {};
 
@@ -31,6 +43,24 @@ export function ChurchOnboardingForm({
     createChurchOnboarding,
     initialState,
   );
+  const [name, setName] = useState("");
+  const [slug, setSlug] = useState("");
+  const [slugMode, setSlugMode] = useState<OrganizationSlugMode>("auto");
+
+  function handleNameChange(value: string) {
+    setName(value);
+    setSlug(slugAfterNameChange(slugMode, value, slug));
+  }
+
+  function handleSlugInput(value: string) {
+    setSlugMode("manual");
+    setSlug(value);
+  }
+
+  function generateFromName() {
+    setSlugMode("auto");
+    setSlug(slugifyOrganizationName(name));
+  }
 
   return (
     <Card>
@@ -52,6 +82,8 @@ export function ChurchOnboardingForm({
               id="name"
               name="name"
               placeholder="Grace Community Church"
+              value={name}
+              onChange={(event) => handleNameChange(event.target.value)}
               aria-invalid={!!state.fieldErrors?.name}
             />
             {state.fieldErrors?.name && (
@@ -59,9 +91,26 @@ export function ChurchOnboardingForm({
             )}
           </div>
 
+          <SlugField
+            id="slug"
+            name="slug"
+            help={SLUG_HELP}
+            value={slug}
+            onChange={handleSlugInput}
+            error={state.fieldErrors?.slug}
+            showGenerate={slugMode === "manual"}
+            onGenerate={generateFromName}
+            generateLabel="Generate from church name"
+          />
+
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="primary_email">Primary email</Label>
+              <FieldLabelWithHelp
+                htmlFor="primary_email"
+                label="Primary email"
+                helpLabel="Primary Email help"
+                help={PRIMARY_EMAIL_HELP}
+              />
               <Input
                 id="primary_email"
                 name="primary_email"
@@ -76,7 +125,12 @@ export function ChurchOnboardingForm({
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="phone">Phone</Label>
+              <FieldLabelWithHelp
+                htmlFor="phone"
+                label="Phone"
+                helpLabel="Phone help"
+                help={PHONE_HELP}
+              />
               <Input
                 id="phone"
                 name="phone"
@@ -158,27 +212,13 @@ export function ChurchOnboardingForm({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="timezone">Time zone</Label>
-            <select
-              id="timezone"
-              name="timezone"
-              className={selectClassName}
-              defaultValue="America/Los_Angeles"
-              aria-invalid={!!state.fieldErrors?.timezone}
-            >
-              {ONBOARDING_TIMEZONES.map((tz) => (
-                <option key={tz} value={tz}>
-                  {tz.replace(/_/g, " ")}
-                </option>
-              ))}
-            </select>
-            {state.fieldErrors?.timezone && (
-              <p className="text-sm text-destructive">
-                {state.fieldErrors.timezone}
-              </p>
-            )}
-          </div>
+          <TimeZoneSelector
+            id="timezone"
+            name="timezone"
+            help={TIMEZONE_HELP}
+            error={state.fieldErrors?.timezone}
+            suggestDeviceTimeZone
+          />
 
           <div className="space-y-2">
             <Label htmlFor="campus_name">Primary campus name</Label>

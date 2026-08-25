@@ -9,6 +9,7 @@ import { isNotificationChannel } from "@/lib/notifications/constants";
 import { parseGroupSeverity } from "@/lib/notifications/groups/validation";
 import { SMS_CONSENT_DISCLOSURE_VERSION } from "@/lib/notifications/endpoints/types";
 import { syncMyNotificationEndpoints } from "@/lib/notifications/endpoints/sync";
+import { isValidIanaTimeZone } from "@/lib/datetime/timezones";
 
 function readCheckbox(formData: FormData, name: string): boolean {
   return (
@@ -241,6 +242,13 @@ export async function upsertGroupPreferenceRuleAction(
     const severity =
       parseGroupSeverity(formData.get("minimum_severity")) ?? "informational";
 
+    const timezone =
+      String(formData.get("timezone") ?? "America/Los_Angeles").trim() ||
+      "America/Los_Angeles";
+    if (!isValidIanaTimeZone(timezone)) {
+      return { fieldErrors: { timezone: "Select a valid time zone." } };
+    }
+
     const payload = {
       organization_id: church.id,
       user_id: user.id,
@@ -255,9 +263,7 @@ export async function upsertGroupPreferenceRuleAction(
         String(formData.get("quiet_hours_start") ?? "").trim() || null,
       quiet_hours_end:
         String(formData.get("quiet_hours_end") ?? "").trim() || null,
-      timezone:
-        String(formData.get("timezone") ?? "America/Los_Angeles").trim() ||
-        "America/Los_Angeles",
+      timezone,
       digest_frequency:
         String(formData.get("digest_frequency") ?? "immediate").trim() ||
         "immediate",

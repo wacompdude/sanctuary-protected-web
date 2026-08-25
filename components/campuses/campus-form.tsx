@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,6 +10,7 @@ import {
   LabeledSelect,
   LabeledTextarea,
 } from "@/components/settings/settings-form-shell";
+import { SlugField } from "@/components/ui/slug-field";
 import {
   Card,
   CardContent,
@@ -21,14 +22,15 @@ import {
   CAMPUS_STATUSES,
   CAMPUS_STATUSES_LEGACY,
   CAMPUS_TYPES,
+  slugifyCampusName,
 } from "@/lib/campuses/constants";
 import type { Campus, CampusActionState } from "@/lib/campuses/types";
-import { SETTINGS_TIMEZONES } from "@/lib/organization/settings";
-
-const TIMEZONE_OPTIONS = SETTINGS_TIMEZONES.map((tz) => ({
-  value: tz,
-  label: tz.replace(/_/g, " "),
-}));
+import { TimeZoneSelector } from "@/components/ui/timezone-select";
+import { CAMPUS_SLUG_HELP, CAMPUS_TIMEZONE_HELP } from "@/lib/organization/field-help";
+import {
+  slugAfterNameChange,
+  type OrganizationSlugMode,
+} from "@/lib/organization/slug";
 
 const initialState: CampusActionState = {};
 
@@ -61,11 +63,11 @@ export function CampusForm({
 
   const timezone =
     campus?.timezone || defaultTimezone || "America/Los_Angeles";
-  const timezoneOptions = TIMEZONE_OPTIONS.some(
-    (option) => option.value === timezone,
-  )
-    ? TIMEZONE_OPTIONS
-    : [{ value: timezone, label: timezone }, ...TIMEZONE_OPTIONS];
+  const [campusName, setCampusName] = useState(campus?.name ?? "");
+  const [slug, setSlug] = useState(campus?.slug ?? "");
+  const [slugMode, setSlugMode] = useState<OrganizationSlugMode>(
+    mode === "create" ? "auto" : "manual",
+  );
 
   const statusOptions = extendedSchema
     ? CAMPUS_STATUSES
@@ -102,7 +104,13 @@ export function CampusForm({
               id="name"
               name="name"
               label="Name"
-              defaultValue={campus?.name}
+              value={campusName}
+              onChange={(value) => {
+                setCampusName(value);
+                setSlug(
+                  slugAfterNameChange(slugMode, value, slug, slugifyCampusName),
+                );
+              }}
               error={state.fieldErrors?.name}
             />
             {extendedSchema ? (
@@ -115,13 +123,23 @@ export function CampusForm({
                   error={state.fieldErrors?.short_name}
                   hint="Optional display abbreviation."
                 />
-                <LabeledInput
+                <SlugField
                   id="slug"
                   name="slug"
-                  label="Slug"
-                  defaultValue={campus?.slug}
+                  help={CAMPUS_SLUG_HELP}
+                  value={slug}
+                  onChange={(value) => {
+                    setSlugMode("manual");
+                    setSlug(value);
+                  }}
                   error={state.fieldErrors?.slug}
-                  hint="Lowercase letters, numbers, and hyphens. Auto-generated if blank."
+                  showGenerate={slugMode === "manual"}
+                  onGenerate={() => {
+                    setSlugMode("auto");
+                    setSlug(slugifyCampusName(campusName));
+                  }}
+                  generateLabel="Generate from campus name"
+                  className="sm:col-span-2"
                 />
                 <LabeledSelect
                   id="campus_type"
@@ -141,13 +159,13 @@ export function CampusForm({
               options={statusOptions}
               error={state.fieldErrors?.status}
             />
-            <LabeledSelect
+            <TimeZoneSelector
               id="timezone"
               name="timezone"
-              label="Timezone"
               defaultValue={timezone}
-              options={timezoneOptions}
               error={state.fieldErrors?.timezone}
+              help={CAMPUS_TIMEZONE_HELP}
+              className="sm:col-span-2"
             />
             {extendedSchema ? (
               <div className="sm:col-span-2">

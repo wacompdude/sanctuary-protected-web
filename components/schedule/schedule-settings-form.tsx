@@ -8,6 +8,8 @@ import {
   LabeledInput,
   LabeledSelect,
 } from "@/components/settings/settings-form-shell";
+import { TimeZoneSelector } from "@/components/ui/timezone-select";
+import { TIMEZONE_HELP } from "@/lib/organization/field-help";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -98,13 +100,14 @@ export function ScheduleSettingsForm({
               error={state.fieldErrors?.week_starts_on}
               hint="Also used for weekly threat levels. Synced with Church → General settings."
             />
-            <LabeledInput
+            <TimeZoneSelector
               id="timezone"
               name="timezone"
-              label="Schedule timezone"
+              label="Schedule time zone"
               defaultValue={settings.timezone}
               error={state.fieldErrors?.timezone}
-              hint="IANA timezone, e.g. America/Los_Angeles"
+              help={TIMEZONE_HELP}
+              className="sm:col-span-2"
             />
             <LabeledInput
               id="default_event_duration_minutes"

@@ -18,6 +18,7 @@ import {
 import { requireCampusAction } from "@/lib/campuses/server-auth";
 import type { CampusActionState } from "@/lib/campuses/types";
 import { validateCampusForm } from "@/lib/campuses/validation";
+import { SLUG_DUPLICATE_MESSAGE } from "@/lib/organization/slug";
 import { createClient } from "@/lib/supabase/server";
 import {
   isEntitlementError,
@@ -38,6 +39,19 @@ async function requireCampusManager(
   campusId?: string,
 ) {
   return requireCampusAction(action, { campusId });
+}
+
+function uniqueCampusFieldError(message: string): CampusActionState {
+  if (/slug/i.test(message)) {
+    return {
+      error: SLUG_DUPLICATE_MESSAGE,
+      fieldErrors: { slug: SLUG_DUPLICATE_MESSAGE },
+    };
+  }
+  return {
+    error: "A campus with that name already exists.",
+    fieldErrors: { name: "Must be unique within this church." },
+  };
 }
 
 function revalidateCampusPaths(campusId?: string) {
@@ -120,10 +134,7 @@ export async function createCampusAction(
 
     if (error || !data) {
       if (/duplicate|unique/i.test(error?.message ?? "")) {
-        return {
-          error: "A campus with that name or slug already exists.",
-          fieldErrors: { name: "Must be unique within this church." },
-        };
+        return uniqueCampusFieldError(error?.message ?? "");
       }
       return {
         error:
@@ -174,7 +185,7 @@ export async function updateCampusAction(
 
     const { data: existing } = await supabase
       .from("campuses")
-      .select("id, is_primary, status")
+      .select("id, is_primary, status, slug")
       .eq("organization_id", church.id)
       .eq("id", campusId)
       .maybeSingle();
@@ -223,10 +234,7 @@ export async function updateCampusAction(
 
     if (error) {
       if (/duplicate|unique/i.test(error.message)) {
-        return {
-          error: "A campus with that name or slug already exists.",
-          fieldErrors: { name: "Must be unique within this church." },
-        };
+        return uniqueCampusFieldError(error.message);
       }
       return {
         error:
@@ -240,6 +248,8 @@ export async function updateCampusAction(
       userId: user.id,
       campusId,
       changedFields: Object.keys(validated.data),
+      previousSlug: existing.slug,
+      newSlug: validated.data.slug,
     });
 
     if (existing.status !== validated.data.status) {

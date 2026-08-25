@@ -6,6 +6,7 @@ import type {
   UnavailabilityReason,
 } from "@/lib/schedule/types";
 import { parseChurchDateTimeLocal } from "@/lib/datetime/format";
+import { isValidIanaTimeZone } from "@/lib/datetime/timezones";
 
 function text(formData: FormData, key: string, max: number): string | null {
   const raw = String(formData.get(key) ?? "").trim();
@@ -62,6 +63,9 @@ export function validateUnavailabilityForm(
   const all_day = checkbox(formData, "all_day");
   const timezone =
     text(formData, "timezone", 64) ?? churchTimeZone ?? "America/Los_Angeles";
+  if (!isValidIanaTimeZone(timezone)) {
+    fieldErrors.timezone = "Select a valid time zone.";
+  }
 
   const startLocal = text(formData, "start_at", 32);
   const endLocal = text(formData, "end_at", 32);

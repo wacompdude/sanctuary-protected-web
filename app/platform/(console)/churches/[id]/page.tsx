@@ -44,7 +44,7 @@ async function ChurchDetailContent({
           <PlatformStatusBadge status={church.status} />
         </div>
         <p className="text-sm text-slate-400">
-          {church.slug ? `Slug: ${church.slug}` : "No slug"} ·{" "}
+          {church.slug ? `URL name: ${church.slug}` : "No URL name"} ·{" "}
           {church.timezone || "No timezone"} · {church.memberCount} members ·{" "}
           {church.campusCount} campuses
         </p>

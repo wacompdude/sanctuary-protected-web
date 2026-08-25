@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/card";
 import type { ActionState } from "@/lib/organization/types";
 import { updateMyNotificationPreferencesAction } from "@/app/(app)/notifications/actions";
+import { TimeZoneSelector } from "@/components/ui/timezone-select";
+import { TIMEZONE_HELP } from "@/lib/organization/field-help";
 
 const initialState: ActionState = {};
 
@@ -175,10 +177,13 @@ export function NotificationPreferencesForm({
                 <option value="never">Never</option>
               </select>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="timezone">Timezone</Label>
-              <Input id="timezone" name="timezone" defaultValue={prefs.timezone} />
-            </div>
+            <TimeZoneSelector
+              id="timezone"
+              name="timezone"
+              defaultValue={prefs.timezone}
+              error={state.fieldErrors?.timezone}
+              help={TIMEZONE_HELP}
+            />
           </div>
 
           <div className="space-y-3 rounded-md border border-border p-3">

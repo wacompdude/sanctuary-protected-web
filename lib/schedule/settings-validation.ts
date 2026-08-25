@@ -3,6 +3,7 @@ import type {
   ScheduleActionState,
   ScheduleCalendarView,
 } from "@/lib/schedule/types";
+import { isValidIanaTimeZone } from "@/lib/datetime/timezones";
 
 function checkbox(formData: FormData, key: string): boolean {
   const value = formData.get(key);
@@ -109,8 +110,8 @@ export function validateScheduleSettingsForm(
   }
 
   const timezone = String(formData.get("timezone") ?? "").trim();
-  if (!timezone || timezone.length > 64) {
-    fieldErrors.timezone = "Enter a valid timezone.";
+  if (!timezone || !isValidIanaTimeZone(timezone)) {
+    fieldErrors.timezone = "Select a valid time zone.";
   }
 
   const firstReminder = intField(

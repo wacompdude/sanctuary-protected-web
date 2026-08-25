@@ -1,17 +1,23 @@
 "use client";
 
+import { useState } from "react";
 import {
   LabeledInput,
   LabeledSelect,
   LabeledTextarea,
   SettingsSectionCard,
 } from "@/components/settings/settings-form-shell";
+import { TimeZoneSelector } from "@/components/ui/timezone-select";
+import { SlugField } from "@/components/ui/slug-field";
 import { updateChurchGeneralSettings } from "@/app/(app)/settings/church/actions";
-import {
-  SETTINGS_TIMEZONES,
-  type ChurchSettingsRecord,
-} from "@/lib/organization/settings";
+import type { ChurchSettingsRecord } from "@/lib/organization/settings";
 import { WEEK_STARTS_ON_OPTIONS } from "@/lib/organization/threat-levels";
+import { SLUG_HELP, TIMEZONE_HELP } from "@/lib/organization/field-help";
+import {
+  slugAfterNameChange,
+  slugifyOrganizationName,
+  type OrganizationSlugMode,
+} from "@/lib/organization/slug";
 
 const LANGUAGE_OPTIONS = [
   { value: "en", label: "English" },
@@ -21,11 +27,6 @@ const LANGUAGE_OPTIONS = [
   { value: "other", label: "Other" },
 ] as const;
 
-const TIMEZONE_OPTIONS = SETTINGS_TIMEZONES.map((tz) => ({
-  value: tz,
-  label: tz.replace(/_/g, " "),
-}));
-
 export function ChurchGeneralForm({
   church,
   canEdit,
@@ -34,11 +35,9 @@ export function ChurchGeneralForm({
   canEdit: boolean;
 }) {
   const timezone = church.timezone || "America/Los_Angeles";
-  const timezoneOptions = TIMEZONE_OPTIONS.some(
-    (option) => option.value === timezone,
-  )
-    ? TIMEZONE_OPTIONS
-    : [{ value: timezone, label: timezone }, ...TIMEZONE_OPTIONS];
+  const [name, setName] = useState(church.name);
+  const [slug, setSlug] = useState(church.slug);
+  const [slugMode, setSlugMode] = useState<OrganizationSlugMode>("manual");
 
   return (
     <SettingsSectionCard
@@ -53,7 +52,11 @@ export function ChurchGeneralForm({
             id="name"
             name="name"
             label="Church name"
-            defaultValue={church.name}
+            value={name}
+            onChange={(value) => {
+              setName(value);
+              setSlug(slugAfterNameChange(slugMode, value, slug));
+            }}
             error={fieldErrors?.name}
           />
           <LabeledInput
@@ -64,13 +67,22 @@ export function ChurchGeneralForm({
             error={fieldErrors?.display_name}
             hint="Optional. Shown when a shorter or public-facing name is preferred."
           />
-          <LabeledInput
+          <SlugField
             id="slug"
             name="slug"
-            label="Church slug"
-            defaultValue={church.slug}
+            help={SLUG_HELP}
+            value={slug}
+            onChange={(value) => {
+              setSlugMode("manual");
+              setSlug(value);
+            }}
             error={fieldErrors?.slug}
-            hint="Changing the slug may affect future public URLs. Use lowercase letters, numbers, and hyphens."
+            showGenerate={slugMode === "manual"}
+            onGenerate={() => {
+              setSlugMode("auto");
+              setSlug(slugifyOrganizationName(name));
+            }}
+            generateLabel="Generate from church name"
           />
           <div className="grid gap-4 sm:grid-cols-2">
             <LabeledInput
@@ -97,13 +109,12 @@ export function ChurchGeneralForm({
             error={fieldErrors?.primary_language}
             options={LANGUAGE_OPTIONS}
           />
-          <LabeledSelect
+          <TimeZoneSelector
             id="timezone"
             name="timezone"
-            label="Time zone"
             defaultValue={timezone}
             error={fieldErrors?.timezone}
-            options={timezoneOptions}
+            help={TIMEZONE_HELP}
             hint="All timestamps in the app (dashboard, incidents, notifications, and more) use this time zone."
           />
           <LabeledSelect

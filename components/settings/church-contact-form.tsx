@@ -6,6 +6,7 @@ import {
 } from "@/components/settings/settings-form-shell";
 import { updateChurchContactSettings } from "@/app/(app)/settings/church/actions";
 import type { ChurchSettingsRecord } from "@/lib/organization/settings";
+import { PHONE_HELP, PRIMARY_EMAIL_HELP } from "@/lib/organization/field-help";
 
 export function ChurchContactForm({
   church,
@@ -31,6 +32,8 @@ export function ChurchContactForm({
               type="email"
               defaultValue={church.primary_email}
               error={fieldErrors?.primary_email}
+              help={PRIMARY_EMAIL_HELP}
+              helpLabel="Primary Email help"
             />
             <LabeledInput
               id="phone"
@@ -39,6 +42,8 @@ export function ChurchContactForm({
               type="tel"
               defaultValue={church.phone}
               error={fieldErrors?.phone}
+              help={PHONE_HELP}
+              helpLabel="Phone help"
             />
           </div>
           <LabeledInput

@@ -18,6 +18,8 @@ import {
   sendTestNotificationEmailAction,
   updateChurchNotificationSettingsAction,
 } from "@/app/(app)/notifications/actions";
+import { TimeZoneSelector } from "@/components/ui/timezone-select";
+import { TIMEZONE_HELP } from "@/lib/organization/field-help";
 
 const initialState: ActionState = {};
 
@@ -181,10 +183,13 @@ export function NotificationSettingsForm({
                     <option value="6">Saturday</option>
                   </select>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="timezone">Timezone</Label>
-                  <Input id="timezone" name="timezone" defaultValue={settings.timezone} />
-                </div>
+                <TimeZoneSelector
+                  id="timezone"
+                  name="timezone"
+                  defaultValue={settings.timezone}
+                  error={state.fieldErrors?.timezone}
+                  help={TIMEZONE_HELP}
+                />
               </div>
 
               <div className="grid gap-3 rounded-md border border-border p-3 sm:grid-cols-2">

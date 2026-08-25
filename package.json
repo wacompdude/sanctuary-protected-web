@@ -19,6 +19,8 @@
     "selfcheck:subscriptions": "npx --yes tsx lib/subscriptions/foundation.selfcheck.ts && npx --yes tsx lib/subscriptions/entitlements.selfcheck.ts && npx --yes tsx lib/subscriptions/feature-access.selfcheck.ts",
     "selfcheck:campuses": "npx --yes tsx lib/campuses/authorization.selfcheck.ts",
     "selfcheck:compat": "npx --yes tsx lib/organization/brand-theme.selfcheck.ts",
+    "selfcheck:onboarding": "npx --yes tsx lib/organization/slug.selfcheck.ts && npx --yes tsx lib/organization/onboarding.selfcheck.ts",
+    "selfcheck:timezones": "npx --yes tsx lib/datetime/timezones.selfcheck.ts",
     "test:e2e": "playwright test",
     "test:e2e:compat": "playwright test e2e/compatibility.spec.ts"
   },

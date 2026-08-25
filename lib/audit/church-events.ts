@@ -21,6 +21,7 @@ export async function auditChurchSettingsUpdated(
       | typeof AuditAction.CHURCH_SETTINGS_SECURITY_UPDATED
       | typeof AuditAction.CHURCH_SETTINGS_PREFERENCES_UPDATED
       | typeof AuditAction.CHURCH_LOGO_UPDATED;
+    metadata?: Record<string, unknown>;
   },
 ) {
   return writeAuditLog(supabase, {
@@ -29,7 +30,7 @@ export async function auditChurchSettingsUpdated(
     action: params.action ?? AuditAction.CHURCH_SETTINGS_UPDATED,
     entityType: AuditEntityType.CHURCH,
     entityId: params.organizationId,
-    metadata: { changed_fields: params.changedFields },
+    metadata: { changed_fields: params.changedFields, ...params.metadata },
     ipAddress: await getRequestIpAddress(),
   });
 }
@@ -168,6 +169,8 @@ export async function auditCampusUpdated(
     userId: string;
     campusId: string;
     changedFields: string[];
+    previousSlug?: string | null;
+    newSlug?: string | null;
   },
 ) {
   return writeAuditLog(supabase, {
@@ -176,7 +179,15 @@ export async function auditCampusUpdated(
     action: AuditAction.CAMPUS_UPDATED,
     entityType: AuditEntityType.CAMPUS,
     entityId: params.campusId,
-    metadata: { changed_fields: params.changedFields },
+    metadata: {
+      changed_fields: params.changedFields,
+      ...(params.previousSlug !== undefined || params.newSlug !== undefined
+        ? {
+            previous_slug: params.previousSlug ?? null,
+            new_slug: params.newSlug ?? null,
+          }
+        : {}),
+    },
     ipAddress: await getRequestIpAddress(),
   });
 }

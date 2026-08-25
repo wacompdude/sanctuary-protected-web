@@ -1984,7 +1984,7 @@ export async function listTemporaryAccessAction() {
         };
       });
 
-    return { success: true, grants: rows };
+    return { success: true, grants: rows, timeZone: membership.church.timezone };
   } catch (error) {
     console.error("Error listing temporary access:", error);
     return { error: error instanceof Error ? error.message : "Unknown error" };

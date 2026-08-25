@@ -18,6 +18,7 @@ import {
 import { auditNotificationTestEmailSent, auditEmailSenderTestFailed, auditEmailSenderTestSent } from "@/lib/audit/notification-events";
 import { writeAuditLog } from "@/lib/audit/log";
 import { AuditAction, AuditEntityType } from "@/lib/audit/actions";
+import { isValidIanaTimeZone } from "@/lib/datetime/timezones";
 
 function readCheckbox(formData: FormData, name: string): boolean {
   return (
@@ -206,6 +207,9 @@ export async function updateMyNotificationPreferencesAction(
       formData.get("digest_frequency") ?? "immediate",
     ).trim();
     const timezone = String(formData.get("timezone") ?? "UTC").trim();
+    if (!isValidIanaTimeZone(timezone)) {
+      return { fieldErrors: { timezone: "Select a valid time zone." } };
+    }
 
     const payload = {
       organization_id: church.id,
@@ -283,6 +287,11 @@ export async function updateChurchNotificationSettingsAction(
       });
     }
 
+    const timezone = String(formData.get("timezone") ?? "UTC").trim();
+    if (!isValidIanaTimeZone(timezone)) {
+      return { fieldErrors: { timezone: "Select a valid time zone." } };
+    }
+
     const patch = {
       email_notifications_enabled: emailEnabled,
       sms_notifications_enabled: smsEnabled,
@@ -298,7 +307,7 @@ export async function updateChurchNotificationSettingsAction(
       weekly_digest_day: Number(formData.get("weekly_digest_day") ?? 1),
       weekly_digest_time:
         String(formData.get("weekly_digest_time") ?? "").trim() || "08:00:00",
-      timezone: String(formData.get("timezone") ?? "UTC").trim(),
+      timezone,
       certification_warning_days: Number(
         formData.get("certification_warning_days") ?? 60,
       ),

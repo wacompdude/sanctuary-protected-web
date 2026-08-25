@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { FieldLabelWithHelp } from "@/components/ui/field-help";
 import {
   Card,
   CardContent,
@@ -95,6 +96,10 @@ export function LabeledInput({
   type = "text",
   placeholder,
   hint,
+  help,
+  helpLabel,
+  value,
+  onChange,
 }: {
   id: string;
   name: string;
@@ -104,20 +109,38 @@ export function LabeledInput({
   type?: string;
   placeholder?: string;
   hint?: string;
+  help?: string;
+  helpLabel?: string;
+  value?: string;
+  onChange?: (next: string) => void;
 }) {
+  const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
+  const controlled = value !== undefined;
+
   return (
     <div className="space-y-2">
-      <Label htmlFor={id}>{label}</Label>
+      {help && helpLabel ? (
+        <FieldLabelWithHelp
+          htmlFor={id}
+          label={label}
+          helpLabel={helpLabel}
+          help={help}
+        />
+      ) : (
+        <Label htmlFor={id}>{label}</Label>
+      )}
       <Input
         id={id}
         name={name}
         type={type}
-        defaultValue={defaultValue ?? ""}
+        value={controlled ? value : undefined}
+        defaultValue={controlled ? undefined : (defaultValue ?? "")}
+        onChange={
+          onChange ? (event) => onChange(event.target.value) : undefined
+        }
         placeholder={placeholder}
         aria-invalid={!!error}
-        aria-describedby={
-          error ? `${id}-error` : hint ? `${id}-hint` : undefined
-        }
+        aria-describedby={describedBy}
       />
       {hint && (
         <p id={`${id}-hint`} className="text-xs text-muted-foreground">

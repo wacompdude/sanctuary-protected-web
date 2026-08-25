@@ -8,6 +8,7 @@ import {
   auditChurchSettingsUpdated,
 } from "@/lib/audit/church-events";
 import type { ActionState } from "@/lib/organization/types";
+import { SLUG_DUPLICATE_MESSAGE } from "@/lib/organization/slug";
 import {
   canManageChurchAccountStatus,
   canManageChurchSettings,
@@ -69,8 +70,10 @@ async function loadChurchRow(
 function safeUpdateError(message: string): string {
   return (
     migrationHintFromError(message) ??
-    (message.includes("churches_slug_key") || message.includes("duplicate key")
-      ? "That slug is already in use. Choose a different one."
+    (message.includes("churches_slug_key") ||
+    message.includes("organizations_slug") ||
+    (/duplicate key/i.test(message) && /slug/i.test(message))
+      ? SLUG_DUPLICATE_MESSAGE
       : message.includes("churches_year_established_check")
         ? "Year established is outside the allowed range."
         : message.includes("churches_primary_brand_color_check") ||
@@ -122,6 +125,12 @@ async function updateChurchSection(params: {
       userId: user.id,
       changedFields,
       action: params.action,
+      metadata: changedFields.includes("slug")
+        ? {
+            previous_slug: params.before.slug ?? null,
+            new_slug: params.patch.slug ?? null,
+          }
+        : undefined,
     });
 
     revalidatePath("/settings/church", "layout");

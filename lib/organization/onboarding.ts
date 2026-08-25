@@ -1,7 +1,15 @@
 import type { ActionState } from "@/lib/organization/types";
+import {
+  isValidOrganizationSlug,
+  slugifyOrganizationName,
+  SLUG_FORMAT_MESSAGE,
+  SLUG_REQUIRED_MESSAGE,
+} from "@/lib/organization/slug";
+import { isValidIanaTimeZone } from "@/lib/datetime/timezones";
 
 export type ChurchOnboardingInput = {
   name: string;
+  slug: string;
   primary_email: string;
   phone: string;
   address_line_1: string;
@@ -21,6 +29,8 @@ export function validateChurchOnboarding(
   const fieldErrors: Record<string, string> = {};
 
   const name = String(formData.get("name") ?? "").trim();
+  const slugRaw = String(formData.get("slug") ?? "").trim().toLowerCase();
+  const slug = slugRaw || slugifyOrganizationName(name);
   const primary_email = String(formData.get("primary_email") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
   const address_line_1 = String(formData.get("address_line_1") ?? "").trim();
@@ -34,6 +44,11 @@ export function validateChurchOnboarding(
   if (!name) fieldErrors.name = "Church name is required.";
   else if (name.length > 200) fieldErrors.name = "Church name is too long.";
 
+  if (!slug) fieldErrors.slug = SLUG_REQUIRED_MESSAGE;
+  else if (!isValidOrganizationSlug(slug)) {
+    fieldErrors.slug = SLUG_FORMAT_MESSAGE;
+  }
+
   if (!primary_email) fieldErrors.primary_email = "Primary email is required.";
   else if (!EMAIL_PATTERN.test(primary_email)) {
     fieldErrors.primary_email = "Enter a valid email address.";
@@ -45,6 +60,9 @@ export function validateChurchOnboarding(
   if (!state) fieldErrors.state = "State is required.";
   if (!postal_code) fieldErrors.postal_code = "Postal code is required.";
   if (!timezone) fieldErrors.timezone = "Time zone is required.";
+  else if (!isValidIanaTimeZone(timezone)) {
+    fieldErrors.timezone = "Select a valid time zone.";
+  }
   if (!campus_name) fieldErrors.campus_name = "Primary campus name is required.";
 
   if (Object.keys(fieldErrors).length > 0) {
@@ -54,6 +72,7 @@ export function validateChurchOnboarding(
   return {
     data: {
       name,
+      slug,
       primary_email,
       phone,
       address_line_1,
@@ -66,15 +85,3 @@ export function validateChurchOnboarding(
     },
   };
 }
-
-/** Common US-focused time zones for the onboarding select. */
-export const ONBOARDING_TIMEZONES = [
-  "America/New_York",
-  "America/Chicago",
-  "America/Denver",
-  "America/Los_Angeles",
-  "America/Phoenix",
-  "America/Anchorage",
-  "Pacific/Honolulu",
-  "America/Puerto_Rico",
-] as const;

@@ -29,6 +29,11 @@ import {
   type ChurchUserOption,
   type PermissionOption,
 } from "@/app/(app)/settings/security/actions";
+import {
+  formatChurchDateTime,
+  parseChurchDateTimeLocal,
+} from "@/lib/datetime/format";
+import { toChurchDateTimeLocalValue } from "@/lib/schedule/datetime";
 
 type GrantFormState = {
   userId: string;
@@ -50,16 +55,23 @@ const EMPTY_FORM: GrantFormState = {
   reason: "",
 };
 
-function splitIso(value: string | null | undefined): { date: string; time: string } {
-  if (!value) return { date: "", time: "00:00" };
-  const local = new Date(value);
-  if (Number.isNaN(local.getTime())) return { date: "", time: "00:00" };
-  const date = local.toISOString().slice(0, 10);
-  // Prefer local wall-clock for editing in the browser timezone.
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const localDate = `${local.getFullYear()}-${pad(local.getMonth() + 1)}-${pad(local.getDate())}`;
-  const localTime = `${pad(local.getHours())}:${pad(local.getMinutes())}`;
-  return { date: localDate || date, time: localTime };
+function splitIso(
+  value: string | null | undefined,
+  timeZone: string,
+): { date: string; time: string } {
+  const local = toChurchDateTimeLocalValue(value, timeZone);
+  if (!local) return { date: "", time: "00:00" };
+  const [date, time] = local.split("T");
+  return { date: date || "", time: time || "00:00" };
+}
+
+function toIso(date: string, time: string, timeZone: string) {
+  if (!date) return undefined;
+  const parsed = parseChurchDateTimeLocal(
+    `${date}T${time || "00:00"}`,
+    timeZone,
+  );
+  return parsed?.toISOString();
 }
 
 export function TemporaryAccessTab() {
@@ -72,6 +84,7 @@ export function TemporaryAccessTab() {
   const [editingGrantId, setEditingGrantId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState<GrantFormState>(EMPTY_FORM);
+  const [timeZone, setTimeZone] = useState("America/Los_Angeles");
 
   useEffect(() => {
     void loadData();
@@ -101,6 +114,7 @@ export function TemporaryAccessTab() {
       }
 
       setGrants(grantsResult.grants || []);
+      if (grantsResult.timeZone) setTimeZone(grantsResult.timeZone);
       setUsers(usersResult.users || []);
       setCatalog(catalogResult.permissions || []);
     } catch (err) {
@@ -109,11 +123,6 @@ export function TemporaryAccessTab() {
     } finally {
       setLoading(false);
     }
-  }
-
-  function toIso(date: string, time: string) {
-    if (!date) return undefined;
-    return new Date(`${date}T${time || "00:00"}:00`).toISOString();
   }
 
   function resetForm() {
@@ -130,8 +139,8 @@ export function TemporaryAccessTab() {
   }
 
   function startEdit(grant: TemporaryGrantRow) {
-    const effective = splitIso(grant.effectiveAt);
-    const expires = splitIso(grant.expiresAt);
+    const effective = splitIso(grant.effectiveAt, timeZone);
+    const expires = splitIso(grant.expiresAt, timeZone);
     setEditingGrantId(grant.id);
     setFormData({
       userId: grant.userId,
@@ -166,8 +175,8 @@ export function TemporaryAccessTab() {
           permissionId: editingGrantId,
           permissionDefinitionId: formData.permissionDefinitionId,
           effect: "grant",
-          effectiveAt: toIso(formData.effectiveDate, formData.effectiveTime) ?? null,
-          expiresAt: toIso(formData.expiresDate, formData.expiresTime),
+          effectiveAt: toIso(formData.effectiveDate, formData.effectiveTime, timeZone) ?? null,
+          expiresAt: toIso(formData.expiresDate, formData.expiresTime, timeZone),
           reason: formData.reason.trim() || null,
         });
         if (result.error) {
@@ -179,8 +188,8 @@ export function TemporaryAccessTab() {
           userId: formData.userId,
           permissionDefinitionId: formData.permissionDefinitionId,
           effect: "grant",
-          effectiveAt: toIso(formData.effectiveDate, formData.effectiveTime),
-          expiresAt: toIso(formData.expiresDate, formData.expiresTime),
+          effectiveAt: toIso(formData.effectiveDate, formData.effectiveTime, timeZone),
+          expiresAt: toIso(formData.expiresDate, formData.expiresTime, timeZone),
           reason: formData.reason.trim() || undefined,
         });
         if (result.error) {
@@ -333,7 +342,10 @@ export function TemporaryAccessTab() {
               </div>
 
               <div>
-                <p className="text-sm font-medium mb-3">Access Period *</p>
+                <p className="text-sm font-medium mb-1">Access Period *</p>
+                <p className="mb-3 text-xs text-muted-foreground">
+                  Times use the church time zone ({timeZone}).
+                </p>
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">
@@ -458,12 +470,12 @@ export function TemporaryAccessTab() {
                           <span className="flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
                             Effective:{" "}
-                            {new Date(grant.effectiveAt).toLocaleString()}
+                            {formatChurchDateTime(grant.effectiveAt, { timeZone })}
                           </span>
                         )}
                         <span className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
-                          Expires: {new Date(grant.expiresAt).toLocaleString()}
+                          Expires: {formatChurchDateTime(grant.expiresAt, { timeZone })}
                         </span>
                       </div>
                       {grant.reason ? (

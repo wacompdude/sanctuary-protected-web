@@ -7,6 +7,7 @@ import { writeActiveChurchCookie } from "@/lib/organization/cookie";
 import { setActiveChurchForUser } from "@/lib/organization/context";
 import type { ActionState } from "@/lib/organization/types";
 import { validateChurchOnboarding } from "@/lib/organization/onboarding";
+import { SLUG_DUPLICATE_MESSAGE } from "@/lib/organization/slug";
 import { isServiceRoleConfigured } from "@/lib/supabase/admin";
 import { ensureChurchSubscription } from "@/lib/subscriptions/mutations";
 
@@ -30,7 +31,7 @@ export async function createChurchOnboarding(
     return { error: "You must be signed in to create a church." };
   }
 
-  const { data, error } = await supabase.rpc("create_organization_with_owner", {
+  const rpcArgs = {
     p_name: input.name,
     p_primary_email: input.primary_email,
     p_phone: input.phone,
@@ -41,7 +42,24 @@ export async function createChurchOnboarding(
     p_postal_code: input.postal_code,
     p_timezone: input.timezone,
     p_campus_name: input.campus_name,
-  });
+    p_slug: input.slug,
+  };
+
+  let { data, error } = await supabase.rpc(
+    "create_organization_with_owner",
+    rpcArgs,
+  );
+
+  if (
+    error &&
+    /PGRST202|schema cache|could not find the function/i.test(error.message)
+  ) {
+    const { p_slug: _omitted, ...legacyArgs } = rpcArgs;
+    ({ data, error } = await supabase.rpc(
+      "create_organization_with_owner",
+      legacyArgs,
+    ));
+  }
 
   if (error) {
     const message = error.message || "Unable to create your church.";
@@ -49,15 +67,29 @@ export async function createChurchOnboarding(
       return { error: "You must be signed in to create a church." };
     }
     if (message.includes("VALIDATION:")) {
-      return { error: message.replace(/^.*VALIDATION:\s*/i, "") };
+      const text = message.replace(/^.*VALIDATION:\s*/i, "");
+      if (/slug/i.test(text)) {
+        return {
+          fieldErrors: {
+            slug: /already in use/i.test(text) ? SLUG_DUPLICATE_MESSAGE : text,
+          },
+        };
+      }
+      return { error: text };
     }
     if (
       message.toLowerCase().includes("duplicate") &&
       message.toLowerCase().includes("slug")
     ) {
       return {
-        error:
-          "That church name produces a slug that is already taken. Try a different name.",
+        fieldErrors: {
+          slug: SLUG_DUPLICATE_MESSAGE,
+        },
+      };
+    }
+    if (message.toLowerCase().includes("already in use")) {
+      return {
+        fieldErrors: { slug: SLUG_DUPLICATE_MESSAGE },
       };
     }
     if (message.includes("FORBIDDEN: cannot create your own membership")) {

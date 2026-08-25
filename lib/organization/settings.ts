@@ -1,6 +1,7 @@
 import type { ActionState, ChurchStatus, MembershipRole } from "@/lib/organization/types";
 import { isOwnershipRole } from "@/lib/organization/types";
-import { ONBOARDING_TIMEZONES } from "@/lib/organization/onboarding";
+import { isValidOrganizationSlug, SLUG_FORMAT_MESSAGE, SLUG_REQUIRED_MESSAGE } from "@/lib/organization/slug";
+import { parseTimeZoneInput } from "@/lib/datetime/timezones";
 import { normalizeHexColor } from "@/lib/dashboard/colors";
 
 export const CHURCH_SETTINGS_VIEW_ROLES: MembershipRole[] = [
@@ -27,8 +28,6 @@ export function canManageChurchSettings(role: MembershipRole): boolean {
 export function canManageChurchAccountStatus(role: MembershipRole): boolean {
   return isOwnershipRole(role);
 }
-
-export const SETTINGS_TIMEZONES = ONBOARDING_TIMEZONES;
 
 export const DATE_FORMAT_OPTIONS = [
   { value: "MM/DD/YYYY", label: "MM/DD/YYYY" },
@@ -179,7 +178,6 @@ export const CHURCH_SETTINGS_SELECT = [
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const URL_PATTERN = /^https?:\/\/.+/i;
-const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const PHONE_MAX = 40;
 
 function emptyToNull(value: string): string | null {
@@ -295,21 +293,12 @@ function parseTimezoneField(
   formData: FormData,
   fieldErrors: Record<string, string>,
 ): string {
-  const timezone =
-    emptyToNull(readString(formData, "timezone")) ?? "America/Los_Angeles";
-
-  if (
-    !(SETTINGS_TIMEZONES as readonly string[]).includes(timezone) &&
-    timezone !== "America/Los_Angeles"
-  ) {
-    // Allow saved values outside the curated list if already present, but reject
-    // unknown newly submitted ones that are clearly invalid.
-    if (!/^[A-Za-z_]+\/[A-Za-z0-9_+\-]+$/.test(timezone)) {
-      fieldErrors.timezone = "Select a valid time zone.";
-    }
-  }
-
-  return timezone;
+  return parseTimeZoneInput(
+    readString(formData, "timezone"),
+    fieldErrors,
+    "timezone",
+    true,
+  ) || "America/Los_Angeles";
 }
 
 export function validateGeneralSettings(
@@ -341,12 +330,9 @@ export function validateGeneralSettings(
   if (!name) fieldErrors.name = "Church name is required.";
   else if (name.length > 200) fieldErrors.name = "Church name is too long.";
 
-  if (!slug) fieldErrors.slug = "Slug is required.";
-  else if (!SLUG_PATTERN.test(slug)) {
-    fieldErrors.slug =
-      "Use lowercase letters, numbers, and hyphens only (e.g. grace-community).";
-  } else if (slug.length > 80) {
-    fieldErrors.slug = "Slug is too long.";
+  if (!slug) fieldErrors.slug = SLUG_REQUIRED_MESSAGE;
+  else if (!isValidOrganizationSlug(slug)) {
+    fieldErrors.slug = SLUG_FORMAT_MESSAGE;
   }
 
   if (description && description.length > 4000) {

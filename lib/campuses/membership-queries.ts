@@ -4,7 +4,6 @@ import {
   campusMigrationHintFromError,
 } from "@/lib/campuses/constants";
 import {
-  canManageCampusMembershipsByCampusRole,
   canManageCampusMembershipsByChurchRole,
   hasImplicitAllCampusAccess,
 } from "@/lib/campuses/permissions";
@@ -166,15 +165,49 @@ export async function canActorManageCampusMemberships(params: {
   userId: string;
   churchRole: MembershipRole;
 }): Promise<boolean> {
-  if (canManageCampusMembershipsByChurchRole(params.churchRole)) {
-    return true;
-  }
+  const { canManageCampus } = await import("@/lib/campuses/authorization");
+  const { createAdminClient, isServiceRoleConfigured } = await import(
+    "@/lib/supabase/admin"
+  );
   const own = await getActorCampusMembership(
     params.organizationId,
     params.campusId,
     params.userId,
   );
-  return canManageCampusMembershipsByCampusRole(own?.campus_role);
+  try {
+    const admin = isServiceRoleConfigured() ? createAdminClient() : undefined;
+    const result = await canManageCampus({
+      admin,
+      actorUserId: params.userId,
+      organizationId: params.organizationId,
+      campusId: params.campusId,
+      churchRole: params.churchRole,
+      campusRole: own?.campus_role,
+      action: "members.manage",
+    });
+    if (result.allowed) return true;
+    const add = await canManageCampus({
+      admin,
+      actorUserId: params.userId,
+      organizationId: params.organizationId,
+      campusId: params.campusId,
+      churchRole: params.churchRole,
+      campusRole: own?.campus_role,
+      action: "members.add",
+    });
+    const remove = await canManageCampus({
+      admin,
+      actorUserId: params.userId,
+      organizationId: params.organizationId,
+      campusId: params.campusId,
+      churchRole: params.churchRole,
+      campusRole: own?.campus_role,
+      action: "members.remove",
+    });
+    return add.allowed || remove.allowed;
+  } catch {
+    return canManageCampusMembershipsByChurchRole(params.churchRole);
+  }
 }
 
 export async function listOwnCampusMemberships(

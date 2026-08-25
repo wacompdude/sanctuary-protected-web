@@ -25,6 +25,9 @@ import {
   updateSecurityGroup,
   addUserToSecurityGroup,
   removeUserFromSecurityGroup,
+  updateSecurityGroupMember,
+  getSecurityGroupMemberById,
+  countSecurityGroupMembers,
   getSecurityGroup,
   getSecurityGroupMembers,
   listSecurityGroups,
@@ -49,6 +52,9 @@ import {
   logSecurityGroupUpdated,
   logSecurityGroupMemberAdded,
   logSecurityGroupMemberRemoved,
+  logSecurityGroupMemberUpdated,
+  logSecurityGroupMemberExtended,
+  logSecurityGroupMemberRevoked,
   logUserPermissionGranted,
   logUserPermissionDenied,
   logUserPermissionRevoked,
@@ -76,6 +82,19 @@ import type {
   SecurityAuditEventType,
   SecurityGroup,
 } from "@/lib/security/types";
+import {
+  assertActiveMembershipAssignment,
+  assertGroupInOrganization,
+  assertHighRiskReason,
+  assertNotSelfElevation,
+  enrichGroupMemberRows,
+  parseAssignmentInput,
+  previewGroupMemberRemovalImpact,
+  loadGroupMemberForMutation,
+  type EnrichedGroupMemberRow,
+} from "@/lib/security/group-member-service";
+import { resolveAuditPeopleByIds } from "@/lib/audit/resolve-people";
+import type { ComputedAssignmentStatus } from "@/lib/security/group-member-utils";
 
 export interface CreateSecurityGroupInput {
   name: string;
@@ -90,15 +109,29 @@ export interface ChurchUserOption {
   role: string;
 }
 
-export interface GroupMemberRow {
-  membershipId: string;
-  userId: string;
-  name: string;
-  email: string | null;
-  role: string;
-  assignedAt: string;
-  effectiveAt: string | null;
-  expiresAt: string | null;
+export interface GroupMemberRow extends EnrichedGroupMemberRow {}
+
+export interface SecurityGroupListRow extends SecurityGroup {
+  memberCount: number;
+  activeMemberCount: number;
+  permissionCount: number;
+  temporaryAssignmentCount: number;
+  expiringSoonCount: number;
+}
+
+export interface GroupMemberSummary {
+  total: number;
+  active: number;
+  scheduled: number;
+  temporary: number;
+  expiringSoon: number;
+  expired: number;
+  revoked: number;
+}
+
+export interface EligibleMemberOption extends ChurchUserOption {
+  alreadyAssigned: boolean;
+  primaryCampusName: string | null;
 }
 
 export interface PermissionOption {
@@ -223,12 +256,46 @@ export async function listSecurityGroupsAction() {
     const { membership } = await getActiveChurch();
     const admin = createAdminClient();
 
-    // Check permissions
     await requireMinChurchRole("security_leader");
 
-    const groups = await listSecurityGroups(admin, membership.organization_id);
+    const groups = await listSecurityGroups(admin, membership.organization_id, false);
+    const counts = await countSecurityGroupMembers(
+      admin,
+      groups.map((group) => group.id),
+    );
 
-    return { success: true, groups };
+    const rows: SecurityGroupListRow[] = await Promise.all(
+      groups.map(async (group) => {
+        const memberStats = counts.get(group.id) ?? { total: 0, active: 0 };
+        const permissions = await getSecurityGroupPermissions(admin, group.id);
+        const members = await getSecurityGroupMembers(admin, group.id, true);
+        const { computeAssignmentStatus } = await import(
+          "@/lib/security/group-member-utils"
+        );
+        let temporaryAssignmentCount = 0;
+        let expiringSoonCount = 0;
+        for (const member of members) {
+          if (member.expires_at) temporaryAssignmentCount += 1;
+          const status = computeAssignmentStatus({
+            status: member.status,
+            effectiveAt: member.effective_at,
+            expiresAt: member.expires_at,
+          });
+          if (status === "expiring_soon") expiringSoonCount += 1;
+        }
+
+        return {
+          ...group,
+          memberCount: memberStats.total,
+          activeMemberCount: memberStats.active,
+          permissionCount: permissions.length,
+          temporaryAssignmentCount,
+          expiringSoonCount,
+        };
+      }),
+    );
+
+    return { success: true, groups: rows };
   } catch (error) {
     console.error("Error listing security groups:", error);
     return { error: error instanceof Error ? error.message : "Unknown error" };
@@ -282,46 +349,312 @@ export async function listChurchUsersForSecurityAction() {
   }
 }
 
-export async function listSecurityGroupMembersAction(groupId: string) {
+async function loadGroupMemberContext(organizationId: string) {
+  const [churchMembers, campusesResult, peopleById] = await Promise.all([
+    listChurchTeamMemberships(organizationId),
+    listCampusesForSecurityAction(),
+    Promise.resolve(new Map<string, { name: string; label: string }>()),
+  ]);
+
+  const teamByUserId = new Map(
+    churchMembers.map((member) => [
+      member.userId,
+      {
+        name: member.name,
+        email: member.email,
+        role: member.role,
+        avatarUrl: member.avatarUrl,
+      },
+    ]),
+  );
+
+  const campusById = new Map(
+    (campusesResult.campuses ?? []).map((campus) => [campus.id, campus.name]),
+  );
+
+  return { churchMembers, teamByUserId, campusById, peopleById };
+}
+
+function summarizeGroupMembers(rows: GroupMemberRow[]): GroupMemberSummary {
+  const summary: GroupMemberSummary = {
+    total: rows.length,
+    active: 0,
+    scheduled: 0,
+    temporary: 0,
+    expiringSoon: 0,
+    expired: 0,
+    revoked: 0,
+  };
+
+  for (const row of rows) {
+    switch (row.assignmentStatus) {
+      case "active":
+        summary.active += 1;
+        break;
+      case "scheduled":
+        summary.scheduled += 1;
+        break;
+      case "expiring_soon":
+        summary.expiringSoon += 1;
+        summary.active += 1;
+        break;
+      case "expired":
+        summary.expired += 1;
+        break;
+      case "revoked":
+      case "cancelled":
+        summary.revoked += 1;
+        break;
+      default:
+        break;
+    }
+    if (row.isTemporary) summary.temporary += 1;
+  }
+
+  return summary;
+}
+
+export async function getSecurityGroupDetailAction(groupId: string) {
+  try {
+    await requireMinChurchRole("security_leader");
+    const { membership } = await getActiveChurch();
+    const admin = createAdminClient();
+    const group = await assertGroupInOrganization(
+      admin,
+      groupId,
+      membership.organization_id,
+    );
+    const permissions = await getSecurityGroupPermissions(admin, groupId);
+    const members = await getSecurityGroupMembers(admin, groupId, false);
+    const { loadHiddenPlatformOperatorUserIds } = await import(
+      "@/lib/platform/hidden-from-church"
+    );
+    const hiddenUserIds = await loadHiddenPlatformOperatorUserIds();
+    const visibleMembers = members.filter(
+      (member) => !hiddenUserIds.has(member.user_id),
+    );
+    const actorIds = [
+      ...new Set(
+        visibleMembers.flatMap((member) => [member.assigned_by, member.user_id]),
+      ),
+    ];
+    const peopleById = await resolveAuditPeopleByIds(actorIds);
+    const { teamByUserId, campusById } = await loadGroupMemberContext(
+      membership.organization_id,
+    );
+    const rows = await enrichGroupMemberRows({
+      members: visibleMembers,
+      teamByUserId,
+      campusById,
+      peopleById,
+    });
+
+    return {
+      success: true,
+      group,
+      permissionCount: permissions.length,
+      summary: summarizeGroupMembers(rows),
+    };
+  } catch (error) {
+    console.error("Error loading security group detail:", error);
+    return { error: error instanceof Error ? error.message : "Unknown error" };
+  }
+}
+
+export async function listSecurityGroupMembersAction(
+  groupId: string,
+  options?: { includeInactive?: boolean },
+) {
   try {
     await requireMinChurchRole("security_leader");
     const { membership } = await getActiveChurch();
     const admin = createAdminClient();
 
-    const group = await getSecurityGroup(admin, groupId);
-    if (!group || group.organization_id !== membership.organization_id) {
-      return { error: "Security group not found" };
-    }
+    await assertGroupInOrganization(admin, groupId, membership.organization_id);
 
-    const members = await getSecurityGroupMembers(admin, groupId, true);
-    const churchMembers = await listChurchTeamMemberships(membership.organization_id);
-    const byUserId = new Map(churchMembers.map((m) => [m.userId, m]));
+    const members = await getSecurityGroupMembers(
+      admin,
+      groupId,
+      !options?.includeInactive,
+    );
     const { loadHiddenPlatformOperatorUserIds } = await import(
       "@/lib/platform/hidden-from-church"
     );
     const hiddenUserIds = await loadHiddenPlatformOperatorUserIds();
+    const visibleMembers = members.filter(
+      (member) => !hiddenUserIds.has(member.user_id),
+    );
+    const actorIds = [
+      ...new Set(
+        visibleMembers.flatMap((member) => [member.assigned_by, member.user_id]),
+      ),
+    ];
+    const peopleById = await resolveAuditPeopleByIds(actorIds);
+    const { teamByUserId, campusById } = await loadGroupMemberContext(
+      membership.organization_id,
+    );
 
-    const rows: GroupMemberRow[] = members
-      .filter((member) => !hiddenUserIds.has(member.user_id))
-      .map((member) => {
-      const profile = byUserId.get(member.user_id);
-      return {
-        membershipId: member.id,
-        userId: member.user_id,
-        name: profile?.name || "Unknown user",
-        email: profile?.email || null,
-        role: profile?.role || "unknown",
-        assignedAt: member.assigned_at,
-        effectiveAt: member.effective_at,
-        expiresAt: member.expires_at,
-      };
+    const rows = await enrichGroupMemberRows({
+      members: visibleMembers,
+      teamByUserId,
+      campusById,
+      peopleById,
     });
 
-    return { success: true, members: rows };
+    return {
+      success: true,
+      members: rows,
+      summary: summarizeGroupMembers(rows),
+    };
   } catch (error) {
     console.error("Error listing group members:", error);
     return { error: error instanceof Error ? error.message : "Unknown error" };
   }
+}
+
+export async function searchEligibleGroupMembersAction(input: {
+  groupId: string;
+  query?: string;
+  campusId?: string;
+  role?: string;
+  limit?: number;
+}) {
+  try {
+    await requireMinChurchRole("administrator");
+    const { membership } = await getActiveChurch();
+    const admin = createAdminClient();
+    await assertGroupInOrganization(
+      admin,
+      input.groupId,
+      membership.organization_id,
+    );
+
+    const [churchMembers, campusesResult, assigned] = await Promise.all([
+      listChurchTeamMemberships(membership.organization_id),
+      listCampusesForSecurityAction(),
+      getSecurityGroupMembers(admin, input.groupId, true),
+    ]);
+    const assignedIds = new Set(assigned.map((row) => row.user_id));
+    const campusById = new Map(
+      (campusesResult.campuses ?? []).map((campus) => [campus.id, campus.name]),
+    );
+    const query = input.query?.trim().toLowerCase() ?? "";
+    const limit = Math.min(input.limit ?? 50, 100);
+
+    const users: EligibleMemberOption[] = churchMembers
+      .filter((member) => member.status === "active")
+      .filter((member) => {
+        if (input.role && member.role !== input.role) return false;
+        if (!query) return true;
+        return (
+          member.name.toLowerCase().includes(query) ||
+          (member.email ?? "").toLowerCase().includes(query)
+        );
+      })
+      .slice(0, limit)
+      .map((member) => ({
+        userId: member.userId,
+        name: member.name,
+        email: member.email,
+        role: member.role,
+        alreadyAssigned: assignedIds.has(member.userId),
+        primaryCampusName: null,
+      }));
+
+    return { success: true, users };
+  } catch (error) {
+    console.error("Error searching eligible members:", error);
+    return { error: error instanceof Error ? error.message : "Unknown error" };
+  }
+}
+
+async function assignUsersToSecurityGroup(params: {
+  admin: ReturnType<typeof createAdminClient>;
+  actorUserId: string;
+  organizationId: string;
+  group: SecurityGroup;
+  userIds: string[];
+  effectiveAt?: string | null;
+  expiresAt?: string | null;
+  campusId?: string | null;
+  scopeType?: PermissionScopeType;
+  assignmentReason?: string | null;
+  administrativeNotes?: string | null;
+}) {
+  const parsed = parseAssignmentInput({
+    effectiveAt: params.effectiveAt,
+    expiresAt: params.expiresAt,
+  });
+  if (parsed.error) {
+    throw new Error(parsed.error);
+  }
+
+  assertHighRiskReason(params.group, params.assignmentReason);
+  assertNotSelfElevation(params.actorUserId, params.userIds, params.group);
+
+  const churchMembers = await listChurchTeamMemberships(params.organizationId);
+  const activeIds = new Set(
+    churchMembers.filter((member) => member.status === "active").map((m) => m.userId),
+  );
+
+  const results: Array<{ userId: string; ok: boolean; error?: string; membershipId?: string }> =
+    [];
+
+  for (const userId of params.userIds) {
+    if (!activeIds.has(userId)) {
+      results.push({
+        userId,
+        ok: false,
+        error: "User is not an active member of this church",
+      });
+      continue;
+    }
+
+    try {
+      await assertActiveMembershipAssignment(params.admin, params.group.id, userId);
+    } catch (error) {
+      results.push({
+        userId,
+        ok: false,
+        error: error instanceof Error ? error.message : "Already assigned",
+      });
+      continue;
+    }
+
+    const member = await addUserToSecurityGroup(
+      params.admin,
+      params.group.id,
+      userId,
+      params.actorUserId,
+      {
+        organizationId: params.organizationId,
+        effectiveAt: parsed.effectiveAt,
+        expiresAt: parsed.expiresAt,
+        campusId: params.campusId ?? null,
+        scopeType: params.scopeType ?? "all_current_future_campuses",
+        assignmentReason: params.assignmentReason ?? null,
+        administrativeNotes: params.administrativeNotes ?? null,
+      },
+    );
+
+    if (!member) {
+      results.push({ userId, ok: false, error: "Failed to create assignment" });
+      continue;
+    }
+
+    await logSecurityGroupMemberAdded(
+      params.admin,
+      params.organizationId,
+      params.group.id,
+      userId,
+      params.actorUserId,
+      params.assignmentReason ?? undefined,
+    );
+
+    results.push({ userId, ok: true, membershipId: member.id });
+  }
+
+  return results;
 }
 
 export async function addSecurityGroupMemberAction(input: {
@@ -329,63 +662,109 @@ export async function addSecurityGroupMemberAction(input: {
   userId: string;
   effectiveAt?: string;
   expiresAt?: string;
+  campusId?: string | null;
+  scopeType?: PermissionScopeType;
+  assignmentReason?: string;
+  administrativeNotes?: string;
 }) {
   try {
     const supabase = await createClient();
     const admin = createAdminClient();
-
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) {
-      return { error: "Not authenticated" };
-    }
+    if (!user) return { error: "Not authenticated" };
 
     await requireMinChurchRole("administrator");
     const { membership } = await getActiveChurch();
-
-    const group = await getSecurityGroup(admin, input.groupId);
-    if (!group || group.organization_id !== membership.organization_id) {
-      return { error: "Security group not found" };
-    }
-
-    const churchMembers = await listChurchTeamMemberships(membership.organization_id);
-    const target = churchMembers.find(
-      (m) => m.userId === input.userId && m.status === "active",
-    );
-    if (!target) {
-      return { error: "Selected user is not an active member of this church" };
-    }
-
-    const existing = await getSecurityGroupMembers(admin, input.groupId, true);
-    if (existing.some((m) => m.user_id === input.userId)) {
-      return { error: "User is already a member of this group" };
-    }
-
-    const member = await addUserToSecurityGroup(
+    const group = await assertGroupInOrganization(
       admin,
       input.groupId,
-      input.userId,
-      user.id,
-      input.effectiveAt,
-      input.expiresAt,
-    );
-
-    if (!member) {
-      return { error: "Failed to add user to security group" };
-    }
-
-    await logSecurityGroupMemberAdded(
-      admin,
       membership.organization_id,
-      input.groupId,
-      input.userId,
-      user.id,
     );
 
-    return { success: true, membershipId: member.id };
+    const results = await assignUsersToSecurityGroup({
+      admin,
+      actorUserId: user.id,
+      organizationId: membership.organization_id,
+      group,
+      userIds: [input.userId],
+      effectiveAt: input.effectiveAt ?? null,
+      expiresAt: input.expiresAt ?? null,
+      campusId: input.campusId ?? null,
+      scopeType: input.scopeType,
+      assignmentReason: input.assignmentReason ?? null,
+      administrativeNotes: input.administrativeNotes ?? null,
+    });
+
+    const result = results[0];
+    if (!result?.ok) {
+      return { error: result?.error ?? "Failed to add member" };
+    }
+
+    return { success: true, membershipId: result.membershipId };
   } catch (error) {
     console.error("Error adding group member:", error);
+    return { error: error instanceof Error ? error.message : "Unknown error" };
+  }
+}
+
+export async function bulkAddSecurityGroupMembersAction(input: {
+  groupId: string;
+  userIds: string[];
+  effectiveAt?: string | null;
+  expiresAt?: string | null;
+  campusId?: string | null;
+  scopeType?: PermissionScopeType;
+  assignmentReason?: string | null;
+  administrativeNotes?: string | null;
+}) {
+  try {
+    const supabase = await createClient();
+    const admin = createAdminClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { error: "Not authenticated" };
+
+    await requireMinChurchRole("administrator");
+    const { membership } = await getActiveChurch();
+    const group = await assertGroupInOrganization(
+      admin,
+      input.groupId,
+      membership.organization_id,
+    );
+
+    const uniqueUserIds = [...new Set(input.userIds.filter(Boolean))];
+    if (uniqueUserIds.length === 0) {
+      return { error: "Select at least one member" };
+    }
+
+    const results = await assignUsersToSecurityGroup({
+      admin,
+      actorUserId: user.id,
+      organizationId: membership.organization_id,
+      group,
+      userIds: uniqueUserIds,
+      effectiveAt: input.effectiveAt,
+      expiresAt: input.expiresAt,
+      campusId: input.campusId,
+      scopeType: input.scopeType,
+      assignmentReason: input.assignmentReason,
+      administrativeNotes: input.administrativeNotes,
+    });
+
+    const added = results.filter((row) => row.ok);
+    const failed = results.filter((row) => !row.ok);
+
+    return {
+      success: added.length > 0,
+      addedCount: added.length,
+      failedCount: failed.length,
+      results,
+    };
+  } catch (error) {
+    console.error("Error bulk adding group members:", error);
     return { error: error instanceof Error ? error.message : "Unknown error" };
   }
 }
@@ -394,30 +773,29 @@ export async function removeSecurityGroupMemberAction(input: {
   groupId: string;
   membershipId: string;
   userId: string;
+  reason?: string;
 }) {
   try {
     const supabase = await createClient();
     const admin = createAdminClient();
-
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) {
-      return { error: "Not authenticated" };
-    }
+    if (!user) return { error: "Not authenticated" };
 
     await requireMinChurchRole("administrator");
     const { membership } = await getActiveChurch();
-
-    const group = await getSecurityGroup(admin, input.groupId);
-    if (!group || group.organization_id !== membership.organization_id) {
-      return { error: "Security group not found" };
-    }
+    await assertGroupInOrganization(
+      admin,
+      input.groupId,
+      membership.organization_id,
+    );
 
     const removed = await removeUserFromSecurityGroup(
       admin,
       input.membershipId,
       user.id,
+      input.reason ?? null,
     );
 
     if (!removed) {
@@ -430,11 +808,293 @@ export async function removeSecurityGroupMemberAction(input: {
       input.groupId,
       input.userId,
       user.id,
+      input.reason,
     );
 
     return { success: true };
   } catch (error) {
     console.error("Error removing group member:", error);
+    return { error: error instanceof Error ? error.message : "Unknown error" };
+  }
+}
+
+export async function bulkRemoveSecurityGroupMembersAction(input: {
+  groupId: string;
+  membershipIds: string[];
+  reason?: string;
+}) {
+  try {
+    const supabase = await createClient();
+    const admin = createAdminClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { error: "Not authenticated" };
+
+    await requireMinChurchRole("administrator");
+    const { membership } = await getActiveChurch();
+    await assertGroupInOrganization(
+      admin,
+      input.groupId,
+      membership.organization_id,
+    );
+
+    let removedCount = 0;
+    for (const membershipId of input.membershipIds) {
+      const row = await getSecurityGroupMemberById(
+        admin,
+        membershipId,
+        membership.organization_id,
+      );
+      if (!row || row.security_group_id !== input.groupId || row.status !== "active") {
+        continue;
+      }
+      const removed = await removeUserFromSecurityGroup(
+        admin,
+        membershipId,
+        user.id,
+        input.reason ?? null,
+      );
+      if (!removed) continue;
+      removedCount += 1;
+      await logSecurityGroupMemberRemoved(
+        admin,
+        membership.organization_id,
+        input.groupId,
+        row.user_id,
+        user.id,
+        input.reason,
+      );
+    }
+
+    return { success: removedCount > 0, removedCount };
+  } catch (error) {
+    console.error("Error bulk removing group members:", error);
+    return { error: error instanceof Error ? error.message : "Unknown error" };
+  }
+}
+
+export async function updateSecurityGroupMemberAction(input: {
+  groupId: string;
+  membershipId: string;
+  effectiveAt?: string | null;
+  expiresAt?: string | null;
+  campusId?: string | null;
+  scopeType?: PermissionScopeType;
+  assignmentReason?: string | null;
+  administrativeNotes?: string | null;
+}) {
+  try {
+    const supabase = await createClient();
+    const admin = createAdminClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { error: "Not authenticated" };
+
+    await requireMinChurchRole("administrator");
+    const { membership } = await getActiveChurch();
+    const group = await assertGroupInOrganization(
+      admin,
+      input.groupId,
+      membership.organization_id,
+    );
+    const existing = await loadGroupMemberForMutation(
+      admin,
+      input.membershipId,
+      membership.organization_id,
+      input.groupId,
+    );
+    const parsed = parseAssignmentInput({
+      effectiveAt: input.effectiveAt ?? existing.effective_at,
+      expiresAt: input.expiresAt ?? existing.expires_at,
+    });
+    if (parsed.error) return { error: parsed.error };
+
+    assertHighRiskReason(group, input.assignmentReason ?? existing.assignment_reason);
+
+    const updated = await updateSecurityGroupMember(
+      admin,
+      input.membershipId,
+      membership.organization_id,
+      {
+        effectiveAt: input.effectiveAt,
+        expiresAt: input.expiresAt,
+        campusId: input.campusId,
+        scopeType: input.scopeType,
+        assignmentReason: input.assignmentReason,
+        administrativeNotes: input.administrativeNotes,
+      },
+      user.id,
+    );
+
+    if (!updated) return { error: "Failed to update assignment" };
+
+    await logSecurityGroupMemberUpdated(
+      admin,
+      membership.organization_id,
+      input.groupId,
+      existing.user_id,
+      user.id,
+      {
+        effective_at: existing.effective_at,
+        expires_at: existing.expires_at,
+        campus_id: existing.campus_id ?? null,
+        scope_type: existing.scope_type ?? null,
+      },
+      {
+        effective_at: updated.effective_at,
+        expires_at: updated.expires_at,
+        campus_id: updated.campus_id ?? null,
+        scope_type: updated.scope_type ?? null,
+      },
+    );
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating group member:", error);
+    return { error: error instanceof Error ? error.message : "Unknown error" };
+  }
+}
+
+export async function extendSecurityGroupMemberAction(input: {
+  groupId: string;
+  membershipId: string;
+  expiresAt: string;
+  reason?: string;
+}) {
+  try {
+    const supabase = await createClient();
+    const admin = createAdminClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { error: "Not authenticated" };
+
+    await requireMinChurchRole("administrator");
+    const { membership } = await getActiveChurch();
+    await assertGroupInOrganization(
+      admin,
+      input.groupId,
+      membership.organization_id,
+    );
+    const existing = await loadGroupMemberForMutation(
+      admin,
+      input.membershipId,
+      membership.organization_id,
+      input.groupId,
+    );
+    const parsed = parseAssignmentInput({
+      effectiveAt: existing.effective_at,
+      expiresAt: input.expiresAt,
+    });
+    if (parsed.error) return { error: parsed.error };
+
+    const updated = await updateSecurityGroupMember(
+      admin,
+      input.membershipId,
+      membership.organization_id,
+      { expiresAt: parsed.expiresAt },
+      user.id,
+    );
+    if (!updated) return { error: "Failed to extend assignment" };
+
+    await logSecurityGroupMemberExtended(
+      admin,
+      membership.organization_id,
+      input.groupId,
+      existing.user_id,
+      user.id,
+      { expires_at: existing.expires_at },
+      { expires_at: updated.expires_at },
+      input.reason,
+    );
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error extending group member:", error);
+    return { error: error instanceof Error ? error.message : "Unknown error" };
+  }
+}
+
+export async function revokeSecurityGroupMemberNowAction(input: {
+  groupId: string;
+  membershipId: string;
+  reason?: string;
+}) {
+  try {
+    const supabase = await createClient();
+    const admin = createAdminClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { error: "Not authenticated" };
+
+    await requireMinChurchRole("administrator");
+    const { membership } = await getActiveChurch();
+    await assertGroupInOrganization(
+      admin,
+      input.groupId,
+      membership.organization_id,
+    );
+    const existing = await loadGroupMemberForMutation(
+      admin,
+      input.membershipId,
+      membership.organization_id,
+      input.groupId,
+    );
+
+    const removed = await removeUserFromSecurityGroup(
+      admin,
+      input.membershipId,
+      user.id,
+      input.reason ?? "Revoked immediately",
+    );
+    if (!removed) return { error: "Failed to revoke assignment" };
+
+    await logSecurityGroupMemberRevoked(
+      admin,
+      membership.organization_id,
+      input.groupId,
+      existing.user_id,
+      user.id,
+      {
+        expires_at: existing.expires_at,
+        effective_at: existing.effective_at,
+      },
+      input.reason,
+    );
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error revoking group member:", error);
+    return { error: error instanceof Error ? error.message : "Unknown error" };
+  }
+}
+
+export async function previewRemoveGroupMemberImpactAction(input: {
+  groupId: string;
+  userId: string;
+}) {
+  try {
+    await requireMinChurchRole("security_leader");
+    const { membership } = await getActiveChurch();
+    const admin = createAdminClient();
+    await assertGroupInOrganization(
+      admin,
+      input.groupId,
+      membership.organization_id,
+    );
+
+    const impact = await previewGroupMemberRemovalImpact(admin, {
+      organizationId: membership.organization_id,
+      groupId: input.groupId,
+      userId: input.userId,
+    });
+
+    return { success: true, ...impact };
+  } catch (error) {
+    console.error("Error previewing removal impact:", error);
     return { error: error instanceof Error ? error.message : "Unknown error" };
   }
 }
@@ -649,6 +1309,16 @@ export async function addSecurityGroupPermissionAction(input: {
       return { error: "Permission not found" };
     }
 
+    const { isTopLevelCampusPermission } = await import(
+      "@/lib/campuses/authorization"
+    );
+    if (isTopLevelCampusPermission(permission.permission_key)) {
+      return {
+        error:
+          "Only an Owner, Co-owner, or Administrator receives this campus permission through their protected church role. It cannot be assigned to a security group.",
+      };
+    }
+
     const existing = await getSecurityGroupPermissions(admin, input.groupId);
     if (existing.some((p) => p.permission_definition_id === input.permissionDefinitionId)) {
       return { error: "This permission is already assigned to the group" };
@@ -802,7 +1472,11 @@ export interface AuditLogRow {
   eventType: string;
   result: string;
   actorName: string;
+  actorEmail: string | null;
+  actorLabel: string;
   targetName: string | null;
+  targetEmail: string | null;
+  targetLabel: string | null;
   reason: string | null;
   previousValue: Record<string, unknown> | null;
   newValue: Record<string, unknown> | null;
@@ -1064,14 +1738,18 @@ export async function listUsersAccessAction() {
 }
 
 export interface UserGroupMembershipRow {
+  membershipId: string;
   id: string;
   name: string;
   description: string | null;
   status: string;
+  assignmentStatus: ComputedAssignmentStatus;
   isTemporary: boolean;
   effectiveAt: string | null;
   expiresAt: string | null;
   assignedAt: string;
+  campusName: string | null;
+  scopeLabel: string;
 }
 
 export async function getUserAccessDetailsAction(userId: string) {
@@ -1081,21 +1759,44 @@ export async function getUserAccessDetailsAction(userId: string) {
     const admin = createAdminClient();
     const organizationId = membership.organization_id;
 
-    const [groupMemberships, direct, catalog] = await Promise.all([
+    const [groupMemberships, direct, catalog, campusesResult] = await Promise.all([
       getUserSecurityGroupMemberships(admin, userId, organizationId),
       getUserDirectPermissions(admin, userId, organizationId),
       listAllPermissions(admin),
+      listCampusesForSecurityAction(),
     ]);
+    const { computeAssignmentStatus } = await import(
+      "@/lib/security/group-member-utils"
+    );
+    const campusById = new Map(
+      (campusesResult.campuses ?? []).map((campus) => [campus.id, campus.name]),
+    );
 
     const groups: UserGroupMembershipRow[] = groupMemberships.map((row) => ({
+      membershipId: row.membership.id,
       id: row.group.id,
       name: row.group.name,
       description: row.group.description,
       status: row.group.status,
+      assignmentStatus: computeAssignmentStatus({
+        status: row.membership.status,
+        effectiveAt: row.membership.effective_at,
+        expiresAt: row.membership.expires_at,
+      }),
       isTemporary: Boolean(row.membership.expires_at),
       effectiveAt: row.membership.effective_at,
       expiresAt: row.membership.expires_at,
       assignedAt: row.membership.assigned_at,
+      campusName: row.membership.campus_id
+        ? campusById.get(row.membership.campus_id) ?? null
+        : null,
+      scopeLabel:
+        row.membership.campus_id && campusById.get(row.membership.campus_id)
+          ? campusById.get(row.membership.campus_id)!
+          : (row.membership.scope_type ?? "all_current_future_campuses").replaceAll(
+              "_",
+              " ",
+            ),
     }));
 
     return {
@@ -1131,6 +1832,19 @@ export async function grantDirectUserPermissionAction(input: {
     const catalog = await listAllPermissions(admin);
     const permission = catalog.find((p) => p.id === input.permissionDefinitionId);
     if (!permission) return { error: "Permission not found" };
+
+    const { isTopLevelCampusPermission } = await import(
+      "@/lib/campuses/authorization"
+    );
+    if (
+      (input.effect || "grant") === "grant" &&
+      isTopLevelCampusPermission(permission.permission_key)
+    ) {
+      return {
+        error:
+          "Only an Owner, Co-owner, or Administrator receives this campus permission through their protected church role. It cannot be granted as a direct exception.",
+      };
+    }
 
     const churchMembers = await listChurchTeamMemberships(membership.organization_id);
     const target = churchMembers.find(
@@ -1485,23 +2199,58 @@ export async function listSecurityAuditLogsAction(input?: {
       listChurchTeamMemberships(membership.organization_id),
     ]);
 
+    const { resolveAuditPeopleByIds } = await import(
+      "@/lib/audit/resolve-people"
+    );
+    const actorAndTargetIds = (logs as any[]).flatMap((log) =>
+      [log.actor_user_id, log.target_user_id].filter(
+        (id): id is string => typeof id === "string" && id.length > 0,
+      ),
+    );
+    const peopleById = await resolveAuditPeopleByIds(actorAndTargetIds);
     const byUser = new Map(churchMembers.map((m) => [m.userId, m]));
 
-    const rows: AuditLogRow[] = (logs as any[]).map((log) => ({
-      id: log.id,
-      createdAt: log.created_at,
-      eventType: log.event_type,
-      result: log.result,
-      actorName: byUser.get(log.actor_user_id)?.name || log.actor_user_id,
-      targetName: log.target_user_id
-        ? byUser.get(log.target_user_id)?.name || log.target_user_id
-        : null,
-      reason: log.reason,
-      previousValue: log.previous_value,
-      newValue: log.new_value,
-      securityGroupId: log.security_group_id,
-      permissionDefinitionId: log.permission_definition_id,
-    }));
+    const rows: AuditLogRow[] = (logs as any[]).map((log) => {
+      const teamActor = byUser.get(log.actor_user_id);
+      const resolvedActor = peopleById.get(log.actor_user_id);
+      const actorName =
+        teamActor?.name || resolvedActor?.name || "Unknown user";
+      const actorEmail = teamActor?.email ?? resolvedActor?.email ?? null;
+      const teamTarget = log.target_user_id
+        ? byUser.get(log.target_user_id)
+        : undefined;
+      const resolvedTarget = log.target_user_id
+        ? peopleById.get(log.target_user_id)
+        : undefined;
+      const targetName = log.target_user_id
+        ? teamTarget?.name || resolvedTarget?.name || "Unknown user"
+        : null;
+      const targetEmail =
+        teamTarget?.email ?? resolvedTarget?.email ?? null;
+
+      return {
+        id: log.id,
+        createdAt: log.created_at,
+        eventType: log.event_type,
+        result: log.result,
+        actorName,
+        actorEmail,
+        actorLabel:
+          resolvedActor?.label ||
+          (actorEmail ? `${actorName} (${actorEmail})` : actorName),
+        targetName,
+        targetEmail,
+        targetLabel: log.target_user_id
+          ? resolvedTarget?.label ||
+            (targetEmail ? `${targetName} (${targetEmail})` : targetName)
+          : null,
+        reason: log.reason,
+        previousValue: log.previous_value,
+        newValue: log.new_value,
+        securityGroupId: log.security_group_id,
+        permissionDefinitionId: log.permission_definition_id,
+      };
+    });
 
     return { success: true, logs: rows };
   } catch (error) {

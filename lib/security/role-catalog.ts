@@ -52,7 +52,7 @@ const CHURCH_ROLE_DESCRIPTIONS: Record<string, string> = {
 
 const CAMPUS_ROLE_DESCRIPTIONS: Record<string, string> = {
   campus_administrator:
-    "Administers assigned campuses: members, schedules, incidents, hardware, and notifications.",
+    "Manages members and operations for an assigned campus. Does not include creating, deleting, or reconfiguring campuses, or granting Owner / Co-owner / Administrator.",
   campus_security_leader:
     "Leads security operations at assigned campuses without church-wide admin rights.",
   campus_leader: "Campus leadership visibility and coordination.",

@@ -20,11 +20,14 @@ import {
   Bell,
   Layers,
   LayoutDashboard,
+  Lock,
   LogOut,
   MailPlus,
   Menu,
   BookOpen,
   CalendarDays,
+  Camera,
+  Radio,
   ScrollText,
   Settings2,
   Shield,
@@ -41,13 +44,16 @@ import { BrandLogo } from "@/components/brand-logo";
 import { ChurchSwitcher, type ChurchOption } from "@/components/church-switcher";
 import { LogoutButton } from "@/components/logout-button";
 import { Button } from "@/components/ui/button";
+import { UpgradeFeatureDialog } from "@/components/subscriptions/upgrade-feature-dialog";
 import { createClient } from "@/lib/supabase/client";
 import type {
   NavEntry,
   NavItemId,
+  NavLinkItem,
   NavSection,
 } from "@/lib/organization/navigation";
 import type { MembershipRole } from "@/lib/organization/types";
+import type { FeatureLockSummary } from "@/lib/subscriptions/feature-access";
 
 const STORAGE_KEY = "sp-sidebar-collapsed";
 
@@ -96,6 +102,9 @@ const NAV_ICONS: Partial<Record<NavItemId, LucideIcon>> = {
   audit: ScrollText,
   help: CircleHelp,
   profile: UserRound,
+  cameras: Camera,
+  sensors: Radio,
+  "subscription-plans": CreditCard,
 };
 
 function pathMatches(pathname: string, href: string): boolean {
@@ -132,17 +141,22 @@ export function AppSidebarNav({
   churches,
   activeOrganizationId,
   navSections,
+  lockSummaries = {},
 }: {
   churches: ChurchOption[];
   activeOrganizationId: string | null;
   role?: MembershipRole | null;
   navSections: NavSection[];
+  lockSummaries?: Record<string, FeatureLockSummary>;
 }) {
   const pathname = usePathname();
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  const [upgradeLock, setUpgradeLock] = useState<FeatureLockSummary | null>(
+    null,
+  );
 
   const activeGroupIds = useMemo(() => {
     const ids: string[] = [];
@@ -212,17 +226,103 @@ export function AppSidebarNav({
   // Desktop can be icon-only; the phone drawer always shows full labels.
   const desktopCompact = collapsed;
 
+  const resolveLock = (item: {
+    locked?: boolean;
+    featureKey?: string;
+  }): FeatureLockSummary | null => {
+    if (!item.locked || !item.featureKey) return null;
+    return lockSummaries[item.featureKey] ?? null;
+  };
+
+  const openUpgrade = (lock: FeatureLockSummary | null) => {
+    if (!lock) return;
+    setMobileOpen(false);
+    setUpgradeLock(lock);
+  };
+
   const renderLink = (
-    item: {
-      id: NavItemId;
-      href: string;
-      label: string;
-    },
+    item: NavLinkItem,
     options?: { nested?: boolean; active?: boolean },
   ) => {
     const Icon = NAV_ICONS[item.id];
     const nested = options?.nested ?? false;
     const isActive = options?.active ?? false;
+    const lock = resolveLock(item);
+    const descriptionId = lock ? `nav-lock-${item.id}` : undefined;
+
+    const className = cn(
+      "relative flex min-h-11 items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
+      nested && "py-1.5 pl-9 text-[13px]",
+      desktopCompact &&
+        !nested &&
+        "md:h-10 md:w-10 md:justify-center md:gap-0 md:px-0 md:py-0",
+      desktopCompact && nested && "md:hidden",
+      lock
+        ? "cursor-not-allowed text-muted-foreground hover:bg-[hsl(var(--nav-hover))]"
+        : isActive
+          ? nested
+            ? "bg-[hsl(var(--nav-hover))] text-foreground"
+            : "bg-primary text-primary-foreground"
+          : "text-muted-foreground hover:bg-[hsl(var(--nav-hover))] hover:text-accent-foreground",
+    );
+
+    const inner = (
+      <>
+        {Icon && !nested ? <Icon className="h-4 w-4 shrink-0" /> : null}
+        {nested ? (
+          <span
+            className={cn(
+              "mr-2 h-1.5 w-1.5 shrink-0 rounded-full",
+              isActive && !lock ? "bg-primary" : "bg-border",
+            )}
+            aria-hidden
+          />
+        ) : null}
+        <span className={cn("flex-1 text-left", desktopCompact && !nested && "md:hidden")}>
+          {item.label}
+        </span>
+        {lock ? (
+          <Lock
+            className={cn(
+              "h-3.5 w-3.5 shrink-0",
+              desktopCompact && !nested && "md:hidden",
+            )}
+            aria-hidden
+          />
+        ) : null}
+        {lock && desktopCompact && !nested ? (
+          <Lock className="hidden h-3 w-3 md:block" aria-hidden />
+        ) : null}
+        {lock ? (
+          <span
+            className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 hidden w-64 -translate-y-1/2 rounded-md border border-border bg-popover p-2 text-xs font-normal text-popover-foreground shadow-md group-hover:block group-focus-within:block max-md:hidden"
+            role="tooltip"
+          >
+            {lock.shortMessage} {lock.longMessage}
+          </span>
+        ) : null}
+      </>
+    );
+
+    if (lock) {
+      return (
+        <button
+          key={item.id}
+          type="button"
+          title={lock.shortMessage}
+          aria-label={item.label}
+          aria-disabled="true"
+          aria-describedby={descriptionId}
+          className={cn(className, "group w-full")}
+          onClick={() => openUpgrade(lock)}
+        >
+          {inner}
+          <span id={descriptionId} className="sr-only">
+            {lock.longMessage}
+          </span>
+        </button>
+      );
+    }
 
     return (
       <Link
@@ -232,33 +332,9 @@ export function AppSidebarNav({
         aria-label={item.label}
         aria-current={isActive ? "page" : undefined}
         onClick={() => setMobileOpen(false)}
-        className={cn(
-          "flex min-h-11 items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
-          nested && "min-h-9 py-1.5 pl-9 text-[13px]",
-          desktopCompact &&
-            !nested &&
-            "md:h-10 md:w-10 md:justify-center md:gap-0 md:px-0 md:py-0",
-          desktopCompact && nested && "md:hidden",
-          isActive
-            ? nested
-              ? "bg-[hsl(var(--nav-hover))] text-foreground"
-              : "bg-primary text-primary-foreground"
-            : "text-muted-foreground hover:bg-[hsl(var(--nav-hover))] hover:text-accent-foreground",
-        )}
+        className={className}
       >
-        {Icon && !nested ? <Icon className="h-4 w-4 shrink-0" /> : null}
-        {nested ? (
-          <span
-            className={cn(
-              "mr-2 h-1.5 w-1.5 shrink-0 rounded-full",
-              isActive ? "bg-primary" : "bg-border",
-            )}
-            aria-hidden
-          />
-        ) : null}
-        <span className={cn(desktopCompact && !nested && "md:hidden")}>
-          {item.label}
-        </span>
+        {inner}
       </Link>
     );
   };
@@ -267,8 +343,6 @@ export function AppSidebarNav({
     if (entry.kind === "link") {
       const active =
         pathname === entry.href || pathMatches(pathname, entry.href);
-      // Special-case: /notifications should not mark as active for preferences
-      // when this is a top-level collapsed single link named Notifications.
       const isActive =
         entry.href === "/notifications"
           ? pathname === "/notifications" ||
@@ -283,9 +357,30 @@ export function AppSidebarNav({
     const groupActive = entryIsActive(pathname, entry);
     const isOpen = openGroups[entry.id] ?? groupActive;
     const siblingHrefs = entry.children.map((child) => child.href);
+    const groupLock = resolveLock(entry);
+    const groupHasLockedChildren = entry.children.some((child) => child.locked);
 
     if (desktopCompact) {
-      // Collapsed: icon jumps to group landing; expand sidebar to browse children.
+      if (groupLock) {
+        return (
+          <button
+            key={entry.id}
+            type="button"
+            title={groupLock.shortMessage}
+            aria-label={entry.label}
+            aria-disabled="true"
+            aria-describedby={`nav-lock-${entry.id}`}
+            onClick={() => openUpgrade(groupLock)}
+            className="group relative flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground"
+          >
+            <Icon className="h-4 w-4" />
+            <Lock className="absolute bottom-1 right-1 h-3 w-3" aria-hidden />
+            <span id={`nav-lock-${entry.id}`} className="sr-only">
+              {groupLock.longMessage}
+            </span>
+          </button>
+        );
+      }
       return (
         <Link
           key={entry.id}
@@ -314,23 +409,42 @@ export function AppSidebarNav({
       <div key={entry.id} className="space-y-0.5">
         <button
           type="button"
-          onClick={() => toggleGroup(entry.id)}
+          onClick={() => {
+            if (groupLock) {
+              openUpgrade(groupLock);
+              toggleGroup(entry.id);
+              return;
+            }
+            toggleGroup(entry.id);
+          }}
           aria-expanded={isOpen}
+          aria-disabled={groupLock ? "true" : undefined}
+          title={groupLock?.shortMessage}
           className={cn(
-            "flex min-h-11 w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
-            groupActive
-              ? "bg-primary/10 text-foreground"
-              : "text-muted-foreground hover:bg-[hsl(var(--nav-hover))] hover:text-accent-foreground",
+            "group relative flex min-h-11 w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
+            groupLock
+              ? "cursor-not-allowed text-muted-foreground"
+              : groupActive
+                ? "bg-primary/10 text-foreground"
+                : "text-muted-foreground hover:bg-[hsl(var(--nav-hover))] hover:text-accent-foreground",
           )}
         >
           <Icon className="h-4 w-4 shrink-0" />
           <span className="flex-1 text-left">{entry.label}</span>
+          {groupLock || groupHasLockedChildren ? (
+            <Lock className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          ) : null}
           <ChevronDown
             className={cn(
               "h-4 w-4 shrink-0 transition-transform",
               isOpen && "rotate-180",
             )}
           />
+          {groupLock ? (
+            <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 hidden w-64 -translate-y-1/2 rounded-md border border-border bg-popover p-2 text-xs font-normal text-popover-foreground shadow-md group-hover:block group-focus-within:block max-md:hidden">
+              {groupLock.shortMessage}
+            </span>
+          ) : null}
         </button>
         {isOpen ? (
           <div className="space-y-0.5">
@@ -348,7 +462,7 @@ export function AppSidebarNav({
 
   return (
     <>
-      <div className="sticky top-0 z-30 flex items-center gap-2 border-b border-border bg-background/95 px-4 py-3 backdrop-blur md:hidden">
+      <div className="sticky top-0 z-30 flex items-center gap-2 border-b border-border bg-background/95 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur md:hidden">
         <Button
           type="button"
           variant="outline"
@@ -384,8 +498,8 @@ export function AppSidebarNav({
 
         <aside
           className={cn(
-            "pointer-events-auto flex h-full min-h-screen flex-col border-r border-border bg-card transition-[width,transform] duration-200 ease-out",
-            "fixed inset-y-0 left-0 z-50 w-[min(20rem,88vw)] md:static md:z-auto md:min-h-screen md:w-full",
+            "pointer-events-auto flex h-full min-h-app flex-col border-r border-border bg-card pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] transition-[width,transform] duration-200 ease-out",
+            "fixed inset-y-0 left-0 z-50 w-[min(20rem,88vw)] md:static md:z-auto md:min-h-app md:w-full md:pt-0",
             mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
           )}
         >
@@ -487,7 +601,7 @@ export function AppSidebarNav({
                 )}
               >
                 {section.label && !desktopCompact ? (
-                  <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/80">
+                  <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                     {section.label}
                   </p>
                 ) : null}
@@ -539,6 +653,11 @@ export function AppSidebarNav({
           </div>
         </aside>
       </div>
+      <UpgradeFeatureDialog
+        lock={upgradeLock}
+        open={Boolean(upgradeLock)}
+        onClose={() => setUpgradeLock(null)}
+      />
     </>
   );
 }

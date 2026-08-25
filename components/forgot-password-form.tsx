@@ -119,10 +119,10 @@ export function ForgotPasswordForm({
                     onChange={(e) => setEmail(e.target.value)}
                   />
                   {fieldError && (
-                    <p className="text-sm text-red-500">{fieldError}</p>
+                    <p className="text-sm text-destructive">{fieldError}</p>
                   )}
                 </div>
-                {error && <p className="text-sm text-red-500">{error}</p>}
+                {error && <p className="text-sm text-destructive">{error}</p>}
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? "Submitting..." : "Continue"}
                 </Button>

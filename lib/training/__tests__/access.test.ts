@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { getTrainingAccess } from "@/lib/training/access";
-import { TRAINING_UPGRADE_MESSAGE } from "@/lib/training/constants";
 import { FEATURE_KEYS } from "@/lib/subscriptions/feature-keys";
 
 vi.mock("@/lib/subscriptions/resolver", () => ({
@@ -38,9 +37,6 @@ describe("getTrainingAccess", () => {
 
     const result = await getTrainingAccess("church-1");
     expect(result.allowed).toBe(false);
-    expect(result.upgradeMessage).toBe(TRAINING_UPGRADE_MESSAGE);
-    expect(result.upgradeMessage).toBe(
-      "Training Management is available with Steward Pro, Shepherd Plus, and Omni Enterprise plans.",
-    );
+    expect(result.upgradeMessage).toBe("Upgrade required");
   });
 });

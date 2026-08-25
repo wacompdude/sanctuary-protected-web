@@ -6,9 +6,7 @@ import {
   POLICY_DOCUMENT_TYPES,
 } from "@/lib/policies/constants";
 import type { PolicyCategory } from "@/lib/policies/types";
-
-const selectClassName =
-  "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
+import { selectClassName } from "@/components/ui/form-control";
 
 export function PolicyManageFilters({
   categories,

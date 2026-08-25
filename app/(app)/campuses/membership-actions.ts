@@ -12,7 +12,12 @@ import {
   campusMigrationHintFromError,
   defaultCampusRoleForChurchRole,
 } from "@/lib/campuses/constants";
-import { canActorManageCampusMemberships } from "@/lib/campuses/membership-queries";
+import {
+  assertAssignableCampusRole,
+  assertProtectedCampusTarget,
+  isTopLevelCampusAdminRole,
+} from "@/lib/campuses/campus-policy";
+import { requireCampusAction } from "@/lib/campuses/server-auth";
 import type { CampusActionState, CampusRole } from "@/lib/campuses/types";
 import { createClient } from "@/lib/supabase/server";
 
@@ -23,26 +28,37 @@ function revalidateMembershipPaths(campusId: string) {
   revalidatePath("/team");
 }
 
-async function requireMembershipManager(campusId: string) {
-  const ctx = await getAuthenticatedUserWithChurch();
-  const allowed = await canActorManageCampusMemberships({
-    organizationId: ctx.church.id,
-    campusId,
-    userId: ctx.user.id,
-    churchRole: ctx.membership.role,
-  });
-  if (!allowed) {
-    throw new ChurchAccessError(
-      "You do not have permission to manage campus memberships.",
-    );
-  }
-  return ctx;
+async function requireMembershipAction(
+  campusId: string,
+  action: "members.add" | "members.remove" | "members.manage" | "roles.assign",
+) {
+  return requireCampusAction(action, { campusId });
 }
 
 function parseCampusRole(raw: string): CampusRole | null {
   return CAMPUS_ROLES.some((item) => item.value === raw)
     ? (raw as CampusRole)
     : null;
+}
+
+async function loadTargetMembership(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  organizationId: string,
+  organizationMembershipId: string,
+) {
+  const { data } = await supabase
+    .from("organization_memberships")
+    .select("id, user_id, role, status, organization_id")
+    .eq("organization_id", organizationId)
+    .eq("id", organizationMembershipId)
+    .maybeSingle();
+  return data as {
+    id: string;
+    user_id: string;
+    role: string;
+    status: string;
+    organization_id: string;
+  } | null;
 }
 
 export async function addCampusMembersAction(
@@ -53,8 +69,12 @@ export async function addCampusMembersAction(
     const campusId = String(formData.get("campus_id") ?? "").trim();
     if (!campusId) return { error: "Campus is required." };
 
-    const { user, church } = await requireMembershipManager(campusId);
+    const { user, church, membership } = await requireMembershipAction(
+      campusId,
+      "members.add",
+    );
     const supabase = await createClient();
+    const actorIsAdmin = isTopLevelCampusAdminRole(membership.role);
 
     const membershipIds = formData
       .getAll("membership_ids")
@@ -73,6 +93,13 @@ export async function addCampusMembersAction(
         fieldErrors: { campus_role: "Invalid role." },
       };
     }
+    if (overrideRole) {
+      const assignable = assertAssignableCampusRole({
+        actorIsTopLevelAdmin: actorIsAdmin,
+        campusRole: overrideRole,
+      });
+      if (!assignable.allowed) return { error: assignable.message };
+    }
 
     const makePrimary =
       formData.get("is_primary_campus") === "on" ||
@@ -81,7 +108,7 @@ export async function addCampusMembersAction(
 
     const { data: churchMembers, error: memberError } = await supabase
       .from("organization_memberships")
-      .select("id, user_id, role, status")
+      .select("id, user_id, role, status, organization_id")
       .eq("organization_id", church.id)
       .eq("status", "active")
       .in("id", membershipIds);
@@ -98,14 +125,44 @@ export async function addCampusMembersAction(
       id: string;
       user_id: string;
       role: string;
+      organization_id: string;
     }>;
     if (active.length === 0) {
       return { error: "No active church members matched the selection." };
     }
 
     for (const row of active) {
+      if (row.organization_id !== church.id) {
+        return { error: "You cannot manage members from another church." };
+      }
+      const protectedTarget = assertProtectedCampusTarget({
+        actorIsTopLevelAdmin: actorIsAdmin,
+        targetChurchRole: row.role,
+      });
+      if (!protectedTarget.allowed) {
+        await writeAuditLog(supabase, {
+          organizationId: church.id,
+          userId: user.id,
+          action: AuditAction.CAMPUS_PRIVILEGE_ESCALATION_ATTEMPT,
+          entityType: AuditEntityType.CAMPUS,
+          entityId: campusId,
+          metadata: {
+            target_user_id: row.user_id,
+            target_role: row.role,
+            attempted: "members.add",
+          },
+          ipAddress: await getRequestIpAddress(),
+        });
+        return { error: protectedTarget.message };
+      }
+
       const campusRole =
         overrideRole ?? defaultCampusRoleForChurchRole(row.role);
+      const roleCheck = assertAssignableCampusRole({
+        actorIsTopLevelAdmin: actorIsAdmin,
+        campusRole,
+      });
+      if (!roleCheck.allowed) return { error: roleCheck.message };
 
       const { data: existing } = await supabase
         .from("campus_memberships")
@@ -185,6 +242,7 @@ export async function addCampusMembersAction(
       metadata: {
         membership_count: active.length,
         campus_role: overrideRole ?? "per_member_default",
+        organization_accounts_deleted: false,
       },
       ipAddress: await getRequestIpAddress(),
     });
@@ -214,12 +272,32 @@ export async function updateCampusMemberRoleAction(
       return { error: "Campus member and role are required." };
     }
 
-    const { user, church } = await requireMembershipManager(campusId);
+    const { user, church, membership } = await requireMembershipAction(
+      campusId,
+      "roles.assign",
+    );
     const supabase = await createClient();
+    const actorIsAdmin = isTopLevelCampusAdminRole(membership.role);
+    const assignable = assertAssignableCampusRole({
+      actorIsTopLevelAdmin: actorIsAdmin,
+      campusRole: role,
+    });
+    if (!assignable.allowed) {
+      await writeAuditLog(supabase, {
+        organizationId: church.id,
+        userId: user.id,
+        action: AuditAction.CAMPUS_PRIVILEGE_ESCALATION_ATTEMPT,
+        entityType: AuditEntityType.CAMPUS,
+        entityId: campusId,
+        metadata: { attempted_role: role, member_id: memberRowId },
+        ipAddress: await getRequestIpAddress(),
+      });
+      return { error: assignable.message };
+    }
 
     const { data: existing } = await supabase
       .from("campus_memberships")
-      .select("id, campus_role, status")
+      .select("id, campus_role, status, organization_membership_id, user_id")
       .eq("id", memberRowId)
       .eq("campus_id", campusId)
       .eq("organization_id", church.id)
@@ -227,6 +305,28 @@ export async function updateCampusMemberRoleAction(
 
     if (!existing || existing.status !== "active") {
       return { error: "Campus membership not found." };
+    }
+
+    const target = await loadTargetMembership(
+      supabase,
+      church.id,
+      existing.organization_membership_id,
+    );
+    const protectedTarget = assertProtectedCampusTarget({
+      actorIsTopLevelAdmin: actorIsAdmin,
+      targetChurchRole: target?.role,
+    });
+    if (!protectedTarget.allowed) {
+      await writeAuditLog(supabase, {
+        organizationId: church.id,
+        userId: user.id,
+        action: AuditAction.CAMPUS_PRIVILEGE_ESCALATION_ATTEMPT,
+        entityType: AuditEntityType.CAMPUS,
+        entityId: campusId,
+        metadata: { target_role: target?.role ?? null, attempted: "roles.assign" },
+        ipAddress: await getRequestIpAddress(),
+      });
+      return { error: protectedTarget.message };
     }
 
     const { error } = await supabase
@@ -279,7 +379,10 @@ export async function setMemberPrimaryCampusAction(
       return { error: "Campus membership is required." };
     }
 
-    const { user, church } = await requireMembershipManager(campusId);
+    const { user, church, membership } = await requireMembershipAction(
+      campusId,
+      "members.manage",
+    );
     const supabase = await createClient();
 
     const { data: existing } = await supabase
@@ -293,6 +396,17 @@ export async function setMemberPrimaryCampusAction(
     if (!existing || existing.status !== "active") {
       return { error: "Campus membership not found." };
     }
+
+    const target = await loadTargetMembership(
+      supabase,
+      church.id,
+      existing.organization_membership_id,
+    );
+    const protectedTarget = assertProtectedCampusTarget({
+      actorIsTopLevelAdmin: isTopLevelCampusAdminRole(membership.role),
+      targetChurchRole: target?.role,
+    });
+    if (!protectedTarget.allowed) return { error: protectedTarget.message };
 
     await supabase
       .from("campus_memberships")
@@ -343,12 +457,60 @@ export async function removeCampusMemberAction(
   try {
     const campusId = String(formData.get("campus_id") ?? "").trim();
     const memberRowId = String(formData.get("member_id") ?? "").trim();
+    const confirmed = String(formData.get("confirm_remove") ?? "").trim();
     if (!campusId || !memberRowId) {
       return { error: "Campus membership is required." };
     }
+    if (confirmed !== "1") {
+      return {
+        error:
+          "Confirm removal. This removes the campus assignment only and does not delete the church account.",
+      };
+    }
 
-    const { user, church } = await requireMembershipManager(campusId);
+    const { user, church, membership } = await requireMembershipAction(
+      campusId,
+      "members.remove",
+    );
     const supabase = await createClient();
+
+    const { data: existing } = await supabase
+      .from("campus_memberships")
+      .select("id, organization_membership_id, user_id, status")
+      .eq("id", memberRowId)
+      .eq("campus_id", campusId)
+      .eq("organization_id", church.id)
+      .maybeSingle();
+
+    if (!existing || existing.status !== "active") {
+      return { error: "Campus membership not found." };
+    }
+
+    const target = await loadTargetMembership(
+      supabase,
+      church.id,
+      existing.organization_membership_id,
+    );
+    const protectedTarget = assertProtectedCampusTarget({
+      actorIsTopLevelAdmin: isTopLevelCampusAdminRole(membership.role),
+      targetChurchRole: target?.role,
+    });
+    if (!protectedTarget.allowed) {
+      await writeAuditLog(supabase, {
+        organizationId: church.id,
+        userId: user.id,
+        action: AuditAction.CAMPUS_PRIVILEGE_ESCALATION_ATTEMPT,
+        entityType: AuditEntityType.CAMPUS,
+        entityId: campusId,
+        metadata: {
+          target_user_id: existing.user_id,
+          target_role: target?.role ?? null,
+          attempted: "members.remove",
+        },
+        ipAddress: await getRequestIpAddress(),
+      });
+      return { error: protectedTarget.message };
+    }
 
     const { error } = await supabase
       .from("campus_memberships")
@@ -373,7 +535,11 @@ export async function removeCampusMemberAction(
       action: AuditAction.CAMPUS_MEMBERSHIP_REMOVED,
       entityType: AuditEntityType.CAMPUS_MEMBERSHIP,
       entityId: memberRowId,
-      metadata: { campus_id: campusId },
+      metadata: {
+        campus_id: campusId,
+        organization_account_deleted: false,
+        target_user_id: existing.user_id,
+      },
       ipAddress: await getRequestIpAddress(),
     });
 
@@ -386,6 +552,45 @@ export async function removeCampusMemberAction(
         error instanceof Error
           ? error.message
           : "Unable to remove campus member.",
+    };
+  }
+}
+
+export async function searchCampusMemberCandidatesAction(input: {
+  campusId: string;
+  query: string;
+}): Promise<{ members?: Array<{ membershipId: string; name: string; role: string }>; error?: string }> {
+  try {
+    const campusId = input.campusId.trim();
+    if (!campusId) return { error: "Campus is required." };
+    await requireMembershipAction(campusId, "members.add");
+    const { church } = await getAuthenticatedUserWithChurch();
+    const { listChurchTeamMemberships } = await import(
+      "@/lib/organization/team-queries"
+    );
+    const team = await listChurchTeamMemberships(church.id);
+    const query = input.query.trim().toLowerCase();
+    const members = team
+      .filter((row) => row.status === "active")
+      .filter((row) => row.userId) // same org only via RPC
+      .filter((row) => {
+        if (!query) return true;
+        return (
+          row.name.toLowerCase().includes(query) ||
+          (row.email ?? "").toLowerCase().includes(query)
+        );
+      })
+      .slice(0, 50)
+      .map((row) => ({
+        membershipId: row.membershipId,
+        name: row.name,
+        role: row.role,
+      }));
+    return { members };
+  } catch (error) {
+    if (error instanceof ChurchAccessError) return { error: error.message };
+    return {
+      error: error instanceof Error ? error.message : "Unable to search members.",
     };
   }
 }

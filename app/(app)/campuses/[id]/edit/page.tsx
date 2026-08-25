@@ -2,13 +2,14 @@ import { Suspense } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { CampusForm } from "@/components/campuses/campus-form";
 import { updateCampusAction } from "@/app/(app)/campuses/actions";
-import { getAuthenticatedUserWithChurch } from "@/lib/organization/auth";
 import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
-import { canManageCampuses } from "@/lib/campuses/permissions";
+import { loadCampusCapabilities } from "@/lib/campuses/server-auth";
 import { getCampus } from "@/lib/campuses/queries";
 
 async function EditCampusContent({ id }: { id: string }) {
-  const { church, membership } = await getAuthenticatedUserWithChurch();
+  const { church, capabilities } = await loadCampusCapabilities({
+    campusId: id,
+  });
   const { campus, extendedSchema } = await getCampus(church.id, id);
 
   if (!campus) {
@@ -21,7 +22,7 @@ async function EditCampusContent({ id }: { id: string }) {
     );
   }
 
-  const canEdit = canManageCampuses(membership.role);
+  const canEdit = capabilities.canEdit;
   const boundAction = updateCampusAction.bind(null, campus.id);
 
   return (

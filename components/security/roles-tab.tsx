@@ -219,10 +219,12 @@ export function RolesTab() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold">Roles</h2>
+        <h2 className="text-xl font-semibold">Church Roles</h2>
         <p className="text-sm text-muted-foreground">
-          Church and campus role templates. Click a role to expand its details
-          below the name.
+          Job titles for church members, such as Owner, Administrator, or
+          Security Leader. Each role includes a default permission set. Assign
+          these from Team or a member profile. This page is for reviewing and
+          editing the role templates, not for adding people to a role.
         </p>
       </div>
 

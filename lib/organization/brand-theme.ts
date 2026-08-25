@@ -56,26 +56,46 @@ export function hexToHslComponents(hex: string): string | null {
   return hsl ? formatHsl(hsl) : null;
 }
 
-/** Soft fill for submenu shells from a brand hue. */
-function softSurfaceFromHex(hex: string): string | null {
+function surfaceFromHex(
+  hex: string,
+  lightness: number,
+  satMin: number,
+  satMax: number,
+): string | null {
   const hsl = hexToHsl(hex);
   if (!hsl) return null;
   return formatHsl({
     h: hsl.h,
-    s: Math.min(hsl.s, 40),
-    l: 94,
+    s: Math.min(Math.max(hsl.s, satMin), satMax),
+    l: lightness,
   });
 }
 
-/** Stronger tint so nav hover clearly shows the secondary brand color. */
+function softSurfaceFromHex(hex: string): string | null {
+  return surfaceFromHex(hex, 94, 0, 40);
+}
+
 function hoverSurfaceFromHex(hex: string): string | null {
+  return surfaceFromHex(hex, 86, 40, 70);
+}
+
+function darkSoftSurfaceFromHex(hex: string): string | null {
+  return surfaceFromHex(hex, 22, 12, 36);
+}
+
+function darkHoverSurfaceFromHex(hex: string): string | null {
+  return surfaceFromHex(hex, 28, 18, 42);
+}
+
+function darkPrimaryFromHex(hex: string): { value: string; lightness: number } | null {
   const hsl = hexToHsl(hex);
   if (!hsl) return null;
-  return formatHsl({
-    h: hsl.h,
-    s: Math.min(Math.max(hsl.s, 40), 70),
-    l: 86,
-  });
+  const lightness = hsl.l < 30 ? 42 : hsl.l > 72 ? 58 : hsl.l;
+  return { value: formatHsl({ h: hsl.h, s: hsl.s, l: lightness }), lightness };
+}
+
+function foregroundForLightness(lightness: number): string {
+  return lightness > 45 ? "0 0% 9%" : "0 0% 98%";
 }
 
 /** Relative luminance 0–1 for sRGB hex. */
@@ -93,10 +113,15 @@ export function contrastingForegroundHsl(hex: string): string {
   return relativeLuminance(hex) > 0.45 ? "0 0% 9%" : "0 0% 98%";
 }
 
+export function hasChurchBrandTokens(style: CSSProperties): boolean {
+  return Object.keys(style).length > 0;
+}
+
 /**
  * CSS variables for the authenticated app shell.
- * Primary drives buttons / active nav / rings; secondary (or a soft primary tint)
- * drives accent/hover surfaces and submenu shells.
+ * Applied through [data-church-branded] so Light and Dark each get
+ * appropriate accent/hover/primary surfaces. Setting --accent inline
+ * would freeze light-mode tints into dark mode.
  */
 export function churchBrandStyle(
   primaryHex: string | null | undefined,
@@ -106,35 +131,37 @@ export function churchBrandStyle(
 
   if (isBrandHexColor(primaryHex)) {
     const primary = hexToHslComponents(primaryHex);
-    if (primary) {
-      style["--primary"] = primary;
-      style["--primary-foreground"] = contrastingForegroundHsl(primaryHex);
-      style["--ring"] = primary;
+    const darkPrimary = darkPrimaryFromHex(primaryHex);
+    if (primary && darkPrimary) {
+      style["--brand-primary"] = primary;
+      style["--brand-primary-foreground"] = contrastingForegroundHsl(primaryHex);
+      style["--brand-primary-dark"] = darkPrimary.value;
+      style["--brand-primary-dark-foreground"] = foregroundForLightness(
+        darkPrimary.lightness,
+      );
     }
   }
 
-  if (isBrandHexColor(secondaryHex)) {
-    const secondary = hexToHslComponents(secondaryHex);
-    const soft = softSurfaceFromHex(secondaryHex);
-    const hover = hoverSurfaceFromHex(secondaryHex);
-    if (secondary && soft && hover) {
-      // Soft secondary for shells; richer tint for nav hover.
-      style["--accent"] = soft;
-      style["--accent-foreground"] = "0 0% 9%";
-      style["--nav-hover"] = hover;
+  const accentSource = isBrandHexColor(secondaryHex)
+    ? secondaryHex
+    : isBrandHexColor(primaryHex)
+      ? primaryHex
+      : null;
+
+  if (accentSource) {
+    const secondary = hexToHslComponents(accentSource);
+    const soft = softSurfaceFromHex(accentSource);
+    const hover = hoverSurfaceFromHex(accentSource);
+    const darkSoft = darkSoftSurfaceFromHex(accentSource);
+    const darkHover = darkHoverSurfaceFromHex(accentSource);
+    if (secondary && soft && hover && darkSoft && darkHover) {
       style["--brand-secondary"] = secondary;
-      style["--secondary"] = soft;
-      style["--secondary-foreground"] = "0 0% 9%";
-    }
-  } else if (isBrandHexColor(primaryHex)) {
-    const soft = softSurfaceFromHex(primaryHex);
-    const hover = hoverSurfaceFromHex(primaryHex);
-    if (soft && hover) {
-      style["--accent"] = soft;
-      style["--accent-foreground"] = "0 0% 9%";
-      style["--nav-hover"] = hover;
-      style["--secondary"] = soft;
-      style["--secondary-foreground"] = "0 0% 9%";
+      style["--brand-accent"] = soft;
+      style["--brand-accent-foreground"] = "0 0% 9%";
+      style["--brand-nav-hover"] = hover;
+      style["--brand-accent-dark"] = darkSoft;
+      style["--brand-accent-dark-foreground"] = "0 0% 96%";
+      style["--brand-nav-hover-dark"] = darkHover;
     }
   }
 

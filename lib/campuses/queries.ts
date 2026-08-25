@@ -152,13 +152,25 @@ export async function listCampuses(
         .eq("organization_id", organizationId)
         .eq("status", "active");
       const counts = new Map<string, number>();
+      const securityCounts = new Map<string, number>();
       for (const row of memberships ?? []) {
         const id = row.campus_id as string;
         counts.set(id, (counts.get(id) ?? 0) + 1);
       }
+      const { data: securityRows } = await supabase
+        .from("campus_memberships")
+        .select("campus_id, campus_role")
+        .eq("organization_id", organizationId)
+        .eq("status", "active")
+        .in("campus_role", ["campus_security_leader", "campus_security_member"]);
+      for (const row of securityRows ?? []) {
+        const id = row.campus_id as string;
+        securityCounts.set(id, (securityCounts.get(id) ?? 0) + 1);
+      }
       items = items.map((item) => ({
         ...item,
         member_count: counts.get(item.id) ?? 0,
+        security_team_count: securityCounts.get(item.id) ?? 0,
       }));
     }
 

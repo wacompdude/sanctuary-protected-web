@@ -104,12 +104,22 @@ export type ChurchEntitlements = {
   values: Record<string, EntitlementValue>;
 };
 
+export type FeatureAccessReasonCode =
+  | "AVAILABLE"
+  | "TIER_REQUIRED"
+  | "FEATURE_DISABLED"
+  | "UNKNOWN_FEATURE";
+
 export type FeatureAccessResult = {
   allowed: boolean;
   featureKey: FeatureKey;
   planKey: string | null;
   planDisplayName: string | null;
   reason?: string;
+  reasonCode?: FeatureAccessReasonCode;
+  minimumPlanKey?: string | null;
+  minimumPlanDisplayName?: string | null;
+  upgradeMessage?: string;
 };
 
 export type FeatureLimitResult = {

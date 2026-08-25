@@ -141,7 +141,7 @@ export function SignUpForm({
                     onChange={(e) => setFirstName(e.target.value)}
                   />
                   {fieldErrors.firstName && (
-                    <p className="text-sm text-red-500">{fieldErrors.firstName}</p>
+                    <p className="text-sm text-destructive">{fieldErrors.firstName}</p>
                   )}
                 </div>
                 <div className="grid gap-2">
@@ -154,7 +154,7 @@ export function SignUpForm({
                     onChange={(e) => setLastName(e.target.value)}
                   />
                   {fieldErrors.lastName && (
-                    <p className="text-sm text-red-500">{fieldErrors.lastName}</p>
+                    <p className="text-sm text-destructive">{fieldErrors.lastName}</p>
                   )}
                 </div>
               </div>
@@ -170,7 +170,7 @@ export function SignUpForm({
                   onChange={(e) => setEmail(e.target.value)}
                 />
                 {fieldErrors.email && (
-                  <p className="text-sm text-red-500">{fieldErrors.email}</p>
+                  <p className="text-sm text-destructive">{fieldErrors.email}</p>
                 )}
               </div>
               <div className="grid gap-2">
@@ -184,7 +184,7 @@ export function SignUpForm({
                   onChange={(e) => setPassword(e.target.value)}
                 />
                 {fieldErrors.password ? (
-                  <p className="text-sm text-red-500">{fieldErrors.password}</p>
+                  <p className="text-sm text-destructive">{fieldErrors.password}</p>
                 ) : (
                   <p className="text-xs text-muted-foreground">
                     At least {MIN_PASSWORD_LENGTH} characters.
@@ -202,12 +202,12 @@ export function SignUpForm({
                   onChange={(e) => setConfirmPassword(e.target.value)}
                 />
                 {fieldErrors.confirmPassword && (
-                  <p className="text-sm text-red-500">
+                  <p className="text-sm text-destructive">
                     {fieldErrors.confirmPassword}
                   </p>
                 )}
               </div>
-              {error && <p className="text-sm text-red-500">{error}</p>}
+              {error && <p className="text-sm text-destructive">{error}</p>}
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "Creating account..." : "Create account"}
               </Button>

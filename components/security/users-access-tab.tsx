@@ -28,6 +28,7 @@ import {
   listPermissionCatalogAction,
   grantDirectUserPermissionAction,
   revokeDirectUserPermissionAction,
+  removeSecurityGroupMemberAction,
   updateUserMembershipRolesAction,
   updateUserMembershipStatusAction,
   type UserAccessRow,
@@ -240,6 +241,30 @@ export function UsersAccessTab() {
     } catch (err) {
       console.error("Error granting permission:", err);
       setError("Failed to assign permission");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleRemoveGroupMembership(
+    membershipId: string,
+    groupId: string,
+  ) {
+    if (!expandedUser) return;
+    if (!confirm("Remove this group assignment from the member?")) return;
+    try {
+      setSaving(true);
+      setError(null);
+      const result = await removeSecurityGroupMemberAction({
+        groupId,
+        membershipId,
+        userId: expandedUser,
+      });
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      await Promise.all([loadDetails(expandedUser), loadUsers()]);
     } finally {
       setSaving(false);
     }
@@ -600,24 +625,43 @@ export function UsersAccessTab() {
                               : null,
                           )}
                         >
-                          <h4 className="font-medium mb-2">Assigned Groups</h4>
+                          <h4 className="font-medium mb-2">Groups</h4>
                           {groups.length === 0 ? (
                             <p className="text-sm text-muted-foreground">
-                              No security group memberships.
+                              No permission group assignments. Church role
+                              permissions still apply.
                             </p>
                           ) : (
                             <div className="space-y-2">
                               {groups.map((group) => (
                                 <div
-                                  key={group.id}
-                                  className="p-3 border rounded-lg text-sm"
+                                  key={group.membershipId}
+                                  className="flex items-start justify-between gap-3 p-3 border rounded-lg text-sm"
                                 >
-                                  <p className="font-medium">{group.name}</p>
-                                  {group.description ? (
+                                  <div>
+                                    <p className="font-medium">{group.name}</p>
                                     <p className="text-muted-foreground">
-                                      {group.description}
+                                      {group.campusName ?? group.scopeLabel} ·{" "}
+                                      {group.assignmentStatus}
+                                      {group.expiresAt
+                                        ? ` · Expires ${new Date(group.expiresAt).toLocaleDateString()}`
+                                        : " · No expiration"}
                                     </p>
-                                  ) : null}
+                                  </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-destructive"
+                                    disabled={saving}
+                                    onClick={() =>
+                                      void handleRemoveGroupMembership(
+                                        group.membershipId,
+                                        group.id,
+                                      )
+                                    }
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
                                 </div>
                               ))}
                             </div>

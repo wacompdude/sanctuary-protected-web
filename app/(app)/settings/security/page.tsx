@@ -28,6 +28,22 @@ import {
   type SecurityTabValue,
 } from "@/components/security/security-tabs";
 
+const SECURITY_NAV_TABS: Array<{
+  value: SecurityTabValue;
+  label: string;
+  icon: typeof BarChart3;
+}> = [
+  { value: "overview", label: "Overview", icon: BarChart3 },
+  { value: "roles", label: "Church Roles", icon: BadgeCheck },
+  { value: "groups", label: "Groups", icon: Users },
+  { value: "users", label: "Users", icon: Key },
+  { value: "permissions", label: "Permissions", icon: Shield },
+  { value: "campus", label: "Campus", icon: MapPin },
+  { value: "temporary", label: "Temporary", icon: Clock },
+  { value: "audit", label: "Audit", icon: FileText },
+  { value: "settings", label: "Settings", icon: SettingsIcon },
+];
+
 function SecuritySettingsPageInner() {
   const router = useRouter();
   const pathname = usePathname();
@@ -61,50 +77,27 @@ function SecuritySettingsPageInner() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Security</h1>
             <p className="text-sm text-muted-foreground">
-              Manage roles, security groups, permissions, and access control for your church
+              Manage church roles, permission groups, and access control for your church
             </p>
           </div>
         </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-4">
-        <TabsList className="grid h-auto w-full grid-cols-3 gap-1 sm:grid-cols-5 lg:grid-cols-9">
-          <TabsTrigger value="overview" className="flex min-h-9 items-center justify-center gap-2">
-            <BarChart3 className="h-4 w-4 shrink-0" />
-            <span className="hidden sm:inline">Overview</span>
-          </TabsTrigger>
-          <TabsTrigger value="roles" className="flex min-h-9 items-center justify-center gap-2">
-            <BadgeCheck className="h-4 w-4 shrink-0" />
-            <span className="hidden sm:inline">Roles</span>
-          </TabsTrigger>
-          <TabsTrigger value="groups" className="flex min-h-9 items-center justify-center gap-2">
-            <Users className="h-4 w-4 shrink-0" />
-            <span className="hidden sm:inline">Groups</span>
-          </TabsTrigger>
-          <TabsTrigger value="users" className="flex min-h-9 items-center justify-center gap-2">
-            <Key className="h-4 w-4 shrink-0" />
-            <span className="hidden sm:inline">Users</span>
-          </TabsTrigger>
-          <TabsTrigger value="permissions" className="flex min-h-9 items-center justify-center gap-2">
-            <Shield className="h-4 w-4 shrink-0" />
-            <span className="hidden sm:inline">Perms</span>
-          </TabsTrigger>
-          <TabsTrigger value="campus" className="flex min-h-9 items-center justify-center gap-2">
-            <MapPin className="h-4 w-4 shrink-0" />
-            <span className="hidden sm:inline">Campus</span>
-          </TabsTrigger>
-          <TabsTrigger value="temporary" className="flex min-h-9 items-center justify-center gap-2">
-            <Clock className="h-4 w-4 shrink-0" />
-            <span className="hidden sm:inline">Temp</span>
-          </TabsTrigger>
-          <TabsTrigger value="audit" className="flex min-h-9 items-center justify-center gap-2">
-            <FileText className="h-4 w-4 shrink-0" />
-            <span className="hidden sm:inline">Audit</span>
-          </TabsTrigger>
-          <TabsTrigger value="settings" className="flex min-h-9 items-center justify-center gap-2">
-            <SettingsIcon className="h-4 w-4 shrink-0" />
-            <span className="hidden sm:inline">Settings</span>
-          </TabsTrigger>
+        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 p-1">
+          {SECURITY_NAV_TABS.map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <TabsTrigger
+                key={tab.value}
+                value={tab.value}
+                className="h-8 shrink-0 gap-1.5 px-2.5 py-1 text-xs sm:h-8 sm:text-sm"
+              >
+                <Icon className="h-3.5 w-3.5 shrink-0" />
+                <span>{tab.label}</span>
+              </TabsTrigger>
+            );
+          })}
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">

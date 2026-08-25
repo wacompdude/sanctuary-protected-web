@@ -1,16 +1,22 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { PlatformStatusBadge } from "@/components/platform/platform-status-badge";
-import { listFeaturesForPlatform } from "@/lib/platform/console-queries";
+import { listFeatureCatalogForPlatform } from "@/lib/platform/plan-catalog-admin";
 
 async function FeaturesContent() {
-  const features = await listFeaturesForPlatform();
+  const features = await listFeatureCatalogForPlatform();
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Features</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Feature Catalog</h1>
         <p className="mt-1 text-sm text-slate-400">
-          Feature registry used by entitlement resolution.
+          Feature keys are used by application code and should not be renamed
+          casually. Assign features to tiers from{" "}
+          <Link href="/platform/plans" className="text-amber-300 hover:underline">
+            Plans
+          </Link>
+          .
         </p>
       </div>
 
@@ -20,6 +26,7 @@ async function FeaturesContent() {
             <tr>
               <th className="px-3 py-2 font-medium">Feature</th>
               <th className="px-3 py-2 font-medium">Key</th>
+              <th className="px-3 py-2 font-medium">Minimum tier</th>
               <th className="px-3 py-2 font-medium">Category</th>
               <th className="px-3 py-2 font-medium">Status</th>
             </tr>
@@ -27,9 +34,19 @@ async function FeaturesContent() {
           <tbody>
             {features.map((feature) => (
               <tr key={feature.id} className="border-t border-slate-800">
-                <td className="px-3 py-2">{feature.display_name}</td>
+                <td className="px-3 py-2">
+                  <div>{feature.displayName}</div>
+                  {feature.description ? (
+                    <div className="mt-1 max-w-md text-xs text-slate-500">
+                      {feature.description}
+                    </div>
+                  ) : null}
+                </td>
                 <td className="px-3 py-2 font-mono text-xs text-slate-400">
-                  {feature.feature_key}
+                  {feature.featureKey}
+                </td>
+                <td className="px-3 py-2">
+                  {feature.minimumPlanName ?? "—"}
                 </td>
                 <td className="px-3 py-2 capitalize">
                   {feature.category ?? "—"}

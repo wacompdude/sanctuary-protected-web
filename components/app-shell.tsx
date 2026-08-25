@@ -2,7 +2,10 @@ import { Suspense, type ReactNode } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { AppChurchHeader } from "@/components/app-church-header";
 import { ChurchStatusBanner } from "@/components/church-status-banner";
-import { churchBrandStyle } from "@/lib/organization/brand-theme";
+import {
+  churchBrandStyle,
+  hasChurchBrandTokens,
+} from "@/lib/organization/brand-theme";
 import { requireChurchMembership } from "@/lib/organization/auth";
 import { isNextControlFlowError } from "@/lib/organization/access-guard";
 
@@ -50,8 +53,8 @@ async function BrandedAppShell({ children }: { children: ReactNode }) {
   return (
     <div
       style={brandStyle}
-      className="flex min-h-screen flex-col md:flex-row"
-      data-church-branded=""
+      className="flex min-h-app flex-col md:flex-row"
+      {...(hasChurchBrandTokens(brandStyle) ? { "data-church-branded": "" } : {})}
     >
       <Suspense fallback={<SidebarFallback />}>
         <AppSidebar />
@@ -75,7 +78,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen flex-col md:flex-row">
+        <div className="flex min-h-app flex-col md:flex-row">
           <SidebarFallback />
           <main className="min-w-0 flex-1 md:overflow-auto">
             <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8 md:p-8">

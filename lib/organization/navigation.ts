@@ -1,5 +1,5 @@
 import type { MembershipRole } from "@/lib/organization/types";
-import { NAV_FEATURE_REQUIREMENTS } from "@/lib/subscriptions/nav-features";
+import { applyNavFeatureLocks } from "@/lib/subscriptions/nav-locks";
 
 /** Higher number = more privileged. Used for cumulative nav visibility. */
 export const MEMBERSHIP_ROLE_RANK: Record<MembershipRole, number> = {
@@ -73,6 +73,9 @@ export type NavItemId =
   | "audit"
   | "help"
   | "profile"
+  | "cameras"
+  | "sensors"
+  | "subscription-plans"
   // Legacy ids kept so older references compile during transition
   | "select-church";
 
@@ -82,6 +85,8 @@ export type NavLinkItem = {
   href: string;
   label: string;
   minRole: MembershipRole;
+  locked?: boolean;
+  featureKey?: string;
 };
 
 export type NavGroupItem = {
@@ -92,6 +97,8 @@ export type NavGroupItem = {
   /** Default landing href when the group header is activated. */
   href: string;
   children: NavLinkItem[];
+  locked?: boolean;
+  featureKey?: string;
 };
 
 export type NavEntry = NavLinkItem | NavGroupItem;
@@ -250,6 +257,20 @@ export const APP_NAV_SECTIONS: NavSection[] = [
         href: "/policies",
         minRole: "viewer",
         label: "Policies & Procedures",
+      },
+      {
+        kind: "link",
+        id: "cameras",
+        href: "/cameras",
+        minRole: "viewer",
+        label: "Cameras",
+      },
+      {
+        kind: "link",
+        id: "sensors",
+        href: "/sensors",
+        minRole: "viewer",
+        label: "Sensors",
       },
     ],
   },
@@ -418,6 +439,13 @@ export const APP_NAV_SECTIONS: NavSection[] = [
           },
           {
             kind: "link",
+            id: "subscription-plans",
+            href: "/settings/plans",
+            minRole: "security_leader",
+            label: "Subscription",
+          },
+          {
+            kind: "link",
             id: "billing",
             href: "/settings/billing",
             minRole: "owner",
@@ -522,6 +550,8 @@ export function getNavSectionsForRole(
   options?: {
     /** Feature keys the church currently has enabled (from entitlements). */
     enabledFeatures?: ReadonlySet<string>;
+    /** Keep Safety Concerns unlocked for leadership read-only after downgrade. */
+    keepSafetyConcernsAvailable?: boolean;
   },
 ): NavSection[] {
   if (!role) {
@@ -552,45 +582,11 @@ export function getNavSectionsForRole(
   const membershipRole = role;
   const enabledFeatures = options?.enabledFeatures;
 
-  function isFeatureAllowed(id: NavItemId): boolean {
-    if (!enabledFeatures) return true;
-    const required = NAV_FEATURE_REQUIREMENTS[id];
-    if (!required) return true;
-    return enabledFeatures.has(required);
-  }
-
-  function filterEntryWithFeatures(entry: NavEntry): NavEntry | null {
-    const filtered = filterEntry(entry, membershipRole);
-    if (!filtered) return null;
-    if (filtered.kind === "link") {
-      return isFeatureAllowed(filtered.id) ? filtered : null;
-    }
-    if (!isFeatureAllowed(filtered.id)) return null;
-    const children = filtered.children.filter((child) =>
-      isFeatureAllowed(child.id),
-    );
-    if (children.length === 0) return null;
-    if (children.length === 1) {
-      const only = children[0]!;
-      if (only.href !== filtered.href) {
-        return only;
-      }
-      return {
-        kind: "link",
-        id: filtered.id,
-        href: only.href,
-        label: filtered.label,
-        minRole: filtered.minRole,
-      };
-    }
-    return { ...filtered, children };
-  }
-
-  return APP_NAV_SECTIONS.map((section) => {
+  const sections = APP_NAV_SECTIONS.map((section) => {
     if (!hasMinRole(membershipRole, section.minRole)) return null;
 
     const items = section.items
-      .map((entry) => filterEntryWithFeatures(entry))
+      .map((entry) => filterEntry(entry, membershipRole))
       .filter((entry): entry is NavEntry => entry != null);
 
     if (items.length === 0) return null;
@@ -600,6 +596,13 @@ export function getNavSectionsForRole(
       items,
     };
   }).filter((section): section is NavSection => section != null);
+
+  if (!enabledFeatures) return sections;
+
+  return applyNavFeatureLocks(sections, {
+    enabledFeatures,
+    keepSafetyConcernsAvailable: options?.keepSafetyConcernsAvailable,
+  });
 }
 
 /** Flat list of visible links (useful for tests / legacy callers). */

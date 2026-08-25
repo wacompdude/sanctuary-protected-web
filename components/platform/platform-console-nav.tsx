@@ -30,8 +30,8 @@ export function PlatformConsoleNav({
                     href={link.href}
                     className={
                       active
-                        ? "block rounded-md bg-slate-800 px-3 py-2 text-amber-300"
-                        : "block rounded-md px-3 py-2 text-slate-300 hover:bg-slate-900 hover:text-white"
+                        ? "block rounded-md bg-slate-800 px-3 py-2.5 text-amber-300 min-h-11"
+                        : "block rounded-md px-3 py-2.5 text-slate-300 hover:bg-slate-900 hover:text-white min-h-11"
                     }
                   >
                     {link.label}

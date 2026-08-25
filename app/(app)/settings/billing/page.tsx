@@ -133,6 +133,11 @@ async function BillingContent() {
                   data?.plan_name?.trim() ||
                   "Not configured"}
               </dd>
+              <dd className="mt-2">
+                <Button asChild variant="outline" size="sm">
+                  <Link href="/settings/plans">View plan features</Link>
+                </Button>
+              </dd>
             </div>
             <div>
               <dt className="text-xs uppercase tracking-wide text-muted-foreground">

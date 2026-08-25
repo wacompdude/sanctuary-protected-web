@@ -73,7 +73,7 @@ export async function getSecurityGroupMembers(
     query = query.eq("status", "active");
   }
 
-  const { data, error } = await query;
+  const { data, error } = await query.order("assigned_at", { ascending: false });
 
   if (error) {
     console.error("Failed to fetch group members:", error);
@@ -81,6 +81,54 @@ export async function getSecurityGroupMembers(
   }
 
   return (data || []) as SecurityGroupMember[];
+}
+
+export async function getSecurityGroupMemberById(
+  admin: SupabaseClient,
+  membershipId: string,
+  organizationId: string,
+): Promise<SecurityGroupMember | null> {
+  const { data, error } = await admin
+    .from("security_group_members")
+    .select("*")
+    .eq("id", membershipId)
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Failed to fetch group member:", error);
+    return null;
+  }
+
+  return (data as SecurityGroupMember | null) ?? null;
+}
+
+export async function countSecurityGroupMembers(
+  admin: SupabaseClient,
+  groupIds: string[],
+): Promise<Map<string, { total: number; active: number }>> {
+  const counts = new Map<string, { total: number; active: number }>();
+  if (groupIds.length === 0) return counts;
+
+  const { data, error } = await admin
+    .from("security_group_members")
+    .select("security_group_id, status")
+    .in("security_group_id", groupIds);
+
+  if (error) {
+    console.error("Failed to count group members:", error);
+    return counts;
+  }
+
+  for (const row of data ?? []) {
+    const groupId = row.security_group_id as string;
+    const current = counts.get(groupId) ?? { total: 0, active: 0 };
+    current.total += 1;
+    if (row.status === "active") current.active += 1;
+    counts.set(groupId, current);
+  }
+
+  return counts;
 }
 
 /**
@@ -114,14 +162,22 @@ export async function getUserSecurityGroupMemberships(
       const membership: SecurityGroupMember = {
         id: String(item.id),
         security_group_id: String(item.security_group_id),
+        organization_id: (item.organization_id as string | null) ?? null,
         user_id: String(item.user_id),
+        campus_id: (item.campus_id as string | null) ?? null,
+        scope_type: (item.scope_type as SecurityGroupMember["scope_type"]) ?? undefined,
         effective_at: (item.effective_at as string | null) ?? null,
         expires_at: (item.expires_at as string | null) ?? null,
         status: item.status as SecurityGroupMember["status"],
+        assignment_reason: (item.assignment_reason as string | null) ?? null,
+        administrative_notes: (item.administrative_notes as string | null) ?? null,
         assigned_by: String(item.assigned_by),
         assigned_at: String(item.assigned_at),
+        updated_by: (item.updated_by as string | null) ?? null,
+        updated_at: (item.updated_at as string | null) ?? null,
         removed_by: (item.removed_by as string | null) ?? null,
         removed_at: (item.removed_at as string | null) ?? null,
+        revocation_reason: (item.revocation_reason as string | null) ?? null,
       };
       return { group, membership };
     })
@@ -443,8 +499,15 @@ export async function addUserToSecurityGroup(
   groupId: string,
   userId: string,
   assignedBy: string,
-  effectiveAt?: string,
-  expiresAt?: string,
+  options?: {
+    organizationId?: string;
+    effectiveAt?: string | null;
+    expiresAt?: string | null;
+    campusId?: string | null;
+    scopeType?: string;
+    assignmentReason?: string | null;
+    administrativeNotes?: string | null;
+  },
 ): Promise<SecurityGroupMember | null> {
   const { data, error } = await admin
     .from("security_group_members")
@@ -452,8 +515,13 @@ export async function addUserToSecurityGroup(
       security_group_id: groupId,
       user_id: userId,
       assigned_by: assignedBy,
-      effective_at: effectiveAt || null,
-      expires_at: expiresAt || null,
+      organization_id: options?.organizationId ?? null,
+      effective_at: options?.effectiveAt ?? null,
+      expires_at: options?.expiresAt ?? null,
+      campus_id: options?.campusId ?? null,
+      scope_type: options?.scopeType ?? "all_current_future_campuses",
+      assignment_reason: options?.assignmentReason ?? null,
+      administrative_notes: options?.administrativeNotes ?? null,
     })
     .select();
 
@@ -472,6 +540,7 @@ export async function removeUserFromSecurityGroup(
   admin: SupabaseClient,
   memberId: string,
   removedBy: string,
+  revocationReason?: string | null,
 ): Promise<boolean> {
   const { error } = await admin
     .from("security_group_members")
@@ -479,6 +548,9 @@ export async function removeUserFromSecurityGroup(
       status: "revoked",
       removed_by: removedBy,
       removed_at: new Date().toISOString(),
+      revocation_reason: revocationReason ?? null,
+      updated_by: removedBy,
+      updated_at: new Date().toISOString(),
     })
     .eq("id", memberId);
 
@@ -488,6 +560,52 @@ export async function removeUserFromSecurityGroup(
   }
 
   return true;
+}
+
+export async function updateSecurityGroupMember(
+  admin: SupabaseClient,
+  memberId: string,
+  organizationId: string,
+  updates: {
+    effectiveAt?: string | null;
+    expiresAt?: string | null;
+    campusId?: string | null;
+    scopeType?: string;
+    assignmentReason?: string | null;
+    administrativeNotes?: string | null;
+  },
+  updatedBy: string,
+): Promise<SecurityGroupMember | null> {
+  const payload: Record<string, unknown> = {
+    updated_by: updatedBy,
+    updated_at: new Date().toISOString(),
+  };
+  if (updates.effectiveAt !== undefined) payload.effective_at = updates.effectiveAt;
+  if (updates.expiresAt !== undefined) payload.expires_at = updates.expiresAt;
+  if (updates.campusId !== undefined) payload.campus_id = updates.campusId;
+  if (updates.scopeType !== undefined) payload.scope_type = updates.scopeType;
+  if (updates.assignmentReason !== undefined) {
+    payload.assignment_reason = updates.assignmentReason;
+  }
+  if (updates.administrativeNotes !== undefined) {
+    payload.administrative_notes = updates.administrativeNotes;
+  }
+
+  const { data, error } = await admin
+    .from("security_group_members")
+    .update(payload)
+    .eq("id", memberId)
+    .eq("organization_id", organizationId)
+    .eq("status", "active")
+    .select("*")
+    .maybeSingle();
+
+  if (error) {
+    console.error("Failed to update group member:", error);
+    return null;
+  }
+
+  return (data as SecurityGroupMember | null) ?? null;
 }
 
 /**

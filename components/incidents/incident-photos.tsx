@@ -19,6 +19,8 @@ import {
 } from "@/lib/incidents/attachment-storage";
 import type { ActionState, IncidentAttachment } from "@/lib/incidents/types";
 import { Trash2 } from "lucide-react";
+import { TierLockedControl } from "@/components/subscriptions/tier-locked-control";
+import type { FeatureLockSummary } from "@/lib/subscriptions/feature-access";
 
 const initialState: ActionState = {};
 
@@ -60,6 +62,7 @@ export function IncidentPhotosCard({
   canManageAll,
   maxCount = INCIDENT_PHOTO_MAX_COUNT,
   maxBytes,
+  photoLock,
 }: {
   incidentId: string;
   attachments: IncidentAttachment[];
@@ -68,6 +71,7 @@ export function IncidentPhotosCard({
   canManageAll: boolean;
   maxCount?: number;
   maxBytes?: number;
+  photoLock?: FeatureLockSummary | null;
 }) {
   const boundUpload = uploadIncidentPhotos.bind(null, incidentId);
   const [state, formAction, pending] = useActionState(boundUpload, initialState);
@@ -136,6 +140,12 @@ export function IncidentPhotosCard({
             ))}
           </ul>
         )}
+
+        {canUpload && !photosEnabled && photoLock ? (
+          <TierLockedControl lock={photoLock}>
+            Add incident photo
+          </TierLockedControl>
+        ) : null}
 
         {canUpload && photosEnabled && remaining > 0 && (
           <form

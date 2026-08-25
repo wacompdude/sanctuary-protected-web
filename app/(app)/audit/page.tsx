@@ -48,9 +48,25 @@ async function AuditLogContent() {
                     <div className="min-w-0">
                       <p className="font-medium">{log.actionLabel}</p>
                       <p className="text-xs text-muted-foreground">
-                        {log.entity_type ?? "system"}
-                        {log.entity_id ? ` · ${log.entity_id.slice(0, 8)}…` : ""}
-                        {log.user_id ? ` · user ${log.user_id.slice(0, 8)}…` : ""}
+                        {log.actor ? (
+                          <>By {log.actor.label}</>
+                        ) : (
+                          <>System</>
+                        )}
+                        {log.entityPerson ? (
+                          <>
+                            {" "}
+                            · {log.entity_type} · {log.entityPerson.label}
+                          </>
+                        ) : log.entity_type ? (
+                          <>
+                            {" "}
+                            · {log.entity_type}
+                            {log.entity_id
+                              ? ` · ${log.entity_id.slice(0, 8)}…`
+                              : ""}
+                          </>
+                        ) : null}
                       </p>
                       {Object.keys(log.metadata).length > 0 && (
                         <pre className="mt-2 max-w-full overflow-x-auto rounded-md bg-muted/50 p-2 text-[11px] text-muted-foreground">

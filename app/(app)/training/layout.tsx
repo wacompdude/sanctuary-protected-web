@@ -1,7 +1,8 @@
 import { Suspense } from "react";
-import { TrainingUpgradeGate } from "@/components/training/upgrade-gate";
+import { FeatureLockedPage } from "@/components/subscriptions/feature-locked-page";
 import { getAuthenticatedUserWithChurch } from "@/lib/organization/auth";
-import { getTrainingAccess } from "@/lib/training/access";
+import { FEATURE_KEYS } from "@/lib/subscriptions/feature-keys";
+import { hasFeature } from "@/lib/subscriptions/resolver";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -11,7 +12,10 @@ export const metadata: Metadata = {
 
 async function TrainingLayoutGate({ children }: { children: React.ReactNode }) {
   const { church } = await getAuthenticatedUserWithChurch();
-  const access = await getTrainingAccess(church.id);
+  const access = await hasFeature({
+    organizationId: church.id,
+    featureKey: FEATURE_KEYS.TRAINING_MANAGEMENT,
+  });
 
   return (
     <div className="space-y-6">
@@ -22,7 +26,7 @@ async function TrainingLayoutGate({ children }: { children: React.ReactNode }) {
         </p>
       </div>
 
-      {!access.allowed ? <TrainingUpgradeGate /> : children}
+      {!access.allowed ? <FeatureLockedPage access={access} /> : children}
     </div>
   );
 }

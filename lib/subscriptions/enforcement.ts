@@ -3,6 +3,10 @@ import { createClient } from "@/lib/supabase/server";
 import { EntitlementError } from "@/lib/subscriptions/errors";
 import { FEATURE_KEYS, type FeatureKey } from "@/lib/subscriptions/feature-keys";
 import {
+  lockSummaryFromAccess,
+  type FeatureLockSummary,
+} from "@/lib/subscriptions/feature-access";
+import {
   getFeatureLimit,
   hasFeature,
   requireFeature,
@@ -77,13 +81,31 @@ export async function getEnabledFeatureKeys(
   organizationId: string,
   featureKeys: FeatureKey[],
 ): Promise<Set<FeatureKey>> {
+  const { enabled } = await getNavFeatureAccess(organizationId, featureKeys);
+  return enabled;
+}
+
+export async function getNavFeatureAccess(
+  organizationId: string,
+  featureKeys: FeatureKey[],
+): Promise<{
+  enabled: Set<FeatureKey>;
+  locks: Record<string, FeatureLockSummary>;
+}> {
   const results = await Promise.all(
-    featureKeys.map(async (featureKey) => {
-      const access = await hasFeature({ organizationId, featureKey });
-      return access.allowed ? featureKey : null;
-    }),
+    featureKeys.map((featureKey) => hasFeature({ organizationId, featureKey })),
   );
-  return new Set(results.filter((key): key is FeatureKey => key != null));
+
+  const enabled = new Set<FeatureKey>();
+  const locks: Record<string, FeatureLockSummary> = {};
+  for (const access of results) {
+    if (access.allowed) {
+      enabled.add(access.featureKey);
+      continue;
+    }
+    locks[access.featureKey] = lockSummaryFromAccess(access);
+  }
+  return { enabled, locks };
 }
 
 /**
@@ -132,6 +154,7 @@ export async function getIncidentPhotoEntitlements(organizationId: string): Prom
   maxSizeMb: number;
   maxBytes: number;
   reason?: string;
+  lock?: FeatureLockSummary;
 }> {
   const [access, countLimit, sizeLimit] = await Promise.all([
     hasFeature({
@@ -161,6 +184,7 @@ export async function getIncidentPhotoEntitlements(organizationId: string): Prom
     maxSizeMb,
     maxBytes: maxSizeMb * 1024 * 1024,
     reason: access.allowed ? undefined : access.reason,
+    lock: access.allowed ? undefined : lockSummaryFromAccess(access),
   };
 }
 

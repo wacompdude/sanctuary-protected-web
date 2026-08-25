@@ -94,7 +94,7 @@ export function ChurchSwitcher({
           onChange={(event) => {
             event.currentTarget.form?.requestSubmit();
           }}
-          className="min-h-11 w-full cursor-pointer appearance-none rounded-md border border-border bg-background py-2 pl-9 pr-8 text-base font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60 md:h-10 md:min-h-0 md:text-sm"
+          className="min-h-11 w-full cursor-pointer appearance-none rounded-md border border-border bg-background py-2 pl-9 pr-8 text-base font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60 dark:[color-scheme:dark] md:h-10 md:min-h-0 md:text-sm"
         >
           {churches.map((church) => (
             <option key={church.id} value={church.id}>
@@ -140,7 +140,7 @@ export function ChurchSwitcher({
             onChange={(event) => {
               event.currentTarget.form?.requestSubmit();
             }}
-            className="h-10 w-10 cursor-pointer appearance-none rounded-md border border-border bg-transparent opacity-0"
+            className="h-11 w-11 cursor-pointer appearance-none rounded-md border border-border bg-background text-foreground opacity-0"
             title="Switch church"
             aria-label="Switch church"
           >

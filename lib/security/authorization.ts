@@ -28,7 +28,12 @@ import type {
   SecurityGroupPermission,
 } from "./types";
 import { ROLE_PERMISSION_MAPPING, unionRolePermissions } from "./permission-keys";
+import { featureKeyForPermission } from "@/lib/security/permission-features";
 import { hasFeature } from "@/lib/subscriptions/resolver";
+import {
+  isCampusInScope,
+  mergeGroupPermissionScope,
+} from "@/lib/security/campus-scope";
 
 /**
  * Local helper: get a church by ID.
@@ -94,19 +99,6 @@ function isPermissionActive(grant: PermissionGrant | UserPermission | SecurityGr
 }
 
 /**
- * Check if a campus is within the scope of a permission.
- * Returns true if the permission applies to the campus.
- */
-function isCampusInScope(grant: PermissionGrant | UserPermission | SecurityGroupPermission, campusId: string): boolean {
-  if (grant.scope_type === "no_restriction") return true;
-  if (grant.scope_type === "all_current_future_campuses") return true;
-  if (grant.scope_type === "all_current_campuses") return true;
-  if (grant.scope_type === "selected_campuses" && grant.campus_id === campusId) return true;
-  // primary_campus: would require knowing the user's primary campus (not checked here)
-  return false;
-}
-
-/**
  * Get role-based permissions for one or more church roles (union / dedupe).
  */
 function getRolePermissions(roles: string[], permissionKey: string): PermissionGrant[] {
@@ -150,7 +142,9 @@ async function getGroupPermissions(
       security_group_id,
       effective_at,
       expires_at,
-      status
+      status,
+      campus_id,
+      scope_type
     `)
     .eq("user_id", userId)
     .eq("status", "active");
@@ -207,12 +201,19 @@ async function getGroupPermissions(
     // Check if the permission itself is active
     if (!isPermissionActive(perm as any, actionDate)) continue;
 
+    const scoped = mergeGroupPermissionScope({
+      permissionScopeType: perm.scope_type,
+      permissionCampusId: perm.campus_id,
+      membershipScopeType: membership?.scope_type ?? null,
+      membershipCampusId: membership?.campus_id ?? null,
+    });
+
     grants.push({
       id: perm.id,
       permission_key: permissionKey,
       permission_effect: perm.permission_effect,
-      scope_type: perm.scope_type,
-      campus_id: perm.campus_id,
+      scope_type: scoped.scope_type,
+      campus_id: scoped.campus_id,
       effective_at: perm.effective_at,
       expires_at: perm.expires_at,
       source: "GROUP",
@@ -316,18 +317,22 @@ export async function canUserPerform(
       };
     }
 
-    // 5. Check tier availability
-    const canUseFeature = await hasFeature({
-      organizationId,
-      featureKey: permissionDef.minimum_tier,
-    });
-
-    if (!canUseFeature) {
-      return {
-        allowed: false,
-        reason: "TIER_FEATURE_UNAVAILABLE",
-        message: `This feature is not available under your current subscription plan.`,
-      };
+    // 5. Check feature catalog availability for this permission.
+    const featureKey = featureKeyForPermission(permissionDef.permission_key);
+    if (featureKey) {
+      const canUseFeature = await hasFeature({
+        organizationId,
+        featureKey,
+      });
+      if (!canUseFeature.allowed) {
+        return {
+          allowed: false,
+          reason: "TIER_FEATURE_UNAVAILABLE",
+          message:
+            canUseFeature.reason ??
+            "This feature is not available under your current subscription plan.",
+        };
+      }
     }
 
     // 6. Check explicit user-level DENY (highest priority exception)

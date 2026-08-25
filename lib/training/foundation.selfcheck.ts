@@ -4,8 +4,8 @@
  */
 import { FEATURE_KEYS } from "@/lib/subscriptions/feature-keys";
 import { EXPECTED_PLAN_ENTITLEMENTS } from "@/lib/subscriptions/expected-matrix";
+import { minimumPlanFromExpectedMatrix } from "@/lib/subscriptions/feature-access";
 import { PLAN_KEYS } from "@/lib/subscriptions/plan-keys";
-import { TRAINING_UPGRADE_MESSAGE } from "@/lib/training/constants";
 import {
   canManageEvents,
   canRecordAttendance,
@@ -54,10 +54,9 @@ assert(
 );
 
 assert(
-  TRAINING_UPGRADE_MESSAGE.includes("Steward Pro") &&
-    TRAINING_UPGRADE_MESSAGE.includes("Shepherd Plus") &&
-    TRAINING_UPGRADE_MESSAGE.includes("Omni Enterprise"),
-  "upgrade message names eligible plans",
+  minimumPlanFromExpectedMatrix(FEATURE_KEYS.TRAINING_MANAGEMENT)?.planKey ===
+    PLAN_KEYS.STEWARD_PRO,
+  "training minimum plan is Steward Pro from the catalog matrix",
 );
 
 // Role gates

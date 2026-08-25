@@ -9,23 +9,19 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getAuthenticatedUserWithChurch } from "@/lib/organization/auth";
 import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
 import {
   labelForCampusStatus,
   labelForCampusType,
 } from "@/lib/campuses/constants";
-import {
-  canManageCampuses,
-  canViewCampuses,
-} from "@/lib/campuses/permissions";
+import { loadCampusCapabilities } from "@/lib/campuses/server-auth";
 import { formatAddress, listCampuses } from "@/lib/campuses/queries";
 import { formatChurchDate } from "@/lib/datetime/format";
 
 async function CampusesContent() {
-  const { church, membership } = await getAuthenticatedUserWithChurch();
+  const { church, capabilities } = await loadCampusCapabilities({});
 
-  if (!canViewCampuses(membership.role)) {
+  if (!capabilities.canView && !capabilities.canViewOverview) {
     return (
       <Card>
         <CardContent className="py-8 text-sm text-muted-foreground">
@@ -36,7 +32,7 @@ async function CampusesContent() {
   }
 
   const result = await listCampuses(church.id, { includeArchived: true });
-  const canManage = canManageCampuses(membership.role);
+  const canManage = capabilities.canCreate;
 
   if (!result.tablesAvailable) {
     return (
@@ -65,7 +61,7 @@ async function CampusesContent() {
           <Button asChild className="h-11">
             <Link href="/campuses/new">
               <Plus className="h-4 w-4" />
-              New campus
+              Add campus
             </Link>
           </Button>
         ) : null}
@@ -98,7 +94,7 @@ async function CampusesContent() {
               No campuses found.{" "}
               {canManage
                 ? "Create a campus to get started."
-                : "Ask an administrator to add campuses."}
+                : "Ask an Owner, Co-owner, or Administrator to add campuses."}
             </p>
           ) : (
             <div className="overflow-x-auto">
@@ -124,6 +120,14 @@ async function CampusesContent() {
                         Members
                       </th>
                     ) : null}
+                    {result.extendedSchema ? (
+                      <th className="pb-3 pr-4 font-medium text-muted-foreground">
+                        Security team
+                      </th>
+                    ) : null}
+                    <th className="pb-3 pr-4 font-medium text-muted-foreground">
+                      Created
+                    </th>
                     <th className="pb-3 font-medium text-muted-foreground">
                       Updated
                     </th>
@@ -164,6 +168,16 @@ async function CampusesContent() {
                           {campus.member_count ?? 0}
                         </td>
                       ) : null}
+                      {result.extendedSchema ? (
+                        <td className="py-3 pr-4 text-muted-foreground">
+                          {campus.security_team_count ?? 0}
+                        </td>
+                      ) : null}
+                      <td className="py-3 pr-4 text-muted-foreground">
+                        {formatChurchDate(campus.created_at, {
+                          timeZone: church.timezone,
+                        })}
+                      </td>
                       <td className="py-3 text-muted-foreground">
                         {formatChurchDate(campus.updated_at, {
                           timeZone: church.timezone,

@@ -73,7 +73,7 @@ export function SecurityOverviewTab() {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <MetricCard
-          title="Security Groups"
+          title="Groups"
           value={metrics.totalGroups}
           description="Active groups"
           icon={Shield}
@@ -161,7 +161,7 @@ export function SecurityOverviewTab() {
             titleClassName="text-blue-900 dark:text-blue-100"
             bodyClassName="text-blue-800 dark:text-blue-200"
             title="Getting Started"
-            body="Create your first security group to organize permissions and manage user access"
+            body="Create your first group to organize extra permissions without changing church roles"
           />
         )}
 

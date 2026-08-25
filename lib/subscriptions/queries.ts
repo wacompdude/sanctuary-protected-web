@@ -277,3 +277,93 @@ export async function getChurchSubscription(
     plan_display_name: String(plan?.display_name ?? planKey),
   };
 }
+
+export async function listPlanFeatureMatrix(): Promise<{
+  plans: SubscriptionPlanRecord[];
+  features: FeatureRecord[];
+  assignments: PlanFeatureAssignment[];
+}> {
+  const supabase = await createClient();
+  const [plansResult, featuresResult, assignmentsResult] = await Promise.all([
+    supabase
+      .from("subscription_plans")
+      .select(
+        "id, plan_key, display_name, description, status, billing_interval, monthly_price_cents, currency, sort_order, is_public, is_default, is_custom",
+      )
+      .order("sort_order", { ascending: true }),
+    supabase
+      .from("features")
+      .select(
+        "id, feature_key, display_name, description, category, value_type, unit, status, is_customer_visible",
+      )
+      .order("feature_key", { ascending: true }),
+    supabase.from("plan_features").select(
+      `
+      plan_id,
+      feature_id,
+      boolean_value,
+      integer_value,
+      decimal_value,
+      text_value,
+      json_value,
+      is_inherited,
+      features!inner (
+        feature_key,
+        value_type
+      )
+    `,
+    ),
+  ]);
+
+  if (plansResult.error && isMissingRelation(plansResult.error.message)) {
+    return { plans: [], features: [], assignments: [] };
+  }
+  if (plansResult.error) {
+    throw new Error("Unable to load subscription plans.");
+  }
+  if (featuresResult.error && !isMissingRelation(featuresResult.error.message)) {
+    throw new Error("Unable to load features.");
+  }
+  if (
+    assignmentsResult.error &&
+    !isMissingRelation(assignmentsResult.error.message)
+  ) {
+    throw new Error("Unable to load plan feature assignments.");
+  }
+
+  const plans = ((plansResult.data ?? []) as Record<string, unknown>[]).map(
+    mapPlan,
+  );
+  const features = ((featuresResult.data ?? []) as Record<string, unknown>[]).map(
+    mapFeature,
+  );
+  const assignments = (
+    (assignmentsResult.data ?? []) as Record<string, unknown>[]
+  ).map((row) => {
+    const feature = row.features as Record<string, unknown> | null;
+    const featureKey = String(feature?.feature_key ?? "");
+    return {
+      plan_id: String(row.plan_id),
+      feature_id: String(row.feature_id),
+      feature_key: isFeatureKey(featureKey) ? featureKey : featureKey,
+      value_type: (feature?.value_type as FeatureValueType) ?? "boolean",
+      boolean_value:
+        row.boolean_value === null || row.boolean_value === undefined
+          ? null
+          : Boolean(row.boolean_value),
+      integer_value:
+        row.integer_value === null || row.integer_value === undefined
+          ? null
+          : Number(row.integer_value),
+      decimal_value:
+        row.decimal_value === null || row.decimal_value === undefined
+          ? null
+          : Number(row.decimal_value),
+      text_value: (row.text_value as string | null) ?? null,
+      json_value: row.json_value ?? null,
+      is_inherited: Boolean(row.is_inherited),
+    } satisfies PlanFeatureAssignment;
+  });
+
+  return { plans, features, assignments };
+}

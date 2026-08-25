@@ -26,6 +26,14 @@ export type SecurityGroupStatus = "active" | "inactive";
 
 export type SecurityGroupMemberStatus = "active" | "expired" | "revoked";
 
+export type ComputedGroupMemberStatus =
+  | "scheduled"
+  | "active"
+  | "expiring_soon"
+  | "expired"
+  | "revoked"
+  | "cancelled";
+
 export type SecurityAuditEventType =
   | "security_group.created"
   | "security_group.updated"
@@ -34,6 +42,9 @@ export type SecurityAuditEventType =
   | "security_group_member.added"
   | "security_group_member.removed"
   | "security_group_member.expired"
+  | "security_group_member.updated"
+  | "security_group_member.extended"
+  | "security_group_member.revoked"
   | "user_permission.granted"
   | "user_permission.denied"
   | "user_permission.revoked"
@@ -118,6 +129,7 @@ export interface SecurityGroup {
   updated_by: string;
   updated_at: string;
   notes: string | null;
+  high_risk?: boolean;
 }
 
 /**
@@ -126,14 +138,22 @@ export interface SecurityGroup {
 export interface SecurityGroupMember {
   id: string;
   security_group_id: string;
+  organization_id?: string | null;
   user_id: string;
+  campus_id?: string | null;
+  scope_type?: PermissionScopeType;
   effective_at: string | null;
   expires_at: string | null;
   status: SecurityGroupMemberStatus;
+  assignment_reason?: string | null;
+  administrative_notes?: string | null;
   assigned_by: string;
   assigned_at: string;
+  updated_by?: string | null;
+  updated_at?: string | null;
   removed_by: string | null;
   removed_at: string | null;
+  revocation_reason?: string | null;
 }
 
 /**

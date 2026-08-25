@@ -308,6 +308,70 @@ export async function logSecurityGroupMemberRemoved(
   });
 }
 
+export async function logSecurityGroupMemberUpdated(
+  admin: SupabaseClient,
+  organizationId: string,
+  groupId: string,
+  targetUserId: string,
+  actorUserId: string,
+  previousValue: Record<string, unknown>,
+  newValue: Record<string, unknown>,
+  reason?: string,
+) {
+  return writeSecurityAuditLog(admin, {
+    organizationId,
+    actorUserId,
+    targetUserId,
+    eventType: "security_group_member.updated",
+    securityGroupId: groupId,
+    previousValue,
+    newValue,
+    reason: reason || "Updated security group membership",
+  });
+}
+
+export async function logSecurityGroupMemberExtended(
+  admin: SupabaseClient,
+  organizationId: string,
+  groupId: string,
+  targetUserId: string,
+  actorUserId: string,
+  previousValue: Record<string, unknown>,
+  newValue: Record<string, unknown>,
+  reason?: string,
+) {
+  return writeSecurityAuditLog(admin, {
+    organizationId,
+    actorUserId,
+    targetUserId,
+    eventType: "security_group_member.extended",
+    securityGroupId: groupId,
+    previousValue,
+    newValue,
+    reason: reason || "Extended security group membership",
+  });
+}
+
+export async function logSecurityGroupMemberRevoked(
+  admin: SupabaseClient,
+  organizationId: string,
+  groupId: string,
+  targetUserId: string,
+  actorUserId: string,
+  previousValue: Record<string, unknown>,
+  reason?: string,
+) {
+  return writeSecurityAuditLog(admin, {
+    organizationId,
+    actorUserId,
+    targetUserId,
+    eventType: "security_group_member.revoked",
+    securityGroupId: groupId,
+    previousValue,
+    reason: reason || "Revoked security group membership immediately",
+  });
+}
+
 export async function logSecurityAuditLogViewed(
   admin: SupabaseClient,
   organizationId: string,

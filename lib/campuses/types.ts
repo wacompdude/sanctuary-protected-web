@@ -52,6 +52,7 @@ export type Campus = {
   updated_at: string;
   archived_at: string | null;
   member_count?: number;
+  security_team_count?: number;
 };
 
 export type CampusListResult = {

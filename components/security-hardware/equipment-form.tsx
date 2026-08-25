@@ -30,11 +30,9 @@ import type {
   SecurityEquipment,
 } from "@/lib/security-hardware/types";
 import { EquipmentPhotoPicker } from "@/components/security-hardware/equipment-photo-picker";
+import { selectClassName } from "@/components/ui/form-control";
 
 const initialState: EquipmentActionState = {};
-
-const selectClassName =
-  "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 const textareaClassName =
   "flex min-h-[96px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";

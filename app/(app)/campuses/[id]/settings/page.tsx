@@ -3,22 +3,20 @@ import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { CampusSettingsPanel } from "@/components/campuses/campus-settings-panel";
-import { getAuthenticatedUserWithChurch } from "@/lib/organization/auth";
 import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
-import {
-  canManageCampuses,
-  canViewCampuses,
-} from "@/lib/campuses/permissions";
+import { loadCampusCapabilities } from "@/lib/campuses/server-auth";
 import { getCampus } from "@/lib/campuses/queries";
 
 async function CampusSettingsContent({ id }: { id: string }) {
-  const { church, membership } = await getAuthenticatedUserWithChurch();
+  const { church, capabilities } = await loadCampusCapabilities({
+    campusId: id,
+  });
 
-  if (!canViewCampuses(membership.role)) {
+  if (!capabilities.canManageSettings && !capabilities.canEdit) {
     return (
       <Card>
         <CardContent className="py-8 text-sm text-muted-foreground">
-          You do not have permission to view campus settings.
+          You do not have permission to edit campus settings.
         </CardContent>
       </Card>
     );
@@ -35,7 +33,7 @@ async function CampusSettingsContent({ id }: { id: string }) {
     );
   }
 
-  const canManage = canManageCampuses(membership.role);
+  const canManage = capabilities.canManageSettings || capabilities.canEdit;
 
   return (
     <div className="space-y-6">

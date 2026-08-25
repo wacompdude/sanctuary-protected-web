@@ -1,9 +1,5 @@
 import { cache } from "react";
-import {
-  EntitlementError,
-  limitMessageForFeature,
-  upgradeMessageForFeature,
-} from "@/lib/subscriptions/errors";
+import { getMinimumPlanForFeature } from "@/lib/subscriptions/catalog";
 import {
   buildEntitlementMap,
   evaluateFeatureCapacity,
@@ -11,10 +7,23 @@ import {
   readIntegerEntitlement,
 } from "@/lib/subscriptions/entitlement-values";
 import {
+  EntitlementError,
+  limitMessageForFeature,
+  upgradeMessageForFeature,
+} from "@/lib/subscriptions/errors";
+import {
+  FEATURE_ACCESS_REASONS,
+  buildUpgradeCopy,
+} from "@/lib/subscriptions/feature-access";
+import {
   FEATURE_DISPLAY_NAMES,
   isFeatureKey,
   type FeatureKey,
 } from "@/lib/subscriptions/feature-keys";
+import {
+  listActiveEntitlementOverrides,
+  mergeEntitlementValues,
+} from "@/lib/subscriptions/overrides";
 import {
   getChurchSubscription,
   getDefaultSubscriptionPlan,
@@ -72,8 +81,8 @@ export async function getPlanEntitlements(params: {
 /**
  * Resolve entitlements for a church.
  * If no current subscription exists, falls back to the default plan
- * (Servant Standard) and sets usedDefaultPlanFallback. Phase 4 should
- * assign real church_subscriptions rows.
+ * (Servant Standard) and sets usedDefaultPlanFallback.
+ * Active platform overrides overlay plan_features for that organization only.
  */
 export const getChurchEntitlements = cache(
   async (organizationId: string): Promise<ChurchEntitlements> => {
@@ -113,7 +122,10 @@ export const getChurchEntitlements = cache(
         subscription,
         plan: resolvedPlan,
         usedDefaultPlanFallback: false,
-        values: await loadPlanEntitlements(resolvedPlan),
+        values: mergeEntitlementValues(
+          await loadPlanEntitlements(resolvedPlan),
+          await listActiveEntitlementOverrides(trimmed),
+        ),
       };
     }
 
@@ -133,7 +145,10 @@ export const getChurchEntitlements = cache(
       subscription: null,
       plan: defaultPlan,
       usedDefaultPlanFallback: true,
-      values: await loadPlanEntitlements(defaultPlan),
+      values: mergeEntitlementValues(
+        await loadPlanEntitlements(defaultPlan),
+        await listActiveEntitlementOverrides(trimmed),
+      ),
     };
   },
 );
@@ -150,24 +165,57 @@ export async function hasFeature(params: {
       planKey: null,
       planDisplayName: null,
       reason: "Unknown feature.",
+      reasonCode: FEATURE_ACCESS_REASONS.UNKNOWN_FEATURE,
+      minimumPlanKey: null,
+      minimumPlanDisplayName: null,
+      upgradeMessage: "Unknown feature.",
     };
   }
 
   const entitlements = await getChurchEntitlements(params.organizationId);
   const allowed = readBooleanEntitlement(entitlements.values, featureKey);
+  const planKey = entitlements.plan ? String(entitlements.plan.plan_key) : null;
+  const planDisplayName = entitlements.plan?.display_name ?? null;
+  const minimumPlan = allowed
+    ? null
+    : await getMinimumPlanForFeature(featureKey);
+  const upgradeMessage = allowed
+    ? undefined
+    : upgradeMessageForFeature(
+        featureKey,
+        planDisplayName,
+        minimumPlan?.displayName,
+      );
+  const copy = allowed
+    ? null
+    : buildUpgradeCopy({
+        featureKey,
+        currentPlanName: planDisplayName,
+        minimumPlanName: minimumPlan?.displayName,
+      });
 
   return {
     allowed,
     featureKey,
-    planKey: entitlements.plan ? String(entitlements.plan.plan_key) : null,
-    planDisplayName: entitlements.plan?.display_name ?? null,
-    reason: allowed
-      ? undefined
-      : upgradeMessageForFeature(
-          featureKey,
-          entitlements.plan?.display_name ?? null,
-        ),
+    planKey,
+    planDisplayName,
+    reason: allowed ? undefined : copy?.longMessage ?? upgradeMessage,
+    reasonCode: allowed
+      ? FEATURE_ACCESS_REASONS.AVAILABLE
+      : minimumPlan
+        ? FEATURE_ACCESS_REASONS.TIER_REQUIRED
+        : FEATURE_ACCESS_REASONS.FEATURE_DISABLED,
+    minimumPlanKey: minimumPlan?.planKey ?? null,
+    minimumPlanDisplayName: minimumPlan?.displayName ?? null,
+    upgradeMessage,
   };
+}
+
+export async function getFeatureEntitlement(params: {
+  organizationId: string;
+  featureKey: FeatureKey | string;
+}): Promise<FeatureAccessResult> {
+  return hasFeature(params);
 }
 
 export async function getFeatureLimit(params: {
@@ -211,6 +259,7 @@ export async function requireFeature(params: {
         upgradeMessageForFeature(
           result.featureKey,
           result.planDisplayName,
+          result.minimumPlanDisplayName,
         ),
       {
         code: isFeatureKey(String(params.featureKey))

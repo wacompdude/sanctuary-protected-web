@@ -18,11 +18,9 @@ import { labelForMembershipRole } from "@/lib/organization/invitations";
 import { POLICY_MINIMUM_ROLES } from "@/lib/policies/constants";
 import type { PolicyAssignment } from "@/lib/policies/types";
 import type { ActionState } from "@/lib/organization/types";
+import { selectClassName } from "@/components/ui/form-control";
 
 const initialState: ActionState = {};
-
-const selectClassName =
-  "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 function assignmentLabel(assignment: PolicyAssignment): string {
   switch (assignment.assignment_type) {

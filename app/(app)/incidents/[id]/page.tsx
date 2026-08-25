@@ -214,6 +214,7 @@ async function IncidentDetailContent({
         canManageAll={canManageAll}
         maxCount={photoEntitlements.maxCount}
         maxBytes={photoEntitlements.maxBytes}
+        photoLock={photoEntitlements.lock}
       />
 
       <IncidentTeamMembersCard

@@ -1,15 +1,19 @@
 import { hasMinRole } from "@/lib/organization/navigation";
 import type { MembershipRole } from "@/lib/organization/types";
 import type { CampusRole } from "@/lib/campuses/types";
+import {
+  churchRoleGrantsCampusAction,
+  isTopLevelCampusAdminRole,
+} from "@/lib/campuses/campus-policy";
 
 /** View campus directory (list/detail). */
 export function canViewCampuses(role: MembershipRole): boolean {
-  return hasMinRole(role, "security_member");
+  return hasMinRole(role, "security_member") || isTopLevelCampusAdminRole(role);
 }
 
 /** Create/update campuses, set primary, change status. */
 export function canManageCampuses(role: MembershipRole): boolean {
-  return hasMinRole(role, "administrator");
+  return churchRoleGrantsCampusAction(role, "create");
 }
 
 /**
@@ -24,14 +28,16 @@ export function hasImplicitAllCampusAccess(role: MembershipRole): boolean {
 export function canManageCampusMembershipsByChurchRole(
   role: MembershipRole,
 ): boolean {
-  return hasMinRole(role, "administrator");
+  return churchRoleGrantsCampusAction(role, "members.manage");
 }
 
-/** Campus-scoped managers who may assign members on their campus. */
+/**
+ * @deprecated Campus membership management is granted through security roles
+ * and groups, not ordinary campus_leader team membership. Kept for compatibility
+ * with campus_administrator assignments only.
+ */
 export function canManageCampusMembershipsByCampusRole(
   campusRole: CampusRole | string | null | undefined,
 ): boolean {
-  return (
-    campusRole === "campus_leader" || campusRole === "campus_administrator"
-  );
+  return campusRole === "campus_administrator";
 }

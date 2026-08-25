@@ -95,7 +95,7 @@ export function CampusSettingsPanel({
                   </Button>
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    Administrators can change the primary campus.
+                    Owners, co-owners, and administrators can change the primary campus.
                   </p>
                 )}
               </>
@@ -152,7 +152,7 @@ export function CampusSettingsPanel({
               </Button>
             ) : (
               <p className="text-sm text-muted-foreground">
-                View only. Administrators can change campus status.
+                View only. Owners, co-owners, and administrators can change campus status.
               </p>
             )}
           </form>

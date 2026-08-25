@@ -20,7 +20,8 @@ import {
   validateEmail,
   validatePassword,
 } from "@/lib/auth/validation";
-import { recordLoginSecurityEvent } from "@/app/auth/audit-actions";
+import { getLoginAuditIpAddress } from "@/app/auth/audit-actions";
+import { recordLoginAudit } from "@/lib/audit/record-login";
 
 export function LoginForm({
   className,
@@ -67,8 +68,20 @@ export function LoginForm({
           ? nextPath
           : "/home";
 
-      // Audit writes are best-effort and must never delay the sign-in redirect.
-      void recordLoginSecurityEvent().catch(() => undefined);
+      // Write via the browser client that just authenticated. A server action
+      // often cannot see the new session cookies yet, so getUser() returned
+      // null and the login was never recorded.
+      await Promise.race([
+        (async () => {
+          const ipAddress = await getLoginAuditIpAddress().catch(() => null);
+          await recordLoginAudit(supabase, { ipAddress });
+        })().catch((err: unknown) => {
+          console.error("Login audit failed:", err);
+        }),
+        new Promise<void>((resolve) => {
+          window.setTimeout(resolve, 2000);
+        }),
+      ]);
 
       // Force a document navigation so the next request definitely carries the
       // freshly issued auth cookies through middleware and server components.
@@ -127,7 +140,7 @@ export function LoginForm({
                   onChange={(e) => setEmail(e.target.value)}
                 />
                 {fieldErrors.email && (
-                  <p className="text-sm text-red-500">{fieldErrors.email}</p>
+                  <p className="text-sm text-destructive">{fieldErrors.email}</p>
                 )}
               </div>
               <div className="grid gap-2">
@@ -149,10 +162,10 @@ export function LoginForm({
                   onChange={(e) => setPassword(e.target.value)}
                 />
                 {fieldErrors.password && (
-                  <p className="text-sm text-red-500">{fieldErrors.password}</p>
+                  <p className="text-sm text-destructive">{fieldErrors.password}</p>
                 )}
               </div>
-              {error && <p className="text-sm text-red-500">{error}</p>}
+              {error && <p className="text-sm text-destructive">{error}</p>}
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "Signing in..." : "Sign in"}
               </Button>

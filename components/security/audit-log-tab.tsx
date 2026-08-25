@@ -24,6 +24,9 @@ const EVENT_LABELS: Record<string, string> = {
   "security_group_member.added": "Member Added",
   "security_group_member.removed": "Member Removed",
   "security_group_member.expired": "Member Expired",
+  "security_group_member.updated": "Assignment Updated",
+  "security_group_member.extended": "Access Extended",
+  "security_group_member.revoked": "Access Revoked",
   "user_permission.granted": "Permission Granted",
   "user_permission.denied": "Permission Denied",
   "user_permission.revoked": "Permission Revoked",
@@ -74,8 +77,12 @@ export function AuditLogTab() {
     if (!query) return logs;
     return logs.filter((log) => {
       return (
+        log.actorLabel.toLowerCase().includes(query) ||
         log.actorName.toLowerCase().includes(query) ||
+        (log.actorEmail || "").toLowerCase().includes(query) ||
+        (log.targetLabel || "").toLowerCase().includes(query) ||
         (log.targetName || "").toLowerCase().includes(query) ||
+        (log.targetEmail || "").toLowerCase().includes(query) ||
         log.eventType.toLowerCase().includes(query) ||
         (log.reason || "").toLowerCase().includes(query)
       );
@@ -171,11 +178,11 @@ export function AuditLogTab() {
                       </span>
                     </div>
                     <p className="text-sm">
-                      <strong>{log.actorName}</strong>
-                      {log.targetName ? (
+                      <strong>{log.actorLabel}</strong>
+                      {log.targetLabel ? (
                         <>
                           {" "}
-                          → <strong>{log.targetName}</strong>
+                          → <strong>{log.targetLabel}</strong>
                         </>
                       ) : null}
                     </p>

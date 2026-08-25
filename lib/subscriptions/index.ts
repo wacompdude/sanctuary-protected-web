@@ -56,6 +56,7 @@ export {
   getDefaultSubscriptionPlan,
   listFeatures,
   listPlanFeatureAssignments,
+  listPlanFeatureMatrix,
   getChurchSubscription,
 } from "@/lib/subscriptions/queries";
 
@@ -63,6 +64,7 @@ export {
   getPlanEntitlements,
   getChurchEntitlements,
   hasFeature,
+  getFeatureEntitlement,
   getFeatureLimit,
   requireFeature,
   requireFeatureCapacity,
@@ -113,6 +115,7 @@ export {
   getIncidentPhotoEntitlements,
   requireIncidentPhotoUpload,
   getEnabledFeatureKeys,
+  getNavFeatureAccess,
   NAV_FEATURE_REQUIREMENTS,
   evaluateSafetyConcernAccess,
   getSafetyConcernAccess,
@@ -127,6 +130,23 @@ export type {
 } from "@/lib/subscriptions/enforcement";
 
 export { NAV_ENTITLEMENT_FEATURE_KEYS } from "@/lib/subscriptions/nav-features";
+export { applyNavFeatureLocks } from "@/lib/subscriptions/nav-locks";
+export {
+  FEATURE_ACCESS_REASONS,
+  minimumPlanFromExpectedMatrix,
+  buildUpgradeCopy,
+  buildFeatureLockSummary,
+  lockSummaryFromAccess,
+} from "@/lib/subscriptions/feature-access";
+export type {
+  FeatureLockSummary,
+  FeatureAccessReasonCode,
+} from "@/lib/subscriptions/feature-access";
+export {
+  getMinimumPlanForFeature,
+  getPlanComparison,
+  buildPlanComparison,
+} from "@/lib/subscriptions/catalog";
 
 export type {
   SubscriptionUsageEventType,

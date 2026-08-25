@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   addCampusMembersAction,
@@ -10,6 +10,7 @@ import {
 } from "@/app/(app)/campuses/membership-actions";
 import { selectClassName } from "@/components/incidents/incident-badges";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Card,
@@ -19,7 +20,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { CAMPUS_ROLES, labelForCampusRole } from "@/lib/campuses/constants";
-import type { CampusActionState, CampusMembership } from "@/lib/campuses/types";
+import type { CampusActionState, CampusMembership, CampusRole } from "@/lib/campuses/types";
+import { isProtectedChurchRole } from "@/lib/campuses/campus-policy";
 import { labelForMembershipRole } from "@/lib/organization/invitations";
 
 type MemberOption = {
@@ -32,15 +34,27 @@ const initialState: CampusActionState = {};
 
 export function CampusMembersPanel({
   campusId,
+  campusName,
   members,
   candidateMembers,
+  canAdd,
+  canRemove,
+  canAssignRoles,
   canManage,
+  assignableCampusRoles,
+  isTopLevelAdmin,
   hasImplicitAccessNote,
 }: {
   campusId: string;
+  campusName: string;
   members: CampusMembership[];
   candidateMembers: MemberOption[];
+  canAdd?: boolean;
+  canRemove?: boolean;
+  canAssignRoles?: boolean;
   canManage: boolean;
+  assignableCampusRoles?: CampusRole[];
+  isTopLevelAdmin?: boolean;
   hasImplicitAccessNote?: boolean;
 }) {
   const router = useRouter();
@@ -60,6 +74,15 @@ export function CampusMembersPanel({
     removeCampusMemberAction,
     initialState,
   );
+  const [search, setSearch] = useState("");
+  const [pendingRemove, setPendingRemove] = useState<CampusMembership | null>(null);
+
+  const allowAdd = canAdd ?? canManage;
+  const allowRemove = canRemove ?? canManage;
+  const allowRoles = canAssignRoles ?? canManage;
+  const roleOptions = (assignableCampusRoles?.length
+    ? CAMPUS_ROLES.filter((role) => assignableCampusRoles.includes(role.value))
+    : CAMPUS_ROLES);
 
   useEffect(() => {
     if (
@@ -68,6 +91,7 @@ export function CampusMembersPanel({
       primaryState.success ||
       removeState.success
     ) {
+      setPendingRemove(null);
       router.refresh();
     }
   }, [
@@ -79,9 +103,15 @@ export function CampusMembersPanel({
   ]);
 
   const activeIds = new Set(members.map((member) => member.organization_membership_id));
-  const available = candidateMembers.filter(
-    (member) => !activeIds.has(member.membershipId),
-  );
+  const available = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return candidateMembers
+      .filter((member) => !activeIds.has(member.membershipId))
+      .filter((member) => {
+        if (!query) return true;
+        return member.name.toLowerCase().includes(query);
+      });
+  }, [activeIds, candidateMembers, search]);
 
   return (
     <div className="space-y-4">
@@ -103,7 +133,7 @@ export function CampusMembersPanel({
           <CardTitle>Campus members</CardTitle>
           <CardDescription>
             {members.length} active assignment
-            {members.length === 1 ? "" : "s"}
+            {members.length === 1 ? "" : "s"} for {campusName}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -118,7 +148,10 @@ export function CampusMembersPanel({
             </p>
           ) : (
             <ul className="divide-y divide-border rounded-md border border-border">
-              {members.map((member) => (
+              {members.map((member) => {
+                const protectedMember = isProtectedChurchRole(member.church_role);
+                const locked = protectedMember && !isTopLevelAdmin;
+                return (
                 <li
                   key={member.id}
                   className="flex flex-col gap-3 px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
@@ -138,9 +171,16 @@ export function CampusMembersPanel({
                         ? ` · Church: ${labelForMembershipRole(member.church_role)}`
                         : ""}
                     </p>
+                    {locked ? (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        You do not have authority to modify this member&apos;s
+                        organization-level role.
+                      </p>
+                    ) : null}
                   </div>
-                  {canManage ? (
+                  {allowRoles || allowRemove || canManage ? (
                     <div className="flex flex-wrap items-center gap-2">
+                      {allowRoles && !locked ? (
                       <form action={roleAction} className="flex items-center gap-2">
                         <input type="hidden" name="campus_id" value={campusId} />
                         <input type="hidden" name="member_id" value={member.id} />
@@ -150,7 +190,7 @@ export function CampusMembersPanel({
                           className={selectClassName}
                           aria-label={`Role for ${member.display_name}`}
                         >
-                          {CAMPUS_ROLES.map((role) => (
+                          {roleOptions.map((role) => (
                             <option key={role.value} value={role.value}>
                               {role.label}
                             </option>
@@ -166,7 +206,8 @@ export function CampusMembersPanel({
                           Update
                         </Button>
                       </form>
-                      {!member.is_primary_campus ? (
+                      ) : null}
+                      {canManage && !member.is_primary_campus && !locked ? (
                         <form action={primaryAction}>
                           <input type="hidden" name="campus_id" value={campusId} />
                           <input type="hidden" name="member_id" value={member.id} />
@@ -181,35 +222,64 @@ export function CampusMembersPanel({
                           </Button>
                         </form>
                       ) : null}
-                      <form action={removeAction}>
-                        <input type="hidden" name="campus_id" value={campusId} />
-                        <input type="hidden" name="member_id" value={member.id} />
-                        <Button
-                          type="submit"
-                          variant="outline"
-                          size="sm"
-                          className="h-10"
-                          disabled={removePending}
-                        >
-                          Remove
-                        </Button>
-                      </form>
+                      {allowRemove && !locked ? (
+                        pendingRemove?.id === member.id ? (
+                          <form action={removeAction} className="flex flex-wrap items-center gap-2">
+                            <input type="hidden" name="campus_id" value={campusId} />
+                            <input type="hidden" name="member_id" value={member.id} />
+                            <input type="hidden" name="confirm_remove" value="1" />
+                            <p className="text-xs text-muted-foreground">
+                              Remove {member.display_name} from {campusName}? This
+                              does not delete their church account.
+                            </p>
+                            <Button
+                              type="submit"
+                              variant="outline"
+                              size="sm"
+                              className="h-10"
+                              disabled={removePending}
+                            >
+                              {removePending ? "Removing…" : "Confirm remove"}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-10"
+                              onClick={() => setPendingRemove(null)}
+                            >
+                              Cancel
+                            </Button>
+                          </form>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-10"
+                            onClick={() => setPendingRemove(member)}
+                          >
+                            Remove
+                          </Button>
+                        )
+                      ) : null}
                     </div>
                   ) : null}
                 </li>
-              ))}
+              );
+              })}
             </ul>
           )}
         </CardContent>
       </Card>
 
-      {canManage ? (
+      {allowAdd ? (
         <Card>
           <CardHeader>
-            <CardTitle>Add members</CardTitle>
+            <CardTitle>Add existing members</CardTitle>
             <CardDescription>
-              Members may belong to multiple campuses. Removing a campus
-              assignment does not remove church membership.
+              Assign church members already in this organization. This does not
+              create new users or organization administrators.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -227,6 +297,16 @@ export function CampusMembersPanel({
               ) : null}
 
               <div className="space-y-2">
+                <Label htmlFor="member-search">Search members</Label>
+                <Input
+                  id="member-search"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search this church"
+                />
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="campus_role">Campus role</Label>
                 <select
                   id="campus_role"
@@ -235,7 +315,7 @@ export function CampusMembersPanel({
                   defaultValue=""
                 >
                   <option value="">Default from church role</option>
-                  {CAMPUS_ROLES.map((role) => (
+                  {roleOptions.map((role) => (
                     <option key={role.value} value={role.value}>
                       {role.label}
                     </option>
@@ -262,7 +342,7 @@ export function CampusMembersPanel({
 
               {available.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  All active church members are already assigned to this campus.
+                  No matching church members are available to add.
                 </p>
               ) : (
                 <div className="max-h-64 space-y-2 overflow-y-auto rounded-md border border-border p-3">

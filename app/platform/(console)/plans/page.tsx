@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { PlatformStatusBadge } from "@/components/platform/platform-status-badge";
 import { listSubscriptionPlansForPlatform } from "@/lib/platform/console-queries";
 
@@ -10,8 +11,9 @@ async function PlansContent() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Plans</h1>
         <p className="mt-1 text-sm text-slate-400">
-          Catalog from subscription_plans. Editing is reserved for later
-          phases.
+          Select a plan to review included modules, limits, and feature
+          assignments. Changes are audited and apply without application code
+          edits.
         </p>
       </div>
 
@@ -30,7 +32,12 @@ async function PlansContent() {
             {plans.map((plan) => (
               <tr key={plan.id} className="border-t border-slate-800">
                 <td className="px-3 py-2">
-                  {plan.display_name}
+                  <Link
+                    href={`/platform/plans/${plan.plan_key}`}
+                    className="text-amber-300 hover:underline"
+                  >
+                    {plan.display_name}
+                  </Link>
                   {plan.is_default ? (
                     <span className="ml-2 text-xs text-amber-300">default</span>
                   ) : null}

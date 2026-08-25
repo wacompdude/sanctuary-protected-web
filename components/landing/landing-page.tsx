@@ -8,7 +8,7 @@ const HERO_IMAGE =
 
 export function LandingPage() {
   return (
-    <div className="landing-root min-h-screen bg-[var(--lp-bg)] text-[var(--lp-ink)]">
+    <div className="landing-root min-h-app bg-[var(--lp-bg)] text-[var(--lp-ink)]">
       <style>{`
         .landing-root {
           --lp-bg: #f3f5f2;

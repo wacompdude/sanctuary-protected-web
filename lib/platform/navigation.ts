@@ -60,7 +60,7 @@ export const PLATFORM_NAV_SECTIONS: PlatformNavSection[] = [
       },
       {
         href: "/platform/features",
-        label: "Features",
+        label: "Feature Catalog",
         permission: "features.read",
       },
     ],

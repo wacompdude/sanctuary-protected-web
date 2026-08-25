@@ -11,12 +11,11 @@ export async function getTrainingAccess(
     featureKey: FEATURE_KEYS.TRAINING_MANAGEMENT,
   });
 
-  if (featureAccess.allowed) {
-    return { allowed: true, upgradeMessage: TRAINING_UPGRADE_MESSAGE };
-  }
-
   return {
-    allowed: false,
-    upgradeMessage: TRAINING_UPGRADE_MESSAGE,
+    allowed: featureAccess.allowed,
+    upgradeMessage:
+      featureAccess.upgradeMessage ??
+      featureAccess.reason ??
+      TRAINING_UPGRADE_MESSAGE,
   };
 }

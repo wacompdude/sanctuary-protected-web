@@ -89,7 +89,7 @@ export function CampusSelector({
           onChange={(event) => {
             event.currentTarget.form?.requestSubmit();
           }}
-          className="min-h-11 w-full cursor-pointer appearance-none rounded-md border border-border bg-background py-2 pl-9 pr-8 text-base font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60 md:h-10 md:min-h-0 md:text-sm"
+          className="min-h-11 w-full cursor-pointer appearance-none rounded-md border border-border bg-background py-2 pl-9 pr-8 text-base font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60 dark:[color-scheme:dark] md:h-10 md:min-h-0 md:text-sm"
           aria-busy={busy}
         >
           <option value={CAMPUS_FILTER_ALL}>All Campuses</option>

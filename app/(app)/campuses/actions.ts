@@ -10,17 +10,19 @@ import {
 import { getRequestIpAddress, writeAuditLog } from "@/lib/audit/log";
 import {
   ChurchAccessError,
-  getAuthenticatedUserWithChurch,
 } from "@/lib/organization/auth";
 import {
   CAMPUS_MIGRATION_HINT,
   campusMigrationHintFromError,
 } from "@/lib/campuses/constants";
-import { canManageCampuses } from "@/lib/campuses/permissions";
+import { requireCampusAction } from "@/lib/campuses/server-auth";
 import type { CampusActionState } from "@/lib/campuses/types";
 import { validateCampusForm } from "@/lib/campuses/validation";
 import { createClient } from "@/lib/supabase/server";
-import { requireCampusCreateCapacity } from "@/lib/subscriptions/enforcement";
+import {
+  isEntitlementError,
+  requireCampusCreateCapacity,
+} from "@/lib/subscriptions/enforcement";
 
 function isRedirectError(error: unknown): boolean {
   return Boolean(
@@ -31,14 +33,11 @@ function isRedirectError(error: unknown): boolean {
   );
 }
 
-async function requireCampusManager() {
-  const ctx = await getAuthenticatedUserWithChurch();
-  if (!canManageCampuses(ctx.membership.role)) {
-    throw new ChurchAccessError(
-      "You do not have permission to manage campuses.",
-    );
-  }
-  return ctx;
+async function requireCampusManager(
+  action: "create" | "edit" | "deactivate" | "delete" | "settings.manage" = "edit",
+  campusId?: string,
+) {
+  return requireCampusAction(action, { campusId });
 }
 
 function revalidateCampusPaths(campusId?: string) {
@@ -71,7 +70,7 @@ export async function createCampusAction(
   formData: FormData,
 ): Promise<CampusActionState> {
   try {
-    const { user, church } = await requireCampusManager();
+    const { user, church } = await requireCampusManager("create");
     const validated = validateCampusForm(formData);
     if (!validated.data) {
       return {
@@ -146,6 +145,7 @@ export async function createCampusAction(
   } catch (error) {
     if (isRedirectError(error)) throw error;
     if (error instanceof ChurchAccessError) return { error: error.message };
+    if (isEntitlementError(error)) return { error: error.message };
     return {
       error: error instanceof Error ? error.message : "Unable to create campus.",
     };
@@ -158,7 +158,7 @@ export async function updateCampusAction(
   formData: FormData,
 ): Promise<CampusActionState> {
   try {
-    const { user, church } = await requireCampusManager();
+    const { user, church } = await requireCampusManager("edit", campusId);
     const validated = validateCampusForm(formData);
     if (!validated.data) {
       return {
@@ -285,7 +285,7 @@ export async function updateCampusStatusAction(
   formData: FormData,
 ): Promise<CampusActionState> {
   try {
-    const { user, church } = await requireCampusManager();
+    const { user, church } = await requireCampusManager("deactivate", campusId);
     const status = String(formData.get("status") ?? "").trim();
     const allowed = [
       "planned",
@@ -359,7 +359,11 @@ export async function updateCampusStatusAction(
       action:
         status === "archived"
           ? AuditAction.CAMPUS_ARCHIVED
-          : AuditAction.CAMPUS_STATUS_CHANGED,
+          : status === "inactive" || status === "suspended" || status === "closed"
+            ? AuditAction.CAMPUS_DEACTIVATED
+            : status === "active" && existing.status !== "active"
+              ? AuditAction.CAMPUS_REACTIVATED
+              : AuditAction.CAMPUS_STATUS_CHANGED,
       entityType: AuditEntityType.CAMPUS,
       entityId: campusId,
       metadata: {
@@ -387,7 +391,7 @@ export async function setPrimaryCampusAction(
   campusId: string,
 ): Promise<CampusActionState> {
   try {
-    const { user, church } = await requireCampusManager();
+    const { user, church } = await requireCampusManager("settings.manage", campusId);
     const supabase = await createClient();
 
     const { data: campus } = await supabase
@@ -438,6 +442,80 @@ export async function setPrimaryCampusAction(
     return {
       error:
         error instanceof Error ? error.message : "Unable to set primary campus.",
+    };
+  }
+}
+
+export async function archiveCampusAction(
+  campusId: string,
+  _prev: CampusActionState,
+  formData: FormData,
+): Promise<CampusActionState> {
+  try {
+    const confirmed = String(formData.get("confirm_archive") ?? "").trim();
+    if (confirmed !== "ARCHIVE") {
+      return {
+        error:
+          'Type ARCHIVE to confirm. Historical records are preserved; this archives the campus instead of deleting data.',
+      };
+    }
+
+    const { user, church } = await requireCampusManager("delete", campusId);
+    const supabase = await createClient();
+    const { data: existing } = await supabase
+      .from("campuses")
+      .select("id, is_primary, status, name")
+      .eq("organization_id", church.id)
+      .eq("id", campusId)
+      .maybeSingle();
+
+    if (!existing) return { error: "Campus not found." };
+    if (existing.is_primary) {
+      return {
+        error:
+          "Set another campus as primary before archiving this one. Historical records remain linked.",
+      };
+    }
+
+    const { error } = await supabase
+      .from("campuses")
+      .update({
+        status: "archived",
+        archived_at: new Date().toISOString(),
+        updated_by: user.id,
+      })
+      .eq("organization_id", church.id)
+      .eq("id", campusId);
+
+    if (error) {
+      return {
+        error:
+          campusMigrationHintFromError(error.message) ??
+          "Unable to archive campus.",
+      };
+    }
+
+    await writeAuditLog(supabase, {
+      organizationId: church.id,
+      userId: user.id,
+      action: AuditAction.CAMPUS_ARCHIVED,
+      entityType: AuditEntityType.CAMPUS,
+      entityId: campusId,
+      metadata: {
+        name: existing.name,
+        previous_status: existing.status,
+        new_status: "archived",
+        hard_deleted: false,
+      },
+      ipAddress: await getRequestIpAddress(),
+    });
+
+    revalidateCampusPaths(campusId);
+    return { success: true, campusId };
+  } catch (error) {
+    if (error instanceof ChurchAccessError) return { error: error.message };
+    return {
+      error: error instanceof Error ? error.message : "Unable to archive campus.",
     };
   }
 }

@@ -26,11 +26,9 @@ import type {
   PolicyCategory,
   PolicyDocumentDetail,
 } from "@/lib/policies/types";
+import { selectClassName } from "@/components/ui/form-control";
 
 const initialState: PolicyActionState = {};
-
-const selectClassName =
-  "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 const textareaClassName =
   "flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";

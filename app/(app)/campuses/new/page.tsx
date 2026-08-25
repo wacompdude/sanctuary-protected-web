@@ -2,20 +2,19 @@ import { Suspense } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { CampusForm } from "@/components/campuses/campus-form";
 import { createCampusAction } from "@/app/(app)/campuses/actions";
-import { getAuthenticatedUserWithChurch } from "@/lib/organization/auth";
 import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
 import { CAMPUS_MIGRATION_HINT } from "@/lib/campuses/constants";
-import { canManageCampuses } from "@/lib/campuses/permissions";
+import { loadCampusCapabilities } from "@/lib/campuses/server-auth";
 import { listCampuses } from "@/lib/campuses/queries";
 
 async function NewCampusContent() {
-  const { church, membership } = await getAuthenticatedUserWithChurch();
+  const { church, capabilities } = await loadCampusCapabilities({});
 
-  if (!canManageCampuses(membership.role)) {
+  if (!capabilities.canCreate) {
     return (
       <Card>
         <CardContent className="py-8 text-sm text-muted-foreground">
-          You do not have permission to create campuses.
+          Only an Owner, Co-owner, or Administrator can add a new campus.
         </CardContent>
       </Card>
     );

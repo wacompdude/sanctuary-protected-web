@@ -6,6 +6,7 @@ import { ChurchSwitcher } from "@/components/church-switcher";
 import { OrganizationIdentity } from "@/components/church-identity";
 import { CampusSelector } from "@/components/campuses/campus-selector";
 import { SyncActiveChurchCookie } from "@/components/sync-active-church-cookie";
+import { ThemeSwitcher } from "@/components/theme-switcher";
 import { Button } from "@/components/ui/button";
 import { ArrowLeftRight } from "lucide-react";
 import { NotificationBell } from "@/components/notifications/notification-bell";
@@ -75,10 +76,13 @@ export async function AppChurchHeader() {
             <OrganizationIdentity name={church.name} logoPath={logoPath} />
           </div>
           <div className="flex w-full items-center justify-end gap-2 sm:max-w-sm sm:flex-col sm:items-end">
-            <NotificationBell
-              unreadCount={unreadCount}
-              recentUnread={recentUnread}
-            />
+            <div className="flex items-center gap-2">
+              <ThemeSwitcher />
+              <NotificationBell
+                unreadCount={unreadCount}
+                recentUnread={recentUnread}
+              />
+            </div>
             {memberships.length > 1 ? (
               <div className="hidden w-full sm:block">
                 <ChurchSwitcher

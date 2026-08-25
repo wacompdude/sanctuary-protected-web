@@ -26,6 +26,8 @@ export const NAV_FEATURE_REQUIREMENTS: Partial<Record<string, FeatureKey>> = {
   "training-required": FEATURE_KEYS.TRAINING_MANAGEMENT,
   "training-reports": FEATURE_KEYS.TRAINING_MANAGEMENT,
   "training-settings": FEATURE_KEYS.TRAINING_MANAGEMENT,
+  cameras: FEATURE_KEYS.CAMERAS,
+  sensors: FEATURE_KEYS.SENSORS,
 };
 
 export const NAV_ENTITLEMENT_FEATURE_KEYS: FeatureKey[] = [

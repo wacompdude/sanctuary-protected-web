@@ -29,9 +29,17 @@ export class EntitlementError extends Error {
 export function upgradeMessageForFeature(
   featureKey: FeatureKey,
   planDisplayName?: string | null,
+  minimumPlanDisplayName?: string | null,
 ): string {
   const label = FEATURE_DISPLAY_NAMES[featureKey] ?? "This feature";
   const plan = planDisplayName?.trim();
+  const minimum = minimumPlanDisplayName?.trim();
+  if (minimum && plan) {
+    return `${label} requires ${minimum} or higher. Your current plan is ${plan}.`;
+  }
+  if (minimum) {
+    return `${label} requires ${minimum} or higher.`;
+  }
   if (plan) {
     return `${label} is not included in your ${plan} plan. Upgrade to unlock it.`;
   }

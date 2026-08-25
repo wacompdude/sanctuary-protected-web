@@ -6,7 +6,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Plus, Edit2, Copy, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Edit2, Copy, Trash2, ChevronDown, ChevronUp, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -16,17 +16,16 @@ import {
   updateSecurityGroupAction,
   duplicateSecurityGroupAction,
   deactivateSecurityGroupAction,
+  type SecurityGroupListRow,
 } from "@/app/(app)/settings/security/actions";
-import { SecurityGroup } from "@/lib/security/types";
-import { GroupMembersPanel } from "@/components/security/group-members-panel";
-import { GroupPermissionsPanel } from "@/components/security/group-permissions-panel";
+import { SecurityGroupDetail } from "@/components/security/security-group-detail";
 
 interface ExpandedGroup {
   [key: string]: boolean;
 }
 
 export function SecurityGroupsTab() {
-  const [groups, setGroups] = useState<SecurityGroup[]>([]);
+  const [groups, setGroups] = useState<SecurityGroupListRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -95,7 +94,7 @@ export function SecurityGroupsTab() {
     }
   }
 
-  function startEdit(group: SecurityGroup) {
+  function startEdit(group: SecurityGroupListRow) {
     setEditingGroupId(group.id);
     setEditName(group.name);
     setEditDescription(group.description || "");
@@ -148,7 +147,7 @@ export function SecurityGroupsTab() {
     }
   }
 
-  async function handleDeactivate(group: SecurityGroup) {
+  async function handleDeactivate(group: SecurityGroupListRow) {
     if (!confirm(`Deactivate security group "${group.name}"? Members will no longer inherit its permissions.`)) {
       return;
     }
@@ -192,8 +191,13 @@ export function SecurityGroupsTab() {
       {/* Header and Search */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold">Security Groups</h2>
-          <p className="text-sm text-muted-foreground">Organize permissions by creating security groups</p>
+          <h2 className="text-xl font-semibold">Groups</h2>
+          <p className="text-sm text-muted-foreground">
+            Custom permission bundles you create, such as Camera Operators.
+            Add or remove members here without changing anyone&apos;s church
+            role. A person can belong to several groups at once, including
+            temporary or campus-scoped assignments.
+          </p>
         </div>
         <Button
           onClick={() => setShowCreateForm(!showCreateForm)}
@@ -286,19 +290,21 @@ export function SecurityGroupsTab() {
             <Card key={group.id}>
               <CardContent className="pt-6">
                 {/* Group Header */}
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
+                <div className="flex items-start justify-between gap-3">
+                  <button
+                    type="button"
+                    className="flex-1 min-w-0 text-left"
+                    onClick={() => toggleGroupExpanded(group.id)}
+                    aria-expanded={Boolean(expandedGroups[group.id])}
+                  >
                     <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => toggleGroupExpanded(group.id)}
-                        className="p-1 hover:bg-accent rounded"
-                      >
+                      <span className="p-1 hover:bg-accent rounded">
                         {expandedGroups[group.id] ? (
                           <ChevronUp className="h-4 w-4" />
                         ) : (
                           <ChevronDown className="h-4 w-4" />
                         )}
-                      </button>
+                      </span>
                       <div>
                         <h3 className="font-semibold">{group.name}</h3>
                         {group.description && (
@@ -306,14 +312,49 @@ export function SecurityGroupsTab() {
                         )}
                       </div>
                     </div>
-                    <div className="mt-2 flex gap-4 text-xs text-muted-foreground">
-                      <span>Status: <span className={group.status === "active" ? "text-green-600 dark:text-green-400" : "text-gray-600"}>{group.status}</span></span>
-                      <span>Created: {new Date(group.created_at).toLocaleDateString()}</span>
+                    <div className="mt-2 flex flex-wrap gap-4 text-xs text-muted-foreground">
+                      <span>
+                        Status:{" "}
+                        <span
+                          className={
+                            group.status === "active"
+                              ? "text-green-600 dark:text-green-400"
+                              : "text-gray-600"
+                          }
+                        >
+                          {group.status}
+                        </span>
+                      </span>
+                      <span>
+                        {group.activeMemberCount} member
+                        {group.activeMemberCount === 1 ? "" : "s"}
+                      </span>
+                      <span>{group.permissionCount} permissions</span>
+                      {group.temporaryAssignmentCount > 0 ? (
+                        <span>{group.temporaryAssignmentCount} temporary</span>
+                      ) : null}
+                      {group.expiringSoonCount > 0 ? (
+                        <span>{group.expiringSoonCount} expiring soon</span>
+                      ) : null}
+                      <span>
+                        Created {new Date(group.created_at).toLocaleDateString()}
+                      </span>
                     </div>
-                  </div>
+                  </button>
 
                   {/* Action Buttons */}
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 shrink-0">
+                    <Button
+                      size="sm"
+                      variant={expandedGroups[group.id] ? "default" : "outline"}
+                      className="gap-1"
+                      onClick={() => {
+                        setExpandedGroups((prev) => ({ ...prev, [group.id]: true }));
+                      }}
+                    >
+                      <Users className="h-4 w-4" />
+                      Members
+                    </Button>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -378,31 +419,8 @@ export function SecurityGroupsTab() {
 
                 {/* Expanded Details */}
                 {expandedGroups[group.id] && (
-                  <div className="mt-6 pt-6 border-t space-y-4">
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <p className="text-muted-foreground">Group ID</p>
-                        <p className="font-mono text-xs">{group.id}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Church ID</p>
-                        <p className="font-mono text-xs">{group.organization_id}</p>
-                      </div>
-                    </div>
-
-                    {/* Members Section */}
-                    <GroupMembersPanel groupId={group.id} />
-
-                    {/* Permissions Section */}
-                    <GroupPermissionsPanel groupId={group.id} />
-
-                    {/* Notes */}
-                    {group.notes && (
-                      <div>
-                        <h4 className="font-medium mb-2">Notes</h4>
-                        <p className="text-sm bg-muted p-3 rounded">{group.notes}</p>
-                      </div>
-                    )}
+                  <div className="mt-6 pt-6 border-t">
+                    <SecurityGroupDetail groupId={group.id} initialSection="members" />
                   </div>
                 )}
               </CardContent>
@@ -414,7 +432,9 @@ export function SecurityGroupsTab() {
       {/* Info Box */}
       <div className="p-4 border border-blue-200 bg-blue-50 dark:bg-blue-950 rounded-lg">
         <p className="text-sm text-blue-800 dark:text-blue-200">
-          💡 <strong>Tip:</strong> Use security groups to organize users and assign permissions in bulk. You can also use system templates as a starting point.
+          💡 <strong>Tip:</strong> Use groups for extra access on top of a
+          person&apos;s church role. Duplicate a church role into a group from
+          the Church Roles tab if you need a custom starting point.
         </p>
       </div>
     </div>

@@ -17,7 +17,7 @@ export default function Error({
   }, [error]);
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-4 p-8 text-center">
+    <main className="flex min-h-app flex-col items-center justify-center gap-4 p-8 text-center">
       <BrandLogo
         href="/"
         size={40}

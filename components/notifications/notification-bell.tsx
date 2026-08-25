@@ -83,7 +83,7 @@ export function NotificationBell({
                 <li key={item.id}>
                   <Link
                     href={`/notifications/${item.notificationId}`}
-                    className="block rounded-md border border-border px-3 py-2 hover:bg-accent"
+                    className="block rounded-md border border-border px-3 py-2 hover:bg-muted hover:text-foreground"
                   >
                     <div className="mb-1 flex items-center justify-between gap-2">
                       <p className="truncate text-sm font-medium">{item.title}</p>

@@ -150,16 +150,6 @@
     color: hsl(var(--foreground));
   }
 
-  /*
-   * Hex + !important: Chromium/Edge ignore most option styling, but when they
-   * do apply it, token-based hsl() can lose to the light OS picker.
-   */
-  select option,
-  select optgroup {
-    background-color: #ffffff;
-    color: #171717;
-  }
-
   ::placeholder {
     color: hsl(var(--muted-foreground));
     opacity: 1;
@@ -245,16 +235,31 @@ html.dark input[type="week"] {
   color-scheme: dark;
 }
 
+/*
+ * Native <option> colors stay under OS control. Author color on options is
+ * kept during hover/selection in Edge/Chrome and fights the system Highlight
+ * bar (often a light accent with dark HighlightText).
+ */
 html.dark select option,
-html.dark select optgroup {
-  background-color: #222228 !important;
-  color: #f4f4f5 !important;
-}
-
+html.dark select optgroup,
 html:not(.dark) select option,
 html:not(.dark) select optgroup {
-  background-color: #ffffff !important;
-  color: #171717 !important;
+  background-color: revert;
+  color: revert;
+}
+
+html.dark select option:checked,
+html.dark select option:hover,
+html:not(.dark) select option:checked,
+html:not(.dark) select option:hover {
+  background-color: Highlight;
+  color: HighlightText;
+}
+
+html.dark [role="menuitem"]:is(:hover, :focus, [data-highlighted]),
+html.dark [role="option"]:is(:hover, :focus, [data-highlighted], [aria-selected="true"]) {
+  background-color: hsl(var(--muted));
+  color: hsl(var(--foreground));
 }
 
 html.dark [role="menu"],

@@ -80,7 +80,7 @@ export function LandingPage() {
               </h1>
               <p className="mt-4 max-w-xl text-base leading-relaxed text-white/95 md:text-lg">
                 Give your safety team one place to report incidents, keep
-                certifications current, and acknowledge device events—without
+                certifications current, and connect security technology—without
                 the noise of generic security software.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
@@ -137,11 +137,12 @@ export function LandingPage() {
           </div>
           <div>
             <h3 className="font-display text-2xl text-[var(--lp-forest)]">
-              Events
+              Security technology
             </h3>
             <p className="mt-3 leading-relaxed text-[var(--lp-muted)]">
-              Review device alerts from cameras and sensors, then acknowledge
-              them so nothing important sits unseen.
+              Connect cameras, sensors, and other security systems so alerts
+              live alongside incidents and team operations. Your team can stay
+              informed when something on campus needs attention.
             </p>
           </div>
         </div>

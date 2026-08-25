@@ -17,11 +17,11 @@ const figtree = Figtree({
 export const metadata: Metadata = {
   title: "Sanctuary Protected | Security for Houses of Worship",
   description:
-    "Sanctuary Protected helps churches and ministries manage incidents, certifications, and device events—so your team can protect the people who gather.",
+    "Sanctuary Protected helps churches and ministries manage incidents, keep certifications current, and connect security technology—so your team can protect the people who gather.",
   openGraph: {
     title: "Sanctuary Protected",
     description:
-      "Incident response, certification tracking, and event awareness built for sanctuary teams.",
+      "Incident response, certification tracking, and connected security technology—built for sanctuary teams.",
     url: "https://sanctuaryprotected.com",
     siteName: "Sanctuary Protected",
     type: "website",

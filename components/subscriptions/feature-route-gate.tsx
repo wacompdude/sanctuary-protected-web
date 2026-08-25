@@ -1,10 +1,20 @@
+import { Suspense } from "react";
 import { getAuthenticatedUserWithChurch } from "@/lib/organization/auth";
 import { FeatureLockedPage } from "@/components/subscriptions/feature-locked-page";
 import type { FeatureKey } from "@/lib/subscriptions/feature-keys";
 import { FEATURE_DISPLAY_NAMES } from "@/lib/subscriptions/feature-keys";
 import { hasFeature } from "@/lib/subscriptions/resolver";
 
-export async function FeatureRouteGate({
+function FeatureRouteGateFallback() {
+  return (
+    <div className="space-y-6" aria-hidden>
+      <div className="h-8 w-48 animate-pulse rounded-md bg-muted/40" />
+      <div className="h-32 animate-pulse rounded-md bg-muted/40" />
+    </div>
+  );
+}
+
+async function FeatureRouteGateInner({
   featureKey,
   children,
 }: {
@@ -33,5 +43,21 @@ export async function FeatureRouteGate({
       </div>
       <FeatureLockedPage access={access} />
     </div>
+  );
+}
+
+export function FeatureRouteGate({
+  featureKey,
+  children,
+}: {
+  featureKey: FeatureKey;
+  children: React.ReactNode;
+}) {
+  return (
+    <Suspense fallback={<FeatureRouteGateFallback />}>
+      <FeatureRouteGateInner featureKey={featureKey}>
+        {children}
+      </FeatureRouteGateInner>
+    </Suspense>
   );
 }

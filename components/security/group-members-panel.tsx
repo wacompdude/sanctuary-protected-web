@@ -212,7 +212,7 @@ export function GroupMembersPanel({ groupId }: GroupMembersPanelProps) {
               <div>
                 <p className="font-medium text-sm">{member.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  {[member.email, member.role].filter(Boolean).join(" · ")}
+                  {[member.email, member.churchRole].filter(Boolean).join(" · ")}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Added {new Date(member.assignedAt).toLocaleDateString()}

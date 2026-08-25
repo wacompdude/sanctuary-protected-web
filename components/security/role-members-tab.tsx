@@ -219,8 +219,8 @@ export function RoleMembersTab({
       groupId,
       userId: member.userId,
     });
-    if (preview.error) {
-      setError(preview.error);
+    if (!("willLose" in preview)) {
+      setError(preview.error ?? "Failed to preview the impact of this change.");
       return;
     }
     setImpactPreview({
@@ -229,7 +229,7 @@ export function RoleMembersTab({
     });
 
     const confirmed = confirm(
-      `Remove ${member.name} from ${groupName}?\n\nThey will lose ${preview.willLose?.length ?? 0} permission(s) inherited only from this role.`,
+      `Remove ${member.name} from ${groupName}?\n\nThey will lose ${preview.willLose.length} permission(s) inherited only from this role.`,
     );
     if (!confirmed) {
       setImpactPreview(null);

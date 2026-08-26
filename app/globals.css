@@ -206,6 +206,10 @@
     min-height: 100vh;
     min-height: 100dvh;
   }
+  .h-app {
+    height: 100vh;
+    height: 100dvh;
+  }
   .table-scroll,
   .overflow-x-auto {
     max-width: 100%;

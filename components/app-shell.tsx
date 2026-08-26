@@ -11,8 +11,8 @@ import { isNextControlFlowError } from "@/lib/organization/access-guard";
 
 function SidebarFallback() {
   return (
-    <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-card md:flex">
-      <div className="flex h-16 items-center border-b border-border px-6" />
+    <aside className="hidden h-full w-64 shrink-0 flex-col border-r border-border bg-card md:flex">
+      <div className="flex h-16 shrink-0 items-center border-b border-border px-6" />
     </aside>
   );
 }
@@ -53,13 +53,17 @@ async function BrandedAppShell({ children }: { children: ReactNode }) {
   return (
     <div
       style={brandStyle}
-      className="flex min-h-app flex-col md:flex-row"
+      className="flex h-app min-h-0 flex-col overflow-hidden md:flex-row"
+      data-app-shell=""
       {...(hasChurchBrandTokens(brandStyle) ? { "data-church-branded": "" } : {})}
     >
       <Suspense fallback={<SidebarFallback />}>
         <AppSidebar />
       </Suspense>
-      <main className="min-w-0 flex-1 md:overflow-auto">
+      <main
+        data-testid="app-main"
+        className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain"
+      >
         <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8 md:p-8">
           <Suspense fallback={<HeaderFallback />}>
             <AppChurchHeader />
@@ -78,9 +82,15 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-app flex-col md:flex-row">
+        <div
+          className="flex h-app min-h-0 flex-col overflow-hidden md:flex-row"
+          data-app-shell=""
+        >
           <SidebarFallback />
-          <main className="min-w-0 flex-1 md:overflow-auto">
+          <main
+            data-testid="app-main"
+            className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain"
+          >
             <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8 md:p-8">
               <HeaderFallback />
               {children}

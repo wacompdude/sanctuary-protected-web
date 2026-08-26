@@ -15,13 +15,18 @@ export async function AppSidebar() {
   let churches: { id: string; name: string; role: string }[] = [];
   let activeOrganizationId: string | null = null;
   let role: MembershipRole | null = null;
+  let userName: string | null = null;
+  let userEmail: string | null = null;
   let enabledFeatures: Set<string> | undefined;
   let lockSummaries: Record<string, FeatureLockSummary> = {};
 
   try {
-    const { church, memberships, membership } = await requireChurchMembership();
+    const { church, memberships, membership, user, profile } =
+      await requireChurchMembership();
     activeOrganizationId = church.id;
     role = membership.role;
+    userName = profile.full_name;
+    userEmail = user.email ?? null;
     churches = memberships.map((item) => ({
       id: item.organization_id,
       name: item.church.name,
@@ -54,6 +59,8 @@ export async function AppSidebar() {
       churches={churches}
       activeOrganizationId={activeOrganizationId}
       role={role}
+      userName={userName}
+      userEmail={userEmail}
       navSections={navSections}
       lockSummaries={lockSummaries}
     />

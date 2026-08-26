@@ -1,6 +1,7 @@
 export * from "@/lib/help/types";
 export * from "@/lib/help/constants";
 export * from "@/lib/help/seed-content";
+export * from "@/lib/help/coverage";
 export * from "@/lib/help/deep-links";
 export * from "@/lib/help/slug";
 export * from "@/lib/help/access-policy";

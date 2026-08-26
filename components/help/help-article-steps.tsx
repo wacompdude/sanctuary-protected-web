@@ -74,7 +74,7 @@ export function HelpArticleSteps({ steps }: { steps: HelpArticleStep[] }) {
                   ) : null}
 
                   {deepLink ? (
-                    <Button variant="outline" size="sm" asChild>
+                    <Button variant="outline" className="h-11" asChild>
                       <Link href={deepLink}>
                         {step.deep_link_label || "Open page"}
                         <ExternalLink className="h-3.5 w-3.5" aria-hidden />

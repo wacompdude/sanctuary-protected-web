@@ -45,7 +45,9 @@ import { ChurchSwitcher, type ChurchOption } from "@/components/church-switcher"
 import { LogoutButton } from "@/components/logout-button";
 import { Button } from "@/components/ui/button";
 import { UpgradeFeatureDialog } from "@/components/subscriptions/upgrade-feature-dialog";
+import { NavLockTooltip } from "@/components/nav-lock-tooltip";
 import { createClient } from "@/lib/supabase/client";
+import { labelForMembershipRole } from "@/lib/organization/invitations";
 import type {
   NavEntry,
   NavItemId,
@@ -140,17 +142,22 @@ function childIsActive(pathname: string, href: string, siblings: string[]): bool
 export function AppSidebarNav({
   churches,
   activeOrganizationId,
+  role = null,
+  userName = null,
+  userEmail: userEmailProp = null,
   navSections,
   lockSummaries = {},
 }: {
   churches: ChurchOption[];
   activeOrganizationId: string | null;
   role?: MembershipRole | null;
+  userName?: string | null;
+  userEmail?: string | null;
   navSections: NavSection[];
   lockSummaries?: Record<string, FeatureLockSummary>;
 }) {
   const pathname = usePathname();
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(userEmailProp);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
@@ -176,11 +183,12 @@ export function AppSidebarNav({
       setCollapsed(true);
     }
 
+    if (userEmailProp) return;
     const supabase = createClient();
     supabase.auth.getUser().then(({ data }) => {
       setUserEmail(data.user?.email ?? null);
     });
-  }, []);
+  }, [userEmailProp]);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -278,7 +286,12 @@ export function AppSidebarNav({
             aria-hidden
           />
         ) : null}
-        <span className={cn("flex-1 text-left", desktopCompact && !nested && "md:hidden")}>
+        <span
+          className={cn(
+            "min-w-0 flex-1 truncate text-left",
+            desktopCompact && !nested && "md:hidden",
+          )}
+        >
           {item.label}
         </span>
         {lock ? (
@@ -293,34 +306,30 @@ export function AppSidebarNav({
         {lock && desktopCompact && !nested ? (
           <Lock className="hidden h-3 w-3 md:block" aria-hidden />
         ) : null}
-        {lock ? (
-          <span
-            className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 hidden w-64 -translate-y-1/2 rounded-md border border-border bg-popover p-2 text-xs font-normal text-popover-foreground shadow-md group-hover:block group-focus-within:block max-md:hidden"
-            role="tooltip"
-          >
-            {lock.shortMessage} {lock.longMessage}
-          </span>
-        ) : null}
       </>
     );
 
     if (lock) {
       return (
-        <button
+        <NavLockTooltip
           key={item.id}
-          type="button"
-          title={lock.shortMessage}
-          aria-label={item.label}
-          aria-disabled="true"
-          aria-describedby={descriptionId}
-          className={cn(className, "group w-full")}
-          onClick={() => openUpgrade(lock)}
+          text={`${lock.shortMessage} ${lock.longMessage}`}
         >
-          {inner}
-          <span id={descriptionId} className="sr-only">
-            {lock.longMessage}
-          </span>
-        </button>
+          <button
+            type="button"
+            title={lock.shortMessage}
+            aria-label={item.label}
+            aria-disabled="true"
+            aria-describedby={descriptionId}
+            className={cn(className, "group w-full")}
+            onClick={() => openUpgrade(lock)}
+          >
+            {inner}
+            <span id={descriptionId} className="sr-only">
+              {lock.longMessage}
+            </span>
+          </button>
+        </NavLockTooltip>
       );
     }
 
@@ -363,22 +372,26 @@ export function AppSidebarNav({
     if (desktopCompact) {
       if (groupLock) {
         return (
-          <button
+          <NavLockTooltip
             key={entry.id}
-            type="button"
-            title={groupLock.shortMessage}
-            aria-label={entry.label}
-            aria-disabled="true"
-            aria-describedby={`nav-lock-${entry.id}`}
-            onClick={() => openUpgrade(groupLock)}
-            className="group relative flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground"
+            text={`${groupLock.shortMessage} ${groupLock.longMessage}`}
           >
-            <Icon className="h-4 w-4" />
-            <Lock className="absolute bottom-1 right-1 h-3 w-3" aria-hidden />
-            <span id={`nav-lock-${entry.id}`} className="sr-only">
-              {groupLock.longMessage}
-            </span>
-          </button>
+            <button
+              type="button"
+              title={groupLock.shortMessage}
+              aria-label={entry.label}
+              aria-disabled="true"
+              aria-describedby={`nav-lock-${entry.id}`}
+              onClick={() => openUpgrade(groupLock)}
+              className="group relative flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground"
+            >
+              <Icon className="h-4 w-4" />
+              <Lock className="absolute bottom-1 right-1 h-3 w-3" aria-hidden />
+              <span id={`nav-lock-${entry.id}`} className="sr-only">
+                {groupLock.longMessage}
+              </span>
+            </button>
+          </NavLockTooltip>
         );
       }
       return (
@@ -405,47 +418,52 @@ export function AppSidebarNav({
       );
     }
 
+    const groupToggle = (
+      <button
+        type="button"
+        onClick={() => {
+          if (groupLock) {
+            openUpgrade(groupLock);
+            toggleGroup(entry.id);
+            return;
+          }
+          toggleGroup(entry.id);
+        }}
+        aria-expanded={isOpen}
+        aria-disabled={groupLock ? "true" : undefined}
+        title={groupLock?.shortMessage}
+        className={cn(
+          "group relative flex min-h-11 w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
+          groupLock
+            ? "cursor-not-allowed text-muted-foreground"
+            : groupActive
+              ? "bg-primary/10 text-foreground"
+              : "text-muted-foreground hover:bg-[hsl(var(--nav-hover))] hover:text-accent-foreground",
+        )}
+      >
+        <Icon className="h-4 w-4 shrink-0" />
+        <span className="min-w-0 flex-1 truncate text-left">{entry.label}</span>
+        {groupLock || groupHasLockedChildren ? (
+          <Lock className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        ) : null}
+        <ChevronDown
+          className={cn(
+            "h-4 w-4 shrink-0 transition-transform",
+            isOpen && "rotate-180",
+          )}
+        />
+      </button>
+    );
+
     return (
       <div key={entry.id} className="space-y-0.5">
-        <button
-          type="button"
-          onClick={() => {
-            if (groupLock) {
-              openUpgrade(groupLock);
-              toggleGroup(entry.id);
-              return;
-            }
-            toggleGroup(entry.id);
-          }}
-          aria-expanded={isOpen}
-          aria-disabled={groupLock ? "true" : undefined}
-          title={groupLock?.shortMessage}
-          className={cn(
-            "group relative flex min-h-11 w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
-            groupLock
-              ? "cursor-not-allowed text-muted-foreground"
-              : groupActive
-                ? "bg-primary/10 text-foreground"
-                : "text-muted-foreground hover:bg-[hsl(var(--nav-hover))] hover:text-accent-foreground",
-          )}
-        >
-          <Icon className="h-4 w-4 shrink-0" />
-          <span className="flex-1 text-left">{entry.label}</span>
-          {groupLock || groupHasLockedChildren ? (
-            <Lock className="h-3.5 w-3.5 shrink-0" aria-hidden />
-          ) : null}
-          <ChevronDown
-            className={cn(
-              "h-4 w-4 shrink-0 transition-transform",
-              isOpen && "rotate-180",
-            )}
-          />
-          {groupLock ? (
-            <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 hidden w-64 -translate-y-1/2 rounded-md border border-border bg-popover p-2 text-xs font-normal text-popover-foreground shadow-md group-hover:block group-focus-within:block max-md:hidden">
-              {groupLock.shortMessage}
-            </span>
-          ) : null}
-        </button>
+        {groupLock ? (
+          <NavLockTooltip text={`${groupLock.shortMessage} ${groupLock.longMessage}`}>
+            {groupToggle}
+          </NavLockTooltip>
+        ) : (
+          groupToggle
+        )}
         {isOpen ? (
           <div className="space-y-0.5">
             {entry.children.map((child) =>
@@ -460,33 +478,35 @@ export function AppSidebarNav({
     );
   };
 
+  const roleLabel = role ? labelForMembershipRole(role) : null;
+  const accountLabel = [userName, userEmail].filter(Boolean).join(" · ");
+
   return (
     <>
-      <div className="sticky top-0 z-30 flex items-center gap-2 border-b border-border bg-background/95 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur md:hidden">
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          className="h-11 w-11 shrink-0"
-          onClick={() => setMobileOpen(true)}
-          aria-label="Open navigation menu"
-        >
-          <Menu className="h-5 w-5" />
-        </Button>
-        <BrandLogo
-          href="/dashboard"
-          size={28}
-          wordmarkClassName="text-base font-semibold tracking-tight"
-        />
-      </div>
-
       <div
         className={cn(
-          "max-md:pointer-events-none max-md:h-0 max-md:w-0 max-md:overflow-visible",
+          "flex shrink-0 flex-col md:h-full md:min-h-0 md:shrink-0",
           desktopCompact ? "md:w-[4.25rem]" : "md:w-64",
-          "md:pointer-events-auto md:shrink-0",
         )}
       >
+        <div className="sticky top-0 z-30 flex shrink-0 items-center gap-2 border-b border-border bg-background/95 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur md:hidden">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-11 w-11 shrink-0"
+            onClick={() => setMobileOpen(true)}
+            aria-label="Open navigation menu"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+          <BrandLogo
+            href="/dashboard"
+            size={28}
+            wordmarkClassName="text-base font-semibold tracking-tight"
+          />
+        </div>
+
         {mobileOpen && (
           <button
             type="button"
@@ -497,15 +517,18 @@ export function AppSidebarNav({
         )}
 
         <aside
+          data-testid="app-sidebar"
           className={cn(
-            "pointer-events-auto flex h-full min-h-app flex-col border-r border-border bg-card pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] transition-[width,transform] duration-200 ease-out",
-            "fixed inset-y-0 left-0 z-50 w-[min(20rem,88vw)] md:static md:z-auto md:min-h-app md:w-full md:pt-0",
+            "pointer-events-auto flex h-app min-h-0 flex-col overflow-hidden border-r border-border bg-card transition-[width,transform] duration-200 ease-out",
+            "fixed inset-y-0 left-0 z-50 w-[min(20rem,88vw)]",
+            "md:static md:z-auto md:h-full md:w-full md:min-h-0",
+            "pt-[env(safe-area-inset-top)] md:pt-0",
             mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
           )}
         >
           <div
             className={cn(
-              "flex h-16 items-center border-b border-border",
+              "flex h-16 shrink-0 items-center border-b border-border",
               desktopCompact
                 ? "justify-between px-3 md:justify-center md:px-2"
                 : "justify-between gap-2 px-3",
@@ -516,8 +539,8 @@ export function AppSidebarNav({
                 href="/"
                 size={28}
                 showWordmark={!desktopCompact}
-                className={cn(desktopCompact && "hidden md:inline-flex")}
-                wordmarkClassName="text-base font-semibold tracking-tight"
+                className={cn("min-w-0", desktopCompact && "hidden md:inline-flex")}
+                wordmarkClassName="truncate text-base font-semibold tracking-tight"
               />
               {desktopCompact && (
                 <BrandLogo
@@ -556,7 +579,7 @@ export function AppSidebarNav({
           </div>
 
           {desktopCompact && (
-            <div className="hidden justify-center border-b border-border py-2 md:flex">
+            <div className="hidden shrink-0 justify-center border-b border-border py-2 md:flex">
               <Button
                 type="button"
                 variant="ghost"
@@ -574,7 +597,7 @@ export function AppSidebarNav({
           {activeOrganizationId && churches.length > 0 && (
             <div
               className={cn(
-                "border-b border-border p-3",
+                "shrink-0 border-b border-border p-3",
                 desktopCompact && "md:flex md:justify-center md:p-2",
               )}
             >
@@ -587,8 +610,10 @@ export function AppSidebarNav({
           )}
 
           <nav
+            data-sidebar-nav=""
+            aria-label="Main"
             className={cn(
-              "flex flex-1 flex-col gap-4 overflow-y-auto p-3 md:p-4",
+              "flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overflow-x-hidden overscroll-contain p-3 md:p-4",
               desktopCompact && "md:items-center md:gap-2 md:p-2",
             )}
           >
@@ -617,20 +642,46 @@ export function AppSidebarNav({
           </nav>
 
           <div
+            data-testid="app-sidebar-footer"
             className={cn(
-              "border-t border-border p-4",
+              "shrink-0 border-t border-border bg-muted/40 px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:px-4 md:pb-3",
               desktopCompact &&
-                "md:flex md:flex-col md:items-center md:gap-2 md:p-2",
+                "md:flex md:flex-col md:items-center md:gap-2 md:px-2 md:pb-3",
             )}
           >
-            <p
+            <div
               className={cn(
-                "mb-3 truncate text-xs text-muted-foreground",
-                desktopCompact && "md:hidden",
+                "min-w-0",
+                desktopCompact && "md:flex md:justify-center",
               )}
             >
-              {userEmail}
-            </p>
+              {desktopCompact ? (
+                <div
+                  className="hidden h-10 w-10 items-center justify-center rounded-md text-muted-foreground md:flex"
+                  title={accountLabel || "Signed in"}
+                  aria-label={accountLabel || "Signed in"}
+                >
+                  <UserRound className="h-4 w-4" />
+                </div>
+              ) : null}
+              <div className={cn("mb-3 min-w-0", desktopCompact && "md:hidden")}>
+                {userName ? (
+                  <p className="truncate text-sm font-medium text-foreground" title={userName}>
+                    {userName}
+                  </p>
+                ) : null}
+                {roleLabel ? (
+                  <p className="truncate text-xs text-muted-foreground" title={roleLabel}>
+                    {roleLabel}
+                  </p>
+                ) : null}
+                {userEmail ? (
+                  <p className="truncate text-xs text-muted-foreground" title={userEmail}>
+                    {userEmail}
+                  </p>
+                ) : null}
+              </div>
+            </div>
             <LogoutButton
               className={cn(
                 "h-11 w-full",

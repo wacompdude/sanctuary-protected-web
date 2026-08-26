@@ -80,6 +80,7 @@ assert(
 
 // Deep links
 assert(isHelpDeepLinkPath("/team/invite"), "invite deep link allowed");
+assert(isHelpDeepLinkPath("/training/events/new"), "training deep link allowed");
 assert(!isHelpDeepLinkPath("https://evil.example"), "external URL blocked");
 assert(!isHelpDeepLinkPath("/platform/help"), "platform console not allowlisted");
 assert(

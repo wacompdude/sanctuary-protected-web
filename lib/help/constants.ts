@@ -9,7 +9,7 @@ import type {
 } from "@/lib/help/types";
 
 export const HELP_MIGRATION_HINT =
-  "Help Center is not configured yet. Run supabase/migrations/051–054 (permission category, schema, search trigger fix, then initial content) in the Supabase SQL Editor.";
+  "Help Center is not configured yet. Run supabase/migrations/051–054 and 086 (schema, search trigger, initial content, then content expansion) in the Supabase SQL Editor.";
 
 export const DEFAULT_HELP_SEARCH_LIMIT = 20;
 export const MAX_HELP_SEARCH_LIMIT = 50;
@@ -117,17 +117,63 @@ export const HELP_SEED_CATEGORY_TREE: {
   {
     name: "Churches & Campuses",
     slug: "churches-campuses",
-    description: "Church settings and multi-campus management.",
+    description: "Church settings and campus management.",
+    children: [
+      {
+        name: "Church settings",
+        slug: "church-settings",
+        description: "Church name, contact details, time zone, and URL Name.",
+      },
+      {
+        name: "Campuses",
+        slug: "campuses",
+        description: "Create campuses, assign members, and delegate management.",
+      },
+    ],
   },
   {
     name: "Members & Teams",
     slug: "members-teams",
-    description: "Invitations, roles, teams, and certifications.",
+    description: "Invitations, church roles, teams, and certifications.",
     children: [
       {
         name: "Invitations",
         slug: "members-invitations",
         description: "Invite and onboard church members.",
+      },
+    ],
+  },
+  {
+    name: "Security & Permissions",
+    slug: "security-permissions",
+    description: "Church roles, groups, temporary access, and permissions.",
+    children: [
+      {
+        name: "Church Roles",
+        slug: "security-roles",
+        description: "Role templates such as Owner, Administrator, and Security Leader.",
+      },
+      {
+        name: "Groups",
+        slug: "security-groups",
+        description: "Permission groups, members, and campus-scoped access.",
+      },
+    ],
+  },
+  {
+    name: "Training",
+    slug: "training",
+    description: "Training events, records, required training, and reports.",
+    children: [
+      {
+        name: "Events and records",
+        slug: "training-events",
+        description: "Create training events and record attendance.",
+      },
+      {
+        name: "Certifications",
+        slug: "training-certifications",
+        description: "Member certifications and expiration dates.",
       },
     ],
   },
@@ -203,7 +249,7 @@ export const HELP_SEED_CATEGORY_TREE: {
   {
     name: "Subscription & Billing",
     slug: "subscription-billing",
-    description: "Plans, entitlements, and billing.",
+    description: "Plans, billing, and why some features stay locked.",
   },
   {
     name: "Account & Security",
@@ -217,7 +263,10 @@ export const HELP_SEED_CATEGORY_TREE: {
   },
 ];
 
-/** Stable article slugs seeded in migration 054 (insert-if-absent only). */
+/**
+ * Stable product Help article slugs (migrations 054 + 086).
+ * 086 upserts these slugs so product copy stays current.
+ */
 export const HELP_SEED_ARTICLE_SLUGS = [
   "welcome-to-sanctuary-protected",
   "initial-setup-checklist",
@@ -230,6 +279,34 @@ export const HELP_SEED_ARTICLE_SLUGS = [
   "send-a-group-email",
   "subscription-plans-overview",
   "get-help-and-support",
+  "church-settings-overview",
+  "selecting-a-time-zone",
+  "understanding-url-names",
+  "church-contact-information",
+  "campuses-overview",
+  "create-a-campus",
+  "adding-members-to-a-campus",
+  "delegating-campus-member-management",
+  "why-cant-i-see-another-campus",
+  "security-overview",
+  "church-roles-and-security-groups",
+  "adding-members-to-a-security-group",
+  "assigning-group-permissions",
+  "temporary-access",
+  "subscription-tier-vs-security-permission",
+  "why-is-a-feature-greyed-out",
+  "training-overview",
+  "create-a-training-event",
+  "recording-training-completion",
+  "certifications-overview",
+  "dashboard-overview",
+  "hardware-inventory-overview",
+  "medical-inventory-overview",
+  "policies-and-procedures-overview",
+  "known-safety-concerns-overview",
+  "cameras-and-sensors-overview",
+  "reports-and-analytics-overview",
+  "account-and-profile-settings",
 ] as const;
 
 export function helpMigrationHintFromError(message: string): string | null {

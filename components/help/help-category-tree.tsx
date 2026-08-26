@@ -13,7 +13,7 @@ function CategoryBranch({
     <li>
       <Link
         href={`/help/category/${node.slug}`}
-        className="flex items-start justify-between gap-3 rounded-md px-3 py-2 hover:bg-muted/70"
+        className="flex min-h-11 items-start justify-between gap-3 rounded-md px-3 py-2 hover:bg-muted/70"
         style={{ paddingLeft: `${0.75 + depth * 0.875}rem` }}
       >
         <span className="min-w-0">

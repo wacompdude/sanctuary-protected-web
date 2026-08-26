@@ -42,7 +42,7 @@ export function HelpSearchForm({
           type="search"
           defaultValue={defaultQuery}
           autoFocus={autoFocus}
-          placeholder="Search help — e.g. create event, invite member, incident"
+          placeholder="Search help — e.g. time zone, security role, training, URL name"
           className={
             large
               ? "h-12 pl-10 text-base"

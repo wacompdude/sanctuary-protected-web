@@ -9,6 +9,11 @@ import {
   listHelpSeedCategorySlugs,
 } from "@/lib/help/seed-content";
 import {
+  assertHelpCoverageCatalogIntegrity,
+  HELP_FEATURE_COVERAGE,
+  planDisplayNamesForFeature,
+} from "@/lib/help/coverage";
+import {
   HELP_DEEP_LINK_ALLOWED_PREFIXES,
   isHelpDeepLinkPath,
   normalizeHelpDeepLinkPath,
@@ -64,6 +69,11 @@ assert(slugifyHelpText("Create an Event!") === "create-an-event", "slugify");
 
 assert(isHelpDeepLinkPath("/events/new"), "events deep link allowed");
 assert(isHelpDeepLinkPath("/incidents/new"), "incidents deep link allowed");
+assert(isHelpDeepLinkPath("/training/events/new"), "training deep link allowed");
+assert(
+  isHelpDeepLinkPath("/settings/security?tab=groups"),
+  "security groups deep link allowed",
+);
 assert(!isHelpDeepLinkPath("javascript:alert(1)"), "javascript blocked");
 assert(!isHelpDeepLinkPath("//evil.example"), "protocol-relative blocked");
 assert(!isHelpDeepLinkPath("https://example.com"), "external blocked");
@@ -118,10 +128,33 @@ assert(
   "events-scheduling seed category",
 );
 assert(
+  HELP_SEED_CATEGORY_TREE.some((item) => item.slug === "security-permissions"),
+  "security-permissions seed category",
+);
+assert(
+  HELP_SEED_CATEGORY_TREE.some((item) => item.slug === "training"),
+  "training seed category",
+);
+assert(
   listHelpSeedCategorySlugs().includes("scheduling-shifts"),
   "seed subcategory scheduling-shifts",
 );
-assert(listHelpSeedArticleSlugs().length === 11, "11 seed articles catalogued");
+assert(
+  listHelpSeedCategorySlugs().includes("church-settings"),
+  "seed subcategory church-settings",
+);
+assert(
+  listHelpSeedCategorySlugs().includes("security-groups"),
+  "seed subcategory security-groups",
+);
+assert(
+  listHelpSeedArticleSlugs().length === HELP_SEED_ARTICLE_CATALOG.length,
+  "seed article slug count matches catalog",
+);
+assert(
+  listHelpSeedArticleSlugs().length >= 30,
+  "expanded Help catalog has 30+ articles",
+);
 assert(
   HELP_SEED_ARTICLE_CATALOG.every((item) =>
     listHelpSeedArticleSlugs().includes(item.slug),
@@ -139,6 +172,37 @@ assert(
     (item) => item.slug === "initial-setup-checklist",
   ),
   "setup checklist seed article present",
+);
+assert(
+  HELP_SEED_ARTICLE_CATALOG.some(
+    (item) => item.slug === "why-is-a-feature-greyed-out",
+  ),
+  "greyed-out feature article present",
+);
+assert(
+  HELP_SEED_ARTICLE_CATALOG.some(
+    (item) => item.slug === "adding-members-to-a-security-group",
+  ),
+  "security group members article present",
+);
+assert(
+  HELP_SEED_ARTICLE_CATALOG.some((item) => item.slug === "selecting-a-time-zone"),
+  "time zone article present",
+);
+
+assertHelpCoverageCatalogIntegrity();
+assert(HELP_FEATURE_COVERAGE.length >= 20, "coverage map has major modules");
+assert(
+  planDisplayNamesForFeature(FEATURE_KEYS.TRAINING_MANAGEMENT).includes(
+    "Steward Pro",
+  ),
+  "training plan names derived from expected matrix",
+);
+assert(
+  !planDisplayNamesForFeature(FEATURE_KEYS.TRAINING_MANAGEMENT).includes(
+    "Servant Standard",
+  ),
+  "Servant Standard does not include training in expected matrix",
 );
 
 const tree = buildHelpCategoryTree(

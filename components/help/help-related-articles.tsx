@@ -45,7 +45,7 @@ export function HelpRelatedArticles({
                   <li key={item.id}>
                     <Link
                       href={`/help/article/${item.target_slug}`}
-                      className="block rounded-md border px-3 py-2 hover:bg-muted/50"
+                      className="block min-h-11 rounded-md border border-border px-3 py-2.5 hover:bg-muted/50"
                     >
                       <span className="font-medium text-foreground">
                         {item.target_title}

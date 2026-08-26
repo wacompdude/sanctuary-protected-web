@@ -21,6 +21,7 @@ export const HELP_DEEP_LINK_ALLOWED_PREFIXES = [
   "/cameras",
   "/sensors",
   "/certifications",
+  "/training",
   "/settings",
   "/profile",
   "/audit",

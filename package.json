@@ -21,6 +21,7 @@
     "selfcheck:compat": "npx --yes tsx lib/organization/brand-theme.selfcheck.ts",
     "selfcheck:onboarding": "npx --yes tsx lib/organization/slug.selfcheck.ts && npx --yes tsx lib/organization/onboarding.selfcheck.ts",
     "selfcheck:timezones": "npx --yes tsx lib/datetime/timezones.selfcheck.ts",
+    "selfcheck:mfa": "npx --yes tsx lib/mfa/foundation.selfcheck.ts",
     "test:e2e": "playwright test",
     "test:e2e:compat": "playwright test e2e/compatibility.spec.ts"
   },

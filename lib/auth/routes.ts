@@ -33,6 +33,9 @@ export const AUTH_ENTRY_PATHS = [
   "/auth/forgot-password",
 ];
 
+/** Password accepted, second factor not yet completed. */
+export const MFA_CHALLENGE_PATH = "/auth/mfa";
+
 /** App routes that require authentication. */
 export const PROTECTED_PATH_PREFIXES = [
   "/home",
@@ -87,4 +90,8 @@ export function isProtectedPath(pathname: string): boolean {
 
 export function isAuthEntryPath(pathname: string): boolean {
   return AUTH_ENTRY_PATHS.includes(pathname);
+}
+
+export function isMfaChallengePath(pathname: string): boolean {
+  return pathname === MFA_CHALLENGE_PATH;
 }

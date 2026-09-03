@@ -23,6 +23,10 @@ import { labelForMembershipRole } from "@/lib/organization/invitations";
 import { labelForMembershipStatus } from "@/lib/organization/team";
 import { formatChurchDate } from "@/lib/datetime/format";
 import { createClient } from "@/lib/supabase/server";
+import { ProfileMfaSettings } from "@/components/mfa/profile-mfa-settings";
+import { maskPhoneForMfa } from "@/lib/mfa/mask";
+import { isMfaSmsConfigured } from "@/lib/mfa/send-sms";
+import { getOrCreateUserSecuritySettings } from "@/lib/mfa/settings";
 import { ArrowLeftRight } from "lucide-react";
 
 function statusBadgeVariant(
@@ -71,11 +75,14 @@ async function ProfileContent() {
     );
   }
 
-  const [memberships, certifications, campusMemberships] = await Promise.all([
-    listOwnChurchMemberships(),
-    listOwnCertifications(),
-    listOwnCampusMemberships(user.id).catch(() => []),
-  ]);
+  const [memberships, certifications, campusMemberships, securitySettings] =
+    await Promise.all([
+      listOwnChurchMemberships(),
+      listOwnCertifications(),
+      listOwnCampusMemberships(user.id).catch(() => []),
+      getOrCreateUserSecuritySettings(user.id).catch(() => null),
+    ]);
+  const smsConfigured = isMfaSmsConfigured();
   const timezoneByOrganizationId = new Map(
     memberships.map((membership) => [
       membership.organization_id,
@@ -101,6 +108,19 @@ async function ProfileContent() {
       <ProfileAvatarForm profile={profile} />
 
       <ProfileForm profile={profile} />
+
+      {securitySettings ? (
+        <ProfileMfaSettings
+          maskedPhone={
+            securitySettings.verifiedPhone
+              ? maskPhoneForMfa(securitySettings.verifiedPhone)
+              : null
+          }
+          hasVerifiedPhone={Boolean(securitySettings.verifiedPhone)}
+          smsConfigured={smsConfigured}
+          profilePhone={profile.phone}
+        />
+      ) : null}
 
       <ChangePasswordForm />
 

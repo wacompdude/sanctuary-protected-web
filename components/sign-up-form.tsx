@@ -91,8 +91,9 @@ export function SignUpForm({
 
       // If email confirmation is disabled, session exists — continue to next.
       if (data.session) {
-        router.push(safeNext);
-        router.refresh();
+        window.location.assign(
+          `/auth/mfa?next=${encodeURIComponent(safeNext)}`,
+        );
         return;
       }
 

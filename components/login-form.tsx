@@ -85,7 +85,8 @@ export function LoginForm({
 
       // Force a document navigation so the next request definitely carries the
       // freshly issued auth cookies through middleware and server components.
-      window.location.assign(destination);
+      const mfaPath = `/auth/mfa?next=${encodeURIComponent(destination)}`;
+      window.location.assign(mfaPath);
       return;
     } catch (err: unknown) {
       setError(

@@ -23,7 +23,7 @@ import { listChurchTeamMemberships } from "@/lib/organization/team-queries";
 import { listTeamMembersForChurch } from "@/lib/certifications/queries";
 import { ResendInvitationButton } from "@/components/team/resend-invitation-button";
 import { RevokeInvitationButton } from "@/components/team/revoke-invitation-button";
-import { MailPlus, Plus, UserPlus } from "lucide-react";
+import { MailPlus, UserPlus } from "lucide-react";
 import { isServiceRoleConfigured } from "@/lib/supabase/admin";
 import { formatChurchDate } from "@/lib/datetime/format";
 
@@ -62,7 +62,7 @@ async function TeamContent({ created }: { created?: string }) {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Team</h1>
           <p className="mt-1 text-muted-foreground">
-            Manage memberships and certification contacts for {church.name}.
+            Manage memberships for {church.name}.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -82,14 +82,6 @@ async function TeamContent({ created }: { created?: string }) {
               </Button>
             </>
           )}
-          {canManageCertifications ? (
-            <Button variant="outline" asChild>
-              <Link href="/team/new">
-                <Plus className="h-4 w-4" />
-                Add certification contact
-              </Link>
-            </Button>
-          ) : null}
         </div>
       </div>
 

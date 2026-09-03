@@ -293,13 +293,6 @@ export const APP_NAV_SECTIONS: NavSection[] = [
             minRole: "security_member",
             label: "Members",
           },
-          {
-            kind: "link",
-            id: "invitations",
-            href: "/team/invite",
-            minRole: "administrator",
-            label: "Invite",
-          },
         ],
       },
       {

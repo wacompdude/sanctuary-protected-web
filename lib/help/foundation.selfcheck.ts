@@ -189,6 +189,20 @@ assert(
   HELP_SEED_ARTICLE_CATALOG.some((item) => item.slug === "selecting-a-time-zone"),
   "time zone article present",
 );
+assert(
+  HELP_SEED_ARTICLE_CATALOG.some((item) => item.slug === "trusted-devices"),
+  "trusted devices article present",
+);
+assert(
+  HELP_SEED_ARTICLE_CATALOG.some((item) => item.slug === "sign-in-verification"),
+  "sign-in verification article present",
+);
+assert(
+  HELP_SEED_ARTICLE_CATALOG.some(
+    (item) => item.slug === "multi-factor-authentication-policies",
+  ),
+  "MFA policy article present",
+);
 
 assertHelpCoverageCatalogIntegrity();
 assert(HELP_FEATURE_COVERAGE.length >= 20, "coverage map has major modules");

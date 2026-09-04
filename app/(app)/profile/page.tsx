@@ -24,8 +24,12 @@ import { labelForMembershipStatus } from "@/lib/organization/team";
 import { formatChurchDate } from "@/lib/datetime/format";
 import { createClient } from "@/lib/supabase/server";
 import { ProfileMfaSettings } from "@/components/mfa/profile-mfa-settings";
+import { TrustedDevicesCard } from "@/components/mfa/trusted-devices-card";
+import { listOwnTrustedDevicesForProfile } from "@/app/(app)/profile/trusted-device-actions";
 import { maskPhoneForMfa } from "@/lib/mfa/mask";
 import { isMfaSmsConfigured } from "@/lib/mfa/send-sms";
+import { mfaPolicyUserMessage } from "@/lib/mfa/effective-policy";
+import { getEffectiveMfaPolicy } from "@/lib/mfa/resolve-policy";
 import { getOrCreateUserSecuritySettings } from "@/lib/mfa/settings";
 import { ArrowLeftRight } from "lucide-react";
 
@@ -75,12 +79,14 @@ async function ProfileContent() {
     );
   }
 
-  const [memberships, certifications, campusMemberships, securitySettings] =
+  const [memberships, certifications, campusMemberships, securitySettings, trustedDevices, mfaPolicy] =
     await Promise.all([
       listOwnChurchMemberships(),
       listOwnCertifications(),
       listOwnCampusMemberships(user.id).catch(() => []),
       getOrCreateUserSecuritySettings(user.id).catch(() => null),
+      listOwnTrustedDevicesForProfile().catch(() => []),
+      getEffectiveMfaPolicy({ userId: user.id }).catch(() => null),
     ]);
   const smsConfigured = isMfaSmsConfigured();
   const timezoneByOrganizationId = new Map(
@@ -119,8 +125,15 @@ async function ProfileContent() {
           hasVerifiedPhone={Boolean(securitySettings.verifiedPhone)}
           smsConfigured={smsConfigured}
           profilePhone={profile.phone}
+          policyNotice={
+            mfaPolicy && !mfaPolicy.needsOrganizationSelection
+              ? mfaPolicyUserMessage(mfaPolicy)
+              : null
+          }
         />
       ) : null}
+
+      <TrustedDevicesCard devices={trustedDevices} />
 
       <ChangePasswordForm />
 

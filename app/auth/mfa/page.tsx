@@ -3,13 +3,23 @@ import { Suspense } from "react";
 import { AuthPageShell } from "@/components/auth-page-shell";
 import { LoginMfaForm } from "@/components/mfa/login-mfa-form";
 import { skipLoginMfaIfNotRequired } from "@/app/auth/mfa/actions";
+import { isPlatformDestination } from "@/lib/mfa/effective-policy";
 import { maskEmailForMfa, maskPhoneForMfa } from "@/lib/mfa/mask";
 import {
   getLoginMfaContext,
   safeMfaNextPath,
 } from "@/lib/mfa/login";
+import { getEffectiveMfaPolicy } from "@/lib/mfa/resolve-policy";
 import { hasSatisfiedLoginMfa } from "@/lib/mfa/gate";
+import { readActiveOrganizationCookie } from "@/lib/organization/cookie";
 import { readMfaCookieValue } from "@/lib/mfa/session";
+import {
+  recordDeviceVerificationRequired,
+  recordTrustedDeviceValidationFailure,
+  validateTrustedDevice,
+} from "@/lib/mfa/trusted-devices";
+import { readTrustedDeviceCookieValue } from "@/lib/mfa/trusted-device-session";
+import { UNRECOGNIZED_DEVICE_MESSAGE } from "@/lib/mfa/trusted-device-policy";
 import {
   getOrCreateUserSecuritySettings,
   loginSmsBackupAvailable,
@@ -29,12 +39,25 @@ async function MfaContent({
     redirect(`/login?next=${encodeURIComponent(nextPath)}`);
   }
 
+  const policy = await getEffectiveMfaPolicy({
+    userId: ctx.userId,
+    pathname: nextPath,
+  });
+  if (policy.needsOrganizationSelection) {
+    redirect(
+      `/auth/select-organization?next=${encodeURIComponent(nextPath)}`,
+    );
+  }
+
   const cookieValue = await readMfaCookieValue();
+  const organizationId = await readActiveOrganizationCookie();
   if (
     await hasSatisfiedLoginMfa({
       userId: ctx.userId,
       sessionId: ctx.sessionId,
       cookieValue,
+      organizationId,
+      platformDestination: isPlatformDestination(nextPath),
     })
   ) {
     redirect(nextPath);
@@ -53,6 +76,26 @@ async function MfaContent({
     }
   }
 
+  const trustedCookie = await readTrustedDeviceCookieValue();
+  const trusted = await validateTrustedDevice({
+    userId: ctx.userId,
+    cookieValue: trustedCookie,
+  });
+  if (!trusted.ok) {
+    if (trusted.reason === "expired") {
+      await recordTrustedDeviceValidationFailure({
+        userId: ctx.userId,
+        reason: "expired",
+      });
+    } else if (trusted.reason !== "missing") {
+      await recordTrustedDeviceValidationFailure({
+        userId: ctx.userId,
+        reason: trusted.reason,
+      });
+    }
+    await recordDeviceVerificationRequired(ctx.userId);
+  }
+
   const settings = await getOrCreateUserSecuritySettings(ctx.userId).catch(
     () => null,
   );
@@ -69,7 +112,13 @@ async function MfaContent({
     retryAfterSeconds: 0,
   };
 
-  return <LoginMfaForm nextPath={nextPath} initialView={initialView} />;
+  return (
+    <LoginMfaForm
+      nextPath={nextPath}
+      initialView={initialView}
+      unrecognizedDeviceMessage={UNRECOGNIZED_DEVICE_MESSAGE}
+    />
+  );
 }
 
 export default function LoginMfaPage({

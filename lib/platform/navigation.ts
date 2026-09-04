@@ -93,6 +93,17 @@ export const PLATFORM_NAV_SECTIONS: PlatformNavSection[] = [
     ],
   },
   {
+    id: "security",
+    label: "Security",
+    links: [
+      {
+        href: "/platform/security",
+        label: "Multi-Factor Authentication",
+        permission: "security.mfa_policy.manage",
+      },
+    ],
+  },
+  {
     id: "system",
     label: "System",
     links: [

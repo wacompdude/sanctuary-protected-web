@@ -245,7 +245,12 @@ export const HELP_FEATURE_COVERAGE: readonly HelpCoverageRow[] = [
   {
     key: "account.profile",
     label: "Account and profile",
-    articleSlugs: ["account-and-profile-settings"],
+    articleSlugs: [
+      "account-and-profile-settings",
+      "sign-in-verification",
+      "trusted-devices",
+      "multi-factor-authentication-policies",
+    ],
     status: "documented",
   },
   {

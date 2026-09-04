@@ -17,6 +17,10 @@ import {
   startLoginSmsMfaAction,
   verifyLoginMfaAction,
 } from "@/app/auth/mfa/actions";
+import {
+  DEVICE_NOW_TRUSTED_MESSAGE,
+  IDENTITY_VERIFIED_MESSAGE,
+} from "@/lib/mfa/trusted-device-policy";
 import type { LoginMfaView, MfaActionState } from "@/lib/mfa/types";
 
 type Step = "email_code" | "sms_confirm" | "sms_code";
@@ -26,9 +30,11 @@ const initialState: MfaActionState = {};
 export function LoginMfaForm({
   nextPath,
   initialView,
+  unrecognizedDeviceMessage,
 }: {
   nextPath: string;
   initialView: LoginMfaView;
+  unrecognizedDeviceMessage: string;
 }) {
   const [step, setStep] = useState<Step>("email_code");
   const [view, setView] = useState<LoginMfaView>(initialView);
@@ -45,11 +51,15 @@ export function LoginMfaForm({
     if (startedRef.current) return;
     startedRef.current = true;
     startTransition(async () => {
-      const result = await startLoginEmailMfaAction();
+      const result = await startLoginEmailMfaAction(nextPath);
+      if (result.verified) {
+        window.location.assign(nextPath);
+        return;
+      }
       if (result.error) setStartError(result.error);
       if (result.view) setView(result.view);
     });
-  }, [startedRef]);
+  }, [startedRef, nextPath]);
 
   useEffect(() => {
     if (!state.verified) return;
@@ -69,7 +79,7 @@ export function LoginMfaForm({
   async function resendEmail() {
     setStartError(null);
     startTransition(async () => {
-      const result = await startLoginEmailMfaAction();
+      const result = await startLoginEmailMfaAction(nextPath);
       if (result.error) setStartError(result.error);
       if (result.view) setView(result.view);
       setStep("email_code");
@@ -79,7 +89,7 @@ export function LoginMfaForm({
   async function sendSms() {
     setStartError(null);
     startTransition(async () => {
-      const result = await startLoginSmsMfaAction();
+      const result = await startLoginSmsMfaAction(nextPath);
       if (result.error) {
         setStartError(result.error);
         return;
@@ -99,17 +109,24 @@ export function LoginMfaForm({
           wordmarkClassName="text-2xl font-semibold"
         />
         <CardTitle className="text-xl">
-          {state.verified ? "MFA verified" : "Verify your identity"}
+          {state.verified ? IDENTITY_VERIFIED_MESSAGE : "Verify your identity"}
         </CardTitle>
         <CardDescription>
           {state.verified
-            ? "You are signed in. Continuing…"
+            ? state.trustedDeviceRegistered
+              ? DEVICE_NOW_TRUSTED_MESSAGE
+              : "You are signed in. Continuing…"
             : step === "sms_confirm"
               ? "Send a verification code by text message."
-              : step === "sms_code"
-                ? "Enter the 6-digit code sent to:"
-                : "We've sent a 6-digit verification code to:"}
+              : unrecognizedDeviceMessage}
         </CardDescription>
+        {state.verified || step === "sms_confirm" ? null : (
+          <p className="text-sm text-muted-foreground">
+            {step === "sms_code"
+              ? "Enter the 6-digit code sent to:"
+              : "We've sent a 6-digit verification code to:"}
+          </p>
+        )}
         {state.verified ? null : (
           <p className="text-sm font-medium text-foreground">{masked}</p>
         )}
@@ -129,7 +146,7 @@ export function LoginMfaForm({
 
         {state.verified ? (
           <p className="text-center text-sm text-muted-foreground">
-            Access granted.
+            {IDENTITY_VERIFIED_MESSAGE}
           </p>
         ) : step === "sms_confirm" ? (
           <div className="space-y-3">
@@ -167,6 +184,22 @@ export function LoginMfaForm({
               disabled={pendingVerify || pendingStart}
               error={!!state.fieldErrors?.code}
             />
+            <label className="flex items-start gap-2 text-left text-sm">
+              <input
+                type="checkbox"
+                name="trust_device"
+                value="1"
+                className="mt-1 h-4 w-4 shrink-0 rounded border-input"
+              />
+              <span>
+                <span className="font-medium">Trust this device</span>
+                <span className="mt-1 block text-muted-foreground">
+                  Trust this device to avoid additional verification when
+                  signing in from this device. Do not select this option on a
+                  public or shared computer.
+                </span>
+              </span>
+            </label>
             <Button
               type="submit"
               className="w-full"
@@ -179,7 +212,7 @@ export function LoginMfaForm({
 
         {state.verified ? null : step !== "sms_confirm" ? (
           <div className="space-y-2 text-center text-sm">
-            <p className="text-muted-foreground">Didn't receive the code?</p>
+            <p className="text-muted-foreground">Didn&apos;t receive the code?</p>
             <Button
               type="button"
               variant="ghost"
@@ -201,7 +234,7 @@ export function LoginMfaForm({
             </Button>
             {step === "email_code" && view.smsBackupAvailable ? (
               <div>
-                <p className="text-muted-foreground">Can't access your email?</p>
+                <p className="text-muted-foreground">Can&apos;t access your email?</p>
                 <Button
                   type="button"
                   variant="ghost"

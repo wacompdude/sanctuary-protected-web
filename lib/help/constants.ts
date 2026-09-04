@@ -9,7 +9,7 @@ import type {
 } from "@/lib/help/types";
 
 export const HELP_MIGRATION_HINT =
-  "Help Center is not configured yet. Run supabase/migrations/051–054 and 086 (schema, search trigger, initial content, then content expansion) in the Supabase SQL Editor.";
+  "Help Center is not configured yet. Run supabase/migrations/051–054, 086, 089, and 091 (schema, search trigger, initial content, then content expansion) in the Supabase SQL Editor.";
 
 export const DEFAULT_HELP_SEARCH_LIMIT = 20;
 export const MAX_HELP_SEARCH_LIMIT = 50;
@@ -264,8 +264,8 @@ export const HELP_SEED_CATEGORY_TREE: {
 ];
 
 /**
- * Stable product Help article slugs (migrations 054 + 086).
- * 086 upserts these slugs so product copy stays current.
+ * Stable product Help article slugs (migrations 054 + 086 + 089 + 091).
+ * Later migrations upsert these slugs so product copy stays current.
  */
 export const HELP_SEED_ARTICLE_SLUGS = [
   "welcome-to-sanctuary-protected",
@@ -307,6 +307,9 @@ export const HELP_SEED_ARTICLE_SLUGS = [
   "cameras-and-sensors-overview",
   "reports-and-analytics-overview",
   "account-and-profile-settings",
+  "sign-in-verification",
+  "trusted-devices",
+  "multi-factor-authentication-policies",
 ] as const;
 
 export function helpMigrationHintFromError(message: string): string | null {

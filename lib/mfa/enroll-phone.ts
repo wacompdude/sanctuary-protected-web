@@ -108,6 +108,9 @@ export async function removeVerifiedPhone(): Promise<MfaActionState> {
   await getOrCreateUserSecuritySettings(userId);
   await clearVerifiedPhone(userId);
 
+  const { revokeAllTrustedDevices } = await import("@/lib/mfa/trusted-devices");
+  await revokeAllTrustedDevices(userId, "mfa_method_removed");
+
   const supabase = await createClient();
   await writeAuditLog(supabase, {
     userId,

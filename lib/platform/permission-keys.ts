@@ -38,6 +38,8 @@ export const PLATFORM_PERMISSIONS = [
   "users.disable",
   "users.restore",
   "users.force_password_reset",
+  "users.revoke_trusted_devices",
+  "security.mfa_policy.manage",
 
   "audit.platform.read",
   "audit.church.read_all",

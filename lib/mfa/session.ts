@@ -13,6 +13,9 @@ export async function readMfaCookieValue(): Promise<string | undefined> {
 export async function writeMfaSessionCookie(input: {
   userId: string;
   sessionId: string;
+  kind?: "verified" | "policy_skip";
+  organizationId?: string | null;
+  lastMfaAtMs?: number | null;
 }): Promise<boolean> {
   const signed = await createMfaCookieValue(input);
   if (!signed) return false;

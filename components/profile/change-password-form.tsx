@@ -36,7 +36,9 @@ export function ChangePasswordForm() {
         <CardTitle>Change password</CardTitle>
         <CardDescription>
           Enter your current password, then choose a new one. Use at least{" "}
-          {MIN_PASSWORD_LENGTH} characters.
+          {MIN_PASSWORD_LENGTH} characters. Changing your password removes all
+          trusted devices, so the next sign-in from every browser will ask for
+          a verification code.
         </CardDescription>
       </CardHeader>
       <CardContent>

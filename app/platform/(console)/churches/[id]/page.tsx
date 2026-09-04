@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { PlatformChurchTabs } from "@/components/platform/platform-church-tabs";
 import { PlatformStatusBadge } from "@/components/platform/platform-status-badge";
 import { PlatformSupportSessionForm } from "@/components/platform/platform-support-session-form";
 import { getPlatformChurchDetail } from "@/lib/platform/console-queries";
@@ -21,6 +22,9 @@ async function ChurchDetailContent({
 
   const canReadSubs = await hasPlatformPermission("subscriptions.read_all");
   const canSupport = await hasPlatformPermission("churches.support_access");
+  const canManageMfaPolicy = await hasPlatformPermission(
+    "security.mfa_policy.manage",
+  );
   const context = canSupport ? await requirePlatformConsoleAccess() : null;
   const activeSupport = context
     ? await getActivePlatformSupportSession(context)
@@ -50,29 +54,11 @@ async function ChurchDetailContent({
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-2 text-sm">
-        <span className="rounded-md bg-slate-800 px-3 py-1.5 text-amber-300">
-          Overview
-        </span>
-        <Link
-          href={`/platform/churches/${church.id}/subscription`}
-          className="rounded-md border border-slate-700 px-3 py-1.5 text-slate-300 hover:bg-slate-900"
-        >
-          Subscription
-        </Link>
-        <Link
-          href={`/platform/churches/${church.id}/members`}
-          className="rounded-md border border-slate-700 px-3 py-1.5 text-slate-300 hover:bg-slate-900"
-        >
-          Members
-        </Link>
-        <Link
-          href={`/platform/churches/${church.id}/campuses`}
-          className="rounded-md border border-slate-700 px-3 py-1.5 text-slate-300 hover:bg-slate-900"
-        >
-          Campuses
-        </Link>
-      </div>
+      <PlatformChurchTabs
+        churchId={church.id}
+        active="overview"
+        showSecurity={canManageMfaPolicy}
+      />
 
       <section className="grid gap-4 md:grid-cols-2">
         <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">

@@ -26,11 +26,13 @@ export function ProfileMfaSettings({
   hasVerifiedPhone,
   smsConfigured,
   profilePhone,
+  policyNotice,
 }: {
   maskedPhone: string | null;
   hasVerifiedPhone: boolean;
   smsConfigured: boolean;
   profilePhone: string | null;
+  policyNotice?: string | null;
 }) {
   const [startState, startAction, startPending] = useActionState(
     startBackupPhoneAction,
@@ -52,12 +54,17 @@ export function ProfileMfaSettings({
       <CardHeader>
         <CardTitle>Sign-in verification</CardTitle>
         <CardDescription>
-          After your password, we send a 6-digit code to your email. You can
-          add a verified mobile number as a backup if you cannot access that
-          inbox.
+          After your password, we send a 6-digit code to your email unless this
+          browser is a trusted device. You can add a verified mobile number as
+          a backup if you cannot access that inbox.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {policyNotice ? (
+          <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+            {policyNotice}
+          </p>
+        ) : null}
         {error ? (
           <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {error}
@@ -73,8 +80,9 @@ export function ProfileMfaSettings({
         <div className="rounded-md border border-border px-3 py-3 text-sm">
           <p className="font-medium">Email code</p>
           <p className="mt-1 text-muted-foreground">
-            Required at every sign-in. The code is sent to your account email,
-            not an address typed on the login page.
+            Sent to your account email after password sign-in from a new or
+            unrecognized device. Trusted devices can skip this code until they
+            expire or you remove them.
           </p>
         </div>
 

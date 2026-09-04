@@ -303,6 +303,15 @@ export async function changeOwnPassword(
       return { error: updateError.message || "Unable to update password." };
     }
 
+    const { revokeAllTrustedDevices } = await import(
+      "@/lib/mfa/trusted-devices"
+    );
+    const { clearTrustedDeviceCookie } = await import(
+      "@/lib/mfa/trusted-device-session"
+    );
+    await revokeAllTrustedDevices(user.id, "password_changed");
+    await clearTrustedDeviceCookie();
+
     revalidatePath("/profile");
     return { success: true };
   } catch (error) {

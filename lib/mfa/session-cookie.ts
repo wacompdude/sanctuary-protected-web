@@ -1,14 +1,27 @@
 import {
   MFA_COOKIE_NAME,
-  MFA_SESSION_MAX_AGE_SECONDS,
+  MFA_SESSION_DURATION_SECONDS,
 } from "@/lib/mfa/policy";
 
 export { MFA_COOKIE_NAME };
+
+export type MfaAssuranceKind = "verified" | "policy_skip";
 
 type MfaCookiePayload = {
   uid: string;
   sid: string;
   exp: number;
+  /** Issued-at unix seconds. Cookie write time. */
+  iat?: number;
+  /**
+   * Unix seconds of the last actual login MFA (email/SMS).
+   * Trusted-device skips copy this from last_login_mfa_at instead of using now.
+   */
+  mfa?: number;
+  /** Default verified — completed MFA or trusted device. */
+  kind?: MfaAssuranceKind;
+  /** Organization-scoped policy skip. Null/omitted = platform-wide skip. */
+  oid?: string | null;
 };
 
 function getMfaCookieSecret(): string {
@@ -90,53 +103,127 @@ export async function createMfaCookieValue(input: {
   userId: string;
   sessionId: string;
   maxAgeSeconds?: number;
+  kind?: MfaAssuranceKind;
+  organizationId?: string | null;
+  /** Last actual MFA time. Required for trusted-device-issued verified cookies. */
+  lastMfaAtMs?: number | null;
 }): Promise<{ value: string; expires: Date } | null> {
   const secret = getMfaCookieSecret();
   if (!secret) return null;
-  const maxAge = input.maxAgeSeconds ?? MFA_SESSION_MAX_AGE_SECONDS;
+  const maxAge = input.maxAgeSeconds ?? MFA_SESSION_DURATION_SECONDS;
   const expires = new Date(Date.now() + maxAge * 1000);
+  const kind = input.kind ?? "verified";
+  const issuedAt = Math.floor(Date.now() / 1000);
+  const lastMfaAtSeconds =
+    kind === "verified"
+      ? Math.floor((input.lastMfaAtMs ?? issuedAt * 1000) / 1000)
+      : undefined;
   const payload: MfaCookiePayload = {
     uid: input.userId,
     sid: input.sessionId,
     exp: Math.floor(expires.getTime() / 1000),
+    iat: issuedAt,
+    mfa: lastMfaAtSeconds,
+    kind,
+    oid: kind === "policy_skip" ? input.organizationId ?? null : null,
   };
   const body = bytesToBase64Url(textToBytes(JSON.stringify(payload)));
   const signature = await hmacSha256(secret, body);
   return { value: `${body}.${signature}`, expires };
 }
 
-export async function verifyMfaCookie(input: {
+export type InspectMfaCookieInput = {
   token: string | undefined;
   userId: string;
   sessionId: string;
-}): Promise<boolean> {
+  organizationId?: string | null;
+  platformDestination?: boolean;
+  reauthAfterMs?: number | null;
+};
+
+export type InspectMfaCookieResult = {
+  authentic: boolean;
+  satisfiesReauth: boolean;
+  issuedAtMs: number;
+  lastMfaAtMs: number;
+  kind: MfaAssuranceKind | null;
+  organizationId: string | null;
+  staleDueToReauth: boolean;
+};
+
+export async function inspectMfaCookie(
+  input: InspectMfaCookieInput,
+): Promise<InspectMfaCookieResult> {
+  const empty: InspectMfaCookieResult = {
+    authentic: false,
+    satisfiesReauth: false,
+    issuedAtMs: 0,
+    lastMfaAtMs: 0,
+    kind: null,
+    organizationId: null,
+    staleDueToReauth: false,
+  };
   const secret = getMfaCookieSecret();
   const token = input.token?.trim();
-  if (!secret || !token) return false;
+  if (!secret || !token) return empty;
   const dot = token.indexOf(".");
-  if (dot <= 0) return false;
+  if (dot <= 0) return empty;
   const body = token.slice(0, dot);
   const signature = token.slice(dot + 1);
   const expected = await hmacSha256(secret, body);
-  if (expected.length !== signature.length) return false;
+  if (expected.length !== signature.length) return empty;
   let mismatch = 0;
   for (let i = 0; i < expected.length; i += 1) {
     mismatch |= expected.charCodeAt(i) ^ signature.charCodeAt(i);
   }
-  if (mismatch !== 0) return false;
+  if (mismatch !== 0) return empty;
   try {
     const payload = JSON.parse(
       new TextDecoder().decode(base64UrlToBytes(body)),
     ) as MfaCookiePayload;
-    if (payload.uid !== input.userId) return false;
-    if (payload.sid !== input.sessionId) return false;
+    if (payload.uid !== input.userId) return empty;
+    if (payload.sid !== input.sessionId) return empty;
     if (typeof payload.exp !== "number" || payload.exp * 1000 <= Date.now()) {
-      return false;
+      return empty;
     }
-    return true;
+    const kind = payload.kind ?? "verified";
+    if (kind !== "verified" && kind !== "policy_skip") return empty;
+    if (kind === "policy_skip") {
+      if (payload.oid) {
+        if (input.platformDestination) return empty;
+        if (!input.organizationId) return empty;
+        if (payload.oid !== input.organizationId) return empty;
+      }
+    }
+    const issuedAtMs =
+      typeof payload.iat === "number" && payload.iat > 0 ? payload.iat * 1000 : 0;
+    const lastMfaAtMs =
+      kind === "verified" && typeof payload.mfa === "number" && payload.mfa > 0
+        ? payload.mfa * 1000
+        : issuedAtMs;
+    const reauthAfterMs = input.reauthAfterMs ?? null;
+    const compareMs = kind === "policy_skip" ? issuedAtMs : lastMfaAtMs;
+    const staleDueToReauth =
+      typeof reauthAfterMs === "number" &&
+      reauthAfterMs > 0 &&
+      compareMs < reauthAfterMs;
+    return {
+      authentic: true,
+      satisfiesReauth: !staleDueToReauth,
+      issuedAtMs,
+      lastMfaAtMs,
+      kind,
+      organizationId: payload.oid ?? null,
+      staleDueToReauth,
+    };
   } catch {
-    return false;
+    return empty;
   }
+}
+
+export async function verifyMfaCookie(input: InspectMfaCookieInput): Promise<boolean> {
+  const inspected = await inspectMfaCookie(input);
+  return inspected.authentic && inspected.satisfiesReauth;
 }
 
 export function mfaCookieOptions(expires: Date): {

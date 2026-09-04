@@ -125,8 +125,24 @@ assert(
   "platform_admin can publish help",
 );
 assert(
+  hasPermissionInSet(superPerms, "security.mfa_policy.manage"),
+  "super_admin can manage MFA policy",
+);
+assert(
+  !hasPermissionInSet(platformAdminPerms, "security.mfa_policy.manage"),
+  "platform_admin cannot manage MFA policy",
+);
+assert(
+  !hasPermissionInSet(supportPerms, "security.mfa_policy.manage"),
+  "support cannot manage MFA policy",
+);
+assert(
   PLATFORM_PERMISSIONS.includes("help.manage"),
   "help.manage is a known platform permission",
+);
+assert(
+  PLATFORM_PERMISSIONS.includes("security.mfa_policy.manage"),
+  "security.mfa_policy.manage is a known platform permission",
 );
 
 const combined = resolvePermissionsFromRoleKeys([

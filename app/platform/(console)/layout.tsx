@@ -1,12 +1,16 @@
 import { Suspense, type ReactNode } from "react";
 import { headers } from "next/headers";
 import { PlatformConsoleNav } from "@/components/platform/platform-console-nav";
+import { PlatformMfaEmergencyBanner } from "@/components/platform/platform-mfa-emergency-banner";
+import { PlatformMfaOverrideBanner } from "@/components/platform/platform-mfa-override-banner";
 import { PlatformSupportModeBanner } from "@/components/platform/platform-support-mode-banner";
 import { rethrowOrRedirectForPlatformAccess } from "@/lib/platform/access-guard";
 import {
   recordPlatformLogin,
   requirePlatformConsoleAccess,
 } from "@/lib/platform/auth";
+import { isMfaEmergencyOverrideActive } from "@/lib/mfa/policy";
+import { getPlatformSecuritySettings } from "@/lib/mfa/policy-settings";
 import { getActivePlatformSupportSession } from "@/lib/platform/support-sessions";
 
 function ConsoleFallback() {
@@ -32,6 +36,13 @@ async function PlatformConsoleShell({ children }: { children: ReactNode }) {
     const supportSession = context.permissions.has("churches.support_access")
       ? await getActivePlatformSupportSession(context)
       : null;
+    const showMfaBanners = context.permissions.has("security.mfa_policy.manage");
+    const emergencyOverrideActive = showMfaBanners
+      ? isMfaEmergencyOverrideActive()
+      : false;
+    const platformSecurity = showMfaBanners
+      ? await getPlatformSecuritySettings().catch(() => null)
+      : null;
 
     return (
       <div className="flex flex-col gap-8 lg:flex-row">
@@ -51,6 +62,10 @@ async function PlatformConsoleShell({ children }: { children: ReactNode }) {
           />
         </aside>
         <div className="min-w-0 flex-1">
+          {emergencyOverrideActive ? <PlatformMfaEmergencyBanner /> : null}
+          {!emergencyOverrideActive && platformSecurity && !platformSecurity.mfaEnabled ? (
+            <PlatformMfaOverrideBanner />
+          ) : null}
           {supportSession ? (
             <PlatformSupportModeBanner session={supportSession} />
           ) : null}

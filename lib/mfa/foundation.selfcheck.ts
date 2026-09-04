@@ -104,6 +104,41 @@ async function main() {
     "cookie is bound to user",
   );
 
+  const skip = await createMfaCookieValue({
+    userId: "user-1",
+    sessionId: "session-1",
+    kind: "policy_skip",
+    organizationId: "org-a",
+  });
+  assert(
+    await verifyMfaCookie({
+      token: skip?.value,
+      userId: "user-1",
+      sessionId: "session-1",
+      organizationId: "org-a",
+    }),
+    "policy skip verifies for matching org",
+  );
+  assert(
+    !(await verifyMfaCookie({
+      token: skip?.value,
+      userId: "user-1",
+      sessionId: "session-1",
+      organizationId: "org-b",
+    })),
+    "policy skip does not transfer to another org",
+  );
+  assert(
+    !(await verifyMfaCookie({
+      token: skip?.value,
+      userId: "user-1",
+      sessionId: "session-1",
+      organizationId: "org-a",
+      reauthAfterMs: Date.now() + 10_000,
+    })),
+    "policy skip is stale after require MFA immediately",
+  );
+
   console.log("mfa foundation self-check: ok");
 }
 

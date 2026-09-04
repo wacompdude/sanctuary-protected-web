@@ -38,6 +38,7 @@ export const EXPECTED_PLATFORM_ROLE_PERMISSIONS: Record<
     "users.disable",
     "users.restore",
     "users.force_password_reset",
+    "users.revoke_trusted_devices",
     "audit.platform.read",
     "audit.church.read_all",
     "system.health.read",

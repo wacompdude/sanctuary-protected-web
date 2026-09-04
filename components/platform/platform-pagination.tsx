@@ -13,8 +13,9 @@ export function PlatformPagination({
   basePath: string;
   query?: Record<string, string | undefined>;
 }) {
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  if (totalPages <= 1) return null;
+  const totalPages = Math.max(1, Math.ceil(Math.max(total, 1) / pageSize));
+  const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const to = Math.min(page * pageSize, total);
 
   function hrefFor(nextPage: number) {
     const params = new URLSearchParams();
@@ -27,28 +28,33 @@ export function PlatformPagination({
   }
 
   return (
-    <div className="flex items-center justify-between gap-3 pt-4 text-sm text-slate-400">
+    <div className="flex flex-col gap-3 pt-4 text-sm text-slate-400 sm:flex-row sm:items-center sm:justify-between">
       <p>
-        Page {page} of {totalPages} · {total} total
+        {total === 0
+          ? "Showing 0 of 0"
+          : `Showing ${from}–${to} of ${total}`}
+        {totalPages > 1 ? ` · Page ${page} of ${totalPages}` : null}
       </p>
-      <div className="flex gap-2">
-        {page > 1 ? (
-          <Link
-            href={hrefFor(page - 1)}
-            className="rounded border border-slate-700 px-3 py-1.5 hover:bg-slate-900"
-          >
-            Previous
-          </Link>
-        ) : null}
-        {page < totalPages ? (
-          <Link
-            href={hrefFor(page + 1)}
-            className="rounded border border-slate-700 px-3 py-1.5 hover:bg-slate-900"
-          >
-            Next
-          </Link>
-        ) : null}
-      </div>
+      {totalPages > 1 ? (
+        <div className="flex gap-2">
+          {page > 1 ? (
+            <Link
+              href={hrefFor(page - 1)}
+              className="rounded border border-slate-700 px-3 py-1.5 hover:bg-slate-900"
+            >
+              Previous
+            </Link>
+          ) : null}
+          {page < totalPages ? (
+            <Link
+              href={hrefFor(page + 1)}
+              className="rounded border border-slate-700 px-3 py-1.5 hover:bg-slate-900"
+            >
+              Next
+            </Link>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

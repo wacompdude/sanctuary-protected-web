@@ -92,7 +92,7 @@ export function SignUpForm({
       // If email confirmation is disabled, session exists — continue to next.
       if (data.session) {
         window.location.assign(
-          `/auth/mfa?next=${encodeURIComponent(safeNext)}`,
+          `/auth/mfa/continue?next=${encodeURIComponent(safeNext)}`,
         );
         return;
       }

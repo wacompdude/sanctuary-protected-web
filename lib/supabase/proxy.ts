@@ -7,9 +7,14 @@ import {
   isPublicPath,
   isWebhookPath,
 } from "@/lib/auth/routes";
+import { isPlatformDestination } from "@/lib/mfa/effective-policy";
 import { hasSatisfiedLoginMfa } from "@/lib/mfa/gate";
 import { MFA_COOKIE_NAME } from "@/lib/mfa/policy";
 import { getAuthSessionBinding } from "@/lib/mfa/session-cookie";
+import {
+  ACTIVE_CHURCH_COOKIE_LEGACY,
+  ACTIVE_ORGANIZATION_COOKIE,
+} from "@/lib/organization/cookie";
 import { getSupabaseAnonKey, getSupabaseUrl, hasEnvVars } from "./env";
 
 function isSafeMethod(method: string): boolean {
@@ -76,11 +81,18 @@ export async function updateSession(request: NextRequest) {
       data: { session },
     } = user ? await supabase.auth.getSession() : { data: { session: null } };
 
+    const activeOrganizationId =
+      request.cookies.get(ACTIVE_ORGANIZATION_COOKIE)?.value?.trim() ||
+      request.cookies.get(ACTIVE_CHURCH_COOKIE_LEGACY)?.value?.trim() ||
+      null;
+
     const mfaOk = user
       ? await hasSatisfiedLoginMfa({
           userId: user.id,
           sessionId: getAuthSessionBinding(session?.access_token, user.id),
           cookieValue: request.cookies.get(MFA_COOKIE_NAME)?.value,
+          organizationId: activeOrganizationId,
+          platformDestination: isPlatformDestination(pathname),
         })
       : false;
 
@@ -92,7 +104,7 @@ export async function updateSession(request: NextRequest) {
       if (!switchAccount) {
         const url = request.nextUrl.clone();
         if (!mfaOk) {
-          url.pathname = "/auth/mfa";
+          url.pathname = "/auth/mfa/continue";
           const next = request.nextUrl.searchParams.get("next");
           url.search = "";
           url.searchParams.set(
@@ -119,7 +131,7 @@ export async function updateSession(request: NextRequest) {
         return NextResponse.json({ error: "MFA required" }, { status: 401 });
       }
       const url = request.nextUrl.clone();
-      url.pathname = "/auth/mfa";
+      url.pathname = "/auth/mfa/continue";
       const next = `${pathname}${request.nextUrl.search}`;
       url.search = "";
       url.searchParams.set("next", next);

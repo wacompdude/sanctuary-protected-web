@@ -93,5 +93,9 @@ export function isAuthEntryPath(pathname: string): boolean {
 }
 
 export function isMfaChallengePath(pathname: string): boolean {
-  return pathname === MFA_CHALLENGE_PATH;
+  return (
+    pathname === MFA_CHALLENGE_PATH ||
+    pathname === "/auth/mfa/continue" ||
+    pathname === "/auth/select-organization"
+  );
 }

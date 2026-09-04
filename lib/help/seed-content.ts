@@ -5,8 +5,8 @@ import {
 
 /**
  * Catalog of product Help articles. Database rows are upserted by
- * `086_help_center_content_expansion.sql` (054 inserted the original 11
- * slugs if absent). Re-running 086 updates these product-owned slugs.
+ * help content migrations (054, 086, 089, 091). Re-running those updates
+ * these product-owned slugs.
  */
 export type HelpSeedArticleCatalogItem = {
   slug: (typeof HELP_SEED_ARTICLE_SLUGS)[number];
@@ -266,6 +266,24 @@ export const HELP_SEED_ARTICLE_CATALOG: HelpSeedArticleCatalogItem[] = [
     title: "Account and profile settings",
     category_slug: "account-security",
     article_type: "overview",
+  },
+  {
+    slug: "sign-in-verification",
+    title: "Sign-in verification",
+    category_slug: "account-security",
+    article_type: "how_to",
+  },
+  {
+    slug: "trusted-devices",
+    title: "Trusted Devices",
+    category_slug: "account-security",
+    article_type: "how_to",
+  },
+  {
+    slug: "multi-factor-authentication-policies",
+    title: "Multi-Factor Authentication Policies",
+    category_slug: "account-security",
+    article_type: "reference",
   },
 ];
 

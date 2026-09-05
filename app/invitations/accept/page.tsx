@@ -1,13 +1,17 @@
 import { Suspense } from "react";
+import { connection } from "next/server";
 import { AcceptInvitationForm } from "@/components/invitations/accept-invitation-form";
 import { Card, CardContent } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
+
+export const dynamic = "force-dynamic";
 
 async function AcceptInvitationContent({
   searchParams,
 }: {
   searchParams: Promise<{ token?: string }>;
 }) {
+  await connection();
   const { token } = await searchParams;
   const supabase = await createClient();
   const {

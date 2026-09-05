@@ -50,11 +50,19 @@ export function limitMessageForFeature(
   featureKey: FeatureKey,
   limit: number,
   planDisplayName?: string | null,
+  currentUsage?: number,
 ): string {
   const label = FEATURE_DISPLAY_NAMES[featureKey] ?? "This limit";
   const plan = planDisplayName?.trim();
-  if (plan) {
-    return `Your ${plan} plan supports up to ${limit} for ${label.toLowerCase()}.`;
+  const seatNoun = label.toLowerCase();
+  if (typeof currentUsage === "number") {
+    if (plan) {
+      return `This church already has ${currentUsage} of ${limit} ${seatNoun} on the ${plan} plan. Free a seat or upgrade the plan to add another.`;
+    }
+    return `This church already has ${currentUsage} of ${limit} ${seatNoun}. Free a seat or upgrade the plan to add another.`;
   }
-  return `Your plan supports up to ${limit} for ${label.toLowerCase()}.`;
+  if (plan) {
+    return `Your ${plan} plan supports up to ${limit} ${seatNoun}.`;
+  }
+  return `Your plan supports up to ${limit} ${seatNoun}.`;
 }

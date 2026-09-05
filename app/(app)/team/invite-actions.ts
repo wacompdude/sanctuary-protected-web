@@ -16,6 +16,7 @@ import {
 import { AuditAction, AuditEntityType } from "@/lib/audit/actions";
 import { getRequestIpAddress, writeAuditLog } from "@/lib/audit/log";
 import { sendChurchInvitationEmail } from "@/lib/organization/send-invitation-email";
+import { requireActiveSeatCapacity } from "@/lib/subscriptions/enforcement";
 
 export async function createChurchInvitation(
   _prev: InviteActionState,
@@ -73,6 +74,8 @@ export async function createChurchInvitation(
         fieldErrors: { email: "A pending invitation already exists." },
       };
     }
+
+    await requireActiveSeatCapacity({ organizationId: church.id });
 
     const token = generateInvitationToken();
     const tokenHash = hashInvitationToken(token);

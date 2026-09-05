@@ -1,4 +1,5 @@
 import { cache } from "react";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getMinimumPlanForFeature } from "@/lib/subscriptions/catalog";
 import {
   buildEntitlementMap,
@@ -21,7 +22,7 @@ import {
   type FeatureKey,
 } from "@/lib/subscriptions/feature-keys";
 import {
-  listActiveEntitlementOverrides,
+  loadActiveEntitlementOverrides,
   mergeEntitlementValues,
 } from "@/lib/subscriptions/overrides";
 import {
@@ -83,74 +84,83 @@ export async function getPlanEntitlements(params: {
  * If no current subscription exists, falls back to the default plan
  * (Servant Standard) and sets usedDefaultPlanFallback.
  * Active platform overrides overlay plan_features for that organization only.
+ *
+ * Pass a service-role client when the caller is not yet a member (invite
+ * accept). Member-scoped RLS hides organization_subscriptions from invitees,
+ * which would otherwise fall back to Servant Standard and block valid joins.
  */
-export const getChurchEntitlements = cache(
-  async (organizationId: string): Promise<ChurchEntitlements> => {
-    const trimmed = organizationId.trim();
-    if (!trimmed) {
-      return {
-        organizationId: "",
-        subscription: null,
-        plan: null,
-        usedDefaultPlanFallback: true,
-        values: {},
-      };
-    }
+export async function loadChurchEntitlements(
+  organizationId: string,
+  client?: SupabaseClient,
+): Promise<ChurchEntitlements> {
+  const trimmed = organizationId.trim();
+  if (!trimmed) {
+    return {
+      organizationId: "",
+      subscription: null,
+      plan: null,
+      usedDefaultPlanFallback: true,
+      values: {},
+    };
+  }
 
-    const subscription = await getChurchSubscription(trimmed);
-    if (subscription) {
-      const plan = await getSubscriptionPlanByKey(String(subscription.plan_key));
-      const resolvedPlan =
-        plan ??
-        ({
-          id: subscription.plan_id,
-          plan_key: subscription.plan_key,
-          display_name: subscription.plan_display_name,
-          description: null,
-          status: "active",
-          billing_interval: subscription.billing_interval,
-          monthly_price_cents: null,
-          currency: "USD",
-          sort_order: 0,
-          is_public: true,
-          is_default: false,
-          is_custom: false,
-        } satisfies SubscriptionPlanRecord);
-
-      return {
-        organizationId: trimmed,
-        subscription,
-        plan: resolvedPlan,
-        usedDefaultPlanFallback: false,
-        values: mergeEntitlementValues(
-          await loadPlanEntitlements(resolvedPlan),
-          await listActiveEntitlementOverrides(trimmed),
-        ),
-      };
-    }
-
-    const defaultPlan = await getDefaultSubscriptionPlan();
-    if (!defaultPlan) {
-      return {
-        organizationId: trimmed,
-        subscription: null,
-        plan: null,
-        usedDefaultPlanFallback: true,
-        values: {},
-      };
-    }
+  const subscription = await getChurchSubscription(trimmed, client);
+  if (subscription) {
+    const plan = await getSubscriptionPlanByKey(String(subscription.plan_key));
+    const resolvedPlan =
+      plan ??
+      ({
+        id: subscription.plan_id,
+        plan_key: subscription.plan_key,
+        display_name: subscription.plan_display_name,
+        description: null,
+        status: "active",
+        billing_interval: subscription.billing_interval,
+        monthly_price_cents: null,
+        currency: "USD",
+        sort_order: 0,
+        is_public: true,
+        is_default: false,
+        is_custom: false,
+      } satisfies SubscriptionPlanRecord);
 
     return {
       organizationId: trimmed,
-      subscription: null,
-      plan: defaultPlan,
-      usedDefaultPlanFallback: true,
+      subscription,
+      plan: resolvedPlan,
+      usedDefaultPlanFallback: false,
       values: mergeEntitlementValues(
-        await loadPlanEntitlements(defaultPlan),
-        await listActiveEntitlementOverrides(trimmed),
+        await loadPlanEntitlements(resolvedPlan),
+        await loadActiveEntitlementOverrides(trimmed, client),
       ),
     };
-  },
+  }
+
+  const defaultPlan = await getDefaultSubscriptionPlan();
+  if (!defaultPlan) {
+    return {
+      organizationId: trimmed,
+      subscription: null,
+      plan: null,
+      usedDefaultPlanFallback: true,
+      values: {},
+    };
+  }
+
+  return {
+    organizationId: trimmed,
+    subscription: null,
+    plan: defaultPlan,
+    usedDefaultPlanFallback: true,
+    values: mergeEntitlementValues(
+      await loadPlanEntitlements(defaultPlan),
+      await loadActiveEntitlementOverrides(trimmed, client),
+    ),
+  };
+}
+
+export const getChurchEntitlements = cache(async (organizationId: string) =>
+  loadChurchEntitlements(organizationId),
 );
 
 export async function hasFeature(params: {
@@ -221,6 +231,7 @@ export async function getFeatureEntitlement(params: {
 export async function getFeatureLimit(params: {
   organizationId: string;
   featureKey: FeatureKey | string;
+  client?: SupabaseClient;
 }): Promise<FeatureLimitResult> {
   const featureKey = String(params.featureKey);
   if (!isFeatureKey(featureKey)) {
@@ -233,7 +244,9 @@ export async function getFeatureLimit(params: {
     };
   }
 
-  const entitlements = await getChurchEntitlements(params.organizationId);
+  const entitlements = params.client
+    ? await loadChurchEntitlements(params.organizationId, params.client)
+    : await getChurchEntitlements(params.organizationId);
   const { limit, unlimited } = readIntegerEntitlement(
     entitlements.values,
     featureKey,
@@ -277,6 +290,7 @@ export async function requireFeatureCapacity(params: {
   featureKey: FeatureKey | string;
   currentUsage: number;
   requestedIncrease?: number;
+  client?: SupabaseClient;
 }): Promise<FeatureCapacityResult> {
   const featureKey = String(params.featureKey);
   if (!isFeatureKey(featureKey)) {
@@ -291,6 +305,7 @@ export async function requireFeatureCapacity(params: {
   const limitResult = await getFeatureLimit({
     organizationId: params.organizationId,
     featureKey,
+    client: params.client,
   });
 
   const capacity = evaluateFeatureCapacity({
@@ -316,6 +331,7 @@ export async function requireFeatureCapacity(params: {
           featureKey,
           limitResult.limit ?? 0,
           limitResult.planDisplayName,
+          currentUsage,
         ),
   };
 

@@ -7,6 +7,7 @@ import { FEATURE_KEY_LIST, FEATURE_KEYS } from "@/lib/subscriptions/feature-keys
 import { EXPECTED_PLAN_ENTITLEMENTS } from "@/lib/subscriptions/expected-matrix";
 import { PLAN_KEY_LIST, PLAN_KEYS } from "@/lib/subscriptions/plan-keys";
 import { evaluateFeatureCapacity } from "@/lib/subscriptions/entitlement-values";
+import { limitMessageForFeature } from "@/lib/subscriptions/errors";
 import type { PlanFeatureAssignment } from "@/lib/subscriptions/types";
 
 /**
@@ -183,6 +184,24 @@ assert(
     requestedIncrease: 50,
   }).allowed === true,
   "unlimited campus capacity allows growth",
+);
+assert(
+  limitMessageForFeature(
+    FEATURE_KEYS.USERS_ACTIVE_LIMIT,
+    10,
+    "Servant Standard",
+    10,
+  ).includes("10 of 10 active users"),
+  "seat-limit copy includes current usage",
+);
+assert(
+  !limitMessageForFeature(
+    FEATURE_KEYS.USERS_ACTIVE_LIMIT,
+    10,
+    "Servant Standard",
+    10,
+  ).includes("supports up to 10 for"),
+  "seat-limit copy is not the old informational phrasing",
 );
 
 // Fail-closed missing feature

@@ -85,11 +85,15 @@ export function AcceptInvitationForm({
       <CardContent>
         <form action={formAction} className="space-y-4">
           <input type="hidden" name="token" value={token} />
-          {state.error && (
-            <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              {state.error}
-            </p>
-          )}
+          {state.error ? (
+            <div
+              role="alert"
+              className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            >
+              <p className="font-medium">Unable to accept this invitation</p>
+              <p className="mt-1">{state.error}</p>
+            </div>
+          ) : null}
           <Button type="submit" disabled={pending}>
             {pending ? "Accepting…" : "Accept invitation"}
           </Button>

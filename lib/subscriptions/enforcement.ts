@@ -72,6 +72,7 @@ export async function requireActiveSeatCapacity(params: {
     featureKey: FEATURE_KEYS.USERS_ACTIVE_LIMIT,
     currentUsage,
     requestedIncrease: params.requestedIncrease ?? 1,
+    client: params.client,
   });
 }
 

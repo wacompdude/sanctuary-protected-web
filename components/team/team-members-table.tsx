@@ -15,6 +15,7 @@ import { labelForMembershipRole } from "@/lib/organization/invitations";
 import {
   canChangeRole,
   canChangeStatus,
+  canEditMemberProfile,
   canManageTeamMemberships,
   formatTeamDate,
   labelForMembershipStatus,
@@ -22,6 +23,7 @@ import {
   type TeamMemberRow,
 } from "@/lib/organization/team";
 import { MemberAvatar } from "@/components/profile/member-avatar";
+import { MemberEditButton } from "@/components/team/member-edit-button";
 import { MemberPhotoButton } from "@/components/team/member-photo-button";
 import { cn } from "@/lib/utils";
 
@@ -120,6 +122,7 @@ function MemberActions({
     canManageCertifications && member.status === "active";
   const canSetPhoto =
     canManageTeamMemberships(actorRole) && member.status === "active";
+  const canEditProfile = canEditMemberProfile(actorRole);
 
   const busy = rolePending || statusPending || isPending;
   const hasActions =
@@ -128,7 +131,8 @@ function MemberActions({
     canRemove ||
     canReactivate ||
     canAddCertification ||
-    canSetPhoto;
+    canSetPhoto ||
+    canEditProfile;
 
   if (!hasActions) {
     if (member.role === "owner") {
@@ -210,6 +214,7 @@ function MemberActions({
       )}
 
       <div className="flex flex-wrap gap-1.5">
+        {canEditProfile ? <MemberEditButton member={member} /> : null}
         {canSetPhoto ? (
           <MemberPhotoButton userId={member.userId} memberName={member.name} />
         ) : null}
@@ -259,6 +264,12 @@ function MemberActions({
           </Button>
         )}
       </div>
+
+      {member.role === "owner" && assignableRoles.length === 0 ? (
+        <p className="text-xs text-muted-foreground">
+          Transfer ownership from Ownership settings
+        </p>
+      ) : null}
 
       {error && (
         <p className="text-xs text-destructive" role="alert">

@@ -58,7 +58,26 @@ export async function listChurchTeamMemberships(
     updatedAt: row.updated_at,
     isLastActiveOwner: Boolean(row.is_last_active_owner),
     avatarUrl: row.avatar_url ?? null,
+    firstName: row.first_name,
+    lastName: row.last_name,
+    phone: null as string | null,
   }));
+
+  const userIds = mapped.map((row) => row.userId);
+  if (userIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, phone")
+      .in("id", userIds);
+    const phoneById = new Map(
+      ((profiles ?? []) as Array<{ id: string; phone: string | null }>).map(
+        (row) => [row.id, row.phone],
+      ),
+    );
+    for (const row of mapped) {
+      row.phone = phoneById.get(row.userId) ?? null;
+    }
+  }
 
   // Defense in depth: RPC also excludes platform_accounts after migration 066.
   return filterVisibleChurchMembers(mapped, hiddenUserIds);

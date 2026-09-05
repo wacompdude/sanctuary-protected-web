@@ -15,6 +15,9 @@ export type TeamMemberRow = {
   updatedAt: string | null;
   isLastActiveOwner: boolean;
   avatarUrl: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  phone?: string | null;
 };
 
 export function canManageTeamMemberships(role: MembershipRole): boolean {
@@ -23,6 +26,11 @@ export function canManageTeamMemberships(role: MembershipRole): boolean {
     role === "administrator" ||
     role === "security_leader"
   );
+}
+
+/** Correct a member's name/phone. Security leaders cannot do this. */
+export function canEditMemberProfile(role: MembershipRole): boolean {
+  return isOwnershipRole(role) || role === "administrator";
 }
 
 const SPECIALIST_ASSIGNABLE: ManageableRole[] = [

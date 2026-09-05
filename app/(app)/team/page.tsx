@@ -18,7 +18,10 @@ import {
   canInviteMembers,
   labelForMembershipRole,
 } from "@/lib/organization/invitations";
-import { canManageTeamMemberships } from "@/lib/organization/team";
+import {
+  canEditMemberProfile,
+  canManageTeamMemberships,
+} from "@/lib/organization/team";
 import { listChurchTeamMemberships } from "@/lib/organization/team-queries";
 import { listTeamMembersForChurch } from "@/lib/certifications/queries";
 import { ResendInvitationButton } from "@/components/team/resend-invitation-button";
@@ -41,6 +44,7 @@ async function TeamContent({ created }: { created?: string }) {
   const certContacts = await listTeamMembersForChurch(church.id);
   const canInvite = canInviteMembers(membership.role);
   const canManage = canManageTeamMemberships(membership.role);
+  const canEditProfiles = canEditMemberProfile(membership.role);
   const churchMembers = await listChurchTeamMemberships(church.id);
 
   let pendingInvites: PendingInvitation[] = [];
@@ -97,6 +101,9 @@ async function TeamContent({ created }: { created?: string }) {
             {churchMembers.length} membership
             {churchMembers.length === 1 ? "" : "s"} (active, suspended, and
             removed). Memberships are never hard-deleted.
+            {canEditProfiles
+              ? " Owners, co-owners, and administrators can edit a member's name."
+              : ""}
           </CardDescription>
         </CardHeader>
         <CardContent>

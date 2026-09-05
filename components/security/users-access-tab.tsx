@@ -39,6 +39,7 @@ import {
 } from "@/app/(app)/settings/security/actions";
 import { labelForMembershipRole } from "@/lib/organization/invitations";
 import { labelForMembershipStatus } from "@/lib/organization/team";
+import { MemberProfileForm } from "@/components/team/member-profile-form";
 import { labelForCampusRole } from "@/lib/campuses/constants";
 import type { MembershipRole, MembershipStatus } from "@/lib/organization/types";
 import { cn } from "@/lib/utils";
@@ -71,6 +72,11 @@ export function UsersAccessTab() {
   const [statusOptions, setStatusOptions] = useState<MembershipStatus[]>([]);
   const [campuses, setCampuses] = useState<MemberCampusAssignment[]>([]);
   const [roleLabels, setRoleLabels] = useState<Record<string, string>>({});
+  const [canEditProfile, setCanEditProfile] = useState(false);
+  const [profileFirstName, setProfileFirstName] = useState("");
+  const [profileLastName, setProfileLastName] = useState("");
+  const [profilePhone, setProfilePhone] = useState("");
+  const [profileEmail, setProfileEmail] = useState<string | null>(null);
 
   const memberRef = useRef<HTMLDivElement | null>(null);
   const groupsRef = useRef<HTMLDivElement | null>(null);
@@ -129,7 +135,12 @@ export function UsersAccessTab() {
         setPrimaryRole(editorResult.member.primaryRole);
         setSecondaryRoles(editorResult.member.secondaryRoles);
         setMemberStatus(editorResult.member.status);
+        setProfileFirstName(editorResult.member.firstName ?? "");
+        setProfileLastName(editorResult.member.lastName ?? "");
+        setProfilePhone(editorResult.member.phone ?? "");
+        setProfileEmail(editorResult.member.email);
       }
+      setCanEditProfile(Boolean(editorResult.canEditProfile));
       setAssignableRoles(editorResult.assignableRoles || []);
       setStatusOptions(editorResult.statusOptions || []);
       setCampuses(editorResult.campuses || []);
@@ -322,8 +333,9 @@ export function UsersAccessTab() {
       <div>
         <h2 className="text-xl font-semibold">Users and Access</h2>
         <p className="text-sm text-muted-foreground">
-          Edit primary/secondary roles, status, campus assignments, groups, and
-          permission overrides.
+          Edit a member&apos;s name, primary/secondary roles, status, campus
+          assignments, groups, and permission overrides. Name edits are limited
+          to owners, co-owners, and administrators.
         </p>
       </div>
 
@@ -488,6 +500,29 @@ export function UsersAccessTab() {
                               : null,
                           )}
                         >
+                          {canEditProfile ? (
+                            <div className="space-y-3 rounded-md border border-border p-3">
+                              <h4 className="font-medium">Profile details</h4>
+                              <p className="text-xs text-muted-foreground">
+                                Correct this person&apos;s name or phone. Email
+                                cannot be changed here.
+                              </p>
+                              <MemberProfileForm
+                                key={`${user.userId}-${profileFirstName}-${profileLastName}-${profilePhone}`}
+                                userId={user.userId}
+                                email={profileEmail ?? user.email}
+                                firstName={profileFirstName}
+                                lastName={profileLastName}
+                                phone={profilePhone}
+                                onSaved={() => {
+                                  void Promise.all([
+                                    loadDetails(user.userId),
+                                    loadUsers(),
+                                  ]);
+                                }}
+                              />
+                            </div>
+                          ) : null}
                           <h4 className="font-medium">Membership editor</h4>
                           <div className="grid gap-3 sm:grid-cols-2">
                             <div className="space-y-1">

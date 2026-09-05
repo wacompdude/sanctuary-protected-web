@@ -6,11 +6,13 @@ import type { ActionState } from "@/lib/organization/types";
 import {
   canChangeRole,
   canChangeStatus,
+  canEditMemberProfile,
   parseMembershipRoleSafe,
   parseMembershipStatus,
 } from "@/lib/organization/team";
 import { AuditAction, AuditEntityType } from "@/lib/audit/actions";
 import { getRequestIpAddress, writeAuditLog } from "@/lib/audit/log";
+import type { ProfileActionState } from "@/lib/profile/types";
 
 async function loadTargetMembership(
   supabase: Awaited<
@@ -246,6 +248,113 @@ export async function updateTeamMemberStatus(
         error instanceof Error
           ? error.message
           : "Unable to update member status.",
+    };
+  }
+}
+
+function optionalText(value: FormDataEntryValue | null, max = 100): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  return trimmed.slice(0, max);
+}
+
+export async function updateMemberProfile(
+  _prev: ProfileActionState,
+  formData: FormData,
+): Promise<ProfileActionState> {
+  const userId = String(formData.get("user_id") ?? "").trim();
+  const firstName = optionalText(formData.get("first_name"));
+  const lastName = optionalText(formData.get("last_name"));
+  const phone = optionalText(formData.get("phone"), 40);
+
+  if (!userId) {
+    return { error: "Missing member." };
+  }
+
+  const fieldErrors: ProfileActionState["fieldErrors"] = {};
+  if (formData.get("first_name") && !firstName) {
+    fieldErrors.first_name = "First name cannot be only spaces.";
+  }
+  if (formData.get("last_name") && !lastName) {
+    fieldErrors.last_name = "Last name cannot be only spaces.";
+  }
+  if (Object.keys(fieldErrors).length > 0) {
+    return { fieldErrors };
+  }
+
+  try {
+    const { supabase, user, church, membership } =
+      await getOperationalChurchContext();
+
+    if (!canEditMemberProfile(membership.role)) {
+      return {
+        error:
+          "Only owners, co-owners, and administrators can update a member's name.",
+      };
+    }
+
+    const { data: target } = await supabase
+      .from("organization_memberships")
+      .select("id, user_id")
+      .eq("organization_id", church.id)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (!target) {
+      return { error: "Member not found." };
+    }
+
+    const { error: updateError } = await supabase.rpc("update_member_profile", {
+      p_user_id: userId,
+      p_first_name: firstName ?? "",
+      p_last_name: lastName ?? "",
+      p_phone: phone ?? "",
+    });
+
+    if (updateError) {
+      const message = updateError.message || "Unable to update this member.";
+      if (message.includes("FORBIDDEN")) {
+        return {
+          error:
+            "Only owners, co-owners, and administrators can update a member's name.",
+        };
+      }
+      if (
+        /function\s+[\w.]+\s*\([^)]*\)\s+does not exist/i.test(message) ||
+        message.includes("update_member_profile")
+      ) {
+        return {
+          error:
+            "Member profile editing is not configured yet. Run supabase/migrations/096_update_member_profile.sql in the Supabase SQL Editor.",
+        };
+      }
+      return { error: message };
+    }
+
+    await writeAuditLog(supabase, {
+      organizationId: church.id,
+      userId: user.id,
+      action: AuditAction.MEMBER_PROFILE_UPDATED,
+      entityType: AuditEntityType.USER,
+      entityId: userId,
+      metadata: {
+        target_user_id: userId,
+        first_name: firstName,
+        last_name: lastName,
+      },
+      ipAddress: await getRequestIpAddress(),
+    });
+
+    revalidatePath("/team");
+    revalidatePath("/settings/security");
+    return { success: true };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unable to update this member.",
     };
   }
 }

@@ -14,6 +14,7 @@ import { labelForMembershipRole } from "@/lib/organization/invitations";
 import {
   canChangeRole,
   canChangeStatus,
+  canEditMemberProfile,
   labelForMembershipStatus,
   parseMembershipRoleSafe,
   parseMembershipStatus,
@@ -2746,11 +2747,15 @@ export async function getUserMembershipEditorAction(userId: string) {
 
     return {
       success: true,
+      canEditProfile: canEditMemberProfile(actorMembership.role),
       member: {
         membershipId: member.membershipId,
         userId: member.userId,
         name: member.name,
         email: member.email,
+        firstName: member.firstName ?? null,
+        lastName: member.lastName ?? null,
+        phone: member.phone ?? null,
         primaryRole: primary as MembershipRole,
         secondaryRoles: secondary,
         status: member.status as MembershipStatus,

@@ -163,7 +163,7 @@ export async function updateSmsConsentAction(
     const { supabase, church, user } = await getAuthenticatedUserWithChurch();
     const endpointId = String(formData.get("endpoint_id") ?? "").trim();
     const optIn = readCheckbox(formData, "sms_opt_in");
-    if (!endpointId) return { error: "SMS endpoint is required." };
+    if (!endpointId) return { error: "Text/SMS endpoint is required." };
 
     const { data: endpoint, error: loadError } = await supabase
       .from("notification_endpoints")
@@ -190,7 +190,7 @@ export async function updateSmsConsentAction(
         consent_recorded_at: now,
         consent_source: "preferences_ui",
         consent_disclosure_version: SMS_CONSENT_DISCLOSURE_VERSION,
-        // SMS delivery stays inactive until a provider is configured + verified.
+        // Text/SMS delivery stays inactive until a provider is configured + verified.
         status: optIn ? "unverified" : "disabled",
         is_verified: false,
       })
@@ -219,7 +219,7 @@ export async function updateSmsConsentAction(
       error:
         error instanceof Error
           ? error.message
-          : "Unable to update SMS consent.",
+          : "Unable to update Text/SMS consent.",
     };
   }
 }
@@ -236,7 +236,7 @@ export async function upsertGroupPreferenceRuleAction(
     if (!isNotificationChannel(channelRaw)) {
       return { error: "Select a valid channel." };
     }
-    // SMS/push rules may be stored as preferences, but stay clearly inactive for delivery.
+    // Text/SMS/push rules may be stored as preferences, but stay clearly inactive for delivery.
     const notificationType =
       String(formData.get("notification_type") ?? "*").trim() || "*";
     const severity =

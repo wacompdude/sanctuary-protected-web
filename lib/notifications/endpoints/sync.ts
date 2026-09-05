@@ -105,7 +105,7 @@ async function upsertEndpoint(
       return { created: false };
     }
 
-    // Refresh verification for email; do not clobber SMS consent once set.
+    // Refresh verification for email; do not clobber Text/SMS consent once set.
     const patch: Record<string, unknown> = {
       membership_id: row.membership_id,
       destination: row.destination,

@@ -143,6 +143,15 @@ export const SNAPSHOT_TABLE_REGISTRY: SnapshotTableDefinition[] = [
     required: false,
   },
   {
+    tableName: "dashboard_display_settings",
+    organizationScopeColumn: "organization_id",
+    dependencyOrder: 25,
+    restoreStrategy: "replace",
+    containsStorageReferences: false,
+    sensitive: false,
+    required: false,
+  },
+  {
     tableName: "organization_contacts",
     organizationScopeColumn: "organization_id",
     dependencyOrder: 26,

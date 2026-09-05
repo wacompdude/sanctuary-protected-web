@@ -36,9 +36,9 @@ export function InviteMemberForm({
       <CardHeader>
         <CardTitle>Invitation details</CardTitle>
         <CardDescription>
-          We&apos;ll email a secure invitation link from Sanctuary Protected
-          Access. Only the invitee&apos;s email can accept it. Replies go to
-          support@sanctuaryprotected.com.
+          Send a secure invitation to someone who already has a Sanctuary
+          Protected login. They accept with that same email and keep access to
+          their other churches. Replies go to support@sanctuaryprotected.com.
         </CardDescription>
       </CardHeader>
       <CardContent>

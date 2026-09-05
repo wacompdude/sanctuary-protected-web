@@ -625,7 +625,7 @@ export async function getSmsSegmentUsageMeter(
 }
 
 /**
- * Enforce SMS segment capacity for an estimated send size.
+ * Enforce Text/SMS segment capacity for an estimated send size.
  * Does not record usage — call reserve/consume when delivery is scheduled/sent.
  */
 export async function requireSmsSegmentCapacity(params: {
@@ -643,7 +643,7 @@ export async function requireSmsSegmentCapacity(params: {
 }
 
 /**
- * Record consumed SMS segments for a successful delivery (idempotent by delivery id).
+ * Record consumed Text/SMS segments for a successful delivery (idempotent by delivery id).
  */
 export async function recordSmsSegmentsConsumed(params: {
   organizationId: string;

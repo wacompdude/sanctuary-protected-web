@@ -83,7 +83,8 @@ export function getAccessibleTextColor(backgroundHex: string): string {
   return darkRatio >= lightRatio ? DASHBOARD_TEXT_DARK : DASHBOARD_TEXT_LIGHT;
 }
 
-function mixToward(
+/** Blend `hex` toward `target` by `amount` (0–1). Presentation helper only. */
+export function mixHexColor(
   hex: string,
   target: string,
   amount: number,
@@ -111,9 +112,9 @@ export function deriveDashboardBoxPalette(
   const fg =
     normalizeHexColor(textColor ?? "") ?? getAccessibleTextColor(bg);
   const mutedToward = fg === DASHBOARD_TEXT_LIGHT ? "#FFFFFF" : "#111827";
-  const mutedTextColor = mixToward(fg, mutedToward === fg ? bg : mutedToward, 0.35);
+  const mutedTextColor = mixHexColor(fg, mutedToward === fg ? bg : mutedToward, 0.35);
   // Prefer a slightly darker border than the fill for definition.
-  const borderColor = mixToward(bg, "#111827", 0.22);
+  const borderColor = mixHexColor(bg, "#111827", 0.22);
 
   return {
     backgroundColor: bg,

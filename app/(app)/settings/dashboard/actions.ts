@@ -19,6 +19,7 @@ import {
   replaceChurchDashboardBoxSettings,
   resetAllChurchDashboardBoxSettings,
   resetChurchDashboardBoxSetting,
+  upsertChurchDashboardDisplaySettings,
   validateDashboardSettingsUpdate,
 } from "@/lib/dashboard";
 import {
@@ -76,6 +77,9 @@ export async function saveDashboardBoxSettingsAction(
       };
     }
 
+    const sortByActiveCount =
+      String(formData.get("sort_by_active_count") ?? "").trim() === "on";
+
     const supabase = await createClient();
     const result = await replaceChurchDashboardBoxSettings({
       supabase,
@@ -87,12 +91,23 @@ export async function saveDashboardBoxSettingsAction(
       return { error: result.error };
     }
 
+    const displayResult = await upsertChurchDashboardDisplaySettings({
+      supabase,
+      organizationId: church.id,
+      userId: user.id,
+      sortByActiveCount,
+    });
+    if (!displayResult.ok) {
+      return { error: displayResult.error };
+    }
+
     await auditDashboardBoxSettingsUpdated(supabase, {
       organizationId: church.id,
       userId: user.id,
       boxCount: validated.settings.length,
       visibleCount: validated.settings.filter((row) => row.isVisible).length,
       customizedCount: countCustomizedDashboardSettings(validated.settings),
+      sortByActiveCount,
     });
 
     revalidateDashboardPaths();

@@ -117,7 +117,7 @@ export function LoginMfaForm({
               ? DEVICE_NOW_TRUSTED_MESSAGE
               : "You are signed in. Continuing…"
             : step === "sms_confirm"
-              ? "Send a verification code by text message."
+              ? "Send a verification code by Text/SMS."
               : unrecognizedDeviceMessage}
         </CardDescription>
         {state.verified || step === "sms_confirm" ? null : (
@@ -244,7 +244,7 @@ export function LoginMfaForm({
                     setStep("sms_confirm");
                   }}
                 >
-                  Send code by text message
+                  Send code by Text/SMS
                 </Button>
               </div>
             ) : null}

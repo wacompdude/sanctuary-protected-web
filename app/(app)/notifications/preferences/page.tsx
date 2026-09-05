@@ -101,10 +101,10 @@ async function NotificationPreferencesContent() {
               : "Provider not configured"}
           </p>
           <p>
-            SMS:{" "}
+            Text/SMS:{" "}
             {churchSettings?.sms_notifications_enabled
               ? "Church enabled (provider pending)"
-              : "SMS provider not configured"}
+              : "Text/SMS provider not configured"}
           </p>
           <p>
             Push:{" "}

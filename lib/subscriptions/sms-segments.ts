@@ -1,5 +1,5 @@
 /**
- * Estimate billable SMS segments for a message body.
+ * Estimate billable Text/SMS segments for a message body.
  * Uses a simplified GSM-7 / UCS-2 model matching common provider billing.
  */
 const GSM7_BASIC =

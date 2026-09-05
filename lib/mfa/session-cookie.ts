@@ -14,7 +14,7 @@ type MfaCookiePayload = {
   /** Issued-at unix seconds. Cookie write time. */
   iat?: number;
   /**
-   * Unix seconds of the last actual login MFA (email/SMS).
+   * Unix seconds of the last actual login MFA (email/Text/SMS).
    * Trusted-device skips copy this from last_login_mfa_at instead of using now.
    */
   mfa?: number;

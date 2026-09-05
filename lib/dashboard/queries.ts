@@ -1,13 +1,15 @@
 import { createClient } from "@/lib/supabase/server";
 import { isDashboardBoxKey } from "@/lib/dashboard/dashboard-box-registry";
 import { normalizeHexColor } from "@/lib/dashboard/colors";
-import type {
-  DashboardBoxKey,
-  DashboardBoxSettingRow,
+import {
+  DEFAULT_DASHBOARD_DISPLAY_SETTINGS,
+  type DashboardBoxKey,
+  type DashboardBoxSettingRow,
+  type DashboardDisplaySettings,
 } from "@/lib/dashboard/types";
 
 function isMissingTable(message: string): boolean {
-  return /dashboard_box_settings|does not exist|schema cache|Could not find the table/i.test(
+  return /dashboard_box_settings|dashboard_display_settings|does not exist|schema cache|Could not find the table/i.test(
     message,
   );
 }
@@ -85,4 +87,36 @@ export async function getChurchDashboardBoxSetting(
 ): Promise<DashboardBoxSettingRow | null> {
   const rows = await listChurchDashboardBoxSettings(organizationId);
   return rows.find((row) => row.box_key === boxKey) ?? null;
+}
+
+/**
+ * Church-wide display preference. Missing table/row defaults to false
+ * so existing churches keep their saved manual order.
+ */
+export async function getChurchDashboardDisplaySettings(
+  organizationId: string,
+): Promise<DashboardDisplaySettings> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("dashboard_display_settings")
+    .select("sort_by_active_count")
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+
+  if (error) {
+    if (isMissingTable(error.message)) {
+      return { ...DEFAULT_DASHBOARD_DISPLAY_SETTINGS };
+    }
+    throw new Error("Unable to load dashboard display settings.");
+  }
+
+  if (!data) {
+    return { ...DEFAULT_DASHBOARD_DISPLAY_SETTINGS };
+  }
+
+  return {
+    sortByActiveCount: Boolean(
+      (data as { sort_by_active_count?: boolean }).sort_by_active_count,
+    ),
+  };
 }

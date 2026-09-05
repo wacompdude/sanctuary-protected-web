@@ -4,7 +4,10 @@ import {
   getAuthenticatedUserWithChurch,
 } from "@/lib/organization/auth";
 import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
-import { canViewNotificationHistory } from "@/lib/notifications";
+import {
+  canViewNotificationHistory,
+  labelForNotificationChannel,
+} from "@/lib/notifications";
 import { retryNotificationDeliveryFormAction } from "@/app/(app)/notifications/actions";
 import {
   Card,
@@ -193,8 +196,8 @@ async function NotificationHistoryContent() {
                 <li key={delivery.id} className="rounded-md border border-border p-3">
                   <div className="mb-1 flex flex-wrap items-center gap-2">
                     <p className="font-medium">{delivery.notification.title}</p>
-                    <span className="rounded border border-border px-2 py-0.5 text-xs capitalize text-muted-foreground">
-                      {delivery.channel}
+                    <span className="rounded border border-border px-2 py-0.5 text-xs text-muted-foreground">
+                      {labelForNotificationChannel(delivery.channel)}
                     </span>
                     <span className="rounded border border-border px-2 py-0.5 text-xs capitalize text-muted-foreground">
                       {delivery.status.replaceAll("_", " ")}

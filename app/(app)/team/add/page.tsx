@@ -42,8 +42,16 @@ async function AddMemberContent() {
         </Button>
         <h1 className="text-3xl font-bold tracking-tight">Add member</h1>
         <p className="mt-1 text-muted-foreground">
-          Manually create a login for {church.name} and assign a security role.
-          Prefer invitations when the person should set their own password.
+          Use this for someone who does not already have a Sanctuary Protected
+          login at sanctuaryprotected.com. This creates their account and adds
+          them to {church.name}.
+        </p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          If they already sign in to Sanctuary Protected,{" "}
+          <Link href="/team/invite" className="font-medium underline underline-offset-4">
+            invite them instead
+          </Link>{" "}
+          so they keep that login and join this church as an additional church.
         </p>
       </div>
 

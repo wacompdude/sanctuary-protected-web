@@ -21,7 +21,7 @@ class UnconfiguredMfaSmsSender implements MfaSmsSender {
     return {
       ok: false,
       provider: this.name,
-      error: "Text message delivery is not configured yet.",
+      error: "Text/SMS delivery is not configured yet.",
     };
   }
 }
@@ -37,7 +37,7 @@ class BirdMfaSmsPlaceholder implements MfaSmsSender {
       ok: false,
       provider: this.name,
       error:
-        "Text message delivery is not connected yet. Use the email code for now.",
+        "Text/SMS delivery is not connected yet. Use the email code for now.",
     };
   }
 }
@@ -82,7 +82,7 @@ export async function sendMfaSmsCode(input: {
     return {
       ok: false,
       provider: sender.name,
-      error: "Text message delivery is not configured yet.",
+      error: "Text/SMS delivery is not configured yet.",
     };
   }
   return sender.send(input);

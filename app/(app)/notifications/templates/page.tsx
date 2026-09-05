@@ -4,7 +4,10 @@ import {
   getAuthenticatedUserWithChurch,
 } from "@/lib/organization/auth";
 import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
-import { canManageNotificationTemplates } from "@/lib/notifications";
+import {
+  canManageNotificationTemplates,
+  labelForNotificationChannel,
+} from "@/lib/notifications";
 import { hasMinRole } from "@/lib/organization/navigation";
 import { EMAIL_SENDER_LABELS, isEmailSenderCategory } from "@/lib/email";
 import {
@@ -108,8 +111,8 @@ async function NotificationTemplatesContent() {
                     <div className="mb-1 flex flex-wrap items-center gap-2">
                       <p className="font-medium">{template.name}</p>
                       <NotificationSeverityBadge severity={template.severity} />
-                      <span className="rounded border border-border px-2 py-0.5 text-xs capitalize text-muted-foreground">
-                        {template.channel}
+                      <span className="rounded border border-border px-2 py-0.5 text-xs text-muted-foreground">
+                        {labelForNotificationChannel(template.channel)}
                       </span>
                       <span className="rounded border border-border px-2 py-0.5 text-xs text-muted-foreground">
                         {template.is_system_template ? "System" : "Church"}

@@ -23,7 +23,7 @@ import { listChurchTeamMemberships } from "@/lib/organization/team-queries";
 import { listTeamMembersForChurch } from "@/lib/certifications/queries";
 import { ResendInvitationButton } from "@/components/team/resend-invitation-button";
 import { RevokeInvitationButton } from "@/components/team/revoke-invitation-button";
-import { MailPlus, UserPlus } from "lucide-react";
+import { TeamOnboardingActions } from "@/components/team/team-onboarding-actions";
 import { isServiceRoleConfigured } from "@/lib/supabase/admin";
 import { formatChurchDate } from "@/lib/datetime/format";
 
@@ -58,31 +58,15 @@ async function TeamContent({ created }: { created?: string }) {
 
   return (
     <>
-      <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="space-y-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Team</h1>
           <p className="mt-1 text-muted-foreground">
-            Manage memberships for {church.name}.
+            Manage who can access {church.name}. Choose Add for a new login, or
+            Invite if they already sign in to Sanctuary Protected.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {canInvite && (
-            <>
-              <Button asChild>
-                <Link href="/team/add">
-                  <UserPlus className="h-4 w-4" />
-                  Add member
-                </Link>
-              </Button>
-              <Button variant="outline" asChild>
-                <Link href="/team/invite">
-                  <MailPlus className="h-4 w-4" />
-                  Invite member
-                </Link>
-              </Button>
-            </>
-          )}
-        </div>
+        {canInvite ? <TeamOnboardingActions /> : null}
       </div>
 
       {canInvite && !isServiceRoleConfigured() && (

@@ -13,7 +13,7 @@ export function isE164Phone(value: string): boolean {
 }
 
 /**
- * Login SMS destination is always the stored verified number.
+ * Login Text/SMS destination is always the stored verified number.
  * Any phone typed at login is ignored.
  */
 export function resolveLoginSmsDestination(verifiedPhone: string | null): string | null {

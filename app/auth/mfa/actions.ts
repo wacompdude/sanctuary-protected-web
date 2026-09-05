@@ -47,7 +47,7 @@ export async function startLoginSmsMfaAction(
       error:
         error instanceof Error
           ? error.message
-          : "Unable to send the text message.",
+          : "Unable to send the Text/SMS.",
     };
   }
 }

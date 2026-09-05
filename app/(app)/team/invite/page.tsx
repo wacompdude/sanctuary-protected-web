@@ -42,8 +42,16 @@ async function InviteMemberContent() {
         </Button>
         <h1 className="text-3xl font-bold tracking-tight">Invite member</h1>
         <p className="mt-1 text-muted-foreground">
-          Invite someone to join {church.name}. We&apos;ll email them a secure
-          acceptance link.
+          Use this for someone who already has a Sanctuary Protected login.
+          They keep their existing account and gain access to {church.name} in
+          addition to any other churches they already belong to.
+        </p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          If they do not have a login yet,{" "}
+          <Link href="/team/add" className="font-medium underline underline-offset-4">
+            add them instead
+          </Link>{" "}
+          to create their account for this church.
         </p>
       </div>
 

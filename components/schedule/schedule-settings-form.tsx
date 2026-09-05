@@ -195,7 +195,7 @@ export function ScheduleSettingsForm({
               type="number"
               defaultValue={settings.minimum_rest_minutes}
               error={state.fieldErrors?.minimum_rest_minutes}
-              hint="Optional. Not enforced in v1."
+              hint="Optional. Future Enhancement."
             />
             <LabeledInput
               id="maximum_weekly_hours"
@@ -204,7 +204,7 @@ export function ScheduleSettingsForm({
               type="number"
               defaultValue={settings.maximum_weekly_hours}
               error={state.fieldErrors?.maximum_weekly_hours}
-              hint="Optional. Not enforced in v1."
+              hint="Optional. Future Enhancement."
             />
           </CardContent>
         </Card>
@@ -213,7 +213,8 @@ export function ScheduleSettingsForm({
           <CardHeader>
             <CardTitle>Notification defaults</CardTitle>
             <CardDescription>
-              Reminder windows used by the hourly schedule scan cron.
+              Choose which schedule emails to send and how far ahead reminders
+              and unfilled-shift warnings go out.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">

@@ -87,7 +87,7 @@ export function ProfileMfaSettings({
         </div>
 
         <div className="rounded-md border border-border px-3 py-3 text-sm">
-          <p className="font-medium">Text message backup</p>
+          <p className="font-medium">Text/SMS backup</p>
           {hasVerifiedPhone && maskedPhone ? (
             <p className="mt-1 text-muted-foreground">
               Verified number: {maskedPhone}
@@ -102,7 +102,7 @@ export function ProfileMfaSettings({
 
         {!smsConfigured ? (
           <p className="text-sm text-muted-foreground">
-            Text message delivery is not connected yet. You can still complete
+            Text/SMS delivery is not connected yet. You can still complete
             sign-in with the email code.
           </p>
         ) : null}
@@ -145,7 +145,7 @@ export function ProfileMfaSettings({
               ) : (
                 <p className="text-xs text-muted-foreground">
                   Stored in international format after it is verified. We will
-                  text this number to confirm it is yours.
+                  send a Text/SMS to this number to confirm it is yours.
                 </p>
               )}
             </div>
@@ -154,7 +154,7 @@ export function ProfileMfaSettings({
                 ? "Sending..."
                 : hasVerifiedPhone
                   ? "Verify a new backup number"
-                  : "Send verification text"}
+                  : "Send verification Text/SMS"}
             </Button>
           </form>
         )}

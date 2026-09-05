@@ -14,6 +14,7 @@ import {
 import type { ActionState } from "@/lib/organization/types";
 import type { NotificationEndpoint } from "@/lib/notifications/endpoints/types";
 import { maskDestination } from "@/lib/notifications/endpoints/normalize";
+import { labelForNotificationChannel } from "@/lib/notifications/constants";
 import {
   disableEndpointAction,
   setPrimaryEndpointAction,
@@ -96,9 +97,9 @@ function EndpointActions({
         >
           <input type="hidden" name="endpoint_id" value={endpoint.id} />
           <p className="text-xs text-muted-foreground">
-            SMS delivery is not active yet. You can record consent now so it is
-            ready when the church enables SMS. Message and data rates may apply.
-            Reply STOP to opt out once SMS is live.
+            Text/SMS delivery is not active yet. You can record consent now so it is
+            ready when the church enables Text/SMS. Message and data rates may apply.
+            Reply STOP to opt out once Text/SMS is live.
           </p>
           <label className="flex items-start gap-2 text-sm">
             <input
@@ -108,8 +109,8 @@ function EndpointActions({
               className="mt-1"
             />
             <span>
-              I consent to receive security SMS alerts at this number when SMS
-              is enabled for my church.
+              I consent to receive security Text/SMS alerts at this number when
+              Text/SMS is enabled for my church.
             </span>
           </label>
           <Button
@@ -118,7 +119,7 @@ function EndpointActions({
             className="h-10"
             disabled={consentPending}
           >
-            {consentPending ? "Saving…" : "Save SMS consent"}
+            {consentPending ? "Saving…" : "Save Text/SMS consent"}
           </Button>
           <p className="text-xs text-muted-foreground">
             Consent status: {endpoint.consent_status}
@@ -189,8 +190,8 @@ export function NotificationEndpointsPanel({
       <CardHeader>
         <CardTitle>Delivery methods</CardTitle>
         <CardDescription>
-          Verified destinations used for email and future SMS/push. Addresses are
-          shown masked.
+          Verified destinations used for email and future Text/SMS and push.
+          Addresses are shown masked.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -212,8 +213,8 @@ export function NotificationEndpointsPanel({
               >
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <p className="text-sm font-medium capitalize">
-                      {endpoint.channel}
+                    <p className="text-sm font-medium">
+                      {labelForNotificationChannel(endpoint.channel)}
                       {endpoint.is_primary ? " · Primary" : ""}
                     </p>
                     <p className="text-xs text-muted-foreground">

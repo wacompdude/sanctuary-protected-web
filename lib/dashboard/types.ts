@@ -100,3 +100,12 @@ export type ResolveDashboardBoxSettingsInput = {
   /** Include hidden boxes (settings UI). Default false. */
   includeHidden?: boolean;
 };
+
+/** Church-wide display preference. Does not rewrite stored box order. */
+export type DashboardDisplaySettings = {
+  sortByActiveCount: boolean;
+};
+
+export const DEFAULT_DASHBOARD_DISPLAY_SETTINGS: DashboardDisplaySettings = {
+  sortByActiveCount: false,
+};

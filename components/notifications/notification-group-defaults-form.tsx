@@ -47,7 +47,7 @@ export function NotificationGroupDefaultsForm({
               >
                 <p className="font-medium">{row.notification_type}</p>
                 <p className="text-xs text-muted-foreground">
-                  Email {row.email_enabled ? "on" : "off"} · SMS{" "}
+                  Email {row.email_enabled ? "on" : "off"} · Text/SMS{" "}
                   {row.sms_enabled ? "on" : "off"} · Push{" "}
                   {row.push_enabled ? "on" : "off"} · In-app{" "}
                   {row.in_app_enabled ? "on" : "off"} · Min severity{" "}
@@ -108,7 +108,7 @@ export function NotificationGroupDefaultsForm({
               </label>
               <label className="flex items-center gap-2">
                 <input type="checkbox" name="sms_enabled" />
-                SMS enabled (stored; delivery not active yet)
+                Text/SMS enabled (stored; delivery not active yet)
               </label>
               <label className="flex items-center gap-2">
                 <input type="checkbox" name="push_enabled" />

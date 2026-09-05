@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { PlatformStatusBadge } from "@/components/platform/platform-status-badge";
+import { labelForNotificationChannel } from "@/lib/notifications/constants";
 import { listPlatformJobDeliveries } from "@/lib/platform/system-status";
 
 async function JobsContent() {
@@ -59,7 +60,9 @@ async function JobsContent() {
                   <td className="whitespace-nowrap px-3 py-2 text-slate-400">
                     {new Date(row.created_at).toLocaleString()}
                   </td>
-                  <td className="px-3 py-2">{row.channel}</td>
+                  <td className="px-3 py-2">
+                    {labelForNotificationChannel(row.channel)}
+                  </td>
                   <td className="px-3 py-2 text-slate-300">{row.provider}</td>
                   <td className="px-3 py-2">
                     <PlatformStatusBadge status={row.status} />

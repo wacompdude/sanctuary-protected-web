@@ -92,7 +92,7 @@ export function NotificationSettingsForm({
                     className="mt-1 h-4 w-4 rounded border border-input"
                   />
                   <span>
-                    SMS enabled{" "}
+                    Text/SMS enabled{" "}
                     <span className="text-muted-foreground">(provider unavailable)</span>
                   </span>
                 </label>

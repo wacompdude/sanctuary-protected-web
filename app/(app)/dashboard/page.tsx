@@ -37,7 +37,9 @@ import {
 } from "@/lib/campuses/filter";
 import {
   canManageDashboardCustomization,
+  getChurchDashboardDisplaySettings,
   resolveDashboardBoxSettings,
+  sortDashboardBoxes,
 } from "@/lib/dashboard";
 import {
   dashboardBoxNeedsCertifications,
@@ -73,12 +75,17 @@ async function DashboardContent() {
     allowSecurityMemberView: safetyConcernSettings.allow_security_member_view,
   });
 
-  const resolvedBoxes = await resolveDashboardBoxSettings({
-    organizationId: church.id,
-    userRole: membership.role,
-    canManageSchedule: canSeeManagerSchedule,
-    includeHidden: false,
-  });
+  const [resolvedBoxes, displaySettings] = await Promise.all([
+    resolveDashboardBoxSettings({
+      organizationId: church.id,
+      userRole: membership.role,
+      canManageSchedule: canSeeManagerSchedule,
+      includeHidden: false,
+    }),
+    getChurchDashboardDisplaySettings(church.id).catch(() => ({
+      sortByActiveCount: false,
+    })),
+  ]);
 
   const authorizedBoxes = safetyConcernAccess.canRead
     ? resolvedBoxes
@@ -144,8 +151,23 @@ async function DashboardContent() {
   };
 
   const scheduleTablesAvailable = Boolean(schedule?.tablesAvailable);
-  const displayBoxes = authorizedBoxes.filter(
+  const visibleBoxes = authorizedBoxes.filter(
     (box) => box.category !== "schedule" || scheduleTablesAvailable,
+  );
+  const sortableBoxes = visibleBoxes.map((box) => {
+    const resolved = getDashboardBoxValue(box.key as DashboardBoxKey, boxData);
+    return {
+      box,
+      key: box.key,
+      manualOrder: box.displayOrder,
+      itemCount: resolved.itemCount,
+      value: resolved.value,
+      description: resolved.description,
+    };
+  });
+  const displayBoxes = sortDashboardBoxes(
+    sortableBoxes,
+    displaySettings.sortByActiveCount,
   );
 
   return (
@@ -260,6 +282,11 @@ async function DashboardContent() {
               : ""}
             .
           </p>
+          {displaySettings.sortByActiveCount ? (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Dashboard ordering: Highest activity first
+            </p>
+          ) : null}
         </div>
         {canCustomize ? (
           <Button asChild variant="outline" className="h-11">
@@ -270,20 +297,15 @@ async function DashboardContent() {
 
       {displayBoxes.length > 0 ? (
         <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-          {displayBoxes.map((box) => {
-            const { value, description } = getDashboardBoxValue(
-              box.key as DashboardBoxKey,
-              boxData,
-            );
-            return (
+          {displayBoxes.map((entry) => (
               <DashboardStatBox
-                key={box.key}
-                box={box}
-                value={value}
-                description={description}
+                key={entry.box.key}
+                box={entry.box}
+                value={entry.value}
+                description={entry.description}
+                itemCount={entry.itemCount}
               />
-            );
-          })}
+            ))}
         </div>
       ) : (
         <Card>

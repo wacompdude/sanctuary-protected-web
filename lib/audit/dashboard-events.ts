@@ -11,6 +11,7 @@ export async function auditDashboardBoxSettingsUpdated(
     boxCount: number;
     visibleCount: number;
     customizedCount: number;
+    sortByActiveCount?: boolean;
   },
 ) {
   return writeAuditLog(supabase, {
@@ -23,6 +24,7 @@ export async function auditDashboardBoxSettingsUpdated(
       box_count: params.boxCount,
       visible_count: params.visibleCount,
       customized_count: params.customizedCount,
+      sort_by_active_count: params.sortByActiveCount ?? false,
     },
     ipAddress: await getRequestIpAddress(),
   });

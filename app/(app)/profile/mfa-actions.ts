@@ -20,7 +20,7 @@ export async function startBackupPhoneAction(
       error:
         error instanceof Error
           ? error.message
-          : "Unable to send the verification text.",
+          : "Unable to send the verification Text/SMS.",
     };
   }
 }

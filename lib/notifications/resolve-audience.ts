@@ -207,7 +207,7 @@ function evaluateChannel(params: {
     };
   }
 
-  // SMS/push never get silent emergency override without consent/config.
+  // Text/SMS/push never get silent emergency override without consent/config.
   if (channel === "sms" && !settings.sms_notifications_enabled) {
     return {
       enabled: false,

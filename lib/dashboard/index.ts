@@ -7,8 +7,12 @@ export type {
   ResolvedDashboardBoxSetting,
   DashboardBoxSettingInput,
   ResolveDashboardBoxSettingsInput,
+  DashboardDisplaySettings,
 } from "@/lib/dashboard/types";
-export { DASHBOARD_BOX_KEYS } from "@/lib/dashboard/types";
+export {
+  DASHBOARD_BOX_KEYS,
+  DEFAULT_DASHBOARD_DISPLAY_SETTINGS,
+} from "@/lib/dashboard/types";
 export {
   DASHBOARD_BOX_REGISTRY,
   isDashboardBoxKey,
@@ -25,9 +29,20 @@ export {
   getContrastRatio,
   isContrastAcceptable,
   getAccessibleTextColor,
+  mixHexColor,
   deriveDashboardBoxPalette,
   resolveDashboardTextColor,
 } from "@/lib/dashboard/colors";
+export {
+  isDashboardBoxZeroCount,
+  deriveZeroCountDashboardBoxPalette,
+  getDashboardBoxDisplayPalette,
+} from "@/lib/dashboard/presentation";
+export {
+  normalizeDashboardItemCount,
+  sortDashboardBoxes,
+} from "@/lib/dashboard/sort";
+export type { DashboardSortableBox } from "@/lib/dashboard/sort";
 export {
   canViewDashboardCustomization,
   canManageDashboardCustomization,
@@ -45,6 +60,7 @@ export {
   areDashboardBoxSettingsAvailable,
   listChurchDashboardBoxSettings,
   getChurchDashboardBoxSetting,
+  getChurchDashboardDisplaySettings,
 } from "@/lib/dashboard/queries";
 export {
   resolveDashboardBoxSettings,
@@ -63,6 +79,8 @@ export {
   replaceChurchDashboardBoxSettings,
   resetChurchDashboardBoxSetting,
   resetAllChurchDashboardBoxSettings,
+  resetChurchDashboardDisplaySettings,
+  upsertChurchDashboardDisplaySettings,
   purgeObsoleteChurchDashboardBoxSettings,
   friendlyDashboardDbError,
 } from "@/lib/dashboard/mutations";

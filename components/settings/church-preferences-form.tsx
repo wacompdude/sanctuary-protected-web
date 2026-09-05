@@ -28,7 +28,7 @@ export function ChurchPreferencesForm({
   return (
     <SettingsSectionCard
       title="Application preferences"
-      description="Defaults for dates, landing pages, and feature toggles. Push, SMS, IoT, and camera options are placeholders until those products ship."
+      description="Defaults for dates, landing pages, and feature toggles. Push, Text/SMS, IoT, and camera options are placeholders until those products ship."
       action={updateChurchPreferenceSettings}
       canEdit={canEdit}
     >
@@ -95,9 +95,9 @@ export function ChurchPreferencesForm({
             <LabeledCheckbox
               id="enable_sms_notifications"
               name="enable_sms_notifications"
-              label="Enable SMS notifications (stored only)"
+              label="Enable Text/SMS notifications (stored only)"
               defaultChecked={preferences.enable_sms_notifications}
-              hint="Saved for future use. SMS delivery is not active yet."
+              hint="Saved for future use. Text/SMS delivery is not active yet."
             />
             <LabeledCheckbox
               id="enable_iot_sensors"

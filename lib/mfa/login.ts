@@ -233,7 +233,7 @@ export async function startLoginSmsChallenge(
   if (!settings.smsBackupEnabled || !phone) {
     return {
       error:
-        "Text message backup is not set up for this account. Use the email code.",
+        "Text/SMS backup is not set up for this account. Use the email code.",
       view: buildEmailView({
         email: ctx.email,
         smsBackupAvailable: false,
@@ -255,7 +255,7 @@ export async function startLoginSmsChallenge(
     const sent = await sendMfaSmsCode({ toE164: phone, code: created.code });
     if (!sent.ok) {
       return {
-        error: sent.error ?? "Unable to send the text message.",
+        error: sent.error ?? "Unable to send the Text/SMS.",
         view: buildSmsView({
           phone,
           retryAfterSeconds: 0,

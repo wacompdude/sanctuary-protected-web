@@ -5,7 +5,7 @@ import type {
 } from "@/lib/notifications/types";
 
 /**
- * Placeholder until SMS consent + provider are configured.
+ * Placeholder until Text/SMS consent + provider are configured.
  * When a real provider succeeds, call
  * `recordSmsSegmentsConsumed({ organizationId, deliveryId, segments })`
  * from the dispatch path (idempotent by delivery id).
@@ -24,7 +24,7 @@ export class SmsProviderPlaceholder implements NotificationProvider {
       ok: false,
       status: "suppressed",
       errorCode: "sms_not_configured",
-      errorMessage: "SMS delivery is not configured yet.",
+      errorMessage: "Text/SMS delivery is not configured yet.",
     };
   }
 }

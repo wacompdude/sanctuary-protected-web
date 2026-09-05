@@ -8,6 +8,7 @@ import {
   getContrastRatio,
   isContrastAcceptable,
   isHexColor,
+  mixHexColor,
   normalizeHexColor,
   DASHBOARD_TEXT_DARK,
   DASHBOARD_TEXT_LIGHT,
@@ -39,6 +40,15 @@ assert(
 assert(
   getContrastRatio(DASHBOARD_TEXT_LIGHT, "#FF1A1A") >= 3,
   "white on bright red should be reasonably readable",
+);
+
+assert(
+  mixHexColor("#000000", "#FFFFFF", 0.5) === "#808080",
+  "50% black toward white is mid gray",
+);
+assert(
+  mixHexColor("#2563EB", "#2563EB", 0.5) === "#2563EB",
+  "blend toward self is unchanged",
 );
 
 console.log("dashboard color self-check passed");

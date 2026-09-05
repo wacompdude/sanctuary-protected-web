@@ -16,6 +16,7 @@ import {
   areDashboardBoxSettingsAvailable,
   canManageDashboardCustomization,
   canViewDashboardCustomization,
+  getChurchDashboardDisplaySettings,
   purgeObsoleteChurchDashboardBoxSettings,
   resolveDashboardBoxSettingsForEditor,
 } from "@/lib/dashboard";
@@ -54,9 +55,12 @@ async function DashboardSettingsContent() {
     }
   }
 
-  const [settings, migrationAvailable] = await Promise.all([
+  const [settings, migrationAvailable, displaySettings] = await Promise.all([
     resolveDashboardBoxSettingsForEditor(church.id, membership.role),
     areDashboardBoxSettingsAvailable(),
+    getChurchDashboardDisplaySettings(church.id).catch(() => ({
+      sortByActiveCount: false,
+    })),
   ]);
 
   return (
@@ -68,7 +72,8 @@ async function DashboardSettingsContent() {
           </h1>
           <p className="mt-1 text-sm text-muted-foreground sm:text-base">
             Choose which summary boxes appear for {church.name}, their order, and
-            colors. Changes apply church-wide.
+            colors. Changes apply church-wide, including the optional count
+            ordering preference.
           </p>
         </div>
         <Button asChild variant="outline" className="h-11">
@@ -85,6 +90,7 @@ async function DashboardSettingsContent() {
 
       <DashboardSettingsForm
         initialSettings={settings}
+        initialSortByActiveCount={displaySettings.sortByActiveCount}
         canEdit={canEdit}
         migrationAvailable={migrationAvailable}
       />

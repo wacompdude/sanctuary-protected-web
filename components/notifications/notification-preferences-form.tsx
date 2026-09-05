@@ -143,7 +143,7 @@ export function NotificationPreferencesForm({
                 className="mt-1 h-4 w-4 rounded border border-input"
               />
               <span>
-                Enable SMS notifications{" "}
+                Enable Text/SMS notifications{" "}
                 <span className="text-muted-foreground">(unavailable until configured)</span>
               </span>
             </label>

@@ -154,6 +154,70 @@ export async function resetChurchDashboardBoxSetting(params: {
   return { ok: true };
 }
 
+export async function upsertChurchDashboardDisplaySettings(params: {
+  supabase: SupabaseClient;
+  organizationId: string;
+  userId: string;
+  sortByActiveCount: boolean;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const organizationId = assertDashboardOrganizationId(params.organizationId);
+  const { data: existing, error: existingError } = await params.supabase
+    .from("dashboard_display_settings")
+    .select("organization_id")
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+
+  if (existingError) {
+    return { ok: false, error: friendlyDashboardDbError(existingError.message) };
+  }
+
+  const sortByActiveCount = Boolean(params.sortByActiveCount);
+
+  if (existing) {
+    const { error } = await params.supabase
+      .from("dashboard_display_settings")
+      .update({
+        sort_by_active_count: sortByActiveCount,
+        updated_by: params.userId,
+      })
+      .eq("organization_id", organizationId);
+    if (error) {
+      return { ok: false, error: friendlyDashboardDbError(error.message) };
+    }
+    return { ok: true };
+  }
+
+  const { error } = await params.supabase.from("dashboard_display_settings").insert({
+    organization_id: organizationId,
+    sort_by_active_count: sortByActiveCount,
+    created_by: params.userId,
+    updated_by: params.userId,
+  });
+  if (error) {
+    return { ok: false, error: friendlyDashboardDbError(error.message) };
+  }
+  return { ok: true };
+}
+
+export async function resetChurchDashboardDisplaySettings(params: {
+  supabase: SupabaseClient;
+  organizationId: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const organizationId = assertDashboardOrganizationId(params.organizationId);
+  const { error } = await params.supabase
+    .from("dashboard_display_settings")
+    .delete()
+    .eq("organization_id", organizationId);
+
+  if (error) {
+    if (/dashboard_display_settings|does not exist|schema cache/i.test(error.message)) {
+      return { ok: true };
+    }
+    return { ok: false, error: friendlyDashboardDbError(error.message) };
+  }
+  return { ok: true };
+}
+
 export async function resetAllChurchDashboardBoxSettings(params: {
   supabase: SupabaseClient;
   organizationId: string;
@@ -166,6 +230,14 @@ export async function resetAllChurchDashboardBoxSettings(params: {
 
   if (error) {
     return { ok: false, error: friendlyDashboardDbError(error.message) };
+  }
+
+  const displayReset = await resetChurchDashboardDisplaySettings({
+    supabase: params.supabase,
+    organizationId,
+  });
+  if (!displayReset.ok) {
+    return displayReset;
   }
   return { ok: true };
 }
@@ -213,6 +285,9 @@ export async function purgeObsoleteChurchDashboardBoxSettings(params: {
 }
 
 export function friendlyDashboardDbError(message: string): string {
+  if (/dashboard_display_settings/i.test(message)) {
+    return "Dashboard display settings are not configured yet. Run supabase/migrations/095_dashboard_display_settings.sql.";
+  }
   if (/dashboard_box_settings|does not exist|schema cache/i.test(message)) {
     return "Dashboard customization is not configured yet. Run supabase/migrations/040_dashboard_box_settings.sql.";
   }

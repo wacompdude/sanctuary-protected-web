@@ -60,7 +60,7 @@ export function cookieIsStaleForReauth(input: {
 
 /**
  * Trusted-device skip is allowed only when the last *actual* MFA
- * (email/SMS) is at or after the reauth cutoff. A missing timestamp
+ * (email/Text/SMS) is at or after the reauth cutoff. A missing timestamp
  * fails closed whenever a cutoff exists.
  */
 export function lastMfaSatisfiesReauth(input: {

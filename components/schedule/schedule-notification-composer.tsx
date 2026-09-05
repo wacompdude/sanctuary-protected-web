@@ -238,7 +238,7 @@ export function ScheduleNotificationComposer({
             </label>
             <label className="flex items-center gap-2 text-muted-foreground">
               <input type="checkbox" disabled className="h-4 w-4 rounded border" />
-              SMS (future)
+              Text/SMS (future)
             </label>
             <label className="flex items-center gap-2 text-muted-foreground">
               <input type="checkbox" disabled className="h-4 w-4 rounded border" />

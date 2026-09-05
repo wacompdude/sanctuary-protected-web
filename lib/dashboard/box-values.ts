@@ -1,9 +1,11 @@
 import type { DashboardBoxKey } from "@/lib/dashboard/types";
+import { normalizeDashboardItemCount } from "@/lib/dashboard/sort";
 import type { ScheduleDashboardSummary } from "@/lib/schedule/types";
 
 export type DashboardBoxValue = {
   value: string;
   description: string;
+  itemCount: number;
 };
 
 export type DashboardBoxDataContext = {
@@ -25,6 +27,7 @@ export function getDashboardBoxValue(
     case "active_incidents":
       return {
         value: String(data.openIncidents),
+        itemCount: normalizeDashboardItemCount(data.openIncidents),
         description:
           data.totalIncidents > 0
             ? `${data.totalIncidents} total on record`
@@ -33,66 +36,78 @@ export function getDashboardBoxValue(
     case "active_safety_concerns":
       return {
         value: String(data.activeSafetyConcerns),
+        itemCount: normalizeDashboardItemCount(data.activeSafetyConcerns),
         description: "Authorized active profiles",
       };
     case "unacknowledged_events":
       return {
         value: String(data.unacknowledgedEvents),
+        itemCount: normalizeDashboardItemCount(data.unacknowledgedEvents),
         description: "Device alerts needing review",
       };
     case "camera_events":
       return {
         value: "—",
+        itemCount: 0,
         description: "Placeholder — camera feed alerts coming soon",
       };
     case "security_alarm_events":
       return {
         value: "—",
+        itemCount: 0,
         description: "Placeholder — alarm monitoring coming soon",
       };
     case "certifications_expiring":
       return {
         value: String(data.certificationsExpiring),
+        itemCount: normalizeDashboardItemCount(data.certificationsExpiring),
         description: "Expiring within 60 days (church-wide)",
       };
     case "certifications_expired":
       return {
         value: String(data.certificationsExpired),
+        itemCount: normalizeDashboardItemCount(data.certificationsExpired),
         description: "Need renewal (church-wide)",
       };
     case "upcoming_events":
       return {
         value: String(data.schedule?.upcomingEvents ?? 0),
+        itemCount: normalizeDashboardItemCount(data.schedule?.upcomingEvents),
         description: "Next 7 days",
       };
     case "todays_shifts":
       return {
         value: String(data.schedule?.todaysShifts ?? 0),
+        itemCount: normalizeDashboardItemCount(data.schedule?.todaysShifts),
         description: "Coverage windows today",
       };
     case "unfilled_shifts":
       return {
         value: String(data.schedule?.unfilledShifts ?? 0),
+        itemCount: normalizeDashboardItemCount(data.schedule?.unfilledShifts),
         description: "Next 7 days needing staff",
       };
     case "pending_responses":
       return {
         value: String(data.schedule?.pendingResponses ?? 0),
+        itemCount: normalizeDashboardItemCount(data.schedule?.pendingResponses),
         description: "Invites awaiting accept/decline",
       };
     case "unavailable_today":
       return {
         value: String(data.schedule?.unavailableToday ?? 0),
+        itemCount: normalizeDashboardItemCount(data.schedule?.unavailableToday),
         description: "Active unavailability blocks",
       };
     case "upcoming_training":
       return {
         value: String(data.schedule?.upcomingTraining ?? 0),
+        itemCount: normalizeDashboardItemCount(data.schedule?.upcomingTraining),
         description: "Training events in 7 days",
       };
     default: {
       const _exhaustive: never = key;
-      return { value: "—", description: String(_exhaustive) };
+      return { value: "—", itemCount: 0, description: String(_exhaustive) };
     }
   }
 }

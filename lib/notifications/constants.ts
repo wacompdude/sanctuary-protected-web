@@ -54,6 +54,21 @@ export function isNotificationChannel(
   );
 }
 
+export function labelForNotificationChannel(channel: string): string {
+  switch (channel) {
+    case "sms":
+      return "Text/SMS";
+    case "in_app":
+      return "In-app";
+    case "email":
+      return "Email";
+    case "push":
+      return "Push";
+    default:
+      return channel.replaceAll("_", " ");
+  }
+}
+
 export function severityAtLeast(
   value: NotificationSeverity,
   minimum: NotificationSeverity,

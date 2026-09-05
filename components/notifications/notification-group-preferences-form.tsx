@@ -17,6 +17,7 @@ import type {
   PreferenceRule,
 } from "@/lib/notifications/preference-rules/queries";
 import { upsertGroupPreferenceRuleAction } from "@/app/(app)/notifications/preference-actions";
+import { labelForNotificationChannel } from "@/lib/notifications/constants";
 
 export function NotificationGroupPreferencesForm({
   groups,
@@ -41,8 +42,8 @@ export function NotificationGroupPreferencesForm({
         <CardTitle>Group preferences</CardTitle>
         <CardDescription>
           Override delivery for groups you belong to. More specific rules win
-          over church-wide preferences. SMS/push toggles are stored only until
-          those channels are configured.
+          over church-wide preferences. Text/SMS and push toggles are stored
+          only until those channels are configured.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -56,7 +57,8 @@ export function NotificationGroupPreferencesForm({
                   className="rounded-md border border-border px-3 py-2"
                 >
                   <p className="font-medium">
-                    {rule.group_name ?? "Group"} · {rule.channel}
+                    {rule.group_name ?? "Group"} ·{" "}
+                    {labelForNotificationChannel(rule.channel)}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     Type {rule.notification_type} ·{" "}
@@ -116,7 +118,7 @@ export function NotificationGroupPreferencesForm({
                 >
                   <option value="email">Email</option>
                   <option value="in_app">In-app</option>
-                  <option value="sms">SMS (stored only)</option>
+                  <option value="sms">Text/SMS (stored only)</option>
                   <option value="push">Push (stored only)</option>
                 </select>
               </div>

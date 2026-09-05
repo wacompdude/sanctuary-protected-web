@@ -245,7 +245,7 @@ export function NotificationComposerForm({
         <CardHeader>
           <CardTitle>Delivery channels</CardTitle>
           <CardDescription>
-            SMS and push can be selected for planning, but only in-app and email
+            Text/SMS and push can be selected for planning, but only in-app and email
             send today.
           </CardDescription>
         </CardHeader>
@@ -265,11 +265,11 @@ export function NotificationComposerForm({
               value="sms"
               disabled={!smsConfigured}
             />
-            SMS{" "}
+            Text/SMS{" "}
             <span className="text-muted-foreground">
               {smsConfigured
                 ? "(provider pending)"
-                : "(SMS provider not configured)"}
+                : "(Text/SMS provider not configured)"}
             </span>
           </label>
           <label className="flex items-center gap-2">
@@ -313,7 +313,7 @@ export function NotificationComposerForm({
               <input type="checkbox" name="emergency_override" className="mt-1" />
               <span>
                 Emergency override — force critical severity and allow email
-                override rules where church policy permits. SMS still requires
+                override rules where church policy permits. Text/SMS still requires
                 consent.
               </span>
             </label>
@@ -346,7 +346,7 @@ export function NotificationComposerForm({
                   : ""}
               </p>
               <p className="text-muted-foreground">
-                SMS suppressed (not sent): {preview.smsSuppressed} · Push
+                Text/SMS suppressed (not sent): {preview.smsSuppressed} · Push
                 suppressed: {preview.pushSuppressed}
               </p>
               {preview.overrideCount > 0 ? (

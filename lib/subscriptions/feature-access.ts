@@ -92,7 +92,7 @@ export const FEATURE_BENEFITS: Partial<Record<FeatureKey, string[]>> = {
     "Deeper operational reporting",
   ],
   [FEATURE_KEYS.SMS]: [
-    "SMS messaging",
+    "Text/SMS messaging",
     "Urgent team alerts by text",
   ],
 };

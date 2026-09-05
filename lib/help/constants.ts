@@ -202,7 +202,7 @@ export const HELP_SEED_CATEGORY_TREE: {
   {
     name: "Notifications",
     slug: "notifications",
-    description: "Groups, email, SMS, and preferences.",
+    description: "Groups, email, Text/SMS, and preferences.",
     children: [
       {
         name: "Groups",

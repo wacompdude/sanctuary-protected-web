@@ -109,7 +109,7 @@ for (const planKey of PLAN_KEY_LIST) {
     assert(
       readIntegerEntitlement(values, FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT)
         .limit === 250,
-      "Steward Pro SMS limit is 250",
+      "Steward Pro Text/SMS limit is 250",
     );
     assert(
       readBooleanEntitlement(values, FEATURE_KEYS.POLICIES) === false,
@@ -131,7 +131,7 @@ for (const planKey of PLAN_KEY_LIST) {
     assert(
       readIntegerEntitlement(values, FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT)
         .limit === 1000,
-      "Shepherd Plus SMS limit is 1000",
+      "Shepherd Plus Text/SMS limit is 1000",
     );
   }
 

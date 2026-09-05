@@ -184,9 +184,9 @@ async function BillingContent() {
                 note="Pending invitations do not count until accepted."
               />
               <UsageMeterRow
-                label="SMS segments"
+                label="Text/SMS segments"
                 meter={smsMeter}
-                note="Counted when SMS deliveries succeed."
+                note="Counted when Text/SMS deliveries succeed."
               />
             </dl>
           </div>

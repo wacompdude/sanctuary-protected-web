@@ -47,7 +47,7 @@ export async function startPhoneEnrollment(phoneInput: string): Promise<MfaActio
   if (!created.reused) {
     const sent = await sendMfaSmsCode({ toE164: phone, code: created.code });
     if (!sent.ok) {
-      return { error: sent.error ?? "Unable to send the verification text." };
+      return { error: sent.error ?? "Unable to send the verification Text/SMS." };
     }
     if (shouldExposeDevMfaCode(sent.provider)) {
       devCode = created.code;

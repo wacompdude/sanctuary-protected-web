@@ -95,15 +95,20 @@ function withResolvedColors(box: EditorBox): EditorBox & {
 
 export function DashboardSettingsForm({
   initialSettings,
+  initialSortByActiveCount,
   canEdit,
   migrationAvailable,
 }: {
   initialSettings: ResolvedDashboardBoxSetting[];
+  initialSortByActiveCount: boolean;
   canEdit: boolean;
   migrationAvailable: boolean;
 }) {
   const router = useRouter();
   const [boxes, setBoxes] = useState(() => toEditorBoxes(initialSettings));
+  const [sortByActiveCount, setSortByActiveCount] = useState(
+    initialSortByActiveCount,
+  );
   const [expandedKey, setExpandedKey] = useState<DashboardBoxKey | null>(null);
   const [saveState, saveAction, savePending] = useActionState(
     saveDashboardBoxSettingsAction,
@@ -116,6 +121,10 @@ export function DashboardSettingsForm({
   useEffect(() => {
     setBoxes(toEditorBoxes(initialSettings));
   }, [initialSettings]);
+
+  useEffect(() => {
+    setSortByActiveCount(initialSortByActiveCount);
+  }, [initialSortByActiveCount]);
 
   useEffect(() => {
     if (saveState.success) {
@@ -270,6 +279,7 @@ export function DashboardSettingsForm({
           };
         }),
       );
+      setSortByActiveCount(false);
       setResetMessage("All dashboard boxes reset to system defaults.");
       router.refresh();
     });
@@ -333,6 +343,43 @@ export function DashboardSettingsForm({
 
       <form action={saveAction} className="space-y-4">
         <input type="hidden" name="settings_json" value={settingsJson} />
+        <input
+          type="hidden"
+          name="sort_by_active_count"
+          value={sortByActiveCount ? "on" : "off"}
+        />
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Dashboard display</CardTitle>
+            <CardDescription>
+              Optional display rules. Your saved box order and colors stay
+              unchanged.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-start gap-3">
+              <Checkbox
+                id="sort_by_active_count"
+                checked={sortByActiveCount}
+                disabled={controlsDisabled}
+                onCheckedChange={(checked) =>
+                  setSortByActiveCount(checked === true)
+                }
+              />
+              <div className="space-y-1">
+                <Label htmlFor="sort_by_active_count">
+                  Order boxes by highest active count
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  When enabled, dashboard boxes with the most active items will
+                  automatically appear first. When disabled, your customized box
+                  order will be used.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -341,6 +388,12 @@ export function DashboardSettingsForm({
               Toggle visibility, reorder, and choose colors. Campus filters still
               affect counts on the dashboard, not this layout.
             </p>
+            {sortByActiveCount ? (
+              <p className="mt-2 text-sm text-muted-foreground">
+                Automatic ordering is enabled. Your manual order is still saved
+                and will be used if automatic ordering is turned off.
+              </p>
+            ) : null}
           </div>
           <div className="flex flex-wrap gap-2">
             <Button

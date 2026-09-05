@@ -6,16 +6,16 @@
  *   2. Supabase validates those credentials (session is AAL1 only).
  *   3. Access is not granted until a second factor succeeds.
  *   4. Primary factor: 6-digit code sent to the account email.
- *   5. Backup factor: 6-digit SMS code, only if a verified phone is on file.
+ *   5. Backup factor: 6-digit Text/SMS code, only if a verified phone is on file.
  *
- * Backup SMS
+ * Backup Text/SMS
  *   - Login never accepts a phone number from the sign-in form.
- *   - SMS is offered only when sms_backup_enabled and verified_phone are set.
+ *   - Text/SMS is offered only when sms_backup_enabled and verified_phone are set.
  *   - The number shown is masked. The code is sent to stored verified_phone.
  *
  * Verified phone
  *   - Stored in user_security_settings in E.164 (e.g. +14255551234).
- *   - Written only after the signed-in user proves possession via SMS code.
+ *   - Written only after the signed-in user proves possession via Text/SMS code.
  *   - Profile contact phone is not treated as verified for MFA.
  *
  * Trusted devices
@@ -38,7 +38,7 @@
  *   - Missing or invalid values fail secure (MFA capability remains enabled).
  *
  * Out of scope for this pass
- *   - Bird Verify wiring (SMS sender is a stub / console in development).
+ *   - Bird Verify wiring (Text/SMS sender is a stub / console in development).
  *   - Platform console TOTP remains a separate gate for platform admins.
  */
 

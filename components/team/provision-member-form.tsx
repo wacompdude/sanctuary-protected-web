@@ -41,8 +41,9 @@ export function ProvisionMemberForm({
       <CardHeader>
         <CardTitle>Member details</CardTitle>
         <CardDescription>
-          Create a login for someone and grant them church access with a security
-          role. Share the credentials securely — they are shown only once.
+          Create a Sanctuary Protected login for someone who does not already
+          have one, then add them to this church. Share the credentials
+          securely — they are shown only once.
         </CardDescription>
       </CardHeader>
       <CardContent>

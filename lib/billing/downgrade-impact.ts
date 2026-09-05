@@ -178,7 +178,7 @@ export async function buildDowngradeImpactReport(params: {
         kind: "limit_exceeded",
         featureKey: FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT,
         label: labelFor(FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT),
-        detail: `This period has ${smsMeter.quantityCommitted} SMS segments committed; ${toPlanDisplayName} allows ${smsLimit.limit}. Further SMS sends will be blocked until the next period or an upgrade.`,
+        detail: `This period has ${smsMeter.quantityCommitted} Text/SMS segments committed; ${toPlanDisplayName} allows ${smsLimit.limit}. Further Text/SMS sends will be blocked until the next period or an upgrade.`,
       });
     }
   }

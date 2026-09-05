@@ -6,7 +6,10 @@ import {
 } from "@/lib/organization/auth";
 import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
 import { canViewNotificationHistory } from "@/lib/notifications/permissions";
-import { labelForNotificationType } from "@/lib/notifications";
+import {
+  labelForNotificationChannel,
+  labelForNotificationType,
+} from "@/lib/notifications";
 import { NotificationSeverityBadge } from "@/components/notifications/notification-severity-badge";
 import { acknowledgeNotificationFormAction } from "@/app/(app)/notifications/actions";
 import {
@@ -148,7 +151,8 @@ async function NotificationDetailContent({ id }: { id: string }) {
               {rows.map((row) => (
                 <li key={row.id} className="rounded-md border border-border p-3">
                   <p className="text-sm font-medium">
-                    {row.channel} · {row.status.replaceAll("_", " ")}
+                    {labelForNotificationChannel(row.channel)} ·{" "}
+                    {row.status.replaceAll("_", " ")}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     Provider {row.provider} · attempt {row.attempt_number}/

@@ -4,8 +4,6 @@ import { AcceptInvitationForm } from "@/components/invitations/accept-invitation
 import { Card, CardContent } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
 
-export const dynamic = "force-dynamic";
-
 async function AcceptInvitationContent({
   searchParams,
 }: {

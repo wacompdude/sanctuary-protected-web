@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
@@ -35,6 +36,7 @@ export function LoginForm({
     password?: string;
   }>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const searchParams = useSearchParams();
   const nextPath = searchParams.get("next");
   const switchAccount =
@@ -154,14 +156,35 @@ export function LoginForm({
                     Forgot your password?
                   </Link>
                 </div>
-                <Input
-                  id="password"
-                  type="password"
-                  autoComplete="current-password"
-                  value={password}
-                  aria-invalid={!!fieldErrors.password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="current-password"
+                    value={password}
+                    aria-invalid={!!fieldErrors.password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pr-11 [&::-ms-reveal]:hidden"
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-0 z-10 flex w-11 items-center justify-center rounded-md text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    data-testid="toggle-password-visibility"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    aria-pressed={showPassword}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      setShowPassword((visible) => !visible);
+                    }}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" aria-hidden />
+                    ) : (
+                      <Eye className="h-4 w-4" aria-hidden />
+                    )}
+                  </button>
+                </div>
                 {fieldErrors.password && (
                   <p className="text-sm text-destructive">{fieldErrors.password}</p>
                 )}

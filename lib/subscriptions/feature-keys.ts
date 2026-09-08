@@ -70,7 +70,7 @@ export const FEATURE_DISPLAY_NAMES: Record<FeatureKey, string> = {
   [FEATURE_KEYS.GROUP_EMAIL]: "Group email messaging",
   [FEATURE_KEYS.EMAIL]: "Email messaging",
   [FEATURE_KEYS.SMS]: "Text/SMS messaging",
-  [FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT]: "Text/SMS segments",
+  [FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT]: "Monthly SMS Recipients",
   [FEATURE_KEYS.TEAM_SCHEDULING]: "Team scheduling",
   [FEATURE_KEYS.MEDICAL_INVENTORY]: "Medical inventory",
   [FEATURE_KEYS.MEDICAL_INCIDENT_USAGE]: "Medical supplies on incidents",
@@ -85,4 +85,10 @@ export const FEATURE_DISPLAY_NAMES: Record<FeatureKey, string> = {
   [FEATURE_KEYS.SENSORS]: "Sensors",
   [FEATURE_KEYS.SENSOR_ALARMS]: "Sensor alarms",
   [FEATURE_KEYS.TRAINING_MANAGEMENT]: "Training Management",
+};
+
+/** Short customer-facing help. Internal keys and usage math stay unchanged. */
+export const FEATURE_CUSTOMER_HELP: Partial<Record<FeatureKey, string>> = {
+  [FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT]:
+    "Each recipient counts as one SMS. A message sent to 3 people uses 3 SMS.",
 };

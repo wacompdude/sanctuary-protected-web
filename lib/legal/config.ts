@@ -51,7 +51,7 @@ export const POLICY_DATES = {
   privacyEffective: "2026-09-07",
   privacyUpdated: "2026-09-07",
   billingEffective: "2026-09-07",
-  billingUpdated: "2026-09-07",
+  billingUpdated: "2026-09-08",
 } as const;
 
 export type PolicyDocumentKey = keyof typeof POLICY_VERSIONS;

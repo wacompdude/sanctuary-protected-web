@@ -2,7 +2,12 @@ import { requirePlatformPermission } from "@/lib/platform/auth";
 import { requirePlatformAdminClient } from "@/lib/platform/queries";
 import { writePlatformAdminAction } from "@/lib/platform/audit";
 import { BOOLEAN_FEATURE_KEYS, INTEGER_FEATURE_KEYS } from "@/lib/subscriptions/entitlement-values";
-import { FEATURE_DISPLAY_NAMES, isFeatureKey } from "@/lib/subscriptions/feature-keys";
+import {
+  FEATURE_CUSTOMER_HELP,
+  FEATURE_DISPLAY_NAMES,
+  FEATURE_KEYS,
+  isFeatureKey,
+} from "@/lib/subscriptions/feature-keys";
 import { getMinimumPlanForFeature } from "@/lib/subscriptions/catalog";
 import type { FeatureValueType } from "@/lib/subscriptions/types";
 
@@ -99,15 +104,26 @@ export async function getPlanCatalogForPlatform(
             ? null
             : Number(assignment.integer_value);
         const unlimited = valueType === "integer" && hasAssignment && integerValue === null;
+        const featureKey = String(feature.feature_key);
         return {
           featureId: String(feature.id),
-          featureKey: String(feature.feature_key),
-          displayName: String(
-            feature.display_name ??
-              FEATURE_DISPLAY_NAMES[feature.feature_key as keyof typeof FEATURE_DISPLAY_NAMES] ??
-              feature.feature_key,
-          ),
-          description: (feature.description as string | null) ?? null,
+          featureKey,
+          displayName:
+            featureKey === FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT
+              ? FEATURE_DISPLAY_NAMES[FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT]
+              : String(
+                  feature.display_name ??
+                    FEATURE_DISPLAY_NAMES[
+                      feature.feature_key as keyof typeof FEATURE_DISPLAY_NAMES
+                    ] ??
+                    feature.feature_key,
+                ),
+          description:
+            (isFeatureKey(featureKey)
+              ? FEATURE_CUSTOMER_HELP[featureKey]
+              : null) ??
+            (feature.description as string | null) ??
+            null,
           category: (feature.category as string | null) ?? null,
           valueType,
           enabled:
@@ -244,8 +260,16 @@ export async function listFeatureCatalogForPlatform(): Promise<
     rows.push({
       id: String(feature.id),
       featureKey,
-      displayName: String(feature.display_name ?? featureKey),
-      description: (feature.description as string | null) ?? null,
+      displayName:
+        featureKey === FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT
+          ? FEATURE_DISPLAY_NAMES[FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT]
+          : String(feature.display_name ?? featureKey),
+      description:
+        (isFeatureKey(featureKey)
+          ? FEATURE_CUSTOMER_HELP[featureKey]
+          : null) ??
+        (feature.description as string | null) ??
+        null,
       category: (feature.category as string | null) ?? null,
       status: String(feature.status ?? ""),
       valueType: String(feature.value_type ?? ""),

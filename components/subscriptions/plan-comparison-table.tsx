@@ -30,10 +30,12 @@ export function PlanComparisonTable({
         <tbody>
           {rows.map((row) => (
             <tr key={row.featureKey} className="border-t border-border">
-              <td className="px-3 py-2">
+              <td className="px-3 py-2 align-top">
                 <div className="font-medium">{row.displayName}</div>
-                {row.valueType !== "boolean" ? (
-                  <div className="text-xs text-muted-foreground">Limit</div>
+                {row.helperText ? (
+                  <p className="mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground">
+                    {row.helperText}
+                  </p>
                 ) : null}
               </td>
               {plans.map((plan) => {

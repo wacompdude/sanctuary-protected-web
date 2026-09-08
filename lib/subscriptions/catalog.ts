@@ -10,7 +10,9 @@ import {
   type MinimumPlanInfo,
 } from "@/lib/subscriptions/feature-access";
 import {
+  FEATURE_CUSTOMER_HELP,
   FEATURE_DISPLAY_NAMES,
+  FEATURE_KEYS,
   isFeatureKey,
   type FeatureKey,
 } from "@/lib/subscriptions/feature-keys";
@@ -34,10 +36,22 @@ export type PlanComparisonRow = {
   featureKey: string;
   displayName: string;
   description: string | null;
+  helperText?: string | null;
   category: string;
   valueType: string;
   cells: Record<string, PlanComparisonCell>;
 };
+
+function customerFacingFeatureName(feature: FeatureRecord): string {
+  const key = String(feature.feature_key);
+  if (key === FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT) {
+    return FEATURE_DISPLAY_NAMES[FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT];
+  }
+  if (isFeatureKey(key) && FEATURE_DISPLAY_NAMES[key]) {
+    return feature.display_name || FEATURE_DISPLAY_NAMES[key];
+  }
+  return feature.display_name || key;
+}
 
 function assignmentEnabled(assignment: PlanFeatureAssignment): boolean {
   if (assignment.value_type === "boolean") {
@@ -173,10 +187,14 @@ export function buildPlanComparison(params: {
           unlimited: false,
         };
       }
+      const featureKey = String(feature.feature_key);
       return {
-        featureKey: String(feature.feature_key),
-        displayName: feature.display_name || FEATURE_DISPLAY_NAMES[feature.feature_key as FeatureKey] || String(feature.feature_key),
+        featureKey,
+        displayName: customerFacingFeatureName(feature),
         description: feature.description,
+        helperText: isFeatureKey(featureKey)
+          ? FEATURE_CUSTOMER_HELP[featureKey] ?? null
+          : null,
         category: feature.category,
         valueType: feature.value_type,
         cells,

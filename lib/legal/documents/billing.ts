@@ -181,7 +181,7 @@ export const BILLING_DOCUMENT: LegalDocument = {
       blocks: [
         {
           type: "p",
-          text: "Text/SMS for operational notifications is plan-gated. Typical included monthly segment allowances in the current entitlement matrix are none on Servant Standard, 250 on Steward Pro, and 1,000 on Shepherd Plus and Omni Enterprise. When a limit is reached, additional sending is blocked rather than billed as an overage in the current product. Unused segments are not described as rolling over.",
+          text: "Text/SMS for operational notifications is plan-gated. Typical included monthly SMS recipient allowances in the current entitlement matrix are none on Servant Standard, 250 on Steward Pro, and 1,000 on Shepherd Plus and Omni Enterprise. Each recipient of a text counts as one SMS. When a limit is reached, additional sending is blocked rather than billed as an overage in the current product. Unused allowance is not described as rolling over.",
         },
         {
           type: "placeholder",
@@ -189,7 +189,7 @@ export const BILLING_DOCUMENT: LegalDocument = {
         },
         {
           type: "p",
-          text: "Whether unused segments reset on a calendar month, whether overages will later be billed, and how carrier pass-through fees are handled have not been published as final business rules. Login verification texts, when used, follow Account security settings and are separate from Organization notification allowances.",
+          text: "Whether unused SMS allowance resets on a calendar month, whether overages will later be billed, and how carrier pass-through fees are handled have not been published as final business rules. Login verification texts, when used, follow Account security settings and are separate from Organization notification allowances.",
         },
       ],
     },

@@ -18,6 +18,7 @@ export {
   FEATURE_KEYS,
   FEATURE_KEY_LIST,
   FEATURE_DISPLAY_NAMES,
+  FEATURE_CUSTOMER_HELP,
   isFeatureKey,
 } from "@/lib/subscriptions/feature-keys";
 export type { FeatureKey } from "@/lib/subscriptions/feature-keys";

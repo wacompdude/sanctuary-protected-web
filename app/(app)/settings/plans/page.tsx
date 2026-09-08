@@ -33,6 +33,21 @@ async function PlansContent() {
         <p className="mt-1 text-muted-foreground">
           Current plan and features for {church.name}.
         </p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Paid plans are governed by our{" "}
+          <Link href="/billing" className="underline underline-offset-4">
+            Billing &amp; Subscription Policy
+          </Link>
+          ,{" "}
+          <Link href="/terms" className="underline underline-offset-4">
+            Terms of Service
+          </Link>
+          , and{" "}
+          <Link href="/privacy" className="underline underline-offset-4">
+            Privacy Policy
+          </Link>
+          .
+        </p>
       </div>
 
       <Card>

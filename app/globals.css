@@ -301,4 +301,10 @@ html.dark [data-radix-popper-content-wrapper] {
   [data-print-hide] {
     display: none !important;
   }
+  .legal-document {
+    max-width: none !important;
+    font-size: 11pt;
+    line-height: 1.45;
+    color: #111 !important;
+  }
 }

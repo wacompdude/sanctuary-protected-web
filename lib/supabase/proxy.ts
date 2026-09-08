@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import {
   isAuthEntryPath,
+  isLegalPublicPath,
   isMfaChallengePath,
   isProtectedPath,
   isPublicPath,
@@ -44,6 +45,11 @@ export async function updateSession(request: NextRequest) {
   // Provider webhooks must reach the route handler as POST. Never redirect them
   // to /login (307 preserves POST → page routes answer with 405).
   if (isWebhookPath(pathname)) {
+    return supabaseResponse;
+  }
+
+  // Policy pages must render with no session, MFA cookie, or Supabase round-trip.
+  if (isLegalPublicPath(pathname)) {
     return supabaseResponse;
   }
 

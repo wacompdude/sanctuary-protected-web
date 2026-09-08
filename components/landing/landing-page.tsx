@@ -2,6 +2,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { BrandLogo } from "@/components/brand-logo";
 import { LandingMotion } from "@/components/landing/landing-motion";
+import { LegalLinks } from "@/components/legal/legal-links";
+import { OPERATOR_DISPLAY_NAME, copyrightYear } from "@/lib/legal/config";
 
 const HERO_IMAGE =
   "https://images.unsplash.com/photo-1438231911502-409ad9611d8e?auto=format&fit=crop&w=2400&q=80";
@@ -176,13 +178,16 @@ export function LandingPage() {
       </section>
 
       <footer className="border-t border-[var(--lp-mist)] px-6 py-10">
-        <div className="mx-auto flex max-w-6xl flex-col gap-3 text-sm text-[var(--lp-muted)] sm:flex-row sm:items-center sm:justify-between">
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 text-sm text-[var(--lp-muted)] sm:flex-row sm:items-center sm:justify-between">
           <BrandLogo
             href="/"
             size={28}
             wordmarkClassName="font-display text-base font-normal text-[var(--lp-forest)]"
           />
-          <p>sanctuaryprotected.com</p>
+          <LegalLinks variant="short" className="text-[var(--lp-muted)]" />
+          <p>
+            © {copyrightYear()} {OPERATOR_DISPLAY_NAME}
+          </p>
         </div>
       </footer>
     </div>

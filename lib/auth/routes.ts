@@ -1,3 +1,6 @@
+/** Public legal documents — never require login, MFA, or an organization. */
+export const LEGAL_PUBLIC_PATHS = ["/terms", "/privacy", "/billing"] as const;
+
 /** Routes accessible without authentication. */
 export const PUBLIC_PATHS = [
   "/",
@@ -10,6 +13,7 @@ export const PUBLIC_PATHS = [
   "/auth/error",
   "/auth/confirm",
   "/platform/invitations/accept",
+  ...LEGAL_PUBLIC_PATHS,
 ];
 
 /** Path prefixes that remain public (e.g. email confirmation callbacks). */
@@ -66,7 +70,12 @@ export const PROTECTED_PATH_PREFIXES = [
   "/platform",
 ];
 
+export function isLegalPublicPath(pathname: string): boolean {
+  return (LEGAL_PUBLIC_PATHS as readonly string[]).includes(pathname);
+}
+
 export function isPublicPath(pathname: string): boolean {
+  if (isLegalPublicPath(pathname)) return true;
   if (PUBLIC_PATHS.includes(pathname)) return true;
   if (isWebhookPath(pathname)) return true;
   return PUBLIC_PATH_PREFIXES.some(

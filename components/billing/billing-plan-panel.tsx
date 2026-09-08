@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
@@ -127,6 +128,22 @@ export function BillingPlanPanel({
   return (
     <div className="space-y-6">
       <p className="text-sm text-muted-foreground">{providerMessage}</p>
+      <p className="text-sm text-muted-foreground">
+        Plan prices, billing frequency, automatic renewal (when a payment
+        processor is connected), cancellation, and refunds are described in our{" "}
+        <Link href="/billing" className="underline underline-offset-4">
+          Billing &amp; Subscription Policy
+        </Link>
+        . Also see our{" "}
+        <Link href="/terms" className="underline underline-offset-4">
+          Terms of Service
+        </Link>{" "}
+        and{" "}
+        <Link href="/privacy" className="underline underline-offset-4">
+          Privacy Policy
+        </Link>
+        .
+      </p>
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         {plans.map((plan) => {

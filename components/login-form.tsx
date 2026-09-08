@@ -177,6 +177,19 @@ export function LoginForm({
                 Create an account
               </Link>
             </div>
+            <p className="mt-4 text-center text-xs text-muted-foreground">
+              <Link href="/terms" className="underline-offset-4 hover:underline">
+                Terms of Service
+              </Link>
+              {" · "}
+              <Link href="/privacy" className="underline-offset-4 hover:underline">
+                Privacy Policy
+              </Link>
+              {" · "}
+              <Link href="/billing" className="underline-offset-4 hover:underline">
+                Billing Policy
+              </Link>
+            </p>
           </form>
         </CardContent>
       </Card>

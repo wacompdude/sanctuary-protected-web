@@ -42,12 +42,6 @@ export function LandingPage() {
             wordmarkClassName="font-display text-lg font-normal tracking-tight text-white drop-shadow-sm md:text-xl"
           />
           <nav className="flex items-center gap-6 text-sm text-white">
-            <a
-              href="#platform"
-              className="hidden drop-shadow-sm hover:text-white/90 sm:inline"
-            >
-              Platform
-            </a>
             <Link
               href="/login"
               className="rounded-md bg-white px-4 py-2 font-semibold text-[var(--lp-forest)] transition hover:bg-[var(--lp-mist)]"
@@ -104,7 +98,7 @@ export function LandingPage() {
         </LandingMotion>
       </section>
 
-      <section id="platform" className="px-6 py-20 md:py-28">
+      <section id="ministry-safety" className="px-6 py-20 md:py-28">
         <div className="mx-auto max-w-3xl text-center">
           <h2 className="font-display text-3xl tracking-tight text-[var(--lp-forest)] md:text-4xl">
             Built for ministry safety teams

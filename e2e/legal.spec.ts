@@ -74,6 +74,16 @@ test.describe("public legal pages", () => {
     await expect(page).toHaveURL(/\/terms$/);
   });
 
+  test("public homepage does not mention Platform", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByRole("link", { name: "Platform" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /\/platform/i })).toHaveCount(0);
+    await expect(page.locator("a[href='/platform']")).toHaveCount(0);
+    await expect(page.locator("a[href='#platform']")).toHaveCount(0);
+    await expect(page.locator("#platform")).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Sign in" }).first()).toBeVisible();
+  });
+
   test("login page links open policies without signing in", async ({ page }) => {
     await page.goto("/login");
     await expect(page.getByLabel("Email")).toBeVisible();

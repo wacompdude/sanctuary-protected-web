@@ -2,13 +2,14 @@ import { expect, test, type Page } from "@playwright/test";
 import {
   PHONE_HELP,
   PRIMARY_EMAIL_HELP,
-  SLUG_HELP,
   TIMEZONE_HELP,
 } from "../lib/organization/field-help";
-import { SLUG_FIELD_LABEL, SLUG_HELP_LABEL } from "../lib/organization/slug";
+import { SLUG_FIELD_LABEL } from "../lib/organization/slug";
 import {
+  generateUniqueOrganizationSlug,
   slugAfterNameChange,
   slugifyOrganizationName,
+  uniqueOrganizationSlugCandidate,
 } from "../lib/organization/slug";
 
 async function contrastLooksReadable(page: Page, selector: string) {
@@ -30,6 +31,26 @@ test.describe("organization slug helpers", () => {
     expect(slugifyOrganizationName("Church & Community Center")).toBe(
       "church-community-center",
     );
+    expect(slugifyOrganizationName("  --Grace Church--  ")).toBe("grace-church");
+    expect(slugifyOrganizationName("Grace Church!!")).not.toMatch(/^-|-$/);
+  });
+
+  test("duplicate names receive numbered suffixes starting at -2", () => {
+    expect(uniqueOrganizationSlugCandidate("grace-community-church", 1)).toBe(
+      "grace-community-church",
+    );
+    expect(uniqueOrganizationSlugCandidate("grace-community-church", 2)).toBe(
+      "grace-community-church-2",
+    );
+    expect(uniqueOrganizationSlugCandidate("grace-community-church", 3)).toBe(
+      "grace-community-church-3",
+    );
+    const taken = new Set(["grace-community-church"]);
+    expect(
+      generateUniqueOrganizationSlug("Grace Community Church", (slug) =>
+        taken.has(slug),
+      ),
+    ).toBe("grace-community-church-2");
   });
 
   test("auto mode updates with the name; manual mode does not", () => {
@@ -60,8 +81,19 @@ test.describe("organization slug helpers", () => {
   });
 });
 
+test.describe("church onboarding access", () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
+
+  test("unauthenticated visitors are sent to login", async ({ page }) => {
+    await page.goto("/onboarding/church");
+    await expect(page).toHaveURL(/\/login/);
+  });
+});
+
 test.describe("church creation form", () => {
-  test("help icons, slug auto-generation, and themes", async ({ page }) => {
+  test("create vs join wording, no slug field, help icons, and themes", async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/onboarding/church");
     if (page.url().includes("/login")) {
@@ -69,12 +101,33 @@ test.describe("church creation form", () => {
       return;
     }
 
+    await expect(
+      page.getByRole("heading", { name: "Create or Join a Church" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Create a New Church" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Join an Existing Church" }),
+    ).toBeVisible();
+    await expect(page.getByText("church administrator").first()).toBeVisible();
+    await expect(
+      page.getByText(/email address you used|Your account email:/i).first(),
+    ).toBeVisible();
+
+    await expect(page.getByText("Platform Administrator")).toHaveCount(0);
+    await expect(page.getByText("Platform administrators")).toHaveCount(0);
+    await expect(page.getByText("Super Admin")).toHaveCount(0);
+
+    await expect(page.getByLabel(SLUG_FIELD_LABEL)).toHaveCount(0);
+    await expect(page.getByText("URL Name (slug)")).toHaveCount(0);
+    await expect(page.locator('input[name="slug"]')).toHaveCount(0);
+    await expect(page.getByLabel("Church name")).toBeVisible();
+
     const emailHelp = page.getByRole("button", { name: "Primary Email help" });
     const phoneHelp = page.getByRole("button", { name: "Phone help" });
-    const slugHelp = page.getByRole("button", { name: SLUG_HELP_LABEL });
     await expect(emailHelp).toBeVisible();
     await expect(phoneHelp).toBeVisible();
-    await expect(slugHelp).toBeVisible();
 
     await emailHelp.click();
     await expect(page.getByRole("tooltip")).toContainText(
@@ -84,10 +137,6 @@ test.describe("church creation form", () => {
 
     await phoneHelp.focus();
     await expect(page.getByRole("tooltip")).toContainText(PHONE_HELP.slice(0, 40));
-    await page.keyboard.press("Escape");
-
-    await slugHelp.click();
-    await expect(page.getByRole("tooltip")).toContainText(SLUG_HELP.slice(0, 40));
     await page.keyboard.press("Escape");
 
     const timezoneHelp = page.getByRole("button", { name: "Time zone help" });
@@ -124,21 +173,6 @@ test.describe("church creation form", () => {
     await timezone.fill("zzzz-not-a-timezone");
     await expect(page.getByText("No time zones found.")).toBeVisible();
     await page.keyboard.press("Escape");
-
-    const name = page.getByLabel("Church name");
-    const slug = page.getByLabel(SLUG_FIELD_LABEL);
-    await name.fill("First Church of the First Church");
-    await expect(slug).toHaveValue("first-church-of-the-first-church");
-    await expect(page.getByText("Identifier: first-church-of-the-first-church")).toBeVisible();
-    await name.fill("First Church of the First Church - Main");
-    await expect(slug).toHaveValue("first-church-of-the-first-church-main");
-
-    await slug.fill("fcotfc");
-    await name.fill("First Church of the First Church");
-    await expect(slug).toHaveValue("fcotfc");
-
-    await page.getByRole("button", { name: "Generate from church name" }).click();
-    await expect(slug).toHaveValue("first-church-of-the-first-church");
 
     await contrastLooksReadable(page, "body");
     await page.emulateMedia({ colorScheme: "dark" });

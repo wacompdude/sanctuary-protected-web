@@ -1,11 +1,12 @@
 import type { ActionState } from "@/lib/organization/types";
 import {
-  isValidOrganizationSlug,
+  isOrganizationSlugConflict,
   slugifyOrganizationName,
-  SLUG_FORMAT_MESSAGE,
-  SLUG_REQUIRED_MESSAGE,
 } from "@/lib/organization/slug";
 import { isValidIanaTimeZone } from "@/lib/datetime/timezones";
+
+export const CHURCH_CREATE_GENERIC_ERROR =
+  "We couldn't create the church account. Please try again.";
 
 export type ChurchOnboardingInput = {
   name: string;
@@ -29,8 +30,8 @@ export function validateChurchOnboarding(
   const fieldErrors: Record<string, string> = {};
 
   const name = String(formData.get("name") ?? "").trim();
-  const slugRaw = String(formData.get("slug") ?? "").trim().toLowerCase();
-  const slug = slugRaw || slugifyOrganizationName(name);
+  // Never trust a client-supplied slug. The server always derives it from the name.
+  const slug = slugifyOrganizationName(name);
   const primary_email = String(formData.get("primary_email") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
   const address_line_1 = String(formData.get("address_line_1") ?? "").trim();
@@ -43,11 +44,6 @@ export function validateChurchOnboarding(
 
   if (!name) fieldErrors.name = "Church name is required.";
   else if (name.length > 200) fieldErrors.name = "Church name is too long.";
-
-  if (!slug) fieldErrors.slug = SLUG_REQUIRED_MESSAGE;
-  else if (!isValidOrganizationSlug(slug)) {
-    fieldErrors.slug = SLUG_FORMAT_MESSAGE;
-  }
 
   if (!primary_email) fieldErrors.primary_email = "Primary email is required.";
   else if (!EMAIL_PATTERN.test(primary_email)) {
@@ -84,4 +80,40 @@ export function validateChurchOnboarding(
       campus_name,
     },
   };
+}
+
+/**
+ * Map RPC / database errors to a customer-safe action result.
+ * Slug collisions should be retried by the caller before this mapping.
+ */
+export function mapChurchCreateRpcError(message: string): ActionState {
+  if (message.includes("UNAUTHENTICATED")) {
+    return { error: "You must be signed in to create a church." };
+  }
+
+  if (message.includes("VALIDATION:")) {
+    const text = message.replace(/^.*VALIDATION:\s*/i, "");
+    if (/slug|url name/i.test(text) || isOrganizationSlugConflict(text)) {
+      return { error: CHURCH_CREATE_GENERIC_ERROR };
+    }
+    if (/church name is required/i.test(text)) {
+      return { fieldErrors: { name: "Church name is required." } };
+    }
+    if (/primary campus name is required/i.test(text)) {
+      return { fieldErrors: { campus_name: "Primary campus name is required." } };
+    }
+    if (/primary email is required/i.test(text)) {
+      return { fieldErrors: { primary_email: "Primary email is required." } };
+    }
+    if (/primary email is invalid/i.test(text)) {
+      return { fieldErrors: { primary_email: "Enter a valid email address." } };
+    }
+    return { error: text };
+  }
+
+  if (isOrganizationSlugConflict(message)) {
+    return { error: CHURCH_CREATE_GENERIC_ERROR };
+  }
+
+  return { error: CHURCH_CREATE_GENERIC_ERROR };
 }

@@ -6,34 +6,26 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FieldLabelWithHelp } from "@/components/ui/field-help";
-import { SlugField } from "@/components/ui/slug-field";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import type { ActionState } from "@/lib/organization/types";
 import { TimeZoneSelector } from "@/components/ui/timezone-select";
 import {
   PHONE_HELP,
   PRIMARY_EMAIL_HELP,
-  SLUG_HELP,
   TIMEZONE_HELP,
 } from "@/lib/organization/field-help";
-import {
-  slugAfterNameChange,
-  slugifyOrganizationName,
-  type OrganizationSlugMode,
-} from "@/lib/organization/slug";
 
 const initialState: ActionState = {};
 
 export function ChurchOnboardingForm({
-  title = "Church details",
-  description = "Create your church and primary campus. You will be assigned as the owner.",
-  submitLabel = "Create church",
+  title = "Create a New Church",
+  description = "If you are setting up Sanctuary Protected for your church, enter the church information below.",
+  submitLabel = "Create Church",
 }: {
   title?: string;
   description?: string;
@@ -44,28 +36,16 @@ export function ChurchOnboardingForm({
     initialState,
   );
   const [name, setName] = useState("");
-  const [slug, setSlug] = useState("");
-  const [slugMode, setSlugMode] = useState<OrganizationSlugMode>("auto");
-
-  function handleNameChange(value: string) {
-    setName(value);
-    setSlug(slugAfterNameChange(slugMode, value, slug));
-  }
-
-  function handleSlugInput(value: string) {
-    setSlugMode("manual");
-    setSlug(value);
-  }
-
-  function generateFromName() {
-    setSlugMode("auto");
-    setSlug(slugifyOrganizationName(name));
-  }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{title}</CardTitle>
+        <h2
+          id="create-church-heading"
+          className="text-xl font-semibold leading-none tracking-tight"
+        >
+          {title}
+        </h2>
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
@@ -83,25 +63,13 @@ export function ChurchOnboardingForm({
               name="name"
               placeholder="Grace Community Church"
               value={name}
-              onChange={(event) => handleNameChange(event.target.value)}
+              onChange={(event) => setName(event.target.value)}
               aria-invalid={!!state.fieldErrors?.name}
             />
             {state.fieldErrors?.name && (
               <p className="text-sm text-destructive">{state.fieldErrors.name}</p>
             )}
           </div>
-
-          <SlugField
-            id="slug"
-            name="slug"
-            help={SLUG_HELP}
-            value={slug}
-            onChange={handleSlugInput}
-            error={state.fieldErrors?.slug}
-            showGenerate={slugMode === "manual"}
-            onGenerate={generateFromName}
-            generateLabel="Generate from church name"
-          />
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">

@@ -6,10 +6,23 @@ import { createClient } from "@/lib/supabase/server";
 import { writeActiveChurchCookie } from "@/lib/organization/cookie";
 import { setActiveChurchForUser } from "@/lib/organization/context";
 import type { ActionState } from "@/lib/organization/types";
-import { validateChurchOnboarding } from "@/lib/organization/onboarding";
-import { SLUG_DUPLICATE_MESSAGE } from "@/lib/organization/slug";
+import {
+  CHURCH_CREATE_GENERIC_ERROR,
+  mapChurchCreateRpcError,
+  validateChurchOnboarding,
+} from "@/lib/organization/onboarding";
+import {
+  isOrganizationSlugConflict,
+  ORGANIZATION_SLUG_MAX_ALLOCATION_ATTEMPTS,
+  uniqueOrganizationSlugCandidate,
+} from "@/lib/organization/slug";
 import { isServiceRoleConfigured } from "@/lib/supabase/admin";
 import { ensureChurchSubscription } from "@/lib/subscriptions/mutations";
+
+type CreateRpcResult = {
+  data: unknown;
+  error: { message: string } | null;
+};
 
 export async function createChurchOnboarding(
   _prev: ActionState,
@@ -31,7 +44,7 @@ export async function createChurchOnboarding(
     return { error: "You must be signed in to create a church." };
   }
 
-  const rpcArgs = {
+  const baseArgs = {
     p_name: input.name,
     p_primary_email: input.primary_email,
     p_phone: input.phone,
@@ -42,67 +55,66 @@ export async function createChurchOnboarding(
     p_postal_code: input.postal_code,
     p_timezone: input.timezone,
     p_campus_name: input.campus_name,
-    p_slug: input.slug,
   };
 
-  let { data, error } = await supabase.rpc(
-    "create_organization_with_owner",
-    rpcArgs,
-  );
+  async function rpcCreate(slug: string | null): Promise<CreateRpcResult> {
+    const rpcArgs =
+      slug === null
+        ? baseArgs
+        : { ...baseArgs, p_slug: slug };
 
-  if (
-    error &&
-    /PGRST202|schema cache|could not find the function/i.test(error.message)
-  ) {
-    const { p_slug: _omitted, ...legacyArgs } = rpcArgs;
-    ({ data, error } = await supabase.rpc(
+    let { data, error } = await supabase.rpc(
       "create_organization_with_owner",
-      legacyArgs,
-    ));
+      rpcArgs,
+    );
+
+    if (
+      error &&
+      /PGRST202|schema cache|could not find the function/i.test(error.message)
+    ) {
+      ({ data, error } = await supabase.rpc(
+        "create_organization_with_owner",
+        baseArgs,
+      ));
+    }
+
+    return { data, error: error ? { message: error.message } : null };
   }
 
-  if (error) {
-    const message = error.message || "Unable to create your church.";
-    if (message.includes("UNAUTHENTICATED")) {
-      return { error: "You must be signed in to create a church." };
+  let data: unknown = null;
+  let lastError: string | null = null;
+
+  for (
+    let attempt = 1;
+    attempt <= ORGANIZATION_SLUG_MAX_ALLOCATION_ATTEMPTS;
+    attempt += 1
+  ) {
+    const candidate = uniqueOrganizationSlugCandidate(input.slug, attempt);
+    const result = await rpcCreate(candidate);
+    if (!result.error) {
+      data = result.data;
+      lastError = null;
+      break;
     }
-    if (message.includes("VALIDATION:")) {
-      const text = message.replace(/^.*VALIDATION:\s*/i, "");
-      if (/slug/i.test(text)) {
-        return {
-          fieldErrors: {
-            slug: /already in use/i.test(text) ? SLUG_DUPLICATE_MESSAGE : text,
-          },
-        };
-      }
-      return { error: text };
-    }
+
+    lastError = result.error.message;
     if (
-      message.toLowerCase().includes("duplicate") &&
-      message.toLowerCase().includes("slug")
+      isOrganizationSlugConflict(lastError) &&
+      attempt < ORGANIZATION_SLUG_MAX_ALLOCATION_ATTEMPTS
     ) {
-      return {
-        fieldErrors: {
-          slug: SLUG_DUPLICATE_MESSAGE,
-        },
-      };
+      continue;
     }
-    if (message.toLowerCase().includes("already in use")) {
-      return {
-        fieldErrors: { slug: SLUG_DUPLICATE_MESSAGE },
-      };
-    }
-    if (message.includes("FORBIDDEN: cannot create your own membership")) {
-      return {
-        error:
-          "Unable to create owner membership for the new church. Ensure membership bootstrap rules are applied (migration 013/014).",
-      };
-    }
-    return { error: message };
+    break;
+  }
+
+  if (lastError) {
+    console.error("Church onboarding create failed:", lastError);
+    return mapChurchCreateRpcError(lastError);
   }
 
   if (!data) {
-    return { error: "Church creation did not return a result." };
+    console.error("Church onboarding create returned no result.");
+    return { error: CHURCH_CREATE_GENERIC_ERROR };
   }
 
   const payload =

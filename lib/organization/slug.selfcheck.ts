@@ -11,11 +11,13 @@ import { validateChurchOnboarding } from "./onboarding";
 import { canManageCampuses } from "../campuses/permissions";
 import { canManageChurchSettings } from "./settings";
 import {
+  generateUniqueOrganizationSlug,
   isValidOrganizationSlug,
   SLUG_DUPLICATE_MESSAGE,
   SLUG_FIELD_LABEL,
   slugAfterNameChange,
   slugifyOrganizationName,
+  uniqueOrganizationSlugCandidate,
   type OrganizationSlugMode,
 } from "./slug";
 
@@ -47,6 +49,49 @@ assert(isValidOrganizationSlug("first-church"), "valid slug");
 assert(!isValidOrganizationSlug("First Church"), "uppercase invalid");
 assert(!isValidOrganizationSlug("-leading"), "leading hyphen invalid");
 assert(!isValidOrganizationSlug("trailing-"), "trailing hyphen invalid");
+assert(
+  !slugifyOrganizationName("  --Grace   Church--  ").startsWith("-"),
+  "generated slugs do not begin with a hyphen",
+);
+assert(
+  !slugifyOrganizationName("Grace Church!!").endsWith("-"),
+  "generated slugs do not end with a hyphen",
+);
+assert(
+  uniqueOrganizationSlugCandidate("grace-community-church", 1) ===
+    "grace-community-church",
+  "first allocation is unsuffixed",
+);
+assert(
+  uniqueOrganizationSlugCandidate("grace-community-church", 2) ===
+    "grace-community-church-2",
+  "second allocation uses -2",
+);
+assert(
+  uniqueOrganizationSlugCandidate("grace-community-church", 3) ===
+    "grace-community-church-3",
+  "third allocation uses -3",
+);
+assert(
+  generateUniqueOrganizationSlug("Grace Community Church", () => false) ===
+    "grace-community-church",
+  "unique helper returns the base slug when none are taken",
+);
+assert(
+  generateUniqueOrganizationSlug("Grace Community Church", (slug) =>
+    slug === "grace-community-church",
+  ) === "grace-community-church-2",
+  "unique helper suffixes -2 when the base slug is taken",
+);
+const longBase = "a".repeat(80);
+assert(
+  uniqueOrganizationSlugCandidate(longBase, 2).length <= 80,
+  "suffixed slugs stay within the max length",
+);
+assert(
+  !uniqueOrganizationSlugCandidate(longBase, 2).startsWith("-"),
+  "truncated suffixed slugs do not begin with a hyphen",
+);
 
 let mode: OrganizationSlugMode = "auto";
 let slug = slugAfterNameChange(mode, "First Church of the First Church", "");
@@ -90,7 +135,7 @@ function form(entries: Record<string, string>) {
   return data;
 }
 
-const invalidOrg = validateChurchOnboarding(
+const ignoredClientSlug = validateChurchOnboarding(
   form({
     name: "Grace Community Church",
     primary_email: "office@church.org",
@@ -104,7 +149,14 @@ const invalidOrg = validateChurchOnboarding(
     slug: "Not Valid!",
   }),
 );
-assert(Boolean(invalidOrg.fieldErrors?.slug), "invalid organization slug rejected");
+assert(
+  ignoredClientSlug.data?.slug === "grace-community-church",
+  "onboarding ignores a client-supplied organization slug",
+);
+assert(
+  !ignoredClientSlug.fieldErrors?.slug,
+  "onboarding does not surface slug field errors to the user",
+);
 
 const invalidCampus = validateCampusForm(
   form({
@@ -134,7 +186,8 @@ const campusSource = readFileSync(
   join(root, "components/campuses/campus-form.tsx"),
   "utf8",
 );
-assert(onboardingSource.includes("SlugField"), "onboarding uses shared slug field");
+assert(!onboardingSource.includes("SlugField"), "onboarding does not show a slug field");
+assert(!onboardingSource.includes("URL Name"), "onboarding does not mention URL Name");
 assert(settingsSource.includes("SlugField"), "organization settings use shared slug field");
 assert(campusSource.includes("SlugField"), "campus settings use shared slug field");
 assert(settingsSource.includes('useState<OrganizationSlugMode>("manual")'), "existing org slug starts manual");

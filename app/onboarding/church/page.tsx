@@ -52,52 +52,71 @@ async function ChurchOnboardingContent() {
         />
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
-            Set up your church
+            Create or Join a Church
           </h1>
-          <p className="mt-1 text-muted-foreground">
-            Tell us about your church and primary campus to get started with
-            Sanctuary Protected.
+          <p className="mt-2 text-pretty text-muted-foreground">
+            Your Sanctuary Protected account has been created. Now connect your
+            account to a church.
           </p>
         </div>
       </div>
 
-      {hasPlatformAccount || signedInEmail ? (
-        <Card className="border-amber-700/40 bg-amber-50/80 dark:bg-amber-950/20">
-          <CardContent className="space-y-3 py-5 text-sm">
-            <p className="font-medium text-amber-950 dark:text-amber-100">
-              Signed in
-              {signedInEmail ? ` as ${signedInEmail}` : ""}.
+      <section aria-labelledby="join-church-heading">
+        <Card>
+          <CardContent className="space-y-4 py-6">
+            <div className="space-y-2">
+              <h2
+                id="join-church-heading"
+                className="text-xl font-semibold leading-none tracking-tight"
+              >
+                Join an Existing Church
+              </h2>
+              <p className="text-pretty text-sm text-muted-foreground">
+                If your church already uses Sanctuary Protected, give your church
+                administrator the email address you used to create this account.
+                They can add you to the church.
+              </p>
+            </div>
+
+            {signedInEmail ? (
+              <div className="space-y-1 rounded-md border bg-muted/40 px-3 py-3">
+                <p className="text-sm font-medium">Your account email:</p>
+                <p className="break-all text-sm">{signedInEmail}</p>
+                <p className="pt-1 text-pretty text-sm text-muted-foreground">
+                  Provide this email address to your church administrator so they
+                  can add you to the church.
+                </p>
+              </div>
+            ) : (
+              <p className="text-pretty text-sm text-muted-foreground">
+                Provide the email address you used to create this account. Your
+                church administrator uses that email to add you.
+              </p>
+            )}
+
+            <p className="text-pretty text-sm text-muted-foreground">
+              Stay signed in while you wait. After you are added, refresh this
+              page or sign in again to open your church.
             </p>
-            <p className="text-muted-foreground">
-              This page is for creating a church with a church-user account.
-              Platform administrators usually do not create a church here —
-              open the platform console, or sign out and sign in with a church
-              account to use the standard dashboard.
-            </p>
+
             <div className="flex flex-wrap gap-2">
+              <SignOutFormButton variant="outline">Sign out</SignOutFormButton>
               {hasPlatformAccount ? (
                 <Link
                   href="/platform"
-                  className="inline-flex h-9 items-center justify-center rounded-md bg-amber-700 px-4 text-sm font-medium text-amber-50 hover:bg-amber-800"
+                  className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-4 text-sm font-medium hover:bg-accent"
                 >
-                  Open platform console
+                  Open the administration console
                 </Link>
               ) : null}
-              <SignOutFormButton variant="outline">
-                Sign out and use another account
-              </SignOutFormButton>
-              <Link
-                href="/login?switch=1"
-                className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-4 text-sm font-medium hover:bg-accent"
-              >
-                Go to login
-              </Link>
             </div>
           </CardContent>
         </Card>
-      ) : null}
+      </section>
 
-      <ChurchOnboardingForm />
+      <section aria-labelledby="create-church-heading">
+        <ChurchOnboardingForm />
+      </section>
     </>
   );
 }

@@ -7,7 +7,6 @@ import { writeAuditLog } from "@/lib/audit/log";
 import { AuditAction, AuditEntityType } from "@/lib/audit/actions";
 import { isNotificationChannel } from "@/lib/notifications/constants";
 import { parseGroupSeverity } from "@/lib/notifications/groups/validation";
-import { SMS_CONSENT_DISCLOSURE_VERSION } from "@/lib/notifications/endpoints/types";
 import { syncMyNotificationEndpoints } from "@/lib/notifications/endpoints/sync";
 import { isValidIanaTimeZone } from "@/lib/datetime/timezones";
 
@@ -164,6 +163,12 @@ export async function updateSmsConsentAction(
     const endpointId = String(formData.get("endpoint_id") ?? "").trim();
     const optIn = readCheckbox(formData, "sms_opt_in");
     if (!endpointId) return { error: "Text/SMS endpoint is required." };
+    if (optIn) {
+      return {
+        error:
+          "Enable SMS messaging from your profile. Saving a mobile number or checking a box here does not enroll you.",
+      };
+    }
 
     const { data: endpoint, error: loadError } = await supabase
       .from("notification_endpoints")
@@ -186,13 +191,10 @@ export async function updateSmsConsentAction(
     const { error } = await supabase
       .from("notification_endpoints")
       .update({
-        consent_status: optIn ? "granted" : "revoked",
+        consent_status: "revoked",
         consent_recorded_at: now,
-        consent_source: "preferences_ui",
-        consent_disclosure_version: SMS_CONSENT_DISCLOSURE_VERSION,
-        // Text/SMS delivery stays inactive until a provider is configured + verified.
-        status: optIn ? "unverified" : "disabled",
-        is_verified: false,
+        consent_source: "USER_PROFILE",
+        status: "disabled",
       })
       .eq("id", endpointId);
 
@@ -201,14 +203,11 @@ export async function updateSmsConsentAction(
     await writeAuditLog(supabase, {
       organizationId: church.id,
       userId: user.id,
-      action: optIn
-        ? AuditAction.NOTIFICATION_SMS_OPTED_IN
-        : AuditAction.NOTIFICATION_SMS_OPTED_OUT,
+      action: AuditAction.NOTIFICATION_SMS_OPTED_OUT,
       entityType: AuditEntityType.NOTIFICATION_ENDPOINT,
       entityId: endpointId,
       metadata: {
-        disclosure_version: SMS_CONSENT_DISCLOSURE_VERSION,
-        delivery_active: false,
+        source: "preferences_ui_opt_out",
       },
     });
 

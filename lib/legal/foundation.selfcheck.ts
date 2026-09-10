@@ -54,6 +54,9 @@ function main() {
   assert(!isPublicPath("/settings/billing"), "settings billing is not public");
   assert(LEGAL_ROUTES.terms === "/terms", "terms route");
   assert(LEGAL_NAV_ITEMS.length === 3, "three legal nav items");
+  assert(isLegalPublicPath("/sms"), "/sms is a public opt-in evidence page");
+  assert(isPublicPath("/sms"), "/sms is public");
+  assert(!isProtectedPath("/sms"), "/sms is not a protected app route");
 
   const terms = getLegalDocument("terms");
   const privacy = getLegalDocument("privacy");
@@ -63,7 +66,7 @@ function main() {
   assert(billing === BILLING_DOCUMENT, "billing document identity");
 
   assert(terms.sections.length === 30, "terms has 30 sections");
-  assert(privacy.sections.length === 24, "privacy has 24 sections");
+  assert(privacy.sections.length === 25, "privacy has 25 sections");
   assert(billing.sections.length === 20, "billing has 20 sections");
   assert(terms.version === POLICY_VERSIONS.terms, "terms version centralized");
   assert(privacy.version === POLICY_VERSIONS.privacy, "privacy version centralized");
@@ -117,6 +120,14 @@ function main() {
     ...flattenAttorneyReviewNotes(privacy),
     ...flattenAttorneyReviewNotes(billing),
   ];
+  assert(termsText.includes("Reply STOP"), "terms disclose STOP");
+  assert(termsText.includes("Reply HELP"), "terms disclose HELP");
+  assert(termsText.toLowerCase().includes("message and data rates may apply"), "terms disclose rates");
+  assert(termsText.includes("not a condition of purchasing"), "terms consent not required to purchase");
+  assert(privacyText.includes("SMS Messaging and Mobile Numbers"), "privacy has SMS section");
+  assert(privacyText.includes("Reply STOP"), "privacy discloses STOP");
+  assert(privacyText.includes("not sell, rent, or share SMS opt-in"), "privacy does not sell SMS consent");
+  assert(attorneyNotes.some((note) => note.includes("LEGAL REVIEW REQUIRED — SMS CONSENT")), "SMS legal review flagged in source");
   assert(attorneyNotes.some((note) => note.includes("limitation of liability")), "liability flagged in source");
   assert(attorneyNotes.some((note) => note.includes("indemnification")), "indemnity flagged in source");
   assert(attorneyNotes.some((note) => note.includes("dispute resolution")), "disputes flagged in source");
@@ -133,6 +144,7 @@ function main() {
     "app/(legal)/terms/page.tsx",
     "app/(legal)/privacy/page.tsx",
     "app/(legal)/billing/page.tsx",
+    "app/(legal)/sms/page.tsx",
     "components/legal/legal-page-layout.tsx",
     "components/legal/legal-document-view.tsx",
   ];

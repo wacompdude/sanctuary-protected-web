@@ -2,6 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getUserMemberships } from "@/lib/organization/auth";
+import { getRequestIpAddress } from "@/lib/audit/request-ip";
+import { handleSmsPhoneNumberChange } from "@/lib/sms/consent";
 import {
   validatePassword,
   validatePasswordConfirmation,
@@ -56,6 +59,14 @@ export async function updateOwnProfile(
       return { error: "You must be signed in to update your profile." };
     }
 
+    const { data: existingProfile } = await supabase
+      .from("profiles")
+      .select("phone")
+      .eq("id", user.id)
+      .maybeSingle();
+    const previousPhone =
+      typeof existingProfile?.phone === "string" ? existingProfile.phone : null;
+
     const fullName =
       [firstName, lastName].filter(Boolean).join(" ").trim() || null;
 
@@ -74,7 +85,27 @@ export async function updateOwnProfile(
       return { error: error.message };
     }
 
+    if (previousPhone !== (phone ?? null)) {
+      const memberships = await getUserMemberships(user.id);
+      const ipAddress = await getRequestIpAddress();
+      await Promise.all(
+        memberships.map((membership) =>
+          handleSmsPhoneNumberChange({
+            supabase,
+            organizationId: membership.organization_id,
+            userId: user.id,
+            actorUserId: user.id,
+            previousPhone,
+            nextPhone: phone,
+            source: "USER_PROFILE",
+            ipAddress,
+          }),
+        ),
+      );
+    }
+
     revalidatePath("/profile");
+    revalidatePath("/notifications/preferences");
     return { success: true };
   } catch (error) {
     return {

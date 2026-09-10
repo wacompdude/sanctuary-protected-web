@@ -11,3 +11,13 @@ export async function getRequestIpAddress(): Promise<string | null> {
     return null;
   }
 }
+
+export async function getRequestUserAgent(): Promise<string | null> {
+  try {
+    const { headers } = await import("next/headers");
+    const headerStore = await headers();
+    return headerStore.get("user-agent");
+  } catch {
+    return null;
+  }
+}

@@ -27,8 +27,8 @@ export function ProfileForm({ profile }: { profile: UserProfile }) {
       <CardHeader>
         <CardTitle>Your details</CardTitle>
         <CardDescription>
-          Update your name and phone. Church roles are managed separately by
-          your administrators.
+          Update your name and mobile phone. SMS messaging consent is managed
+          separately below. Church roles are managed by your administrators.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -78,15 +78,18 @@ export function ProfileForm({ profile }: { profile: UserProfile }) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="phone">Phone</Label>
+            <Label htmlFor="phone">Mobile Phone</Label>
             <Input
               id="phone"
               name="phone"
               type="tel"
               defaultValue={profile.phone ?? ""}
               autoComplete="tel"
-              placeholder="Optional"
+              placeholder="+1 (425) 555-1234"
             />
+            <p className="text-xs text-muted-foreground">
+              Saving a mobile number does not enroll you in SMS messaging.
+            </p>
           </div>
 
           <Button type="submit" disabled={pending}>

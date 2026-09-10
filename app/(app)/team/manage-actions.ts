@@ -12,6 +12,7 @@ import {
 } from "@/lib/organization/team";
 import { AuditAction, AuditEntityType } from "@/lib/audit/actions";
 import { getRequestIpAddress, writeAuditLog } from "@/lib/audit/log";
+import { handleSmsPhoneNumberChange } from "@/lib/sms/consent";
 import type { ProfileActionState } from "@/lib/profile/types";
 
 async function loadTargetMembership(
@@ -305,6 +306,14 @@ export async function updateMemberProfile(
       return { error: "Member not found." };
     }
 
+    const { data: previousProfile } = await supabase
+      .from("profiles")
+      .select("phone")
+      .eq("id", userId)
+      .maybeSingle();
+    const previousPhone =
+      typeof previousProfile?.phone === "string" ? previousProfile.phone : null;
+
     const { error: updateError } = await supabase.rpc("update_member_profile", {
       p_user_id: userId,
       p_first_name: firstName ?? "",
@@ -332,6 +341,18 @@ export async function updateMemberProfile(
       return { error: message };
     }
 
+    const ipAddress = await getRequestIpAddress();
+    await handleSmsPhoneNumberChange({
+      supabase,
+      organizationId: church.id,
+      userId,
+      actorUserId: user.id,
+      previousPhone,
+      nextPhone: phone,
+      source: "ADMIN_ASSISTED",
+      ipAddress,
+    });
+
     await writeAuditLog(supabase, {
       organizationId: church.id,
       userId: user.id,
@@ -342,12 +363,15 @@ export async function updateMemberProfile(
         target_user_id: userId,
         first_name: firstName,
         last_name: lastName,
+        phone_changed: previousPhone !== (phone ?? null),
+        sms_consent_transferred: false,
       },
-      ipAddress: await getRequestIpAddress(),
+      ipAddress,
     });
 
     revalidatePath("/team");
     revalidatePath("/settings/security");
+    revalidatePath("/profile");
     return { success: true };
   } catch (error) {
     return {

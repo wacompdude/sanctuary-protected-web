@@ -17,6 +17,12 @@ import {
   resolveUsersByChurchRole,
   resolveUsersByIds,
 } from "@/lib/notifications/resolve-recipients";
+import { FEATURE_KEYS } from "@/lib/subscriptions/feature-keys";
+import { hasFeature } from "@/lib/subscriptions/resolver";
+import {
+  evaluateSmsEligibility,
+  suppressionReasonFromSmsEligibility,
+} from "@/lib/sms/eligibility";
 
 export type NotificationTargetInput = {
   groupIds?: string[];
@@ -88,6 +94,7 @@ type EndpointRow = {
   is_verified: boolean;
   status: string;
   consent_status: string;
+  suppressed_at?: string | null;
 };
 
 function inQuietHours(
@@ -525,6 +532,15 @@ export async function resolveNotificationAudience(params: {
     return { members: [], deliveries: [], usedGroups };
   }
 
+  const smsFeatureAllowed = channels.includes("sms")
+    ? (
+        await hasFeature({
+          organizationId,
+          featureKey: FEATURE_KEYS.SMS,
+        }).catch(() => ({ allowed: false }))
+      ).allowed
+    : false;
+
   const userIds = members.map((member) => member.userId);
 
   const [{ data: profiles }, { data: endpoints }, { data: rules }, { data: legacyPrefs }] =
@@ -536,7 +552,7 @@ export async function resolveNotificationAudience(params: {
       supabase
         .from("notification_endpoints")
         .select(
-          "id, user_id, channel, destination, normalized_destination, is_primary, is_verified, status, consent_status",
+          "id, user_id, channel, destination, normalized_destination, is_primary, is_verified, status, consent_status, suppressed_at",
         )
         .eq("organization_id", organizationId)
         .in("user_id", userIds)
@@ -784,7 +800,44 @@ export async function resolveNotificationAudience(params: {
         continue;
       }
 
-      if (channel === "sms" || channel === "push") {
+      if (channel === "sms") {
+        const endpoint = selectEndpoint(endpointRows, member.userId, "sms");
+        const eligibility = !smsFeatureAllowed
+          ? { allowed: false as const, reason: "ORGANIZATION_SMS_TIER_UNAVAILABLE" as const }
+          : evaluateSmsEligibility({
+              organizationId,
+              userId: member.userId,
+              phoneNumber: endpoint?.normalized_destination ?? null,
+              organizationSmsEnabled: settings.sms_notifications_enabled !== false,
+              userSmsPreferenceEnabled: decision.enabled,
+              consentStatus: endpoint?.consent_status,
+              endpointStatus: endpoint?.status,
+              isVerified: endpoint?.is_verified,
+              suppressed: Boolean(endpoint?.suppressed_at),
+            });
+        const reason = eligibility.allowed
+          ? "provider_unavailable"
+          : suppressionReasonFromSmsEligibility(eligibility.reason);
+
+        deliveries.push({
+          userId: member.userId,
+          membershipId: member.membershipId,
+          displayName: member.displayName,
+          role: member.role,
+          channel,
+          destination: endpoint?.destination ?? null,
+          normalizedDestination: endpoint?.normalized_destination ?? null,
+          endpointId: endpoint?.id ?? null,
+          sourceGroups: member.sourceGroups,
+          preferenceRuleApplied: decision.preferenceRuleApplied,
+          overrideApplied: false,
+          status: "suppressed",
+          suppressionReason: reason,
+        });
+        continue;
+      }
+
+      if (channel === "push") {
         const endpoint = selectEndpoint(endpointRows, member.userId, channel);
         const reason =
           !decision.enabled
@@ -793,9 +846,7 @@ export async function resolveNotificationAudience(params: {
               ? "endpoint_unverified"
               : endpoint.status !== "active" || !endpoint.is_verified
                 ? "endpoint_unverified"
-                : channel === "sms" && endpoint.consent_status !== "granted"
-                  ? "consent_missing"
-                  : "provider_unavailable";
+                : "provider_unavailable";
 
         deliveries.push({
           userId: member.userId,

@@ -1,5 +1,5 @@
 /** Public legal documents — never require login, MFA, or an organization. */
-export const LEGAL_PUBLIC_PATHS = ["/terms", "/privacy", "/billing"] as const;
+export const LEGAL_PUBLIC_PATHS = ["/terms", "/privacy", "/billing", "/sms"] as const;
 
 /** Routes accessible without authentication. */
 export const PUBLIC_PATHS = [

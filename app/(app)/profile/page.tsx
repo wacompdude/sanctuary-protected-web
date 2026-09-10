@@ -31,6 +31,10 @@ import { isMfaSmsConfigured } from "@/lib/mfa/send-sms";
 import { mfaPolicyUserMessage } from "@/lib/mfa/effective-policy";
 import { getEffectiveMfaPolicy } from "@/lib/mfa/resolve-policy";
 import { getOrCreateUserSecuritySettings } from "@/lib/mfa/settings";
+import { ProfileSmsEnrollment } from "@/components/profile/profile-sms-enrollment";
+import { readActiveOrganizationCookie } from "@/lib/organization/cookie";
+import { findPrimarySmsEndpoint, enrollmentStateFromEndpoint } from "@/lib/sms/consent";
+import { inspectMobileNumber } from "@/lib/sms/phone";
 import { ArrowLeftRight } from "lucide-react";
 
 function statusBadgeVariant(
@@ -88,6 +92,19 @@ async function ProfileContent() {
       listOwnTrustedDevicesForProfile().catch(() => []),
       getEffectiveMfaPolicy({ userId: user.id }).catch(() => null),
     ]);
+  const cookieOrgId = await readActiveOrganizationCookie();
+  const activeMembership =
+    memberships.find((membership) => membership.organization_id === cookieOrgId) ??
+    memberships[0] ??
+    null;
+  const smsEndpoint = activeMembership
+    ? await findPrimarySmsEndpoint(
+        supabase,
+        activeMembership.organization_id,
+        user.id,
+      ).catch(() => null)
+    : null;
+  const phoneInspect = profile.phone ? inspectMobileNumber(profile.phone) : null;
   const smsConfigured = isMfaSmsConfigured();
   const timezoneByOrganizationId = new Map(
     memberships.map((membership) => [
@@ -114,6 +131,38 @@ async function ProfileContent() {
       <ProfileAvatarForm profile={profile} />
 
       <ProfileForm profile={profile} />
+
+      {activeMembership ? (
+        <ProfileSmsEnrollment
+          phone={
+            phoneInspect?.e164 ??
+            (profile.phone ? profile.phone : null)
+          }
+          enrollmentState={enrollmentStateFromEndpoint({
+            consentStatus: smsEndpoint
+              ? String(smsEndpoint.consent_status)
+              : "unknown",
+            isVerified: Boolean(smsEndpoint?.is_verified),
+            status: smsEndpoint ? String(smsEndpoint.status) : null,
+            suppressedAt:
+              (smsEndpoint?.suppressed_at as string | null | undefined) ?? null,
+          })}
+          verifiedNumber={
+            smsEndpoint?.is_verified
+              ? String(smsEndpoint.normalized_destination)
+              : null
+          }
+          consentedAt={
+            (smsEndpoint?.consent_recorded_at as string | null | undefined) ??
+            null
+          }
+          destinationError={
+            profile.phone && phoneInspect && !phoneInspect.supported
+              ? phoneInspect.error
+              : null
+          }
+        />
+      ) : null}
 
       {securitySettings ? (
         <ProfileMfaSettings

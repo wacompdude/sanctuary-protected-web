@@ -28,12 +28,37 @@ test.describe("public legal pages", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Terms of Service" })).toBeVisible();
   });
 
-  test("/privacy loads without authentication", async ({ page }) => {
+  test("privacy SMS section is public and names opt-out", async ({ page }) => {
     const response = await page.goto("/privacy");
     expect(response?.ok()).toBeTruthy();
     expect(page.url()).toMatch(/\/privacy$/);
     await expectPolicyChrome(page, "Privacy Policy");
     await expect(page.getByRole("heading", { name: /Trusted Devices/ })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /SMS Messaging and Mobile Numbers/ }),
+    ).toBeVisible();
+    await expect(page.getByText(/Reply STOP/)).toBeVisible();
+    await expect(
+      page.getByText(/not sell, rent, or share SMS opt-in/i).first(),
+    ).toBeVisible();
+
+    await page.evaluate(() => {
+      document.documentElement.classList.add("dark");
+      document.documentElement.classList.remove("light");
+    });
+    await expect(
+      page.getByRole("heading", { name: /SMS Messaging and Mobile Numbers/ }),
+    ).toBeVisible();
+  });
+
+  test("terms SMS section discloses STOP, HELP, and rates", async ({ page }) => {
+    const response = await page.goto("/terms");
+    expect(response?.ok()).toBeTruthy();
+    await expect(page.getByRole("heading", { name: /SMS and Electronic Communications/ })).toBeVisible();
+    await expect(page.getByText(/Reply STOP/)).toBeVisible();
+    await expect(page.getByText(/Reply HELP/)).toBeVisible();
+    await expect(page.getByText(/Message and data rates may apply/i)).toBeVisible();
+    await expect(page.getByText(/not a condition of purchasing/i)).toBeVisible();
   });
 
   test("/billing loads without authentication", async ({ page }) => {
@@ -103,7 +128,7 @@ test.describe("public legal pages", () => {
   test("mobile layout exposes a contents control", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/privacy");
-    await expect(page.getByText("Contents")).toBeVisible();
+    await expect(page.locator("summary").filter({ hasText: "Contents" })).toBeVisible();
     await expect(page.locator("html")).toHaveCSS("overflow-x", /visible|auto|hidden/);
     const overflow = await page.evaluate(() => ({
       scrollWidth: document.documentElement.scrollWidth,

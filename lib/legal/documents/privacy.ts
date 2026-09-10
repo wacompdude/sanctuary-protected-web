@@ -125,13 +125,36 @@ export const PRIVACY_DOCUMENT: LegalDocument = {
       blocks: [
         {
           type: "p",
-          text: "We use email for Account security codes, invitations, and many operational notices. Text/SMS may be used for MFA backup to a verified number and for Organization alerts where the plan includes Text/SMS and an endpoint is enrolled. In-app notices may appear in the product. Push notifications are not generally enabled. Operational and security messages are distinct from marketing. We do not use Account creation alone as marketing-text consent.",
+          text: "We use email for Account security codes, invitations, and many operational notices. Text/SMS may be used for MFA backup to a verified number, which is separate from application SMS messaging. Application SMS is sent only after you complete the SMS enrollment on your profile. In-app notices may appear in the product. Push notifications are not generally enabled. Operational and security messages are distinct from marketing. We do not use Account creation, a stored mobile number, or MFA enrollment as marketing-text consent.",
+        },
+      ],
+    },
+    {
+      id: "sms-messaging",
+      title: "8. SMS Messaging and Mobile Numbers",
+      attorneyReview: "[LEGAL REVIEW REQUIRED — SMS CONSENT] SMS data handling",
+      blocks: [
+        {
+          type: "p",
+          text: `We may collect a mobile phone number you or an authorized administrator enter on a profile. That number is contact information. It is not permission to send application SMS. If you enroll in ${PRODUCT_NAME} SMS messaging, we also store consent status, the consent wording version you accepted, the Privacy Policy and Terms versions in effect, verification state, opt-out events, destination region, and related timestamps. We do not store SMS verification codes in recoverable form.`,
+        },
+        {
+          type: "p",
+          text: "We use enrolled numbers to send the operational messages you opt into, such as security alerts, incident notifications, scheduling updates, training or certification reminders, and account or service notices, and to send enrollment verification or confirmation texts. Message frequency varies. Message and data rates may apply.",
+        },
+        {
+          type: "p",
+          text: `Reply STOP to opt out of SMS messages, including STOPALL, END, QUIT, CANCEL, or UNSUBSCRIBE where supported. You can also use Opt Out of SMS Messaging on your profile. Reply HELP or email ${SUPPORT_EMAIL} for help. You can update your mobile number on your profile; a new number requires a new enrollment and is not automatically opted in. SMS two-factor authentication, when used, is a separate control and does not enroll you in application SMS.`,
+        },
+        {
+          type: "p",
+          text: "Messaging platform providers, telecommunications carriers, and other infrastructure providers necessarily process numbers and message content to deliver texts. We do not sell, rent, or share SMS opt-in or consent information for third-party marketing purposes.",
         },
       ],
     },
     {
       id: "sharing",
-      title: "8. Information Sharing",
+      title: "9. Information Sharing",
       blocks: [
         {
           type: "p",
@@ -145,7 +168,7 @@ export const PRIVACY_DOCUMENT: LegalDocument = {
     },
     {
       id: "org-access",
-      title: "9. Organization Access",
+      title: "10. Organization Access",
       blocks: [
         {
           type: "p",
@@ -155,7 +178,7 @@ export const PRIVACY_DOCUMENT: LegalDocument = {
     },
     {
       id: "multi-org",
-      title: "10. Multi-Organization Accounts",
+      title: "11. Multi-Organization Accounts",
       blocks: [
         {
           type: "p",
@@ -165,17 +188,17 @@ export const PRIVACY_DOCUMENT: LegalDocument = {
     },
     {
       id: "selling",
-      title: "11. Sale of Personal Information and Advertising",
+      title: "12. Sale of Personal Information and Advertising",
       blocks: [
         {
           type: "p",
-          text: "We do not sell personal information for money. We do not share personal information with third parties for their independent marketing. The Service does not currently include third-party advertising or analytics pixels. If that changes, we will update this Policy and any required notices.",
+          text: "We do not sell personal information for money. We do not share personal information with third parties for their independent marketing. We do not sell, rent, or share SMS opt-in or consent information for third-party marketing purposes. The Service does not currently include third-party advertising or analytics pixels. If that changes, we will update this Policy and any required notices.",
         },
       ],
     },
     {
       id: "cookies",
-      title: "12. Cookies and Similar Technologies",
+      title: "13. Cookies and Similar Technologies",
       blocks: [
         {
           type: "p",
@@ -199,7 +222,7 @@ export const PRIVACY_DOCUMENT: LegalDocument = {
     },
     {
       id: "trusted-devices",
-      title: "13. Trusted Devices and Authentication Security",
+      title: "14. Trusted Devices and Authentication Security",
       blocks: [
         {
           type: "p",
@@ -209,7 +232,7 @@ export const PRIVACY_DOCUMENT: LegalDocument = {
     },
     {
       id: "security",
-      title: "14. Data Security",
+      title: "15. Data Security",
       blocks: [
         {
           type: "p",
@@ -219,7 +242,7 @@ export const PRIVACY_DOCUMENT: LegalDocument = {
     },
     {
       id: "retention",
-      title: "15. Data Retention",
+      title: "16. Data Retention",
       attorneyReview: "data retention periods",
       blocks: [
         {
@@ -230,7 +253,7 @@ export const PRIVACY_DOCUMENT: LegalDocument = {
     },
     {
       id: "deletion",
-      title: "16. Account Closure and Deletion",
+      title: "17. Account Closure and Deletion",
       blocks: [
         {
           type: "p",
@@ -244,7 +267,7 @@ export const PRIVACY_DOCUMENT: LegalDocument = {
     },
     {
       id: "rights",
-      title: "17. Privacy Rights",
+      title: "18. Privacy Rights",
       attorneyReview: "US state privacy rights",
       blocks: [
         {
@@ -255,7 +278,7 @@ export const PRIVACY_DOCUMENT: LegalDocument = {
     },
     {
       id: "california",
-      title: "18. California Privacy Notice",
+      title: "19. California Privacy Notice",
       attorneyReview: "CCPA / CPRA applicability",
       blocks: [
         {
@@ -266,7 +289,7 @@ export const PRIVACY_DOCUMENT: LegalDocument = {
     },
     {
       id: "children",
-      title: "19. Children’s Privacy",
+      title: "20. Children’s Privacy",
       attorneyReview: "COPPA / children’s privacy",
       blocks: [
         {
@@ -277,7 +300,7 @@ export const PRIVACY_DOCUMENT: LegalDocument = {
     },
     {
       id: "international",
-      title: "20. International Users",
+      title: "21. International Users",
       attorneyReview: "GDPR / international transfers",
       blocks: [
         {
@@ -288,7 +311,7 @@ export const PRIVACY_DOCUMENT: LegalDocument = {
     },
     {
       id: "legal-requests",
-      title: "21. Law Enforcement and Legal Requests",
+      title: "22. Law Enforcement and Legal Requests",
       blocks: [
         {
           type: "p",
@@ -298,7 +321,7 @@ export const PRIVACY_DOCUMENT: LegalDocument = {
     },
     {
       id: "transfers",
-      title: "22. Business Transfers",
+      title: "23. Business Transfers",
       blocks: [
         {
           type: "p",
@@ -308,7 +331,7 @@ export const PRIVACY_DOCUMENT: LegalDocument = {
     },
     {
       id: "changes",
-      title: "23. Changes to This Policy",
+      title: "24. Changes to This Policy",
       blocks: [
         {
           type: "p",
@@ -318,7 +341,7 @@ export const PRIVACY_DOCUMENT: LegalDocument = {
     },
     {
       id: "contact",
-      title: "24. Contact Information",
+      title: "25. Contact Information",
       blocks: [
         {
           type: "ul",

@@ -20,6 +20,11 @@ function mapEndpoint(row: Record<string, unknown>): NotificationEndpoint {
     consent_source: (row.consent_source as string | null) ?? null,
     consent_disclosure_version:
       (row.consent_disclosure_version as string | null) ?? null,
+    privacy_policy_version: (row.privacy_policy_version as string | null) ?? null,
+    terms_version: (row.terms_version as string | null) ?? null,
+    destination_region: (row.destination_region as string | null) ?? null,
+    suppressed_at: (row.suppressed_at as string | null) ?? null,
+    suppression_source: (row.suppression_source as string | null) ?? null,
     created_at: String(row.created_at),
     updated_at: String(row.updated_at),
     revoked_at: (row.revoked_at as string | null) ?? null,

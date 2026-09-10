@@ -54,8 +54,8 @@ export function MemberEditButton({ member }: { member: TeamMemberRow }) {
               Edit member
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Correct this person&apos;s name or phone. Email cannot be changed
-              here.
+              Correct this person&apos;s name or mobile phone. Email cannot be
+              changed. Changing a number does not enroll them in SMS.
             </p>
             <div className="mt-4">
               <MemberProfileForm

@@ -39,17 +39,17 @@ export const LEGAL_NAV_ITEMS = [
 ] as const;
 
 export const POLICY_VERSIONS = {
-  terms: "1.0.0",
-  privacy: "1.0.0",
+  terms: "1.1.0",
+  privacy: "1.1.0",
   billing: "1.0.0",
 } as const;
 
 /** ISO calendar dates (UTC). */
 export const POLICY_DATES = {
   termsEffective: "2026-09-07",
-  termsUpdated: "2026-09-07",
+  termsUpdated: "2026-09-09",
   privacyEffective: "2026-09-07",
-  privacyUpdated: "2026-09-07",
+  privacyUpdated: "2026-09-09",
   billingEffective: "2026-09-07",
   billingUpdated: "2026-09-08",
 } as const;

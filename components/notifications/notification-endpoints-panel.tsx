@@ -19,7 +19,6 @@ import {
   disableEndpointAction,
   setPrimaryEndpointAction,
   syncMyEndpointsAction,
-  updateSmsConsentAction,
 } from "@/app/(app)/notifications/preference-actions";
 
 function EndpointActions({
@@ -36,27 +35,18 @@ function EndpointActions({
     disableEndpointAction,
     {},
   );
-  const [consentState, consentAction, consentPending] = useActionState(
-    updateSmsConsentAction,
-    {},
-  );
 
   useEffect(() => {
-    if (primaryState.success || disableState.success || consentState.success) {
+    if (primaryState.success || disableState.success) {
       router.refresh();
     }
-  }, [
-    primaryState.success,
-    disableState.success,
-    consentState.success,
-    router,
-  ]);
+  }, [primaryState.success, disableState.success, router]);
 
   return (
     <div className="space-y-2">
-      {(primaryState.error || disableState.error || consentState.error) && (
+      {(primaryState.error || disableState.error) && (
         <p className="text-xs text-destructive">
-          {primaryState.error || disableState.error || consentState.error}
+          {primaryState.error || disableState.error}
         </p>
       )}
       <div className="flex flex-wrap gap-2">
@@ -91,43 +81,17 @@ function EndpointActions({
       </div>
 
       {endpoint.channel === "sms" ? (
-        <form
-          action={consentAction}
-          className="space-y-2 rounded-md border border-border p-3"
-        >
-          <input type="hidden" name="endpoint_id" value={endpoint.id} />
-          <p className="text-xs text-muted-foreground">
-            Text/SMS delivery is not active yet. You can record consent now so it is
-            ready when the church enables Text/SMS. Message and data rates may apply.
-            Reply STOP to opt out once Text/SMS is live.
-          </p>
-          <label className="flex items-start gap-2 text-sm">
-            <input
-              type="checkbox"
-              name="sms_opt_in"
-              defaultChecked={endpoint.consent_status === "granted"}
-              className="mt-1"
-            />
-            <span>
-              I consent to receive security Text/SMS alerts at this number when
-              Text/SMS is enabled for my church.
-            </span>
-          </label>
-          <Button
-            type="submit"
-            size="sm"
-            className="h-10"
-            disabled={consentPending}
-          >
-            {consentPending ? "Saving…" : "Save Text/SMS consent"}
-          </Button>
-          <p className="text-xs text-muted-foreground">
-            Consent status: {endpoint.consent_status}
-            {endpoint.consent_disclosure_version
-              ? ` · ${endpoint.consent_disclosure_version}`
-              : ""}
-          </p>
-        </form>
+        <p className="text-xs text-muted-foreground">
+          SMS consent is managed on your{" "}
+          <Link href="/profile" className="underline underline-offset-4">
+            profile
+          </Link>
+          . A stored mobile number is not SMS enrollment. Status:{" "}
+          {endpoint.consent_status}
+          {endpoint.consent_disclosure_version
+            ? ` · ${endpoint.consent_disclosure_version}`
+            : ""}
+        </p>
       ) : null}
     </div>
   );
@@ -190,8 +154,8 @@ export function NotificationEndpointsPanel({
       <CardHeader>
         <CardTitle>Delivery methods</CardTitle>
         <CardDescription>
-          Verified destinations used for email and future Text/SMS and push.
-          Addresses are shown masked.
+          Verified destinations for email. SMS enrollment is on your profile and
+          is separate from storing a mobile number. Addresses are shown masked.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

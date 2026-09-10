@@ -92,15 +92,18 @@ export function MemberProfileForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor={`phone_${userId}`}>Phone</Label>
+        <Label htmlFor={`phone_${userId}`}>Mobile Phone</Label>
         <Input
           id={`phone_${userId}`}
           name="phone"
           type="tel"
           defaultValue={phone ?? ""}
           autoComplete="tel"
-          placeholder="Optional"
+          placeholder="+1 (425) 555-1234"
         />
+        <p className="text-xs text-muted-foreground">
+          Changing this number does not enroll the member in SMS messaging.
+        </p>
       </div>
 
       <Button type="submit" disabled={pending}>

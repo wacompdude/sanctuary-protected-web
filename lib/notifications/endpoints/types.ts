@@ -34,9 +34,14 @@ export type NotificationEndpoint = {
   consent_recorded_at: string | null;
   consent_source: string | null;
   consent_disclosure_version: string | null;
+  privacy_policy_version?: string | null;
+  terms_version?: string | null;
+  destination_region?: string | null;
+  suppressed_at?: string | null;
+  suppression_source?: string | null;
   created_at: string;
   updated_at: string;
   revoked_at: string | null;
 };
 
-export const SMS_CONSENT_DISCLOSURE_VERSION = "sms-consent-v1";
+export { SMS_CONSENT_DISCLOSURE_VERSION } from "@/lib/sms/consent-copy";

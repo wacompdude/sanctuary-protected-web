@@ -144,15 +144,25 @@ export const TERMS_DOCUMENT: LegalDocument = {
     {
       id: "sms",
       title: "9. SMS and Electronic Communications",
-      attorneyReview: "SMS consent / TCPA",
+      attorneyReview: "[LEGAL REVIEW REQUIRED — SMS CONSENT] SMS consent / TCPA",
       blocks: [
         {
           type: "p",
-          text: "We may send transactional messages related to your Account and Organization, including verification codes, security notices, invitation messages, incident or operational alerts your Organization configures, and service or billing notices. Message and data rates may apply when Text/SMS is used. Carriers are not liable for delayed or undelivered messages.",
+          text: `By enrolling in ${PRODUCT_NAME} SMS messaging from your Profile (Mobile Phone → Enable SMS Messaging), you agree to receive text messages from ${PRODUCT_NAME} related to the Service and the notification categories you select. Individual messages may also name your Organization. Storing a mobile number, joining an Organization, enabling email notifications, or enrolling in SMS two-factor authentication does not, by itself, enroll you in application SMS messaging.`,
         },
         {
           type: "p",
-          text: "Creating an Account does not, by itself, constitute consent to receive marketing texts or marketing emails. Marketing communications, if we offer them, will be presented separately so you can choose whether to receive them. Organization-configured operational alerts are controlled by that Organization’s administrators and the endpoints those administrators or Users enroll, subject to the consent tools in the product.",
+          text: "Messages may include security alerts, incident notifications, scheduling updates, training reminders, certification reminders, and account or service notices. We do not currently send marketing or promotional SMS as part of this program. Message frequency varies based on your Organization’s activity and the notification categories you select.",
+        },
+        {
+          type: "p",
+          text: "Message and data rates may apply. Reply STOP to opt out of SMS messages. Reply HELP for assistance, or email " +
+            SUPPORT_EMAIL +
+            ". Consent to receive SMS messages is not a condition of purchasing or using a paid subscription.",
+        },
+        {
+          type: "p",
+          text: `See our Privacy Policy (${LEGAL_ROUTES.privacy}) for how mobile numbers and SMS consent records are handled. Creating an Account does not constitute consent to receive marketing texts or marketing emails. Marketing communications, if we offer them later, will be presented separately.`,
         },
       ],
     },

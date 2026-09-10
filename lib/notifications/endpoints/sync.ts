@@ -3,6 +3,7 @@ import {
   normalizeEmail,
   normalizePhoneE164,
 } from "@/lib/notifications/endpoints/normalize";
+import { classifySmsRegion } from "@/lib/sms/destinations";
 
 /**
  * Ensure the signed-in user has endpoint rows for Auth email and profile phone.
@@ -67,6 +68,7 @@ export async function syncMyNotificationEndpoints(params: {
       consent_recorded_at: null,
       consent_source: "profile_phone",
       consent_disclosure_version: null,
+      destination_region: classifySmsRegion(phone),
     });
     if (result.error) return { synced, error: result.error };
     synced += result.created ? 1 : 0;

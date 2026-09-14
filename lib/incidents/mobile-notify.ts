@@ -26,6 +26,7 @@ export type MobileIncidentNotifyResponse =
       status: "ok";
       notificationId: string | null;
       skipped?: boolean;
+      notice?: string;
     };
 
 export async function notifyMobileIncident(
@@ -143,10 +144,18 @@ export async function notifyMobileIncident(
     );
 
     if (!result.notificationId) {
-      if (result.status === "duplicate") {
+      if (result.status === "duplicate" || result.status === "skipped") {
         return {
           status: 200,
-          body: { status: "ok", notificationId: null, skipped: true },
+          body: {
+            status: "ok",
+            notificationId: null,
+            skipped: true,
+            notice:
+              result.status === "skipped"
+                ? result.error ?? undefined
+                : undefined,
+          },
         };
       }
       return {

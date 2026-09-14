@@ -349,6 +349,7 @@ export async function continueMobileLoginMfa(input: {
   return startMobileLoginChallenge({
     ctx: input.ctx,
     channel: "email",
+    organizationId: policy.organizationId,
   });
 }
 

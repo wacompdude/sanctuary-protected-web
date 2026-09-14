@@ -48,6 +48,11 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse;
   }
 
+  // Mobile MFA uses a Bearer token, not the web session cookie.
+  if (pathname.startsWith("/api/mobile")) {
+    return supabaseResponse;
+  }
+
   // Policy pages must render with no session, MFA cookie, or Supabase round-trip.
   if (isLegalPublicPath(pathname)) {
     return supabaseResponse;

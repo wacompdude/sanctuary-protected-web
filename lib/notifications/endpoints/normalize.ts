@@ -26,6 +26,17 @@ export function normalizePhoneE164(value: string): string | null {
   return null;
 }
 
+const EXPO_PUSH_TOKEN_PATTERN =
+  /^(ExponentPushToken|ExpoPushToken)\[[A-Za-z0-9._-]+\]$/;
+
+/** Normalize an Expo push token for endpoint storage / dedupe. */
+export function normalizeExpoPushToken(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > 320) return null;
+  if (!EXPO_PUSH_TOKEN_PATTERN.test(trimmed)) return null;
+  return trimmed;
+}
+
 export function maskDestination(channel: string, destination: string): string {
   if (channel === "email") {
     const [local, domain] = destination.split("@");
@@ -37,6 +48,10 @@ export function maskDestination(channel: string, destination: string): string {
     const digits = destination.replace(/\D/g, "");
     if (digits.length < 4) return "***";
     return `+***${digits.slice(-4)}`;
+  }
+  if (channel === "push") {
+    const visible = destination.slice(-6);
+    return `push:***${visible}`;
   }
   return "***";
 }

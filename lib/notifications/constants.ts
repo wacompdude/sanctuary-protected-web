@@ -31,6 +31,21 @@ export const DEFAULT_NOTIFICATION_CHANNELS: NotificationChannel[] = [
   "email",
 ];
 
+/** Send Alert and high/critical incidents also wake registered phones. */
+export const OPERATIONAL_ALERT_CHANNELS: NotificationChannel[] = [
+  "in_app",
+  "email",
+  "push",
+];
+
+export function isPersistableNotificationChannel(
+  channel: NotificationChannel,
+): boolean {
+  return (
+    channel === "in_app" || channel === "email" || channel === "push"
+  );
+}
+
 export function isNotificationSeverity(
   value: string,
 ): value is NotificationSeverity {

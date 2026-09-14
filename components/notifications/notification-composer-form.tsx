@@ -277,11 +277,14 @@ export function NotificationComposerForm({
               type="checkbox"
               name="channels"
               value="push"
+              defaultChecked={pushConfigured}
               disabled={!pushConfigured}
             />
             Push{" "}
             <span className="text-muted-foreground">
-              {pushConfigured ? "(devices pending)" : "(not configured)"}
+              {pushConfigured
+                ? "(registered phones)"
+                : "(enable in notification settings)"}
             </span>
           </label>
         </CardContent>
@@ -347,7 +350,10 @@ export function NotificationComposerForm({
               </p>
               <p className="text-muted-foreground">
                 Text/SMS suppressed (not sent): {preview.smsSuppressed} · Push
-                suppressed: {preview.pushSuppressed}
+                pending: {preview.pushPending ?? 0}
+                {preview.pushSuppressed
+                  ? ` · ${preview.pushSuppressed} suppressed`
+                  : ""}
               </p>
               {preview.overrideCount > 0 ? (
                 <p>Emergency override paths: {preview.overrideCount}</p>

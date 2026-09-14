@@ -1,4 +1,5 @@
 import { createNotification } from "@/lib/notifications/create-notification";
+import { OPERATIONAL_ALERT_CHANNELS } from "@/lib/notifications/constants";
 import { mapIncidentSeverityToNotification } from "@/lib/notifications/constants";
 import { getMobileAuthContext } from "@/lib/mfa/mobile-api";
 import { canCreateOperationalNotifications } from "@/lib/notifications/permissions";
@@ -132,6 +133,7 @@ export async function notifyMobileIncident(
         entityId: incident.id,
         actionUrl: `/incidents/${incident.id}`,
         campusId: (incident.campus_id as string | null) ?? null,
+        channels: [...OPERATIONAL_ALERT_CHANNELS],
         deduplicationKey: `${notificationType}:${incident.id}`,
         templateVariables: {
           incident_title: String(incident.title ?? "Incident"),

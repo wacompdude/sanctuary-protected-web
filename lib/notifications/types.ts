@@ -227,6 +227,11 @@ export type NotificationMessage = {
   /** Optional reply-to override from trusted server-side config only. */
   replyTo?: string | null;
   tags?: Record<string, string>;
+  /** Expo / device push payload. Ignored by email providers. */
+  data?: Record<string, string>;
+  sound?: string | null;
+  priority?: "default" | "high";
+  channelId?: string;
 };
 
 export type NotificationSendResult = {

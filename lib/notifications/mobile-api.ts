@@ -9,6 +9,7 @@ import {
 import {
   isNotificationChannel,
   isNotificationSeverity,
+  OPERATIONAL_ALERT_CHANNELS,
 } from "@/lib/notifications/constants";
 import type { NotificationChannel } from "@/lib/notifications/types";
 import { labelForMembershipRole } from "@/lib/organization/invitations";
@@ -102,10 +103,16 @@ function parseDeliverableChannels(
     .filter((value): value is NotificationChannel =>
       isNotificationChannel(value),
     );
-  const channels = (selected.length > 0 ? selected : ["in_app", "email"]).filter(
-    (channel) => channel === "in_app" || channel === "email",
+  const channels = (
+    selected.length > 0 ? selected : [...OPERATIONAL_ALERT_CHANNELS]
+  ).filter(
+    (channel) =>
+      channel === "in_app" || channel === "email" || channel === "push",
   );
-  return channels.length > 0 ? channels : ["in_app", "email"];
+  if (!channels.includes("push")) {
+    channels.push("push");
+  }
+  return channels.length > 0 ? channels : [...OPERATIONAL_ALERT_CHANNELS];
 }
 
 function isDefaultSecurityGroup(group: {

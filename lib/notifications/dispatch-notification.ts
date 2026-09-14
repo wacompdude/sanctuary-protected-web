@@ -6,6 +6,7 @@ import {
   resolveSenderForNotification,
 } from "@/lib/email";
 import { getEmailProvider } from "@/lib/notifications/providers/email-provider";
+import { getPushProvider } from "@/lib/notifications/providers/expo-push-provider";
 import type { NotificationSeverity } from "@/lib/notifications/types";
 import { isNotificationSeverity } from "@/lib/notifications/constants";
 import { safeErrorMessage } from "@/lib/notifications/validation";
@@ -22,6 +23,8 @@ type DeliveryRow = {
   attempt_number: number;
   max_attempts: number;
   scheduled_for: string | null;
+  endpoint_id: string | null;
+  normalized_destination: string | null;
 };
 
 type NotificationMeta = {
@@ -32,6 +35,9 @@ type NotificationMeta = {
   status: string;
   notification_type: string;
   severity: string;
+  action_url: string | null;
+  entity_type: string | null;
+  entity_id: string | null;
 };
 
 type RecipientMeta = {
@@ -103,10 +109,10 @@ export async function dispatchPendingDeliveries(options?: {
   let query = admin
     .from("notification_deliveries")
     .select(
-      "id, organization_id, notification_id, recipient_id, channel, provider, status, attempt_number, max_attempts, scheduled_for",
+      "id, organization_id, notification_id, recipient_id, channel, provider, status, attempt_number, max_attempts, scheduled_for, endpoint_id, normalized_destination",
     )
     .in("status", ["pending", "queued"])
-    .eq("channel", "email")
+    .in("channel", ["email", "push"])
     .order("scheduled_for", { ascending: true, nullsFirst: true })
     .limit(limit);
 
@@ -157,7 +163,10 @@ export async function dispatchPendingDeliveries(options?: {
       skipped += 1;
       continue;
     }
-    const result = await sendEmailDelivery(admin, delivery);
+    const result =
+      delivery.channel === "push"
+        ? await sendPushDelivery(admin, delivery)
+        : await sendEmailDelivery(admin, delivery);
     if (result === "sent") sent += 1;
     else if (result === "failed") failed += 1;
     else skipped += 1;
@@ -197,7 +206,9 @@ export async function sendEmailDelivery(
   const [{ data: notification }, { data: recipient }] = await Promise.all([
     admin
       .from("notifications")
-      .select("id, title, body, metadata, status, notification_type, severity")
+      .select(
+        "id, title, body, metadata, status, notification_type, severity, action_url, entity_type, entity_id",
+      )
       .eq("id", delivery.notification_id)
       .maybeSingle(),
     admin
@@ -417,6 +428,161 @@ export async function sendEmailDelivery(
   return "failed";
 }
 
+export async function sendPushDelivery(
+  admin: SupabaseClient,
+  delivery: DeliveryRow,
+): Promise<"sent" | "failed" | "skipped"> {
+  if (delivery.channel !== "push") return "skipped";
+
+  const attempt = delivery.attempt_number + 1;
+  await admin
+    .from("notification_deliveries")
+    .update({
+      status: "processing",
+      attempt_number: attempt,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", delivery.id)
+    .in("status", ["pending", "queued"]);
+
+  const [{ data: notification }, { data: endpoint }] = await Promise.all([
+    admin
+      .from("notifications")
+      .select(
+        "id, title, body, metadata, status, notification_type, severity, action_url, entity_type, entity_id",
+      )
+      .eq("id", delivery.notification_id)
+      .maybeSingle(),
+    delivery.endpoint_id
+      ? admin
+          .from("notification_endpoints")
+          .select("id, destination, normalized_destination, status")
+          .eq("id", delivery.endpoint_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+
+  const notificationRow = notification as NotificationMeta | null;
+  if (!notificationRow || notificationRow.status === "cancelled") {
+    await admin
+      .from("notification_deliveries")
+      .update({
+        status: "cancelled",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", delivery.id);
+    return "skipped";
+  }
+
+  const token =
+    delivery.normalized_destination?.trim() ||
+    (endpoint as { normalized_destination?: string; destination?: string } | null)
+      ?.normalized_destination?.trim() ||
+    (endpoint as { destination?: string } | null)?.destination?.trim() ||
+    "";
+
+  if (!token) {
+    await admin
+      .from("notification_deliveries")
+      .update({
+        status: "suppressed",
+        failed_at: new Date().toISOString(),
+        last_error_code: "missing_push_token",
+        last_error_message: "Recipient has no registered device token.",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", delivery.id);
+    return "skipped";
+  }
+
+  const highPriority =
+    notificationRow.severity === "high" ||
+    notificationRow.severity === "critical";
+  const provider = getPushProvider();
+  const sendResult = await provider.send({
+    to: token,
+    subject: notificationRow.title,
+    text: notificationRow.body,
+    senderCategory: "alerts",
+    sound: "default",
+    priority: highPriority ? "high" : "default",
+    channelId: "alerts",
+    data: {
+      organizationId: delivery.organization_id,
+      notificationId: notificationRow.id,
+      actionUrl: notificationRow.action_url ?? "",
+      entityType: notificationRow.entity_type ?? "",
+      entityId: notificationRow.entity_id ?? "",
+    },
+    tags: {
+      notification_id: delivery.notification_id,
+      delivery_id: delivery.id,
+      notification_type: notificationRow.notification_type,
+    },
+  });
+
+  if (sendResult.ok) {
+    await updateDeliveryRow(admin, delivery.id, {
+      status: sendResult.status === "delivered" ? "delivered" : "sent",
+      provider: provider.name,
+      provider_message_id: sendResult.providerMessageId ?? null,
+      sent_at: new Date().toISOString(),
+      delivered_at:
+        sendResult.status === "delivered" ? new Date().toISOString() : null,
+      provider_response: sendResult.providerResponse ?? {},
+      last_error_code: null,
+      last_error_message: null,
+      updated_at: new Date().toISOString(),
+    });
+    return "sent";
+  }
+
+  if (sendResult.errorCode === "DeviceNotRegistered" && delivery.endpoint_id) {
+    await admin
+      .from("notification_endpoints")
+      .update({
+        status: "invalid",
+        is_primary: false,
+        revoked_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", delivery.endpoint_id);
+  }
+
+  const permanent =
+    sendResult.status === "rejected" ||
+    sendResult.status === "bounced" ||
+    sendResult.status === "suppressed" ||
+    attempt >= delivery.max_attempts;
+
+  if (permanent) {
+    await updateDeliveryRow(admin, delivery.id, {
+      status: sendResult.status === "failed" ? "failed" : sendResult.status,
+      provider: provider.name,
+      failed_at: new Date().toISOString(),
+      last_error_code: sendResult.errorCode ?? "send_failed",
+      last_error_message: safeErrorMessage(sendResult.errorMessage),
+      provider_response: sendResult.providerResponse ?? {},
+      updated_at: new Date().toISOString(),
+    });
+    return "failed";
+  }
+
+  const retryAt = new Date();
+  retryAt.setMinutes(retryAt.getMinutes() + nextBackoffMinutes(attempt));
+  await updateDeliveryRow(admin, delivery.id, {
+    status: "queued",
+    provider: provider.name,
+    scheduled_for: retryAt.toISOString(),
+    last_error_code: sendResult.errorCode ?? "temporary_failure",
+    last_error_message: safeErrorMessage(sendResult.errorMessage),
+    provider_response: sendResult.providerResponse ?? {},
+    updated_at: new Date().toISOString(),
+  });
+
+  return "failed";
+}
+
 export async function retryFailedDelivery(params: {
   deliveryId: string;
   organizationId: string;
@@ -432,7 +598,7 @@ export async function retryFailedDelivery(params: {
   const { data: delivery, error } = await admin
     .from("notification_deliveries")
     .select(
-      "id, organization_id, notification_id, recipient_id, channel, provider, status, attempt_number, max_attempts, scheduled_for",
+      "id, organization_id, notification_id, recipient_id, channel, provider, status, attempt_number, max_attempts, scheduled_for, endpoint_id, normalized_destination",
     )
     .eq("id", params.deliveryId)
     .eq("organization_id", params.organizationId)
@@ -446,8 +612,8 @@ export async function retryFailedDelivery(params: {
   if (row.status === "sent" || row.status === "delivered") {
     return { ok: false, error: "Delivery already succeeded." };
   }
-  if (row.channel !== "email") {
-    return { ok: false, error: "Only email deliveries can be retried." };
+  if (row.channel !== "email" && row.channel !== "push") {
+    return { ok: false, error: "Only email and push deliveries can be retried." };
   }
 
   await admin
@@ -459,11 +625,15 @@ export async function retryFailedDelivery(params: {
     })
     .eq("id", row.id);
 
-  const result = await sendEmailDelivery(admin, {
+  const retried = {
     ...row,
     status: "pending",
     attempt_number: row.attempt_number,
-  });
+  };
+  const result =
+    row.channel === "push"
+      ? await sendPushDelivery(admin, retried)
+      : await sendEmailDelivery(admin, retried);
   await refreshNotificationStatus(admin, row.notification_id);
 
   return result === "sent"

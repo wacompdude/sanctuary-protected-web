@@ -340,7 +340,7 @@ function evaluateChannel(params: {
   } else if (channel === "sms") {
     enabled = Boolean(legacy?.sms_enabled);
   } else if (channel === "push") {
-    enabled = Boolean(legacy?.push_enabled);
+    enabled = legacy?.push_enabled !== false;
   } else if (channel === "in_app") {
     enabled = legacy?.in_app_enabled !== false;
   }
@@ -839,14 +839,50 @@ export async function resolveNotificationAudience(params: {
 
       if (channel === "push") {
         const endpoint = selectEndpoint(endpointRows, member.userId, channel);
-        const reason =
-          !decision.enabled
-            ? (decision.suppressionReason ?? "user_opted_out")
-            : !endpoint
-              ? "endpoint_unverified"
-              : endpoint.status !== "active" || !endpoint.is_verified
-                ? "endpoint_unverified"
-                : "provider_unavailable";
+        if (!decision.enabled) {
+          deliveries.push({
+            userId: member.userId,
+            membershipId: member.membershipId,
+            displayName: member.displayName,
+            role: member.role,
+            channel,
+            destination: endpoint?.destination ?? null,
+            normalizedDestination: endpoint?.normalized_destination ?? null,
+            endpointId: endpoint?.id ?? null,
+            sourceGroups: member.sourceGroups,
+            preferenceRuleApplied: decision.preferenceRuleApplied,
+            overrideApplied: decision.overrideApplied,
+            status: "suppressed",
+            suppressionReason: decision.suppressionReason ?? "user_opted_out",
+          });
+          continue;
+        }
+
+        const usable =
+          Boolean(endpoint) &&
+          endpoint?.status === "active" &&
+          endpoint.is_verified &&
+          !endpoint.suppressed_at &&
+          Boolean(endpoint.normalized_destination);
+
+        if (!usable || !endpoint) {
+          deliveries.push({
+            userId: member.userId,
+            membershipId: member.membershipId,
+            displayName: member.displayName,
+            role: member.role,
+            channel,
+            destination: endpoint?.destination ?? null,
+            normalizedDestination: endpoint?.normalized_destination ?? null,
+            endpointId: endpoint?.id ?? null,
+            sourceGroups: member.sourceGroups,
+            preferenceRuleApplied: decision.preferenceRuleApplied,
+            overrideApplied: decision.overrideApplied,
+            status: "suppressed",
+            suppressionReason: "endpoint_unverified",
+          });
+          continue;
+        }
 
         deliveries.push({
           userId: member.userId,
@@ -854,14 +890,13 @@ export async function resolveNotificationAudience(params: {
           displayName: member.displayName,
           role: member.role,
           channel,
-          destination: endpoint?.destination ?? null,
-          normalizedDestination: endpoint?.normalized_destination ?? null,
-          endpointId: endpoint?.id ?? null,
+          destination: endpoint.destination,
+          normalizedDestination: endpoint.normalized_destination,
+          endpointId: endpoint.id,
           sourceGroups: member.sourceGroups,
           preferenceRuleApplied: decision.preferenceRuleApplied,
-          overrideApplied: false,
-          status: "suppressed",
-          suppressionReason: reason,
+          overrideApplied: decision.overrideApplied,
+          status: "pending",
         });
       }
     }

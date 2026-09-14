@@ -4,7 +4,7 @@ import type {
   NotificationSendResult,
 } from "@/lib/notifications/types";
 
-/** Placeholder until mobile push / Expo device registration exists. */
+/** Kept for tests. Production dispatch uses ExpoPushProvider. */
 export class PushProviderPlaceholder implements NotificationProvider {
   channel = "push" as const;
   name = "push_placeholder";

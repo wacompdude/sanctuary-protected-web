@@ -1,8 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { MembershipRole } from "@/lib/organization/types";
 import {
-  DEFAULT_NOTIFICATION_CHANNELS,
   getNotificationAppOrigin,
+  isPersistableNotificationChannel,
   templateKeyForNotificationType,
 } from "@/lib/notifications/constants";
 import {
@@ -64,9 +64,7 @@ export async function createNotification(
 
   const severity = validation.severity;
   const channels = validation.channels.filter((channel) =>
-    DEFAULT_NOTIFICATION_CHANNELS.includes(channel)
-      ? true
-      : channel === "in_app" || channel === "email",
+    isPersistableNotificationChannel(channel),
   ) as NotificationChannel[];
 
   // Prefer service-role writes so creation is not blocked by caller RLS
@@ -384,6 +382,26 @@ export async function createNotification(
           continue;
         }
 
+        if (planned.channel === "push" && planned.status === "pending") {
+          deliveryInserts.push({
+            organization_id: input.organizationId,
+            notification_id: notificationId,
+            recipient_id: recipientId,
+            channel: "push",
+            provider: "expo",
+            status: "pending",
+            attempt_number: 0,
+            max_attempts: 3,
+            scheduled_for: input.scheduledFor ?? new Date().toISOString(),
+            endpoint_id: planned.endpointId,
+            normalized_destination: planned.normalizedDestination,
+            source_groups: planned.sourceGroups,
+            preference_rule_applied: planned.preferenceRuleApplied,
+            override_applied: planned.overrideApplied,
+          });
+          continue;
+        }
+
         if (planned.status === "suppressed") {
           deliveryInserts.push({
             organization_id: input.organizationId,
@@ -396,7 +414,7 @@ export async function createNotification(
                 : planned.channel === "sms"
                   ? "sms_placeholder"
                   : planned.channel === "push"
-                    ? "push_placeholder"
+                    ? "expo"
                     : "internal",
             status: "suppressed",
             attempt_number: 0,

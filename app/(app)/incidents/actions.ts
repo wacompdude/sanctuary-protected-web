@@ -27,7 +27,7 @@ import { getRequestIpAddress, writeAuditLog } from "@/lib/audit/log";
 import { hasMinRole } from "@/lib/organization/navigation";
 import { canRecordMedicalSupplyUsage } from "@/lib/medical-supplies/types";
 import { createNotification } from "@/lib/notifications/create-notification";
-import { mapIncidentSeverityToNotification } from "@/lib/notifications/constants";
+import { mapIncidentSeverityToNotification, OPERATIONAL_ALERT_CHANNELS } from "@/lib/notifications/constants";
 import { canCreateOperationalNotifications } from "@/lib/notifications/permissions";
 import { auditNotificationCreated } from "@/lib/audit/notification-events";
 import { FEATURE_KEYS } from "@/lib/subscriptions/feature-keys";
@@ -551,6 +551,7 @@ export async function createIncident(
           entityType: "incident",
           entityId: incident.id,
           actionUrl: `/incidents/${incident.id}`,
+          channels: [...OPERATIONAL_ALERT_CHANNELS],
           deduplicationKey: `${notificationType}:${incident.id}`,
           templateVariables: {
             incident_title: input.title,
@@ -635,6 +636,7 @@ export async function resendIncidentNotificationAction(
         entityType: "incident",
         entityId: incident.id,
         actionUrl: `/incidents/${incident.id}`,
+        channels: [...OPERATIONAL_ALERT_CHANNELS],
         deduplicationKey: `${notificationType}:${incident.id}:resend:${new Date().toISOString()}`,
         templateVariables: {
           incident_title: incident.title,

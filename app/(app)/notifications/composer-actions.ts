@@ -18,6 +18,7 @@ import { getChurchNotificationSettings } from "@/lib/notifications/settings";
 import {
   isNotificationChannel,
   isNotificationSeverity,
+  OPERATIONAL_ALERT_CHANNELS,
 } from "@/lib/notifications/constants";
 import type { NotificationChannel } from "@/lib/notifications/types";
 import { FEATURE_KEYS } from "@/lib/subscriptions/feature-keys";
@@ -31,6 +32,7 @@ export type AudiencePreviewResult = {
     emailSuppressed: number;
     inAppDelivered: number;
     smsSuppressed: number;
+    pushPending: number;
     pushSuppressed: number;
     selectedGroups: Array<{ id: string; name: string }>;
     suppressionBreakdown: Array<{ reason: string; count: number }>;
@@ -72,9 +74,11 @@ function parseRequestedChannels(formData: FormData): NotificationChannel[] {
 
 /** Channels that createNotification will actually queue today. */
 function parseDeliverableChannels(formData: FormData): NotificationChannel[] {
-  return parseRequestedChannels(formData).filter(
-    (channel) => channel === "in_app" || channel === "email",
+  const selected = parseRequestedChannels(formData).filter(
+    (channel) =>
+      channel === "in_app" || channel === "email" || channel === "push",
   );
+  return selected.length > 0 ? selected : [...OPERATIONAL_ALERT_CHANNELS];
 }
 
 async function loadGroupNames(
@@ -162,8 +166,11 @@ export async function previewNotificationAudienceAction(
         smsSuppressed: audience.deliveries.filter(
           (row) => row.channel === "sms",
         ).length,
+        pushPending: audience.deliveries.filter(
+          (row) => row.channel === "push" && row.status === "pending",
+        ).length,
         pushSuppressed: audience.deliveries.filter(
-          (row) => row.channel === "push",
+          (row) => row.channel === "push" && row.status === "suppressed",
         ).length,
         selectedGroups,
         suppressionBreakdown: [...suppressionBreakdownMap.entries()].map(

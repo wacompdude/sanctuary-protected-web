@@ -44,7 +44,8 @@
 
 export const MFA_CODE_LENGTH = 6;
 export const MFA_CODE_TTL_MS = 10 * 60 * 1000;
-export const MFA_RESEND_COOLDOWN_MS = 60 * 1000;
+/** Match code lifetime so users cannot request a new code until the current one expires. */
+export const MFA_RESEND_COOLDOWN_MS = MFA_CODE_TTL_MS;
 export const MFA_MAX_ATTEMPTS = 5;
 
 /**

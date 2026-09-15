@@ -229,7 +229,7 @@ export function LoginMfaForm({
               {pendingStart
                 ? "Sending..."
                 : view.retryAfterSeconds > 0
-                  ? `Resend code (${view.retryAfterSeconds}s)`
+                  ? `Resend code (${formatRetryCountdown(view.retryAfterSeconds)})`
                   : "Resend code"}
             </Button>
             {step === "email_code" && view.smsBackupAvailable ? (
@@ -278,4 +278,13 @@ export function LoginMfaForm({
 function useRefOnce() {
   const [ref] = useState({ current: false });
   return ref;
+}
+
+function formatRetryCountdown(totalSeconds: number): string {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (minutes <= 0) {
+    return `${seconds}s`;
+  }
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }

@@ -1,12 +1,13 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { setActiveOrganizationForUser } from "@/lib/organization/context";
 import { ChurchAccessError } from "@/lib/organization/errors";
 import { loginMfaResumePath, safeMfaNextPath } from "@/lib/mfa/login";
 
 export type SelectOrganizationActionState = {
   error?: string;
+  /** Full-document navigation target. Avoid redirect()-to-route-handler, which breaks Server Actions. */
+  continuePath?: string;
 };
 
 export async function selectOrganizationForMfaAction(
@@ -29,5 +30,5 @@ export async function selectOrganizationForMfaAction(
     return { error: "Unable to select that church." };
   }
 
-  redirect(loginMfaResumePath(nextPath));
+  return { continuePath: loginMfaResumePath(nextPath) };
 }

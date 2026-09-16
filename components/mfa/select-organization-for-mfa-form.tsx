@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import {
   selectOrganizationForMfaAction,
   type SelectOrganizationActionState,
@@ -30,6 +30,14 @@ export function SelectOrganizationForMfaForm({
     initialState,
   );
 
+  useEffect(() => {
+    if (!state.continuePath) return;
+    // Full navigation so /auth/mfa/continue (a Route Handler) can redirect safely.
+    window.location.assign(state.continuePath);
+  }, [state.continuePath]);
+
+  const navigating = Boolean(state.continuePath);
+
   return (
     <Card>
       <CardHeader className="space-y-3 text-center">
@@ -51,6 +59,11 @@ export function SelectOrganizationForMfaForm({
             {state.error}
           </p>
         ) : null}
+        {navigating ? (
+          <p className="text-center text-sm text-muted-foreground">
+            Continuing to verification...
+          </p>
+        ) : null}
         <ul className="space-y-2">
           {organizations.map((organization) => (
             <li key={organization.id}>
@@ -61,7 +74,7 @@ export function SelectOrganizationForMfaForm({
                   type="submit"
                   variant="outline"
                   className="h-auto w-full justify-start px-4 py-3 text-left"
-                  disabled={pending}
+                  disabled={pending || navigating}
                 >
                   {organization.name}
                 </Button>

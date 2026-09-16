@@ -31,13 +31,16 @@ export async function POST(request: Request) {
 
   let channel = parseMfaChannel("email");
   let code = "";
+  let trustDevice = false;
   try {
     const body = (await request.json()) as {
       channel?: string;
       code?: string;
+      trustDevice?: boolean;
     };
     channel = parseMfaChannel(body.channel);
     code = String(body.code ?? "");
+    trustDevice = Boolean(body.trustDevice);
   } catch {
     return json(
       { status: "error", error: "Enter the 6-digit verification code." },
@@ -50,6 +53,8 @@ export async function POST(request: Request) {
       ctx,
       channel,
       code,
+      trustDevice,
+      userAgent: request.headers.get("user-agent"),
     });
     return json(result);
   } catch (error) {

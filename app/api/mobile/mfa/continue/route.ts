@@ -30,16 +30,20 @@ export async function POST(request: Request) {
 
   let organizationId: string | null = null;
   let mfaToken: string | null = null;
+  let trustedDeviceToken: string | null = null;
   try {
     const body = (await request.json()) as {
       organizationId?: string | null;
       mfaToken?: string | null;
+      trustedDeviceToken?: string | null;
     };
     organizationId = body.organizationId?.trim() || null;
     mfaToken = body.mfaToken?.trim() || null;
+    trustedDeviceToken = body.trustedDeviceToken?.trim() || null;
   } catch {
     organizationId = null;
     mfaToken = null;
+    trustedDeviceToken = null;
   }
 
   try {
@@ -47,6 +51,7 @@ export async function POST(request: Request) {
       ctx,
       organizationId,
       mfaToken,
+      trustedDeviceToken,
     });
     return json(result);
   } catch (error) {

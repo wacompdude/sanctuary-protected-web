@@ -27,6 +27,13 @@ import {
 import { sendMfaEmailCode } from "@/lib/mfa/send-email";
 import { sendMfaSmsCode, shouldExposeDevMfaCode } from "@/lib/mfa/send-sms";
 import { createMfaCookieValue, getAuthSessionBinding } from "@/lib/mfa/session-cookie";
+import { formatTrustedDeviceCookieValue } from "@/lib/mfa/trusted-device-crypto";
+import {
+  createTrustedDevice,
+  recordTrustedDeviceUsed,
+  updateTrustedDeviceLastUsed,
+  validateTrustedDevice,
+} from "@/lib/mfa/trusted-devices";
 import {
   getOrCreateUserSecuritySettings,
   loginSmsBackupAvailable,
@@ -42,6 +49,7 @@ export type MobileOrganizationOption = {
 export type MobileMfaCompletePayload = {
   status: "complete";
   token: string;
+  trustedDeviceToken?: string;
   expiresAt: string;
   kind: "verified" | "policy_skip";
   organizationId: string | null;
@@ -307,6 +315,7 @@ export async function continueMobileLoginMfa(input: {
   ctx: MobileAuthContext;
   organizationId?: string | null;
   mfaToken?: string | null;
+  trustedDeviceToken?: string | null;
 }): Promise<MobileMfaResponse> {
   const policy = await getMobileEffectiveMfaPolicy({
     userId: input.ctx.userId,
@@ -344,6 +353,18 @@ export async function continueMobileLoginMfa(input: {
       sessionId: input.ctx.sessionId,
       ...mfaCookieFromPolicy(policy),
     });
+  }
+
+  if (input.trustedDeviceToken) {
+    const trustedDeviceCompletion = await tryCompleteMobileWithTrustedDevice({
+      userId: input.ctx.userId,
+      sessionId: input.ctx.sessionId,
+      trustedDeviceToken: input.trustedDeviceToken,
+      organizationId: policy.organizationId,
+    });
+    if (trustedDeviceCompletion) {
+      return trustedDeviceCompletion;
+    }
   }
 
   return startMobileLoginChallenge({
@@ -467,6 +488,8 @@ export async function verifyMobileLoginMfa(input: {
   ctx: MobileAuthContext;
   channel: MfaChannel;
   code: string;
+  trustDevice?: boolean;
+  userAgent?: string | null;
 }): Promise<MobileMfaResponse> {
   const result = await verifyMfaCode({
     userId: input.ctx.userId,
@@ -510,6 +533,21 @@ export async function verifyMobileLoginMfa(input: {
 
   if (issued.status !== "complete") return issued;
 
+  if (input.trustDevice) {
+    const created = await createTrustedDevice({
+      userId: input.ctx.userId,
+      userAgent: input.userAgent,
+    });
+    if (created.ok) {
+      issued.trustedDeviceToken = formatTrustedDeviceCookieValue({
+        deviceId: created.device.deviceId,
+        token: created.token,
+      });
+    } else {
+      console.error("mobile trusted device registration failed:", created.error);
+    }
+  }
+
   await writeMobileMfaAudit({
     userId: input.ctx.userId,
     action: AuditAction.AUTH_MFA_VERIFIED,
@@ -517,6 +555,39 @@ export async function verifyMobileLoginMfa(input: {
   });
 
   return issued;
+}
+
+async function tryCompleteMobileWithTrustedDevice(input: {
+  userId: string;
+  sessionId: string;
+  trustedDeviceToken: string;
+  organizationId?: string | null;
+}): Promise<MobileMfaCompletePayload | null> {
+  const validated = await validateTrustedDevice({
+    userId: input.userId,
+    cookieValue: input.trustedDeviceToken,
+  });
+  if (!validated.ok) {
+    return null;
+  }
+
+  await updateTrustedDeviceLastUsed(validated.device.id);
+  await recordTrustedDeviceUsed({
+    userId: input.userId,
+    deviceRecordId: validated.device.id,
+    browser: validated.device.browser,
+    operatingSystem: validated.device.operatingSystem,
+  });
+
+  const issued = await issueMobileMfaToken({
+    userId: input.userId,
+    sessionId: input.sessionId,
+    kind: "verified",
+    organizationId: input.organizationId ?? null,
+    lastMfaAtMs: Date.parse(validated.device.lastUsedAt) || Date.now(),
+  });
+
+  return issued.status === "complete" ? issued : null;
 }
 
 export function parseMfaChannel(value: unknown): MfaChannel {

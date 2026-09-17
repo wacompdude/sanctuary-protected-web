@@ -34,6 +34,11 @@ import {
   validateScheduleShiftForm,
 } from "@/lib/schedule/shift-validation";
 import type { ScheduleActionState, ScheduleShift } from "@/lib/schedule/types";
+import {
+  materializeWeeklyShifts,
+  parseCreateMatchingEvents,
+  parseRepeatWeeks,
+} from "@/lib/schedule/weekly-series";
 import { FEATURE_KEYS } from "@/lib/subscriptions/feature-keys";
 import { requireFeature } from "@/lib/subscriptions/resolver";
 
@@ -86,7 +91,55 @@ export async function createScheduleShiftAction(
       };
     }
 
+    const weeks = parseRepeatWeeks(formData);
+    const createMatchingEvents = parseCreateMatchingEvents(formData);
     const supabase = await createClient();
+
+    if (weeks > 1) {
+      const series = await materializeWeeklyShifts({
+        supabase,
+        organizationId: church.id,
+        userId: user.id,
+        shift: validated.data,
+        weeks,
+        createMatchingEvents,
+      });
+
+      if (series.errorMessage || !series.firstShiftId) {
+        const message =
+          series.errorMessage ?? "Unable to create the weekly shifts.";
+        return {
+          error: message,
+          fieldErrors: {
+            repeat_weeks: message,
+          },
+        };
+      }
+
+      await writeAuditLog(supabase, {
+        organizationId: church.id,
+        userId: user.id,
+        action: AuditAction.SCHEDULE_SHIFT_CREATED,
+        entityType: AuditEntityType.SCHEDULE_SHIFT,
+        entityId: series.firstShiftId,
+        metadata: {
+          title: validated.data.title,
+          event_id: validated.data.event_id,
+          weeks,
+          create_matching_events: createMatchingEvents,
+          created_shifts: series.createdShifts,
+          created_events: series.createdEvents,
+        },
+        ipAddress: await getRequestIpAddress(),
+      });
+
+      revalidateShiftPaths(series.firstShiftId);
+      if (series.firstEventId) {
+        revalidatePath(`/schedule/events/${series.firstEventId}`);
+      }
+      redirect(`/schedule/shifts/${series.firstShiftId}`);
+    }
+
     const { data, error } = await supabase
       .from("schedule_shifts")
       .insert({

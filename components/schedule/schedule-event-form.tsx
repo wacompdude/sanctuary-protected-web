@@ -20,8 +20,10 @@ import {
   SCHEDULE_EVENT_STATUSES,
   SCHEDULE_EVENT_TYPES,
   SCHEDULE_RISK_LEVELS,
+  SCHEDULE_SHIFT_TYPES,
 } from "@/lib/schedule/constants";
-import { toChurchDateTimeLocalValue } from "@/lib/schedule/datetime";
+import { toChurchDateTimeLocalValue, syncEndLocalWithStartDate } from "@/lib/schedule/datetime";
+import { WEEKLY_REPEAT_OPTIONS } from "@/lib/schedule/weekly-series";
 import type {
   CampusOption,
   ScheduleActionState,
@@ -37,6 +39,16 @@ type Props = {
   event?: ScheduleEvent | null;
 };
 
+function initialLocalValue(
+  iso: string | null | undefined,
+  timeZone: string,
+  allDay: boolean,
+): string {
+  const full = toChurchDateTimeLocalValue(iso, timeZone);
+  if (!full) return "";
+  return allDay ? full.slice(0, 10) : full;
+}
+
 export function ScheduleEventForm({
   mode,
   campuses,
@@ -49,6 +61,50 @@ export function ScheduleEventForm({
       : createScheduleEventAction;
   const [state, formAction, pending] = useActionState(action, initialState);
   const [allDay, setAllDay] = useState(event?.all_day ?? false);
+  const [startAt, setStartAt] = useState(() =>
+    initialLocalValue(event?.start_at, timeZone, event?.all_day ?? false),
+  );
+  const [endAt, setEndAt] = useState(() =>
+    initialLocalValue(event?.end_at, timeZone, event?.all_day ?? false),
+  );
+  const [repeatWeeks, setRepeatWeeks] = useState("1");
+  const [createOpenShift, setCreateOpenShift] = useState(true);
+
+  function handleAllDayChange(checked: boolean) {
+    setAllDay(checked);
+    if (checked) {
+      setStartAt((current) => (current ? current.slice(0, 10) : current));
+      setEndAt((current) => (current ? current.slice(0, 10) : current));
+      return;
+    }
+    setStartAt((current) =>
+      current && current.length === 10 ? `${current}T09:00` : current,
+    );
+    setEndAt((current) =>
+      current && current.length === 10 ? `${current}T11:00` : current,
+    );
+  }
+
+  function handleStartChange(nextStart: string) {
+    const previousStart = startAt;
+    setStartAt(nextStart);
+
+    const previousDate = previousStart.slice(0, 10);
+    const nextDate = nextStart.slice(0, 10);
+    const dateChanged = Boolean(nextDate) && previousDate !== nextDate;
+
+    // Only move the end when the calendar date changes (or end is still empty).
+    if (!dateChanged && endAt) return;
+
+    setEndAt((currentEnd) =>
+      syncEndLocalWithStartDate({
+        startLocal: nextStart,
+        endLocal: currentEnd,
+        previousStartLocal: previousStart,
+        allDay,
+      }),
+    );
+  }
 
   return (
     <form action={formAction} className="space-y-6">
@@ -144,7 +200,7 @@ export function ScheduleEventForm({
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
               defaultValue={event?.campus_id ?? ""}
             >
-              <option value="">All / unspecified</option>
+              <option value="">None</option>
               {campuses.map((campus) => (
                 <option key={campus.id} value={campus.id}>
                   {campus.name}
@@ -158,9 +214,8 @@ export function ScheduleEventForm({
             <textarea
               id="description"
               name="description"
-              rows={4}
-              maxLength={8000}
-              className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              rows={3}
+              className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               defaultValue={event?.description ?? ""}
             />
           </div>
@@ -169,10 +224,8 @@ export function ScheduleEventForm({
 
       <Card>
         <CardHeader>
-          <CardTitle>Date and time</CardTitle>
-          <CardDescription>
-            Times are stored in UTC and shown using {timeZone}.
-          </CardDescription>
+          <CardTitle>When</CardTitle>
+          <CardDescription>Timezone: {timeZone}</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <input type="hidden" name="timezone" value={timeZone} />
@@ -183,7 +236,7 @@ export function ScheduleEventForm({
               type="checkbox"
               className="h-4 w-4 rounded border"
               checked={allDay}
-              onChange={(e) => setAllDay(e.target.checked)}
+              onChange={(e) => handleAllDayChange(e.target.checked)}
             />
             <Label htmlFor="all_day">All-day event</Label>
           </div>
@@ -194,14 +247,8 @@ export function ScheduleEventForm({
               name="start_at"
               type={allDay ? "date" : "datetime-local"}
               required
-              defaultValue={
-                allDay
-                  ? toChurchDateTimeLocalValue(event?.start_at, timeZone).slice(
-                      0,
-                      10,
-                    )
-                  : toChurchDateTimeLocalValue(event?.start_at, timeZone)
-              }
+              value={startAt}
+              onChange={(e) => handleStartChange(e.target.value)}
             />
             {state.fieldErrors?.start_at ? (
               <p className="text-sm text-destructive">
@@ -216,14 +263,8 @@ export function ScheduleEventForm({
               name="end_at"
               type={allDay ? "date" : "datetime-local"}
               required
-              defaultValue={
-                allDay
-                  ? toChurchDateTimeLocalValue(event?.end_at, timeZone).slice(
-                      0,
-                      10,
-                    )
-                  : toChurchDateTimeLocalValue(event?.end_at, timeZone)
-              }
+              value={endAt}
+              onChange={(e) => setEndAt(e.target.value)}
             />
             {state.fieldErrors?.end_at ? (
               <p className="text-sm text-destructive">
@@ -231,47 +272,121 @@ export function ScheduleEventForm({
               </p>
             ) : null}
           </div>
-          <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor="recurrence_rule">
-              Recurrence (optional RRULE)
-            </Label>
-            <Input
-              id="recurrence_rule"
-              name="recurrence_rule"
-              placeholder="FREQ=WEEKLY;BYDAY=SU"
-              defaultValue={event?.recurrence_rule ?? ""}
-            />
-            <p className="text-xs text-muted-foreground">
-              Phase 3 supports storing weekly rules. Full series editing comes
-              later. Include COUNT= or set an end date below.
-            </p>
-            {state.fieldErrors?.recurrence_rule ? (
-              <p className="text-sm text-destructive">
-                {state.fieldErrors.recurrence_rule}
-              </p>
-            ) : null}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="recurrence_end_at">Recurrence ends</Label>
-            <Input
-              id="recurrence_end_at"
-              name="recurrence_end_at"
-              type="date"
-              defaultValue={
-                event?.recurrence_end_at
-                  ? toChurchDateTimeLocalValue(
-                      event.recurrence_end_at,
-                      timeZone,
-                    ).slice(0, 10)
-                  : ""
-              }
-            />
-            {state.fieldErrors?.recurrence_end_at ? (
-              <p className="text-sm text-destructive">
-                {state.fieldErrors.recurrence_end_at}
-              </p>
-            ) : null}
-          </div>
+
+          {mode === "create" ? (
+            <>
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="repeat_weeks">Repeat weekly</Label>
+                <select
+                  id="repeat_weeks"
+                  name="repeat_weeks"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  value={repeatWeeks}
+                  onChange={(e) => setRepeatWeeks(e.target.value)}
+                >
+                  {WEEKLY_REPEAT_OPTIONS.map((item) => (
+                    <option key={item.value} value={item.value}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  Creates a separate event each week so you can assign security
+                  for each service.
+                </p>
+                {state.fieldErrors?.repeat_weeks ? (
+                  <p className="text-sm text-destructive">
+                    {state.fieldErrors.repeat_weeks}
+                  </p>
+                ) : null}
+              </div>
+              <div className="flex items-center gap-2 sm:col-span-2">
+                <input
+                  id="create_open_shift"
+                  name="create_open_shift"
+                  type="checkbox"
+                  className="h-4 w-4 rounded border"
+                  checked={createOpenShift}
+                  onChange={(e) => setCreateOpenShift(e.target.checked)}
+                />
+                <Label htmlFor="create_open_shift">
+                  Create open shift each week
+                </Label>
+              </div>
+              {createOpenShift ? (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="series_shift_type">Shift type</Label>
+                    <select
+                      id="series_shift_type"
+                      name="series_shift_type"
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                      defaultValue="security"
+                    >
+                      {SCHEDULE_SHIFT_TYPES.map((item) => (
+                        <option key={item.value} value={item.value}>
+                          {item.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="series_required_member_count">
+                      Required people per shift
+                    </Label>
+                    <Input
+                      id="series_required_member_count"
+                      name="series_required_member_count"
+                      type="number"
+                      min={0}
+                      max={500}
+                      defaultValue={2}
+                    />
+                  </div>
+                </>
+              ) : null}
+            </>
+          ) : (
+            <>
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="recurrence_rule">
+                  Recurrence (optional RRULE)
+                </Label>
+                <Input
+                  id="recurrence_rule"
+                  name="recurrence_rule"
+                  placeholder="FREQ=WEEKLY;BYDAY=SU"
+                  defaultValue={event?.recurrence_rule ?? ""}
+                />
+                {state.fieldErrors?.recurrence_rule ? (
+                  <p className="text-sm text-destructive">
+                    {state.fieldErrors.recurrence_rule}
+                  </p>
+                ) : null}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="recurrence_end_at">Recurrence ends</Label>
+                <Input
+                  id="recurrence_end_at"
+                  name="recurrence_end_at"
+                  type="date"
+                  defaultValue={
+                    event?.recurrence_end_at
+                      ? toChurchDateTimeLocalValue(
+                          event.recurrence_end_at,
+                          timeZone,
+                        ).slice(0, 10)
+                      : ""
+                  }
+                />
+                {state.fieldErrors?.recurrence_end_at ? (
+                  <p className="text-sm text-destructive">
+                    {state.fieldErrors.recurrence_end_at}
+                  </p>
+                ) : null}
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -331,13 +446,15 @@ export function ScheduleEventForm({
             ? "Saving…"
             : mode === "edit"
               ? "Save changes"
-              : "Create event"}
+              : Number(repeatWeeks) > 1
+                ? `Create ${repeatWeeks}-week series`
+                : createOpenShift
+                  ? "Create event + shift"
+                  : "Create event"}
         </Button>
         <Button type="button" variant="outline" asChild>
           <Link
-            href={
-              event ? `/schedule/events/${event.id}` : "/schedule/events"
-            }
+            href={event ? `/schedule/events/${event.id}` : "/schedule/events"}
           >
             Cancel
           </Link>

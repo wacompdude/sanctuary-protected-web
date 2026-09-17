@@ -17,6 +17,11 @@ import { canManageSchedule } from "@/lib/schedule/permissions";
 import { notifyEventCancelled } from "@/lib/schedule/notify";
 import type { ScheduleActionState } from "@/lib/schedule/types";
 import { validateScheduleEventForm } from "@/lib/schedule/validation";
+import {
+  materializeWeeklyEventSeries,
+  parseCreateOpenShift,
+  parseRepeatWeeks,
+} from "@/lib/schedule/weekly-series";
 import { entitlementErrorMessage } from "@/lib/subscriptions/enforcement";
 import { FEATURE_KEYS } from "@/lib/subscriptions/feature-keys";
 import { requireFeature } from "@/lib/subscriptions/resolver";
@@ -78,7 +83,93 @@ export async function createScheduleEventAction(
       };
     }
 
+    const weeks = parseRepeatWeeks(formData);
+    const createOpenShift = parseCreateOpenShift(formData);
+    const shiftType = String(formData.get("series_shift_type") ?? "security").trim();
+    const requiredRaw = String(
+      formData.get("series_required_member_count") ?? "2",
+    ).trim();
+    const requiredMemberCount = Number(requiredRaw);
+
     const supabase = await createClient();
+
+    // Materialize weekly occurrences when repeating or creating an open shift.
+    if (weeks > 1 || createOpenShift) {
+      const series = await materializeWeeklyEventSeries({
+        supabase,
+        organizationId: church.id,
+        userId: user.id,
+        event: {
+          ...validated.data,
+          // Series helper owns recurrence fields on the parent occurrence.
+          recurrence_rule: null,
+          recurrence_end_at: null,
+        },
+        weeks,
+        createOpenShift,
+        shiftType: shiftType || "security",
+        requiredMemberCount: Number.isInteger(requiredMemberCount)
+          ? requiredMemberCount
+          : 2,
+      });
+
+      if (series.errorMessage || !series.firstEventId) {
+        const message =
+          series.errorMessage ?? "Unable to create the weekly series.";
+        return {
+          error: message,
+          fieldErrors: {
+            repeat_weeks: message,
+          },
+        };
+      }
+
+      const ipAddress = await getRequestIpAddress();
+      await writeAuditLog(supabase, {
+        organizationId: church.id,
+        userId: user.id,
+        action: AuditAction.SCHEDULE_EVENT_CREATED,
+        entityType: AuditEntityType.SCHEDULE_EVENT,
+        entityId: series.firstEventId,
+        metadata: {
+          title: validated.data.title,
+          event_type: validated.data.event_type,
+          status: validated.data.status,
+          weeks,
+          create_open_shift: createOpenShift,
+          created_events: series.createdEvents,
+          created_shifts: series.createdShifts,
+        },
+        ipAddress,
+      });
+
+      await writeScheduleChangeHistory({
+        supabase,
+        organizationId: church.id,
+        entityId: series.firstEventId,
+        eventId: series.firstEventId,
+        action: "schedule.event_created",
+        summary:
+          weeks > 1
+            ? `Created ${weeks}-week series “${validated.data.title}”`
+            : `Created event “${validated.data.title}”`,
+        actorUserId: user.id,
+        newValues: {
+          title: validated.data.title,
+          status: validated.data.status,
+          start_at: validated.data.start_at,
+          end_at: validated.data.end_at,
+          weeks,
+        },
+      });
+
+      revalidatePath("/schedule");
+      revalidatePath("/schedule/calendar");
+      revalidatePath("/schedule/events");
+      revalidatePath("/schedule/shifts");
+      redirect(`/schedule/events/${series.firstEventId}`);
+    }
+
     const payload = {
       organization_id: church.id,
       ...validated.data,

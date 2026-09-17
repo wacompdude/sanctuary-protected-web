@@ -21,6 +21,7 @@ import {
   SCHEDULE_PRIORITIES,
   SCHEDULE_SHIFT_TYPES,
 } from "@/lib/schedule/constants";
+import { WEEKLY_REPEAT_OPTIONS } from "@/lib/schedule/weekly-series";
 import type {
   CampusOption,
   ScheduleActionState,
@@ -54,6 +55,11 @@ export function ScheduleShiftForm({
   const [outside, setOutside] = useState(
     shift?.allow_outside_event_window ?? false,
   );
+  const [eventId, setEventId] = useState(
+    shift?.event_id ?? defaultEventId ?? "",
+  );
+  const [repeatWeeks, setRepeatWeeks] = useState("1");
+  const [createMatchingEvents, setCreateMatchingEvents] = useState(true);
 
   return (
     <form action={formAction} className="space-y-6">
@@ -143,7 +149,12 @@ export function ScheduleShiftForm({
               id="event_id"
               name="event_id"
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-              defaultValue={shift?.event_id ?? defaultEventId ?? ""}
+              value={eventId}
+              onChange={(e) => {
+                setEventId(e.target.value);
+                if (e.target.value) setRepeatWeeks("1");
+              }}
+              disabled={mode === "create" && Number(repeatWeeks) > 1}
             >
               <option value="">Standalone shift</option>
               {events.map((event) => (
@@ -152,6 +163,11 @@ export function ScheduleShiftForm({
                 </option>
               ))}
             </select>
+            {mode === "create" && Number(repeatWeeks) > 1 ? (
+              <p className="text-xs text-muted-foreground">
+                Clear weekly repeat to link this shift to an existing event.
+              </p>
+            ) : null}
           </div>
 
           <div className="space-y-2 sm:col-span-2">
@@ -217,6 +233,56 @@ export function ScheduleShiftForm({
               Allow times outside the related event window
             </Label>
           </div>
+
+          {mode === "create" ? (
+            <>
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="repeat_weeks">Repeat weekly</Label>
+                <select
+                  id="repeat_weeks"
+                  name="repeat_weeks"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  value={repeatWeeks}
+                  onChange={(e) => {
+                    setRepeatWeeks(e.target.value);
+                    if (Number(e.target.value) > 1) setEventId("");
+                  }}
+                  disabled={Boolean(eventId)}
+                >
+                  {WEEKLY_REPEAT_OPTIONS.map((item) => (
+                    <option key={item.value} value={item.value}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  {eventId
+                    ? "Unlink the related event to create a multi-week series."
+                    : "Creates the same coverage window each week so members can be assigned per service."}
+                </p>
+                {state.fieldErrors?.repeat_weeks ? (
+                  <p className="text-sm text-destructive">
+                    {state.fieldErrors.repeat_weeks}
+                  </p>
+                ) : null}
+              </div>
+              {!eventId && Number(repeatWeeks) > 1 ? (
+                <div className="flex items-center gap-2 sm:col-span-2">
+                  <input
+                    id="create_matching_events"
+                    name="create_matching_events"
+                    type="checkbox"
+                    className="h-4 w-4 rounded border"
+                    checked={createMatchingEvents}
+                    onChange={(e) => setCreateMatchingEvents(e.target.checked)}
+                  />
+                  <Label htmlFor="create_matching_events">
+                    Create matching event each week
+                  </Label>
+                </div>
+              ) : null}
+            </>
+          ) : null}
         </CardContent>
       </Card>
 
@@ -333,7 +399,9 @@ export function ScheduleShiftForm({
             ? "Saving…"
             : mode === "edit"
               ? "Save shift"
-              : "Create shift"}
+              : Number(repeatWeeks) > 1
+                ? `Create ${repeatWeeks}-week series`
+                : "Create shift"}
         </Button>
         <Button type="button" variant="outline" asChild>
           <Link

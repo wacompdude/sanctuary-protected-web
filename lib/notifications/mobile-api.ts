@@ -2,9 +2,12 @@ import { writeAuditLog } from "@/lib/audit/log";
 import { AuditAction, AuditEntityType } from "@/lib/audit/actions";
 import { getMobileAuthContext } from "@/lib/mfa/mobile-api";
 import { createNotification } from "@/lib/notifications/create-notification";
+import { retryFailedDelivery } from "@/lib/notifications/dispatch-notification";
 import {
   canCreateOperationalNotifications,
   canManageChurchNotificationSettings,
+  canRetryNotificationDelivery,
+  canViewNotificationHistory,
 } from "@/lib/notifications/permissions";
 import {
   isNotificationChannel,
@@ -12,6 +15,7 @@ import {
   OPERATIONAL_ALERT_CHANNELS,
 } from "@/lib/notifications/constants";
 import type { NotificationChannel } from "@/lib/notifications/types";
+import { isValidIanaTimeZone } from "@/lib/datetime/timezones";
 import { labelForMembershipRole } from "@/lib/organization/invitations";
 import { displayMemberName } from "@/lib/organization/team";
 import {
@@ -540,4 +544,246 @@ export async function sendMobileNotification(
       },
     };
   }
+}
+
+export type MobileNotificationSettingsInput = {
+  organizationId?: string | null;
+  emailNotificationsEnabled?: boolean | null;
+  smsNotificationsEnabled?: boolean | null;
+  pushNotificationsEnabled?: boolean | null;
+  criticalAlertOverrideEnabled?: boolean | null;
+  dailyDigestEnabled?: boolean | null;
+  dailyDigestTime?: string | null;
+  weeklyDigestEnabled?: boolean | null;
+  weeklyDigestDay?: number | null;
+  weeklyDigestTime?: string | null;
+  timezone?: string | null;
+  certificationWarningDays?: number | null;
+  maintenanceWarningDays?: number | null;
+  maxEmailAttempts?: number | null;
+};
+
+export async function updateMobileNotificationSettings(
+  request: Request,
+  input: MobileNotificationSettingsInput,
+): Promise<{ status: number; body: MobileAuthFailure | { status: "ok" } | { status: "error"; error: string } }> {
+  const auth = await requireComposerMembership(
+    request,
+    input.organizationId ?? null,
+  );
+  if ("error" in auth) {
+    return { status: auth.status, body: auth.error };
+  }
+
+  if (!canManageChurchNotificationSettings(auth.membership.role)) {
+    return {
+      status: 403,
+      body: {
+        status: "forbidden",
+        error: "Administrators can update organization notification settings.",
+      },
+    };
+  }
+
+  const emailEnabled = Boolean(input.emailNotificationsEnabled);
+  const smsEnabled = Boolean(input.smsNotificationsEnabled);
+  if (emailEnabled) {
+    const allowed = await organizationAllowsFeature(
+      auth.membership.organizationId,
+      FEATURE_KEYS.EMAIL,
+    );
+    if (!allowed) {
+      return {
+        status: 403,
+        body: {
+          status: "error",
+          error: "Email messaging is not included in this plan.",
+        },
+      };
+    }
+  }
+  if (smsEnabled) {
+    const allowed = await organizationAllowsFeature(
+      auth.membership.organizationId,
+      FEATURE_KEYS.SMS,
+    );
+    if (!allowed) {
+      return {
+        status: 403,
+        body: {
+          status: "error",
+          error: "SMS messaging is not included in this plan.",
+        },
+      };
+    }
+  }
+
+  const timezone = String(input.timezone ?? "UTC").trim() || "UTC";
+  if (!isValidIanaTimeZone(timezone)) {
+    return {
+      status: 400,
+      body: { status: "error", error: "Select a valid time zone." },
+    };
+  }
+
+  const weeklyDigestDay = Number(input.weeklyDigestDay ?? 1);
+  const certificationWarningDays = Number(
+    input.certificationWarningDays ?? 60,
+  );
+  const maintenanceWarningDays = Number(input.maintenanceWarningDays ?? 30);
+  const maxEmailAttempts = Number(input.maxEmailAttempts ?? 3);
+
+  if (
+    !Number.isInteger(weeklyDigestDay) ||
+    weeklyDigestDay < 0 ||
+    weeklyDigestDay > 6
+  ) {
+    return {
+      status: 400,
+      body: { status: "error", error: "Weekly digest day must be 0–6." },
+    };
+  }
+  if (
+    !Number.isInteger(certificationWarningDays) ||
+    certificationWarningDays < 1 ||
+    certificationWarningDays > 365
+  ) {
+    return {
+      status: 400,
+      body: {
+        status: "error",
+        error: "Certification warning days must be 1–365.",
+      },
+    };
+  }
+  if (
+    !Number.isInteger(maintenanceWarningDays) ||
+    maintenanceWarningDays < 1 ||
+    maintenanceWarningDays > 365
+  ) {
+    return {
+      status: 400,
+      body: {
+        status: "error",
+        error: "Maintenance warning days must be 1–365.",
+      },
+    };
+  }
+  if (
+    !Number.isInteger(maxEmailAttempts) ||
+    maxEmailAttempts < 1 ||
+    maxEmailAttempts > 10
+  ) {
+    return {
+      status: 400,
+      body: { status: "error", error: "Max email attempts must be 1–10." },
+    };
+  }
+
+  const patch = {
+    email_notifications_enabled: emailEnabled,
+    sms_notifications_enabled: smsEnabled,
+    push_notifications_enabled: Boolean(input.pushNotificationsEnabled),
+    critical_alert_override_enabled: Boolean(
+      input.criticalAlertOverrideEnabled,
+    ),
+    daily_digest_enabled: Boolean(input.dailyDigestEnabled),
+    daily_digest_time:
+      String(input.dailyDigestTime ?? "").trim() || "08:00:00",
+    weekly_digest_enabled: Boolean(input.weeklyDigestEnabled),
+    weekly_digest_day: weeklyDigestDay,
+    weekly_digest_time:
+      String(input.weeklyDigestTime ?? "").trim() || "08:00:00",
+    timezone,
+    certification_warning_days: certificationWarningDays,
+    maintenance_warning_days: maintenanceWarningDays,
+    max_email_attempts: maxEmailAttempts,
+  };
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("organization_notification_settings")
+    .upsert(
+      { organization_id: auth.membership.organizationId, ...patch },
+      { onConflict: "organization_id" },
+    );
+
+  if (error) {
+    return { status: 400, body: { status: "error", error: error.message } };
+  }
+
+  await writeAuditLog(admin, {
+    organizationId: auth.membership.organizationId,
+    userId: auth.userId,
+    action: AuditAction.NOTIFICATION_SETTINGS_UPDATED,
+    entityType: AuditEntityType.NOTIFICATION_SETTINGS,
+    entityId: auth.membership.organizationId,
+    metadata: { via: "mobile", updated: true },
+  });
+
+  return { status: 200, body: { status: "ok" } };
+}
+
+export async function retryMobileNotificationDelivery(
+  request: Request,
+  input: { organizationId?: string | null; deliveryId?: string | null },
+): Promise<{
+  status: number;
+  body:
+    | MobileAuthFailure
+    | { status: "ok" }
+    | { status: "error"; error: string };
+}> {
+  const auth = await requireComposerMembership(
+    request,
+    input.organizationId ?? null,
+  );
+  if ("error" in auth) {
+    return { status: auth.status, body: auth.error };
+  }
+
+  // History viewers can open history; retry mirrors web (administrators).
+  if (
+    !canViewNotificationHistory(auth.membership.role) ||
+    !canRetryNotificationDelivery(auth.membership.role)
+  ) {
+    return {
+      status: 403,
+      body: {
+        status: "forbidden",
+        error: "Administrators can retry failed deliveries.",
+      },
+    };
+  }
+
+  const deliveryId = String(input.deliveryId ?? "").trim();
+  if (!deliveryId) {
+    return {
+      status: 400,
+      body: { status: "error", error: "Delivery is required." },
+    };
+  }
+
+  const result = await retryFailedDelivery({
+    deliveryId,
+    organizationId: auth.membership.organizationId,
+  });
+  if (!result.ok) {
+    return {
+      status: 400,
+      body: { status: "error", error: result.error ?? "Retry failed." },
+    };
+  }
+
+  const admin = createAdminClient();
+  await writeAuditLog(admin, {
+    organizationId: auth.membership.organizationId,
+    userId: auth.userId,
+    action: AuditAction.NOTIFICATION_DELIVERY_RETRIED,
+    entityType: AuditEntityType.NOTIFICATION_DELIVERY,
+    entityId: deliveryId,
+    metadata: { via: "mobile" },
+  });
+
+  return { status: 200, body: { status: "ok" } };
 }

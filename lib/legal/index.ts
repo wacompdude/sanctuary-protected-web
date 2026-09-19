@@ -1,7 +1,9 @@
 export {
   BILLING_CONTACT_EMAIL,
+  BUSINESS_NAME,
   LEGAL_CONTACT_EMAIL,
   LEGAL_ENTITY_NAME,
+  SMS_BRAND_NAME,
   LEGAL_NAV_ITEMS,
   LEGAL_ROUTES,
   OPERATOR_DISPLAY_NAME,
@@ -10,6 +12,7 @@ export {
   PRIVACY_CONTACT_EMAIL,
   PRODUCT_NAME,
   SUPPORT_EMAIL,
+  brandIdentityLine,
   copyrightYear,
   formatPolicyDate,
   operatorLabel,

@@ -17,6 +17,7 @@ import {
   uniqueOrganizationSlugCandidate,
 } from "@/lib/organization/slug";
 import { isServiceRoleConfigured } from "@/lib/supabase/admin";
+import { DEFAULT_BILLING_TRIAL_DAYS } from "@/lib/billing/settings";
 import { ensureChurchSubscription } from "@/lib/subscriptions/mutations";
 
 type CreateRpcResult = {
@@ -134,7 +135,7 @@ export async function createChurchOnboarding(
         await ensureChurchSubscription({
           organizationId: payload.organization_id,
           status: "trialing",
-          periodDays: 30,
+          periodDays: DEFAULT_BILLING_TRIAL_DAYS,
           userId: user.id,
           source: "church_onboarding",
           reason: "Default trial subscription for new church",

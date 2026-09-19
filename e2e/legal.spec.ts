@@ -35,11 +35,14 @@ test.describe("public legal pages", () => {
     await expectPolicyChrome(page, "Privacy Policy");
     await expect(page.getByRole("heading", { name: /Trusted Devices/ })).toBeVisible();
     await expect(
-      page.getByRole("heading", { name: /SMS Messaging and Mobile Numbers/ }),
+      page.getByRole("heading", { name: /SMS Messaging Privacy/ }),
     ).toBeVisible();
-    await expect(page.getByText(/Reply STOP/)).toBeVisible();
+    await expect(page.getByText(/replying STOP/i)).toBeVisible();
     await expect(
-      page.getByText(/not sell, rent, or share SMS opt-in/i).first(),
+      page.getByText(/not sell, rent, or share your mobile telephone number, SMS opt-in information, or SMS consent/i).first(),
+    ).toBeVisible();
+    await expect(
+      page.getByText(/Sanctuary Protected LLC is a service of Unified Protective Technologies LLC/),
     ).toBeVisible();
 
     await page.evaluate(() => {
@@ -47,18 +50,27 @@ test.describe("public legal pages", () => {
       document.documentElement.classList.remove("light");
     });
     await expect(
-      page.getByRole("heading", { name: /SMS Messaging and Mobile Numbers/ }),
+      page.getByRole("heading", { name: /SMS Messaging Privacy/ }),
     ).toBeVisible();
   });
 
   test("terms SMS section discloses STOP, HELP, and rates", async ({ page }) => {
     const response = await page.goto("/terms");
     expect(response?.ok()).toBeTruthy();
-    await expect(page.getByRole("heading", { name: /SMS and Electronic Communications/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /SMS Messaging/ })).toBeVisible();
     await expect(page.getByText(/Reply STOP/)).toBeVisible();
-    await expect(page.getByText(/Reply HELP/)).toBeVisible();
+    await expect(page.getByText(/HELP for assistance/i)).toBeVisible();
     await expect(page.getByText(/Message and data rates may apply/i)).toBeVisible();
     await expect(page.getByText(/not a condition of purchasing/i)).toBeVisible();
+    await expect(
+      page.getByText(/The SMS consent checkbox is not selected by default/),
+    ).toBeVisible();
+    await expect(
+      page.getByText(/Application SMS enrollment is separate from account authentication and two-factor authentication/),
+    ).toBeVisible();
+    await expect(
+      page.getByText(/Sanctuary Protected LLC is a service of Unified Protective Technologies LLC/),
+    ).toBeVisible();
   });
 
   test("/billing loads without authentication", async ({ page }) => {
@@ -95,7 +107,21 @@ test.describe("public legal pages", () => {
 
   test("landing footer links reach the policies", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("contentinfo").getByRole("link", { name: "Terms" }).click();
+    const footer = page.getByTestId("site-footer");
+    await expect(
+      footer.getByText(
+        "Sanctuary Protected LLC is a service of Unified Protective Technologies LLC.",
+      ),
+    ).toBeVisible();
+    await expect(footer.getByRole("link", { name: "Privacy" })).toHaveAttribute(
+      "href",
+      "/privacy",
+    );
+    await expect(footer.getByRole("link", { name: "Billing" })).toHaveAttribute(
+      "href",
+      "/billing",
+    );
+    await footer.getByRole("link", { name: "Terms" }).click();
     await expect(page).toHaveURL(/\/terms$/);
   });
 

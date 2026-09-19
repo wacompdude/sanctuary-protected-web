@@ -12,12 +12,15 @@ import {
   LEGAL_PUBLIC_PATHS,
 } from "@/lib/auth/routes";
 import {
+  BUSINESS_NAME,
   LEGAL_ENTITY_NAME,
   LEGAL_NAV_ITEMS,
   LEGAL_ROUTES,
   POLICY_DATES,
   POLICY_VERSIONS,
   PRODUCT_NAME,
+  SMS_BRAND_NAME,
+  brandIdentityLine,
   copyrightYear,
   formatPolicyDate,
 } from "@/lib/legal/config";
@@ -37,10 +40,25 @@ function readRepo(relativePath: string): string {
 }
 
 function main() {
-  assert(PRODUCT_NAME === "Sanctuary Protected", "product name");
-  assert(LEGAL_ENTITY_NAME === null, "do not invent a legal entity name");
+  assert(PRODUCT_NAME === "Sanctuary Protected LLC", "product name");
+  assert(BUSINESS_NAME === "Sanctuary Protected LLC", "business name");
+  assert(SMS_BRAND_NAME === "Sanctuary Protected LLC", "SMS brand name");
+  assert(
+    LEGAL_ENTITY_NAME === "Unified Protective Technologies LLC",
+    "legal entity name",
+  );
+  assert(
+    brandIdentityLine() ===
+      "Sanctuary Protected LLC is a service of Unified Protective Technologies LLC.",
+    "brand identity line",
+  );
   assert(formatPolicyDate("2026-09-07") === "September 7, 2026", "policy date format");
   assert(copyrightYear() === 2026, "copyright year comes from policy dates");
+  assert(
+    LEGAL_NAV_ITEMS.map((item) => item.shortLabel).join(",") ===
+      "Privacy,Terms,Billing",
+    "footer legal link order",
+  );
 
   for (const path of LEGAL_PUBLIC_PATHS) {
     assert(isLegalPublicPath(path), `${path} is a legal public path`);
@@ -121,12 +139,37 @@ function main() {
     ...flattenAttorneyReviewNotes(billing),
   ];
   assert(termsText.includes("Reply STOP"), "terms disclose STOP");
-  assert(termsText.includes("Reply HELP"), "terms disclose HELP");
+  assert(termsText.includes("HELP for assistance") || termsText.includes("Reply HELP"), "terms disclose HELP");
   assert(termsText.toLowerCase().includes("message and data rates may apply"), "terms disclose rates");
   assert(termsText.includes("not a condition of purchasing"), "terms consent not required to purchase");
-  assert(privacyText.includes("SMS Messaging and Mobile Numbers"), "privacy has SMS section");
-  assert(privacyText.includes("Reply STOP"), "privacy discloses STOP");
-  assert(privacyText.includes("not sell, rent, or share SMS opt-in"), "privacy does not sell SMS consent");
+  assert(
+    termsText.includes("voluntarily opt in to receive application SMS text messages"),
+    "terms SMS is voluntary opt-in",
+  );
+  assert(
+    termsText.includes("The SMS consent checkbox is not selected by default"),
+    "terms disclose unchecked consent checkbox",
+  );
+  assert(
+    termsText.includes(
+      "Application SMS enrollment is separate from account authentication and two-factor authentication",
+    ),
+    "terms separate application SMS from 2FA",
+  );
+  assert(
+    termsText.includes(
+      "will not be combined with consent for application SMS messaging",
+    ),
+    "terms keep marketing SMS consent separate",
+  );
+  assert(privacyText.includes("SMS Messaging Privacy"), "privacy has SMS section");
+  assert(privacyText.includes("replying STOP"), "privacy discloses STOP");
+  assert(
+    privacyText.includes("not sell, rent, or share your mobile telephone number, SMS opt-in information, or SMS consent"),
+    "privacy does not sell SMS consent",
+  );
+  assert(termsText.includes("Sanctuary Protected LLC is a service of Unified Protective Technologies LLC"), "terms brand identity");
+  assert(privacyText.includes("Sanctuary Protected LLC is a service of Unified Protective Technologies LLC"), "privacy brand identity");
   assert(attorneyNotes.some((note) => note.includes("LEGAL REVIEW REQUIRED — SMS CONSENT")), "SMS legal review flagged in source");
   assert(attorneyNotes.some((note) => note.includes("limitation of liability")), "liability flagged in source");
   assert(attorneyNotes.some((note) => note.includes("indemnification")), "indemnity flagged in source");
@@ -166,14 +209,22 @@ function main() {
   assert(!signUp.includes('type="checkbox"'), "acknowledgement is notice text, not a pre-checked box");
 
   const landing = readRepo("components/landing/landing-page.tsx");
-  assert(landing.includes("LegalLinks"), "landing footer includes legal links");
+  assert(landing.includes("SiteFooter"), "landing footer includes SiteFooter");
 
   const billingPanel = readRepo("components/billing/billing-plan-panel.tsx");
   assert(billingPanel.includes('href="/billing"'), "checkout/plan panel links to billing policy");
   assert(billingPanel.includes('href="/terms"'), "plan panel links to terms");
 
   const authShell = readRepo("components/auth-page-shell.tsx");
-  assert(authShell.includes("LegalLinks"), "auth pages include legal footer links");
+  assert(authShell.includes("SiteFooter"), "auth pages include SiteFooter");
+
+  const appShell = readRepo("components/app-shell.tsx");
+  assert(appShell.includes("SiteFooter"), "app shell includes SiteFooter");
+
+  const siteFooter = readRepo("components/site-footer.tsx");
+  assert(siteFooter.includes("LegalLinks"), "site footer includes legal links");
+  assert(siteFooter.includes("brandIdentityLine"), "site footer includes brand identity");
+  assert(siteFooter.includes('data-testid="site-footer"'), "site footer test id");
 
   console.log("legal foundation self-check passed");
   console.log(`attorney-review source notes: ${attorneyNotes.length}`);

@@ -5,6 +5,7 @@ import {
   POLICY_VERSIONS,
   PRODUCT_NAME,
   SUPPORT_EMAIL,
+  brandIdentityLine,
   mailingAddressDisplay,
   operatorLabel,
 } from "@/lib/legal/config";
@@ -23,7 +24,7 @@ export const BILLING_DOCUMENT: LegalDocument = {
   version: POLICY_VERSIONS.billing,
   effectiveDate: POLICY_DATES.billingEffective,
   lastUpdated: POLICY_DATES.billingUpdated,
-  intro: `This Billing, Subscription, Cancellation & Refund Policy (“Billing Policy”) explains how paid access to ${PRODUCT_NAME} works. It applies to Organizations that subscribe. Individual Users are billed through their Organization, not through personal consumer checkout, unless we expressly offer a different product. This Policy should be read with the Terms of Service (${LEGAL_ROUTES.terms}) and Privacy Policy (${LEGAL_ROUTES.privacy}).`,
+  intro: `This Billing, Subscription, Cancellation & Refund Policy (“Billing Policy”) explains how paid access to ${PRODUCT_NAME} works. ${brandIdentityLine()} It applies to Organizations that subscribe. Individual Users are billed through their Organization, not through personal consumer checkout, unless we expressly offer a different product. This Policy should be read with the Terms of Service (${LEGAL_ROUTES.terms}) and Privacy Policy (${LEGAL_ROUTES.privacy}).`,
   sections: [
     {
       id: "overview",

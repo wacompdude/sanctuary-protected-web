@@ -7,6 +7,7 @@ import {
   PRODUCT_NAME,
   PUBLIC_SITE_HOST,
   SUPPORT_EMAIL,
+  brandIdentityLine,
   mailingAddressDisplay,
   operatorLabel,
 } from "@/lib/legal/config";
@@ -23,7 +24,7 @@ export const TERMS_DOCUMENT: LegalDocument = {
   version: POLICY_VERSIONS.terms,
   effectiveDate: POLICY_DATES.termsEffective,
   lastUpdated: POLICY_DATES.termsUpdated,
-  intro: `These Terms of Service (“Terms”) are an agreement between you and ${operator} concerning your access to and use of ${PRODUCT_NAME} (the “Service”). By accessing or using the Service, creating an account, or clicking to accept these Terms, you agree to be bound by them. If you use the Service on behalf of a church, school, nonprofit, business, or other entity, you represent that you have authority to bind that entity, and “you” includes that entity.`,
+  intro: `These Terms of Service (“Terms”) are an agreement between you and ${operator} concerning your access to and use of ${PRODUCT_NAME} (the “Service”). ${brandIdentityLine()} By accessing or using the Service, creating an account, or clicking to accept these Terms, you agree to be bound by them. If you use the Service on behalf of a church, school, nonprofit, business, or other entity, you represent that you have authority to bind that entity, and “you” includes that entity.`,
   sections: [
     {
       id: "introduction",
@@ -143,26 +144,36 @@ export const TERMS_DOCUMENT: LegalDocument = {
     },
     {
       id: "sms",
-      title: "9. SMS and Electronic Communications",
+      title: "9. SMS Messaging",
       attorneyReview: "[LEGAL REVIEW REQUIRED — SMS CONSENT] SMS consent / TCPA",
       blocks: [
         {
           type: "p",
-          text: `By enrolling in ${PRODUCT_NAME} SMS messaging from your Profile (Mobile Phone → Enable SMS Messaging), you agree to receive text messages from ${PRODUCT_NAME} related to the Service and the notification categories you select. Individual messages may also name your Organization. Storing a mobile number, joining an Organization, enabling email notifications, or enrolling in SMS two-factor authentication does not, by itself, enroll you in application SMS messaging.`,
+          text: `${PRODUCT_NAME} users may voluntarily opt in to receive application SMS text messages. Messages may include security alerts, incident notifications, scheduling updates, training and certification reminders, and account/service notifications based on user notification preferences.`,
         },
         {
           type: "p",
-          text: "Messages may include security alerts, incident notifications, scheduling updates, training reminders, certification reminders, and account or service notices. We do not currently send marketing or promotional SMS as part of this program. Message frequency varies based on your Organization’s activity and the notification categories you select.",
+          text: `Message frequency varies based on organization activity and your notification preferences. Message and data rates may apply. Reply STOP to opt out or HELP for assistance, or contact ${SUPPORT_EMAIL}. Consent to receive SMS messages is not a condition of purchasing or using ${PRODUCT_NAME}.`,
         },
         {
           type: "p",
-          text: "Message and data rates may apply. Reply STOP to opt out of SMS messages. Reply HELP for assistance, or email " +
-            SUPPORT_EMAIL +
-            ". Consent to receive SMS messages is not a condition of purchasing or using a paid subscription.",
+          text: `To enroll in ${PRODUCT_NAME} application SMS messaging, users must provide a mobile telephone number and affirmatively agree to receive SMS messages through the SMS Messaging section of their Profile. The SMS consent checkbox is not selected by default. Users must separately select the SMS consent checkbox and verify their mobile telephone number before application SMS messaging is enabled.`,
         },
         {
           type: "p",
-          text: `See our Privacy Policy (${LEGAL_ROUTES.privacy}) for how mobile numbers and SMS consent records are handled. Creating an Account does not constitute consent to receive marketing texts or marketing emails. Marketing communications, if we offer them later, will be presented separately.`,
+          text: `Saving or verifying a mobile number, creating an account, joining an Organization, enabling email notifications, or using a mobile number for account authentication or sign-in verification does not, by itself, enroll you in ${PRODUCT_NAME} application SMS messaging. Application SMS enrollment is separate from account authentication and two-factor authentication.`,
+        },
+        {
+          type: "p",
+          text: "Application SMS messages are sent only to mobile numbers associated with users who have completed the SMS opt-in and verification process. Individual messages may identify the Organization associated with the notification.",
+        },
+        {
+          type: "p",
+          text: `${PRODUCT_NAME} does not currently send marketing or promotional SMS messages as part of this SMS program. If marketing or promotional SMS messaging is offered in the future, consent for those messages will be requested separately and will not be combined with consent for application SMS messaging.`,
+        },
+        {
+          type: "p",
+          text: "Please see our Privacy Policy for information about how mobile telephone numbers, SMS consent records, and messaging preferences are collected, used, and protected.",
         },
       ],
     },

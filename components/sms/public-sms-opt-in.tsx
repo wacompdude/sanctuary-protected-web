@@ -12,11 +12,18 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import { SmsConsentDisclosure } from "@/components/sms/sms-consent-disclosure";
-import { PRODUCT_NAME } from "@/lib/legal/config";
+import { SmsMessagingCard } from "@/components/sms/sms-messaging-card";
+import {
+  SMS_ENABLE_BUTTON_LABEL,
+  SMS_PHONE_SAVE_HELPER,
+} from "@/lib/sms/consent-copy";
+import { inspectMobileNumber } from "@/lib/sms/phone";
 
 export function PublicSmsOptInForm() {
   const router = useRouter();
   const [agreed, setAgreed] = useState(false);
+  const [phone, setPhone] = useState("");
+  const phoneValid = inspectMobileNumber(phone).supported;
 
   return (
     <div className="space-y-6">
@@ -26,7 +33,7 @@ export function PublicSmsOptInForm() {
             Mobile Phone
           </h2>
           <CardDescription>
-            Saving a mobile number does not enroll you in SMS messaging.
+            {SMS_PHONE_SAVE_HELPER}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -38,43 +45,28 @@ export function PublicSmsOptInForm() {
               type="tel"
               autoComplete="tel"
               placeholder="+1 (425) 555-1234"
+              value={phone}
+              onChange={(event) => setPhone(event.target.value)}
             />
           </div>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <h2 className="text-xl font-semibold leading-none tracking-tight">
-            SMS Messaging
-          </h2>
-          <CardDescription>
-            Separate from your mobile number and from two-factor authentication.{" "}
-            {PRODUCT_NAME} only sends application texts after you opt in here.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form
-            className="space-y-4"
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (!agreed) return;
-              router.push("/login");
-            }}
-          >
-            <div>
-              <p className="text-sm font-medium">Status</p>
-              <p className="text-sm text-muted-foreground">Not Enrolled</p>
-            </div>
-
-            <SmsConsentDisclosure agreed={agreed} onAgreedChange={setAgreed} />
-
-            <Button type="submit" disabled={!agreed}>
-              Verify Number & Enable SMS
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+      <SmsMessagingCard statusLabel="Not Enrolled">
+        <form
+          className="space-y-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!agreed || !phoneValid) return;
+            router.push("/login");
+          }}
+        >
+          <SmsConsentDisclosure agreed={agreed} onAgreedChange={setAgreed} />
+          <Button type="submit" disabled={!agreed || !phoneValid}>
+            {SMS_ENABLE_BUTTON_LABEL}
+          </Button>
+        </form>
+      </SmsMessagingCard>
     </div>
   );
 }

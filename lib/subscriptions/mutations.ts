@@ -4,6 +4,10 @@ import {
   auditSubscriptionPlanChanged,
   auditSubscriptionStatusChanged,
 } from "@/lib/audit/subscription-events";
+import {
+  DEFAULT_BILLING_PERIOD_DAYS,
+  DEFAULT_BILLING_TRIAL_DAYS,
+} from "@/lib/billing/settings";
 import { createAdminClient, isServiceRoleConfigured } from "@/lib/supabase/admin";
 import {
   PLAN_DISPLAY_NAMES,
@@ -415,11 +419,15 @@ export async function ensureChurchSubscription(params: {
 
   const plan = await loadPlanByKey(admin, targetPlanKey);
   const status = params.status ?? "trialing";
+  const defaultPeriodDays =
+    status === "trialing"
+      ? DEFAULT_BILLING_TRIAL_DAYS
+      : DEFAULT_BILLING_PERIOD_DAYS;
   const subscription = await createSubscriptionRow(admin, {
     organizationId,
     plan,
     status,
-    periodDays: params.periodDays ?? 30,
+    periodDays: params.periodDays ?? defaultPeriodDays,
     userId: params.userId,
     source: params.source ?? "ensure_church_subscription",
     reason: params.reason ?? "Default / recommended subscription assignment",
@@ -462,7 +470,11 @@ export async function changeChurchSubscriptionPlan(params: {
       organizationId,
       plan: newPlan,
       status: params.status ?? "active",
-      periodDays: params.periodDays ?? 30,
+      periodDays:
+        params.periodDays ??
+        (params.status === "trialing"
+          ? DEFAULT_BILLING_TRIAL_DAYS
+          : DEFAULT_BILLING_PERIOD_DAYS),
       userId: params.userId,
       source: params.source ?? "change_church_subscription_plan",
       reason: params.reason ?? "Plan assignment",

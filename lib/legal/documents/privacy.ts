@@ -5,6 +5,7 @@ import {
   PRIVACY_CONTACT_EMAIL,
   PRODUCT_NAME,
   SUPPORT_EMAIL,
+  brandIdentityLine,
   mailingAddressDisplay,
   operatorLabel,
 } from "@/lib/legal/config";
@@ -21,7 +22,7 @@ export const PRIVACY_DOCUMENT: LegalDocument = {
   version: POLICY_VERSIONS.privacy,
   effectiveDate: POLICY_DATES.privacyEffective,
   lastUpdated: POLICY_DATES.privacyUpdated,
-  intro: `This Privacy Policy describes how ${operator} handles information in connection with ${PRODUCT_NAME}. It covers our websites and the hosted Service. It does not cover websites or cameras operated solely by your Organization outside the Service.`,
+  intro: `This Privacy Policy describes how ${operator} handles information in connection with ${PRODUCT_NAME}. ${brandIdentityLine()} It covers our websites and the hosted Service. It does not cover websites or cameras operated solely by your Organization outside the Service.`,
   sections: [
     {
       id: "introduction",
@@ -131,24 +132,32 @@ export const PRIVACY_DOCUMENT: LegalDocument = {
     },
     {
       id: "sms-messaging",
-      title: "8. SMS Messaging and Mobile Numbers",
+      title: "8. SMS Messaging Privacy",
       attorneyReview: "[LEGAL REVIEW REQUIRED — SMS CONSENT] SMS data handling",
       blocks: [
         {
           type: "p",
-          text: `We may collect a mobile phone number you or an authorized administrator enter on a profile. That number is contact information. It is not permission to send application SMS. If you enroll in ${PRODUCT_NAME} SMS messaging, we also store consent status, the consent wording version you accepted, the Privacy Policy and Terms versions in effect, verification state, opt-out events, destination region, and related timestamps. We do not store SMS verification codes in recoverable form.`,
+          text: `If you voluntarily opt in to receive SMS messages from ${PRODUCT_NAME}, we collect your mobile telephone number, SMS consent status, consent date and time, and related messaging preferences.`,
         },
         {
           type: "p",
-          text: "We use enrolled numbers to send the operational messages you opt into, such as security alerts, incident notifications, scheduling updates, training or certification reminders, and account or service notices, and to send enrollment verification or confirmation texts. Message frequency varies. Message and data rates may apply.",
+          text: "We do not sell, rent, or share your mobile telephone number, SMS opt-in information, or SMS consent with third parties for their marketing or promotional purposes. We may share this information with service providers that assist us in providing SMS messaging services, including messaging platform providers and telecommunications carriers, solely as necessary to provide those services.",
         },
         {
           type: "p",
-          text: `Reply STOP to opt out of SMS messages, including STOPALL, END, QUIT, CANCEL, or UNSUBSCRIBE where supported. You can also use Opt Out of SMS Messaging on your profile. Reply HELP or email ${SUPPORT_EMAIL} for help. You can update your mobile number on your profile; a new number requires a new enrollment and is not automatically opted in. SMS two-factor authentication, when used, is a separate control and does not enroll you in application SMS.`,
+          text: `SMS consent is voluntary and is not a condition of purchasing or using ${PRODUCT_NAME}. You may opt out of application SMS messaging at any time by replying STOP. Reply HELP for assistance or contact ${SUPPORT_EMAIL}.`,
         },
         {
           type: "p",
-          text: "Messaging platform providers, telecommunications carriers, and other infrastructure providers necessarily process numbers and message content to deliver texts. We do not sell, rent, or share SMS opt-in or consent information for third-party marketing purposes.",
+          text: `Saving or verifying a mobile number on your profile, joining an organization, enabling email notifications, or using a mobile number for account authentication or sign-in verification does not enroll you in ${PRODUCT_NAME} application SMS messaging. Application SMS messages are sent only after you separately and affirmatively opt in to SMS messaging.`,
+        },
+        {
+          type: "p",
+          text: "Application SMS messages may include security alerts, incident notifications, scheduling updates, training and certification reminders, and account/service notifications based on your notification preferences. Message frequency varies based on organization activity and your notification preferences. Message and data rates may apply.",
+        },
+        {
+          type: "p",
+          text: `SMS enrollment may be withdrawn at any time by replying STOP. Opting out of application SMS messaging does not prevent you from continuing to use ${PRODUCT_NAME} or other available notification and authentication methods.`,
         },
       ],
     },

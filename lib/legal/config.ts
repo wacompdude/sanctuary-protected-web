@@ -1,19 +1,27 @@
 /**
  * Central legal/product identity for public policy pages.
  *
- * Update versions and dates here — not in page components.
+ * Use PRODUCT_NAME ("Sanctuary Protected LLC") for SMS program branding,
+ * consent, Privacy, Terms, Billing, and other legal copy.
  *
- * LEGAL_ENTITY_NAME is null because the repository does not publish a
- * registered company name. Do not substitute "Unified Protective Technologies, LLC"
- * unless counsel confirms that entity operates the production service.
+ * Update versions and dates here — not in page components.
  *
  * @legal-review governing law, mailing address, dedicated legal/privacy mailboxes
  */
-export const PRODUCT_NAME = "Sanctuary Protected";
 
-export const LEGAL_ENTITY_NAME: string | null = null;
+/** Customer-facing product and legal business name. */
+export const PRODUCT_NAME = "Sanctuary Protected LLC";
 
-export const OPERATOR_DISPLAY_NAME = LEGAL_ENTITY_NAME ?? PRODUCT_NAME;
+/** SMS program brand — same as the legal business name. */
+export const SMS_BRAND_NAME = PRODUCT_NAME;
+
+/** Business name used in footers, copyright, and legal identity lines. */
+export const BUSINESS_NAME = PRODUCT_NAME;
+
+/** Parent company. Sanctuary Protected LLC is a service of this entity. */
+export const LEGAL_ENTITY_NAME = "Unified Protective Technologies LLC";
+
+export const OPERATOR_DISPLAY_NAME = BUSINESS_NAME;
 
 export const SUPPORT_EMAIL = "support@sanctuaryprotected.com";
 export const LEGAL_CONTACT_EMAIL = SUPPORT_EMAIL;
@@ -33,23 +41,23 @@ export const LEGAL_ROUTES = {
 } as const;
 
 export const LEGAL_NAV_ITEMS = [
-  { href: LEGAL_ROUTES.terms, label: "Terms of Service", shortLabel: "Terms" },
   { href: LEGAL_ROUTES.privacy, label: "Privacy Policy", shortLabel: "Privacy" },
+  { href: LEGAL_ROUTES.terms, label: "Terms of Service", shortLabel: "Terms" },
   { href: LEGAL_ROUTES.billing, label: "Billing & Subscription Policy", shortLabel: "Billing" },
 ] as const;
 
 export const POLICY_VERSIONS = {
-  terms: "1.1.0",
-  privacy: "1.1.0",
+  terms: "1.3.0",
+  privacy: "1.2.0",
   billing: "1.0.0",
 } as const;
 
 /** ISO calendar dates (UTC). */
 export const POLICY_DATES = {
   termsEffective: "2026-09-07",
-  termsUpdated: "2026-09-09",
+  termsUpdated: "2026-09-19",
   privacyEffective: "2026-09-07",
-  privacyUpdated: "2026-09-09",
+  privacyUpdated: "2026-09-19",
   billingEffective: "2026-09-07",
   billingUpdated: "2026-09-08",
 } as const;
@@ -76,11 +84,13 @@ export function copyrightYear(): number {
   return COPYRIGHT_YEAR;
 }
 
+/** Customer-facing business ↔ parent legal entity relationship. */
+export function brandIdentityLine(): string {
+  return `${BUSINESS_NAME} is a service of ${LEGAL_ENTITY_NAME}.`;
+}
+
 export function operatorLabel(): string {
-  if (LEGAL_ENTITY_NAME) {
-    return `${LEGAL_ENTITY_NAME}, doing business as ${PRODUCT_NAME}`;
-  }
-  return `the operator of ${PRODUCT_NAME}`;
+  return `${BUSINESS_NAME}, a service of ${LEGAL_ENTITY_NAME}`;
 }
 
 export function mailingAddressDisplay(): string {

@@ -17,6 +17,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { SMS_BRAND_NAME } from "@/lib/legal/config";
 import type { MfaActionState } from "@/lib/mfa/types";
 
 const initialState: MfaActionState = {};
@@ -52,11 +53,11 @@ export function ProfileMfaSettings({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Sign-in verification</CardTitle>
+        <CardTitle>Sign-In Verification / Two-Factor Authentication</CardTitle>
         <CardDescription>
-          After your password, we send a 6-digit code to your email unless this
-          browser is a trusted device. You can add a verified mobile number as
-          a backup if you cannot access that inbox.
+          Sign-in verification is separate from {SMS_BRAND_NAME} application
+          SMS messaging. Enrolling in application SMS notifications is not
+          required to use sign-in verification.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -78,7 +79,7 @@ export function ProfileMfaSettings({
         ) : null}
 
         <div className="rounded-md border border-border px-3 py-3 text-sm">
-          <p className="font-medium">Email code</p>
+          <p className="font-medium">Email Code</p>
           <p className="mt-1 text-muted-foreground">
             Sent to your account email after password sign-in from a new or
             unrecognized device. Trusted devices can skip this code until they
@@ -87,13 +88,18 @@ export function ProfileMfaSettings({
         </div>
 
         <div className="rounded-md border border-border px-3 py-3 text-sm">
-          <p className="font-medium">Text/SMS backup</p>
+          <p className="font-medium">Text/SMS Backup</p>
+          <p className="mt-1 text-muted-foreground">
+            A verified mobile number may be used as a backup method for sign-in
+            verification if you cannot access your email. This is separate from
+            enrollment in {SMS_BRAND_NAME} application SMS notifications.
+          </p>
           {hasVerifiedPhone && maskedPhone ? (
-            <p className="mt-1 text-muted-foreground">
+            <p className="mt-2 text-muted-foreground">
               Verified number: {maskedPhone}
             </p>
           ) : (
-            <p className="mt-1 text-muted-foreground">
+            <p className="mt-2 text-muted-foreground">
               No verified backup number yet. A phone typed at login is never
               trusted.
             </p>

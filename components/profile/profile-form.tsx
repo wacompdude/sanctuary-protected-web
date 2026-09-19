@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { ProfileActionState, UserProfile } from "@/lib/profile/types";
+import { SMS_PHONE_SAVE_HELPER } from "@/lib/sms/consent-copy";
 
 const initialState: ProfileActionState = {};
 
@@ -88,7 +89,7 @@ export function ProfileForm({ profile }: { profile: UserProfile }) {
               placeholder="+1 (425) 555-1234"
             />
             <p className="text-xs text-muted-foreground">
-              Saving a mobile number does not enroll you in SMS messaging.
+              {SMS_PHONE_SAVE_HELPER}
             </p>
           </div>
 

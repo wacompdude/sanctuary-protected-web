@@ -7,8 +7,10 @@ import { writeAuditLog } from "@/lib/audit/log";
 import { AuditAction, AuditEntityType } from "@/lib/audit/actions";
 import { getRequestIpAddress, getRequestUserAgent } from "@/lib/audit/request-ip";
 import {
+  SMS_CONSENT_SOURCE_PROFILE_WEB,
   SMS_CONSENT_TEXT_VERSION,
   smsConsentPolicyVersions,
+  smsOnScreenConsentSnapshot,
 } from "@/lib/sms/consent-copy";
 import {
   findPrimarySmsEndpoint,
@@ -80,7 +82,7 @@ export async function startSmsEnrollmentAction(
       .update({
         consent_status: "pending",
         consent_recorded_at: now,
-        consent_source: "USER_PROFILE",
+        consent_source: SMS_CONSENT_SOURCE_PROFILE_WEB,
         consent_disclosure_version: SMS_CONSENT_TEXT_VERSION,
         privacy_policy_version: versions.privacyPolicyVersion,
         terms_version: versions.termsVersion,
@@ -101,9 +103,16 @@ export async function startSmsEnrollmentAction(
       endpointId: endpoint.id,
       phoneE164: inspected.e164,
       eventType: "CONSENT_ACCEPTED",
-      source: "USER_PROFILE",
+      source: SMS_CONSENT_SOURCE_PROFILE_WEB,
       ipAddress,
       userAgent,
+      metadata: {
+        sms_opted_in: false,
+        sms_consent_source: SMS_CONSENT_SOURCE_PROFILE_WEB,
+        sms_consent_version: SMS_CONSENT_TEXT_VERSION,
+        sms_consent_text: smsOnScreenConsentSnapshot(),
+        sms_phone_verified: false,
+      },
     });
 
     const sent = await sendSmsEnrollmentCode({
@@ -119,7 +128,7 @@ export async function startSmsEnrollmentAction(
         endpointId: endpoint.id,
         phoneE164: inspected.e164,
         eventType: "VERIFICATION_SENT",
-        source: "USER_PROFILE",
+        source: SMS_CONSENT_SOURCE_PROFILE_WEB,
         ipAddress,
       });
     }
@@ -202,8 +211,11 @@ export async function verifySmsEnrollmentAction(
       endpointId: String(endpoint.id),
       phoneE164,
       eventType: "PHONE_VERIFIED",
-      source: "USER_PROFILE",
+      source: SMS_CONSENT_SOURCE_PROFILE_WEB,
       ipAddress: await getRequestIpAddress(),
+      metadata: {
+        sms_phone_verified: true,
+      },
     });
     await recordSmsConsentEvent({
       supabase,
@@ -212,7 +224,13 @@ export async function verifySmsEnrollmentAction(
       endpointId: String(endpoint.id),
       phoneE164,
       eventType: "SMS_ENABLED",
-      source: "USER_PROFILE",
+      source: SMS_CONSENT_SOURCE_PROFILE_WEB,
+      metadata: {
+        sms_opted_in: true,
+        sms_phone_verified: true,
+        sms_consent_source: SMS_CONSENT_SOURCE_PROFILE_WEB,
+        sms_consent_version: SMS_CONSENT_TEXT_VERSION,
+      },
     });
 
     await sendSmsEnrollmentConfirmation(phoneE164);
@@ -242,8 +260,7 @@ export async function optOutSmsAction(
       .from("notification_endpoints")
       .update({
         consent_status: "revoked",
-        consent_recorded_at: now,
-        consent_source: "USER_PROFILE",
+        consent_source: SMS_CONSENT_SOURCE_PROFILE_WEB,
         status: "disabled",
       })
       .eq("id", endpoint.id)
@@ -257,9 +274,14 @@ export async function optOutSmsAction(
       endpointId: String(endpoint.id),
       phoneE164: String(endpoint.normalized_destination),
       eventType: "SMS_OPTED_OUT",
-      source: "USER_PROFILE",
+      source: SMS_CONSENT_SOURCE_PROFILE_WEB,
       ipAddress: await getRequestIpAddress(),
       userAgent: await getRequestUserAgent(),
+      metadata: {
+        sms_opted_in: false,
+        sms_opt_out_timestamp: now,
+        sms_consent_source: SMS_CONSENT_SOURCE_PROFILE_WEB,
+      },
     });
     await writeAuditLog(supabase, {
       organizationId: church.id,

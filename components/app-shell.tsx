@@ -2,6 +2,7 @@ import { Suspense, type ReactNode } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { AppChurchHeader } from "@/components/app-church-header";
 import { ChurchStatusBanner } from "@/components/church-status-banner";
+import { SiteFooter } from "@/components/site-footer";
 import {
   churchBrandStyle,
   hasChurchBrandTokens,
@@ -73,6 +74,7 @@ async function BrandedAppShell({ children }: { children: ReactNode }) {
           </Suspense>
           {children}
         </div>
+        <SiteFooter />
       </main>
     </div>
   );
@@ -95,6 +97,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <HeaderFallback />
               {children}
             </div>
+            <SiteFooter />
           </main>
         </div>
       }

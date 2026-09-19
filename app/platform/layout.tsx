@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { SiteFooter } from "@/components/site-footer";
 
 /**
  * Visual shell only. Authorization lives in nested layouts:
@@ -11,7 +12,7 @@ export default function PlatformRootLayout({
   children: ReactNode;
 }) {
   return (
-    <div className="min-h-app bg-slate-950 text-slate-50 [color-scheme:dark]">
+    <div className="flex min-h-app flex-col bg-slate-950 text-slate-50 [color-scheme:dark]">
       <header className="border-b border-slate-800 bg-slate-900">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
           <div>
@@ -27,7 +28,10 @@ export default function PlatformRootLayout({
           </span>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</main>
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
+        {children}
+      </main>
+      <SiteFooter tone="inverse" />
     </div>
   );
 }

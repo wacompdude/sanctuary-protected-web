@@ -6,20 +6,25 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createHmac } from "node:crypto";
 import {
+  SMS_CONSENT_BODY,
   SMS_CONSENT_CHECKBOX_LABEL,
   SMS_CONSENT_FREQUENCY,
   SMS_CONSENT_HELP,
   SMS_CONSENT_NOT_REQUIRED,
   SMS_CONSENT_RATES,
   SMS_CONSENT_STOP,
+  SMS_CONSENT_STOP_HELP,
   SMS_CONSENT_TEXT_VERSION,
+  SMS_ENABLE_BUTTON_LABEL,
   SMS_MSG_DATA_RATES,
+  SMS_PHONE_SAVE_HELPER,
   SMS_PRIVACY_HREF,
-  SMS_PROGRAM_NAME,
+  SMS_SECTION_HELPER,
   SMS_TERMS_HREF,
   smsConsentPolicyVersions,
   smsHelpReply,
   smsOptInConfirmation,
+  smsStopReply,
 } from "@/lib/sms/consent-copy";
 import {
   classifySmsRegion,
@@ -37,7 +42,7 @@ import {
   verifyBirdWebhookRequest,
 } from "@/lib/sms/bird-webhook";
 import { birdCategoryForAppMessage } from "@/lib/sms/bird-send";
-import { PRODUCT_NAME } from "@/lib/legal/config";
+import { PRODUCT_NAME, SMS_BRAND_NAME } from "@/lib/legal/config";
 
 function assert(condition: boolean, message: string) {
   if (!condition) throw new Error(message);
@@ -48,30 +53,71 @@ function readRepo(relativePath: string): string {
 }
 
 function main() {
-  assert(PRODUCT_NAME === "Sanctuary Protected", "brand name");
-  assert(SMS_CONSENT_TEXT_VERSION === "sms-consent-v2", "consent text version");
-  assert(SMS_CONSENT_CHECKBOX_LABEL.includes(PRODUCT_NAME), "consent names brand");
+  assert(PRODUCT_NAME === "Sanctuary Protected LLC", "legal business name");
+  assert(SMS_BRAND_NAME === "Sanctuary Protected LLC", "SMS brand name");
+  assert(SMS_CONSENT_TEXT_VERSION === "sms-consent-v6", "consent text version");
+  assert(SMS_CONSENT_BODY.includes(SMS_BRAND_NAME), "consent body names SMS brand");
+  assert(SMS_CONSENT_BODY.includes("Sanctuary Protected LLC"), "consent uses legal business name");
+  assert(
+    !SMS_CONSENT_BODY.toLowerCase().includes("other service messages"),
+    "no broad other-service-messages wording",
+  );
+  assert(
+    SMS_CONSENT_BODY.includes("security alerts") &&
+      SMS_CONSENT_BODY.includes("incident notifications") &&
+      SMS_CONSENT_BODY.includes("scheduling updates") &&
+      SMS_CONSENT_BODY.includes("training and certification reminders") &&
+      SMS_CONSENT_BODY.includes("account/service notifications"),
+    "consent lists approved message categories",
+  );
+  assert(
+    SMS_CONSENT_CHECKBOX_LABEL ===
+      `I agree to receive SMS messages from ${SMS_BRAND_NAME}.`,
+    "checkbox label",
+  );
   assert(SMS_CONSENT_FREQUENCY.toLowerCase().includes("frequency varies"), "frequency");
   assert(SMS_CONSENT_RATES.toLowerCase().includes("message and data rates"), "rates");
   assert(SMS_CONSENT_STOP.includes("STOP"), "stop");
   assert(SMS_CONSENT_HELP.includes("HELP"), "help");
+  assert(SMS_CONSENT_STOP_HELP.includes("STOP") && SMS_CONSENT_STOP_HELP.includes("HELP"), "stop/help sentence");
   assert(SMS_CONSENT_NOT_REQUIRED.toLowerCase().includes("not a condition"), "not required");
-  assert(SMS_PROGRAM_NAME === "Alerts", "program name");
-  assert(SMS_MSG_DATA_RATES === "Msg&Data Rates May Apply.", "carrier rates phrase");
+  assert(SMS_MSG_DATA_RATES === "Msg & data rates may apply.", "carrier rates phrase");
+  assert(
+    SMS_SECTION_HELPER ===
+      `Save a mobile phone number above, then choose whether to enable SMS messaging. ${SMS_PHONE_SAVE_HELPER} If you choose to enroll, your mobile number will be verified before SMS messaging is enabled.`,
+    "enrollment helper matches verify-then-enable flow",
+  );
+  assert(
+    SMS_PHONE_SAVE_HELPER ===
+      "Saving a mobile number does not enroll you in application SMS messages.",
+    "saving a number is not consent",
+  );
+  assert(SMS_ENABLE_BUTTON_LABEL === "Verify Number & Enable SMS", "enable button label");
 
-  const help = smsHelpReply("844-519-3919");
-  assert(help.startsWith("Sanctuary Protected Help:"), "HELP names brand");
+  const help = smsHelpReply();
+  assert(help.startsWith("Sanctuary Protected LLC:"), "HELP names brand");
   assert(help.includes("support@sanctuaryprotected.com"), "HELP includes support email");
-  assert(help.includes("call 844-519-3919"), "HELP includes call number");
   assert(help.includes("Reply STOP to opt out"), "HELP includes STOP");
-  assert(help.includes(SMS_MSG_DATA_RATES), "HELP includes rates");
+  assert(!help.toLowerCase().includes("two-factor"), "HELP is not MFA copy");
 
   const confirm = smsOptInConfirmation();
-  assert(confirm.startsWith("Welcome to Sanctuary Protected Alerts!"), "opt-in welcome");
+  assert(
+    confirm.startsWith(
+      "Sanctuary Protected LLC: You are enrolled in SMS notifications.",
+    ),
+    "opt-in confirmation",
+  );
   assert(confirm.includes("Msg frequency varies"), "opt-in frequency");
-  assert(confirm.includes("Reply STOP to unsubscribe"), "opt-in STOP");
-  assert(confirm.includes("HELP for help"), "opt-in HELP");
+  assert(confirm.includes("Reply HELP for help or STOP to opt out"), "opt-in HELP/STOP");
   assert(confirm.includes(SMS_MSG_DATA_RATES), "opt-in rates");
+
+  const stop = smsStopReply();
+  assert(
+    stop ===
+      "Sanctuary Protected LLC: You have opted out of SMS notifications. No further messages will be sent.",
+    "STOP reply copy",
+  );
+
   assert(SMS_PRIVACY_HREF === "/privacy", "privacy href");
   assert(SMS_TERMS_HREF === "/terms", "terms href");
 
@@ -241,25 +287,43 @@ function main() {
   assert(enrollmentUi.includes("SMS_TERMS_HREF"), "uses real terms route");
 
   const profileEnrollment = readRepo("components/profile/profile-sms-enrollment.tsx");
-  assert(profileEnrollment.includes("disabled={!agreed"), "enable disabled until checked");
+  assert(profileEnrollment.includes("disabled={!agreed || !phoneValid"), "enable disabled until checked and valid phone");
   assert(profileEnrollment.includes("SmsConsentDisclosure"), "profile uses shared disclosure");
+  assert(profileEnrollment.includes("SmsMessagingCard"), "profile uses shared SMS card");
+  assert(!profileEnrollment.includes("SmsAutomatedReplies"), "profile does not show automated replies");
+  assert(profileEnrollment.includes("SMS_ENABLE_BUTTON_LABEL"), "profile CTA matches public form");
 
   const publicOptIn = readRepo("components/sms/public-sms-opt-in.tsx");
   assert(publicOptIn.includes("SmsConsentDisclosure"), "public page uses shared disclosure");
-  assert(publicOptIn.includes("disabled={!agreed"), "public enable disabled until checked");
+  assert(publicOptIn.includes("SmsMessagingCard"), "public page uses shared SMS card");
+  assert(publicOptIn.includes("disabled={!agreed || !phoneValid}"), "public enable disabled until checked and valid phone");
   assert(!publicOptIn.includes("startSmsEnrollmentAction"), "public page does not enroll visitors");
   assert(publicOptIn.includes("Not Enrolled"), "public page shows not enrolled");
 
   const publicPage = readRepo("app/(legal)/sms/page.tsx");
-  assert(publicPage.includes("Profile → Mobile Phone → Enable SMS Messaging"), "Bird workflow text");
+  assert(publicPage.includes("PublicSmsOptInForm"), "public SMS page uses shared form");
+  assert(!publicPage.includes("SmsAutomatedReplies"), "public SMS page does not show automated replies");
   assert(!publicPage.includes("createClient"), "public SMS page must not create a Supabase client");
+  assert(!publicPage.includes("smsHelpReply"), "HELP copy not shown on enrollment page");
+  assert(!publicPage.includes("smsStopReply"), "STOP copy not shown on enrollment page");
+
+  const mfaSettings = readRepo("components/mfa/profile-mfa-settings.tsx");
+  assert(mfaSettings.includes("Sign-In Verification / Two-Factor Authentication"), "MFA heading distinguishes 2FA");
+  assert(mfaSettings.includes("separate from"), "MFA copy distinguishes application SMS");
 
   const profileForm = readRepo("components/profile/profile-form.tsx");
   assert(profileForm.includes("Mobile Phone"), "profile labels mobile phone");
-  assert(
-    profileForm.includes("does not enroll you in SMS messaging"),
-    "saving a number is not consent",
-  );
+  assert(profileForm.includes("SMS_PHONE_SAVE_HELPER"), "profile phone save uses shared helper");
+
+  const smsActions = readRepo("app/(app)/profile/sms-actions.ts");
+  assert(smsActions.includes("SMS_CONSENT_SOURCE_PROFILE_WEB"), "web consent source recorded");
+  assert(smsActions.includes("smsOnScreenConsentSnapshot"), "consent text snapshot stored");
+  assert(smsActions.includes("sms_opt_out_timestamp"), "opt-out timestamp stored");
+  const optOutFn = smsActions.slice(smsActions.indexOf("export async function optOutSmsAction"));
+  assert(!optOutFn.includes("consent_recorded_at"), "opt-out does not overwrite consent timestamp");
+
+  const publicOptInForm = readRepo("components/sms/public-sms-opt-in.tsx");
+  assert(publicOptInForm.includes("SMS_PHONE_SAVE_HELPER"), "public phone save uses shared helper");
 
   const mfaCard = readRepo("app/(app)/profile/page.tsx");
   assert(mfaCard.includes("ProfileSmsEnrollment"), "SMS enrollment on profile");

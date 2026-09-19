@@ -28,3 +28,8 @@ export {
 export { processBillingWebhook } from "@/lib/billing/webhooks";
 export { buildDowngradeImpactReport } from "@/lib/billing/downgrade-impact";
 export { listBillingHistory } from "@/lib/billing/history";
+export {
+  DEFAULT_BILLING_TRIAL_DAYS,
+  DEFAULT_BILLING_PERIOD_DAYS,
+  resolveTrialPeriodDays,
+} from "@/lib/billing/settings";

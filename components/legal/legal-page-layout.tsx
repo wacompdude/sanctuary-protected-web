@@ -4,7 +4,11 @@ import { LegalLinks } from "@/components/legal/legal-links";
 import { LegalPublicFooter } from "@/components/legal/legal-public-footer";
 import { LegalTableOfContents } from "@/components/legal/legal-toc";
 import { ThemeSwitcher } from "@/components/theme-switcher";
-import { PRODUCT_NAME, formatPolicyDate } from "@/lib/legal/config";
+import {
+  BUSINESS_NAME,
+  brandIdentityLine,
+  formatPolicyDate,
+} from "@/lib/legal/config";
 import type { LegalDocument } from "@/lib/legal/types";
 
 export function LegalPageLayout({
@@ -43,7 +47,10 @@ export function LegalPageLayout({
               {document.title}
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              {PRODUCT_NAME}
+              {BUSINESS_NAME}
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {brandIdentityLine()}
             </p>
             <dl className="mt-4 grid gap-1 text-sm text-muted-foreground sm:grid-cols-2">
               <div>

@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { Label } from "@/components/ui/label";
 import {
+  SMS_CONSENT_BODY,
   SMS_CONSENT_CHECKBOX_LABEL,
   SMS_CONSENT_FREQUENCY,
-  SMS_CONSENT_HELP,
   SMS_CONSENT_NOT_REQUIRED,
   SMS_CONSENT_RATES,
-  SMS_CONSENT_STOP,
+  SMS_CONSENT_STOP_HELP,
   SMS_PRIVACY_HREF,
   SMS_TERMS_HREF,
 } from "@/lib/sms/consent-copy";
@@ -24,15 +24,14 @@ export function SmsConsentDisclosure({
 }) {
   return (
     <div className="space-y-3">
-      <p className="text-pretty text-sm leading-relaxed">
-        {SMS_CONSENT_CHECKBOX_LABEL}
-      </p>
+      <p className="text-sm font-medium">SMS Consent</p>
+      <p className="text-pretty text-sm leading-relaxed">{SMS_CONSENT_BODY}</p>
       <p className="text-pretty text-sm text-muted-foreground">
-        {SMS_CONSENT_FREQUENCY} {SMS_CONSENT_RATES} {SMS_CONSENT_STOP}{" "}
-        {SMS_CONSENT_HELP} {SMS_CONSENT_NOT_REQUIRED}
+        {SMS_CONSENT_FREQUENCY} {SMS_CONSENT_RATES} {SMS_CONSENT_STOP_HELP}{" "}
+        {SMS_CONSENT_NOT_REQUIRED}
       </p>
 
-      <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
         <Link
           href={SMS_PRIVACY_HREF}
           className="underline underline-offset-4"
@@ -41,6 +40,9 @@ export function SmsConsentDisclosure({
         >
           Privacy Policy
         </Link>
+        <span className="text-muted-foreground" aria-hidden>
+          |
+        </span>
         <Link
           href={SMS_TERMS_HREF}
           className="underline underline-offset-4"
@@ -65,7 +67,7 @@ export function SmsConsentDisclosure({
           className="mt-1 h-5 w-5 shrink-0 rounded border-input accent-primary"
         />
         <Label htmlFor={consentId} className="text-sm font-normal leading-relaxed">
-          I agree to the SMS messaging terms above.
+          {SMS_CONSENT_CHECKBOX_LABEL}
         </Label>
       </div>
     </div>

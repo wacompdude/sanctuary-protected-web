@@ -299,6 +299,7 @@ function main() {
   assert(publicOptIn.includes("disabled={!agreed || !phoneValid}"), "public enable disabled until checked and valid phone");
   assert(!publicOptIn.includes("startSmsEnrollmentAction"), "public page does not enroll visitors");
   assert(publicOptIn.includes("Not Enrolled"), "public page shows not enrolled");
+  assert(publicOptIn.includes("PublicSignInVerificationCard"), "public page shows 2FA distinction card");
 
   const publicPage = readRepo("app/(legal)/sms/page.tsx");
   assert(publicPage.includes("PublicSmsOptInForm"), "public SMS page uses shared form");
@@ -307,9 +308,13 @@ function main() {
   assert(!publicPage.includes("smsHelpReply"), "HELP copy not shown on enrollment page");
   assert(!publicPage.includes("smsStopReply"), "STOP copy not shown on enrollment page");
 
+  const mfaCopy = readRepo("lib/mfa/copy.ts");
+  assert(mfaCopy.includes("Sign-In Verification / Two-Factor Authentication"), "MFA heading distinguishes 2FA");
+  assert(mfaCopy.includes("separate from"), "MFA copy distinguishes application SMS");
+  assert(mfaCopy.includes("not required to use sign-in verification"), "MFA enrollment is optional vs application SMS");
+
   const mfaSettings = readRepo("components/mfa/profile-mfa-settings.tsx");
-  assert(mfaSettings.includes("Sign-In Verification / Two-Factor Authentication"), "MFA heading distinguishes 2FA");
-  assert(mfaSettings.includes("separate from"), "MFA copy distinguishes application SMS");
+  assert(mfaSettings.includes("SignInVerificationCard"), "profile MFA uses shared 2FA card");
 
   const profileForm = readRepo("components/profile/profile-form.tsx");
   assert(profileForm.includes("Mobile Phone"), "profile labels mobile phone");

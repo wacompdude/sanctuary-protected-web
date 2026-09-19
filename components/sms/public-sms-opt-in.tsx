@@ -11,6 +11,7 @@ import {
   CardDescription,
   CardHeader,
 } from "@/components/ui/card";
+import { PublicSignInVerificationCard } from "@/components/mfa/sign-in-verification-card";
 import { SmsConsentDisclosure } from "@/components/sms/sms-consent-disclosure";
 import { SmsMessagingCard } from "@/components/sms/sms-messaging-card";
 import {
@@ -67,6 +68,8 @@ export function PublicSmsOptInForm() {
           </Button>
         </form>
       </SmsMessagingCard>
+
+      <PublicSignInVerificationCard />
     </div>
   );
 }

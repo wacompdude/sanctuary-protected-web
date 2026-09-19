@@ -74,6 +74,17 @@ test.describe("SMS enrollment disclosures", () => {
     await expect(page.getByText(SMS_PHONE_SAVE_HELPER).first()).toBeVisible();
     await expect(page.getByLabel("Mobile Phone")).toBeVisible();
     await expect(page.getByText("Not Enrolled")).toBeVisible();
+    await expect(
+      page.getByText("Sign-In Verification / Two-Factor Authentication"),
+    ).toBeVisible();
+    await expect(
+      page.getByText(/Sign-in verification is separate from Sanctuary Protected LLC application SMS messaging/i),
+    ).toBeVisible();
+    await expect(page.getByText("Email Code")).toBeVisible();
+    await expect(page.getByText("Text/SMS Backup")).toBeVisible();
+    await expect(
+      page.getByText(/Completing it does not enroll you in Sanctuary Protected LLC application SMS messaging/i),
+    ).toBeVisible();
     await expect(page.getByText("SMS Consent")).toBeVisible();
     await expect(page.getByText(/Message frequency varies/i).first()).toBeVisible();
     await expect(page.getByText(/Message and data rates may apply/i).first()).toBeVisible();
@@ -108,6 +119,14 @@ test.describe("SMS enrollment disclosures", () => {
       document.documentElement.classList.remove("light");
     });
     await expect(page.getByRole("heading", { name: "SMS Messaging" }).first()).toBeVisible();
+    await expect(
+      page.getByText("Sign-In Verification / Two-Factor Authentication"),
+    ).toBeVisible();
+    await expect(
+      page.getByText(/Sign-in verification is separate from Sanctuary Protected LLC application SMS messaging/i),
+    ).toBeVisible();
+    await expect(page.getByText("Email Code")).toBeVisible();
+    await expect(page.getByText("Text/SMS Backup")).toBeVisible();
     await expect(checkbox).toBeVisible();
   });
 });

@@ -72,7 +72,7 @@ export function ProfileSmsEnrollment({
 
   const displayPhone = phone ? formatNanpDisplay(phone) : null;
   const pending =
-    enrollmentState === "PENDING_VERIFICATION" || enrollState.success;
+    enrollmentState === "PENDING_VERIFICATION" || Boolean(enrollState.success);
   const phoneValid = Boolean(phone && inspectMobileNumber(phone).supported);
   const optedIn = enrollmentState === "OPTED_IN";
 

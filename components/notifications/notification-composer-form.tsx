@@ -41,15 +41,18 @@ export function NotificationComposerForm({
   groups,
   members,
   canEmergencyOverride,
-  smsConfigured,
+  smsProviderConfigured,
+  smsChurchEnabled,
   pushConfigured,
 }: {
   groups: GroupOption[];
   members: MemberOption[];
   canEmergencyOverride: boolean;
-  smsConfigured: boolean;
+  smsProviderConfigured: boolean;
+  smsChurchEnabled: boolean;
   pushConfigured: boolean;
 }) {
+  const smsConfigured = smsProviderConfigured && smsChurchEnabled;
   const [preview, setPreview] = useState<AudiencePreviewResult["preview"] | null>(
     null,
   );
@@ -245,8 +248,10 @@ export function NotificationComposerForm({
         <CardHeader>
           <CardTitle>Delivery channels</CardTitle>
           <CardDescription>
-            Text/SMS and push can be selected for planning, but only in-app and email
-            send today.
+            Choose delivery channels for this notification. Text/SMS is available
+            when an SMS provider is configured and church SMS is enabled.
+            Recipients still need application SMS enrollment before a message is
+            sent.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
@@ -268,8 +273,10 @@ export function NotificationComposerForm({
             Text/SMS{" "}
             <span className="text-muted-foreground">
               {smsConfigured
-                ? "(provider pending)"
-                : "(Text/SMS provider not configured)"}
+                ? "(eligible enrolled numbers)"
+                : !smsProviderConfigured
+                  ? "(SMS provider not configured)"
+                  : "(enable in church notification settings)"}
             </span>
           </label>
           <label className="flex items-center gap-2">
@@ -349,8 +356,11 @@ export function NotificationComposerForm({
                   : ""}
               </p>
               <p className="text-muted-foreground">
-                Text/SMS suppressed (not sent): {preview.smsSuppressed} · Push
-                pending: {preview.pushPending ?? 0}
+                Text/SMS pending: {preview.smsPending ?? 0}
+                {preview.smsSuppressed
+                  ? ` · ${preview.smsSuppressed} suppressed`
+                  : ""}{" "}
+                · Push pending: {preview.pushPending ?? 0}
                 {preview.pushSuppressed
                   ? ` · ${preview.pushSuppressed} suppressed`
                   : ""}

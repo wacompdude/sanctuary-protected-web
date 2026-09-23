@@ -382,6 +382,26 @@ export async function createNotification(
           continue;
         }
 
+        if (planned.channel === "sms" && planned.status === "pending") {
+          deliveryInserts.push({
+            organization_id: input.organizationId,
+            notification_id: notificationId,
+            recipient_id: recipientId,
+            channel: "sms",
+            provider: "bird",
+            status: "pending",
+            attempt_number: 0,
+            max_attempts: 3,
+            scheduled_for: input.scheduledFor ?? new Date().toISOString(),
+            endpoint_id: planned.endpointId,
+            normalized_destination: planned.normalizedDestination,
+            source_groups: planned.sourceGroups,
+            preference_rule_applied: planned.preferenceRuleApplied,
+            override_applied: planned.overrideApplied,
+          });
+          continue;
+        }
+
         if (planned.channel === "push" && planned.status === "pending") {
           deliveryInserts.push({
             organization_id: input.organizationId,
@@ -412,7 +432,7 @@ export async function createNotification(
               planned.channel === "email"
                 ? (process.env.EMAIL_PROVIDER ?? "resend").toLowerCase()
                 : planned.channel === "sms"
-                  ? "sms_placeholder"
+                  ? "bird"
                   : planned.channel === "push"
                     ? "expo"
                     : "internal",

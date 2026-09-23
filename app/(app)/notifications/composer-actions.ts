@@ -31,6 +31,7 @@ export type AudiencePreviewResult = {
     emailPending: number;
     emailSuppressed: number;
     inAppDelivered: number;
+    smsPending: number;
     smsSuppressed: number;
     pushPending: number;
     pushSuppressed: number;
@@ -76,7 +77,10 @@ function parseRequestedChannels(formData: FormData): NotificationChannel[] {
 function parseDeliverableChannels(formData: FormData): NotificationChannel[] {
   const selected = parseRequestedChannels(formData).filter(
     (channel) =>
-      channel === "in_app" || channel === "email" || channel === "push",
+      channel === "in_app" ||
+      channel === "email" ||
+      channel === "push" ||
+      channel === "sms",
   );
   return selected.length > 0 ? selected : [...OPERATIONAL_ALERT_CHANNELS];
 }
@@ -163,8 +167,11 @@ export async function previewNotificationAudienceAction(
         inAppDelivered: audience.deliveries.filter(
           (row) => row.channel === "in_app" && row.status === "delivered",
         ).length,
+        smsPending: audience.deliveries.filter(
+          (row) => row.channel === "sms" && row.status === "pending",
+        ).length,
         smsSuppressed: audience.deliveries.filter(
-          (row) => row.channel === "sms",
+          (row) => row.channel === "sms" && row.status === "suppressed",
         ).length,
         pushPending: audience.deliveries.filter(
           (row) => row.channel === "push" && row.status === "pending",
@@ -263,7 +270,9 @@ export async function sendComposedNotificationAction(
       );
       const estimatedSegments = estimateSmsSegmentsForRecipients({
         body,
-        recipientCount: audience.members.length,
+        recipientCount: audience.deliveries.filter(
+          (row) => row.channel === "sms" && row.status === "pending",
+        ).length,
       });
       if (estimatedSegments > 0) {
         await requireSmsSegmentCapacity({

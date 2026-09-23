@@ -7,9 +7,16 @@ import {
 } from "@/lib/email";
 import { getEmailProvider } from "@/lib/notifications/providers/email-provider";
 import { getPushProvider } from "@/lib/notifications/providers/expo-push-provider";
+import { getSmsProvider } from "@/lib/notifications/providers/sms-provider";
+import { getChurchNotificationSettings } from "@/lib/notifications/settings";
 import type { NotificationSeverity } from "@/lib/notifications/types";
 import { isNotificationSeverity } from "@/lib/notifications/constants";
 import { safeErrorMessage } from "@/lib/notifications/validation";
+import { canSendSms, suppressionReasonFromSmsEligibility } from "@/lib/sms/eligibility";
+import { formatApplicationNotificationSms } from "@/lib/sms/format-notification-sms";
+import { maskMobileE164 } from "@/lib/sms/phone";
+import { estimateSmsSegments } from "@/lib/subscriptions/sms-segments";
+import { recordSmsSegmentsConsumed } from "@/lib/subscriptions/usage";
 import { createAdminClient, isServiceRoleConfigured } from "@/lib/supabase/admin";
 
 type DeliveryRow = {
@@ -112,7 +119,7 @@ export async function dispatchPendingDeliveries(options?: {
       "id, organization_id, notification_id, recipient_id, channel, provider, status, attempt_number, max_attempts, scheduled_for, endpoint_id, normalized_destination",
     )
     .in("status", ["pending", "queued"])
-    .in("channel", ["email", "push"])
+    .in("channel", ["email", "push", "sms"])
     .order("scheduled_for", { ascending: true, nullsFirst: true })
     .limit(limit);
 
@@ -163,13 +170,24 @@ export async function dispatchPendingDeliveries(options?: {
       skipped += 1;
       continue;
     }
-    const result =
-      delivery.channel === "push"
-        ? await sendPushDelivery(admin, delivery)
-        : await sendEmailDelivery(admin, delivery);
-    if (result === "sent") sent += 1;
-    else if (result === "failed") failed += 1;
-    else skipped += 1;
+    try {
+      const result =
+        delivery.channel === "push"
+          ? await sendPushDelivery(admin, delivery)
+          : delivery.channel === "sms"
+            ? await sendSmsDelivery(admin, delivery)
+            : await sendEmailDelivery(admin, delivery);
+      if (result === "sent") sent += 1;
+      else if (result === "failed") failed += 1;
+      else skipped += 1;
+    } catch (error) {
+      failed += 1;
+      console.error(
+        "Notification delivery failed:",
+        delivery.channel,
+        error instanceof Error ? error.message : "unknown error",
+      );
+    }
   }
 
   // Refresh parent notification statuses for touched notifications.
@@ -583,6 +601,271 @@ export async function sendPushDelivery(
   return "failed";
 }
 
+export async function sendSmsDelivery(
+  admin: SupabaseClient,
+  delivery: DeliveryRow,
+): Promise<"sent" | "failed" | "skipped"> {
+  if (delivery.channel !== "sms") return "skipped";
+
+  console.info("SMS notification dispatch started");
+
+  const attempt = delivery.attempt_number + 1;
+  await admin
+    .from("notification_deliveries")
+    .update({
+      status: "processing",
+      attempt_number: attempt,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", delivery.id)
+    .in("status", ["pending", "queued"]);
+
+  try {
+    const [{ data: notification }, { data: endpoint }, { data: recipient }] =
+      await Promise.all([
+        admin
+          .from("notifications")
+          .select(
+            "id, title, body, metadata, status, notification_type, severity, action_url, entity_type, entity_id",
+          )
+          .eq("id", delivery.notification_id)
+          .eq("organization_id", delivery.organization_id)
+          .maybeSingle(),
+        delivery.endpoint_id
+          ? admin
+              .from("notification_endpoints")
+              .select(
+                "id, user_id, destination, normalized_destination, status, consent_status, is_verified, suppressed_at",
+              )
+              .eq("id", delivery.endpoint_id)
+              .eq("organization_id", delivery.organization_id)
+              .eq("channel", "sms")
+              .maybeSingle()
+          : Promise.resolve({ data: null }),
+        admin
+          .from("notification_recipients")
+          .select("id, user_id, display_name")
+          .eq("id", delivery.recipient_id)
+          .eq("organization_id", delivery.organization_id)
+          .maybeSingle(),
+      ]);
+
+    const notificationRow = notification as NotificationMeta | null;
+    if (!notificationRow || notificationRow.status === "cancelled") {
+      await admin
+        .from("notification_deliveries")
+        .update({
+          status: "cancelled",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", delivery.id);
+      return "skipped";
+    }
+
+    const endpointRow = endpoint as {
+      id: string;
+      user_id: string;
+      destination?: string | null;
+      normalized_destination?: string | null;
+      status?: string | null;
+      consent_status?: string | null;
+      is_verified?: boolean | null;
+      suppressed_at?: string | null;
+    } | null;
+    const recipientRow = recipient as {
+      id: string;
+      user_id?: string | null;
+      display_name?: string | null;
+    } | null;
+
+    const to =
+      delivery.normalized_destination?.trim() ||
+      endpointRow?.normalized_destination?.trim() ||
+      endpointRow?.destination?.trim() ||
+      "";
+
+    const churchSettings = await getChurchNotificationSettings(
+      admin,
+      delivery.organization_id,
+    );
+    const eligibility = await canSendSms({
+      organizationId: delivery.organization_id,
+      userId: recipientRow?.user_id ?? endpointRow?.user_id ?? "",
+      phoneNumber: to || null,
+      organizationSmsEnabled: churchSettings.sms_notifications_enabled !== false,
+      userSmsPreferenceEnabled: true,
+      consentStatus: endpointRow?.consent_status,
+      endpointStatus: endpointRow?.status,
+      isVerified: Boolean(endpointRow?.is_verified),
+      suppressed: Boolean(endpointRow?.suppressed_at),
+    });
+
+    if (!eligibility.allowed) {
+      if (
+        eligibility.reason === "MONTHLY_SMS_LIMIT_REACHED" ||
+        eligibility.reason === "ORGANIZATION_SMS_TIER_UNAVAILABLE"
+      ) {
+        console.info("SMS recipient skipped:", eligibility.reason);
+        await updateDeliveryRow(admin, delivery.id, {
+          status: attempt >= delivery.max_attempts ? "failed" : "queued",
+          failed_at:
+            attempt >= delivery.max_attempts ? new Date().toISOString() : null,
+          last_error_code: eligibility.reason.toLowerCase(),
+          last_error_message: "SMS delivery is not currently available.",
+          scheduled_for:
+            attempt >= delivery.max_attempts
+              ? null
+              : new Date(
+                  Date.now() + nextBackoffMinutes(attempt) * 60_000,
+                ).toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+        return "failed";
+      }
+
+      if (
+        eligibility.reason === "SMS_SUPPRESSED" ||
+        endpointRow?.status === "revoked" ||
+        Boolean(endpointRow?.suppressed_at)
+      ) {
+        console.info("SMS recipient skipped: suppressed");
+      } else if (
+        eligibility.reason === "SMS_NOT_OPTED_IN" ||
+        eligibility.reason === "SMS_OPTED_OUT" ||
+        eligibility.reason === "USER_PREFERENCE_DISABLED" ||
+        eligibility.reason === "CATEGORY_DISABLED"
+      ) {
+        console.info("SMS recipient skipped: not opted in");
+      } else {
+        console.info("SMS recipient skipped:", eligibility.reason);
+      }
+
+      await admin
+        .from("notification_deliveries")
+        .update({
+          status: "suppressed",
+          failed_at: new Date().toISOString(),
+          last_error_code: eligibility.reason.toLowerCase(),
+          last_error_message: "SMS delivery is not eligible for this recipient.",
+          suppression_reason: suppressionReasonFromSmsEligibility(
+            eligibility.reason,
+          ),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", delivery.id);
+      return "skipped";
+    }
+
+    console.info("SMS recipient eligible:", maskMobileE164(to));
+
+    const text = formatApplicationNotificationSms({
+      title: notificationRow.title,
+      severity: notificationRow.severity,
+      notificationType: notificationRow.notification_type,
+    });
+
+    const provider = getSmsProvider();
+    const sendResult = await provider.send({
+      to,
+      subject: notificationRow.title,
+      text,
+      senderCategory: "alerts",
+      tags: {
+        notification_id: delivery.notification_id,
+        delivery_id: delivery.id,
+        notification_type: notificationRow.notification_type,
+      },
+    });
+
+    if (sendResult.ok) {
+      // Bird acceptance is "sent", never "delivered". Webhooks advance later.
+      const status =
+        sendResult.status === "delivered" ? "sent" : sendResult.status;
+      await updateDeliveryRow(admin, delivery.id, {
+        status: status === "sent" || status === "queued" ? status : "sent",
+        provider: provider.name,
+        provider_message_id: sendResult.providerMessageId ?? null,
+        sent_at: new Date().toISOString(),
+        delivered_at: null,
+        provider_response: sendResult.providerResponse ?? {},
+        last_error_code: null,
+        last_error_message: null,
+        updated_at: new Date().toISOString(),
+      });
+      if (provider.name === "bird") {
+        console.info("Bird SMS delivery record created");
+        await recordSmsSegmentsConsumed({
+          organizationId: delivery.organization_id,
+          deliveryId: delivery.id,
+          notificationId: delivery.notification_id,
+          segments: estimateSmsSegments(text),
+        }).catch((error) => {
+          console.error(
+            "SMS segment usage recording failed:",
+            error instanceof Error ? error.message : "unknown error",
+          );
+        });
+      }
+      return "sent";
+    }
+
+    const permanent =
+      sendResult.status === "rejected" ||
+      sendResult.status === "bounced" ||
+      sendResult.status === "suppressed" ||
+      attempt >= delivery.max_attempts;
+
+    if (permanent) {
+      await updateDeliveryRow(admin, delivery.id, {
+        status: sendResult.status === "failed" ? "failed" : sendResult.status,
+        provider: provider.name,
+        failed_at: new Date().toISOString(),
+        last_error_code: sendResult.errorCode ?? "send_failed",
+        last_error_message: safeErrorMessage(sendResult.errorMessage),
+        provider_response: sendResult.providerResponse ?? {},
+        updated_at: new Date().toISOString(),
+      });
+      return "failed";
+    }
+
+    const retryAt = new Date();
+    retryAt.setMinutes(retryAt.getMinutes() + nextBackoffMinutes(attempt));
+    await updateDeliveryRow(admin, delivery.id, {
+      status: "queued",
+      provider: provider.name,
+      scheduled_for: retryAt.toISOString(),
+      last_error_code: sendResult.errorCode ?? "temporary_failure",
+      last_error_message: safeErrorMessage(sendResult.errorMessage),
+      provider_response: sendResult.providerResponse ?? {},
+      updated_at: new Date().toISOString(),
+    });
+
+    return "failed";
+  } catch (error) {
+    console.error(
+      "Bird SMS send failed",
+      error instanceof Error ? error.message : "unknown error",
+    );
+    await updateDeliveryRow(admin, delivery.id, {
+      status: attempt >= delivery.max_attempts ? "failed" : "queued",
+      failed_at:
+        attempt >= delivery.max_attempts ? new Date().toISOString() : null,
+      last_error_code: "sms_dispatch_error",
+      last_error_message: safeErrorMessage(
+        error instanceof Error ? error.message : "SMS dispatch failed.",
+      ),
+      scheduled_for:
+        attempt >= delivery.max_attempts
+          ? null
+          : new Date(
+              Date.now() + nextBackoffMinutes(attempt) * 60_000,
+            ).toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+    return "failed";
+  }
+}
+
 export async function retryFailedDelivery(params: {
   deliveryId: string;
   organizationId: string;
@@ -612,8 +895,8 @@ export async function retryFailedDelivery(params: {
   if (row.status === "sent" || row.status === "delivered") {
     return { ok: false, error: "Delivery already succeeded." };
   }
-  if (row.channel !== "email" && row.channel !== "push") {
-    return { ok: false, error: "Only email and push deliveries can be retried." };
+  if (row.channel !== "email" && row.channel !== "push" && row.channel !== "sms") {
+    return { ok: false, error: "Only email, push, and SMS deliveries can be retried." };
   }
 
   await admin
@@ -633,7 +916,9 @@ export async function retryFailedDelivery(params: {
   const result =
     row.channel === "push"
       ? await sendPushDelivery(admin, retried)
-      : await sendEmailDelivery(admin, retried);
+      : row.channel === "sms"
+        ? await sendSmsDelivery(admin, retried)
+        : await sendEmailDelivery(admin, retried);
   await refreshNotificationStatus(admin, row.notification_id);
 
   return result === "sent"

@@ -39,10 +39,14 @@ import {
 } from "@/lib/sms/eligibility";
 import {
   classifyInboundSmsKeyword,
+  extractBirdWebhookEvent,
   verifyBirdWebhookRequest,
 } from "@/lib/sms/bird-webhook";
 import { birdCategoryForAppMessage } from "@/lib/sms/bird-send";
+import { formatApplicationNotificationSms } from "@/lib/sms/format-notification-sms";
+import { getSmsProvider, getSmsProviderStatus } from "@/lib/notifications/providers/sms-provider";
 import { PRODUCT_NAME, SMS_BRAND_NAME } from "@/lib/legal/config";
+import { OPERATIONAL_ALERT_CHANNELS } from "@/lib/notifications/constants";
 
 function assert(condition: boolean, message: string) {
   if (!condition) throw new Error(message);
@@ -204,7 +208,7 @@ function main() {
   });
   assert(!suppressed.allowed && suppressed.reason === "SMS_SUPPRESSED", "suppression wins");
   assert(
-    suppressionReasonFromSmsEligibility("SMS_SUPPRESSED") === "sms_suppressed",
+    suppressionReasonFromSmsEligibility("SMS_SUPPRESSED") === "user_opted_out",
     "suppression mapping",
   );
 
@@ -342,14 +346,114 @@ function main() {
   assert(webhookRoute.includes("processBirdWebhook"), "Bird webhook route exists");
   const processor = readRepo("lib/sms/process-bird-webhook.ts");
   assert(processor.includes("Invalid webhook signature"), "webhook authenticity required");
-  assert(processor.includes("SMS_KEYWORD"), "STOP/START recorded as keyword source");
-  assert(processor.includes("sendSmsHelpReply"), "HELP sends carrier auto-reply");
-  assert(processor.includes("sendSmsEnrollmentConfirmation"), "START sends opt-in confirmation");
+  assert(processor.includes("sms_suppression.created"), "STOP uses Bird suppression events");
+  assert(processor.includes("BIRD_SUPPRESSION"), "suppression source recorded");
+  assert(processor.includes("application SMS re-enrollment stays on Profile SMS"), "START does not auto-enroll");
+  assert(processor.includes("sendSmsHelpReply"), "HELP reply remains available");
+  assert(processor.includes("SMS_HELP_REPLY"), "HELP reply is env-gated");
+  assert(!processor.includes("sendSmsEnrollmentConfirmation"), "START does not send opt-in confirmation");
+
+  const delivered = extractBirdWebhookEvent({
+    type: "sms.delivered",
+    timestamp: "2026-06-10T14:30:00Z",
+    data: {
+      sms_id: "sms_01krdgeqcxet5s7t44vh8rt9mg",
+      workspace_id: "ws_01krdgeqcxet5s7t44vh8rt9mg",
+      to: "+15551234567",
+      from: "+18445193919",
+    },
+  });
+  assert(delivered.smsId === "sms_01krdgeqcxet5s7t44vh8rt9mg", "delivered sms_id");
+  assert(delivered.to === "+15551234567", "delivered recipient");
+  assert(delivered.from === "+18445193919", "delivered sender");
+
+  const received = extractBirdWebhookEvent({
+    type: "sms.received",
+    data: {
+      sms_id: "sms_inbound_1",
+      from: "+14255551212",
+      to: "+18445193919",
+      body: "HELP",
+    },
+  });
+  assert(received.from === "+14255551212", "received from is subscriber");
+  assert(received.to === "+18445193919", "received to is Sanctuary sender");
+  assert(classifyInboundSmsKeyword(received.body) === "HELP", "HELP keyword");
+
+  const suppression = extractBirdWebhookEvent({
+    type: "sms_suppression.created",
+    data: {
+      suppression_id: "ssu_1",
+      destination: "+14255551212",
+      originator: "+18445193919",
+      reason: "keyword_stop",
+    },
+  });
+  assert(suppression.suppressionDestination === "+14255551212", "suppression destination");
+  assert(suppression.suppressionOriginator === "+18445193919", "suppression originator");
+  assert(suppression.from === "+14255551212", "suppression from is subscriber not originator");
+
+  const preference = extractBirdWebhookEvent({
+    type: "preference.revoked",
+    data: {
+      preference_id: "prf_1",
+      channel: "sms",
+      handle: "+15550001234",
+      coverage: "non_transactional",
+      topic_id: null,
+      sender_scope: null,
+    },
+  });
+  assert(preference.preference === "revoked", "preference type");
+  assert(preference.channel === "sms", "preference channel");
+  assert(preference.handle === "+15550001234", "preference handle");
 
   const migration = readRepo("supabase/migrations/099_sms_consent_management.sql");
   assert(migration.includes("sms_consent_events"), "consent history table");
   assert(migration.includes("sms_phone_verifications"), "verification table");
   assert(migration.includes("REVOKE UPDATE, DELETE"), "consent history is append-only for clients");
+
+  const formatted = formatApplicationNotificationSms({
+    title: "Security incident reported at First Church",
+    severity: "high",
+    notificationType: "incident.created",
+  });
+  assert(formatted.startsWith(`${SMS_BRAND_NAME}:`), "application SMS names brand");
+  assert(formatted.includes("[HIGH]"), "application SMS includes severity");
+  assert(
+    formatted.includes("Open Sanctuary Protected for details."),
+    "application SMS directs to the app",
+  );
+  assert(!formatted.toLowerCase().includes("medical"), "application SMS omits medical detail");
+
+  assert(OPERATIONAL_ALERT_CHANNELS.includes("sms"), "alerts include SMS channel");
+  const dispatcher = readRepo("lib/notifications/dispatch-notification.ts");
+  assert(dispatcher.includes('["email", "push", "sms"]'), "dispatcher queries SMS deliveries");
+  assert(dispatcher.includes("sendSmsDelivery"), "dispatcher sends SMS");
+  assert(dispatcher.includes("formatApplicationNotificationSms"), "dispatcher formats SMS");
+  assert(dispatcher.includes("canSendSms"), "dispatcher re-checks SMS eligibility");
+  const webhookProcessor = readRepo("lib/sms/process-bird-webhook.ts");
+  assert(webhookProcessor.includes("deliveryStatusRank"), "webhook does not regress sent to queued");
+  assert(
+    webhookProcessor.includes('.eq("provider", "bird")'),
+    "webhook correlates by provider bird",
+  );
+  assert(
+    webhookProcessor.includes('.eq("provider_message_id", smsId)'),
+    "webhook correlates by Bird sms_id",
+  );
+
+  const previousSmsProvider = process.env.SMS_PROVIDER;
+  process.env.SMS_PROVIDER = "console";
+  const consoleStatus = getSmsProviderStatus();
+  assert(getSmsProvider().name === "console", "SMS_PROVIDER=console selects console");
+  assert(consoleStatus.configured, "console SMS provider is configured");
+  assert(consoleStatus.provider === "console", "console status name");
+  if (previousSmsProvider === undefined) {
+    delete process.env.SMS_PROVIDER;
+  } else {
+    process.env.SMS_PROVIDER = previousSmsProvider;
+  }
 
   console.log("sms consent self-check passed");
 }

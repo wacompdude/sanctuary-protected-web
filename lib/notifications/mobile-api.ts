@@ -111,7 +111,10 @@ function parseDeliverableChannels(
     selected.length > 0 ? selected : [...OPERATIONAL_ALERT_CHANNELS]
   ).filter(
     (channel) =>
-      channel === "in_app" || channel === "email" || channel === "push",
+      channel === "in_app" ||
+      channel === "email" ||
+      channel === "push" ||
+      channel === "sms",
   );
   if (!channels.includes("push")) {
     channels.push("push");

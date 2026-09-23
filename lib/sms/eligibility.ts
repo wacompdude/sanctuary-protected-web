@@ -109,15 +109,15 @@ export function suppressionReasonFromSmsEligibility(
       return "consent_missing";
     case "SMS_OPTED_OUT":
     case "SMS_SUPPRESSED":
-      return "sms_suppressed";
+      return "user_opted_out";
     case "DESTINATION_NOT_SUPPORTED":
     case "DESTINATION_DISABLED":
-      return "destination_unsupported";
+      return "endpoint_invalid";
     case "ORGANIZATION_SMS_TIER_UNAVAILABLE":
     case "ORGANIZATION_SMS_DISABLED":
       return "provider_unavailable";
     case "MONTHLY_SMS_LIMIT_REACHED":
-      return "quota_exceeded";
+      return "other";
     case "CATEGORY_DISABLED":
     case "USER_PREFERENCE_DISABLED":
       return "user_opted_out";

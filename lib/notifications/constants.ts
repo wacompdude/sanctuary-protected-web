@@ -36,13 +36,17 @@ export const OPERATIONAL_ALERT_CHANNELS: NotificationChannel[] = [
   "in_app",
   "email",
   "push",
+  "sms",
 ];
 
 export function isPersistableNotificationChannel(
   channel: NotificationChannel,
 ): boolean {
   return (
-    channel === "in_app" || channel === "email" || channel === "push"
+    channel === "in_app" ||
+    channel === "email" ||
+    channel === "push" ||
+    channel === "sms"
   );
 }
 

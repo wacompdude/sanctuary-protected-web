@@ -10,6 +10,7 @@ import {
   canSendTestNotification,
   getChurchNotificationSettings,
   getEmailProviderStatus,
+  getSmsProviderStatus,
 } from "@/lib/notifications";
 import { getEmailSenderRegistryStatus } from "@/lib/email";
 import { isServiceRoleConfigured } from "@/lib/supabase/admin";
@@ -31,6 +32,7 @@ async function NotificationSettingsContent() {
     await getAuthenticatedUserWithChurch();
   const tablesAvailable = await areNotificationTablesAvailable(supabase);
   const provider = getEmailProviderStatus();
+  const smsStatus = getSmsProviderStatus();
   const canEdit = canManageChurchNotificationSettings(membership.role);
   const canTest = canSendTestNotification(membership.role);
   const serviceRoleConfigured = isServiceRoleConfigured();
@@ -98,6 +100,10 @@ async function NotificationSettingsContent() {
             · {provider.configured ? "configured" : "not configured"}
           </p>
           <p>
+            <span className="font-medium">SMS provider:</span> {smsStatus.provider}{" "}
+            · {smsStatus.configured ? "configured" : "not configured"}
+          </p>
+          <p>
             <span className="font-medium">Email domain:</span>{" "}
             {provider.emailDomain ?? senderRegistry.domain ?? "—"}
           </p>
@@ -152,7 +158,11 @@ async function NotificationSettingsContent() {
       ) : null}
 
       {settings ? (
-        <NotificationSettingsForm settings={settings} canEdit={canEdit} />
+        <NotificationSettingsForm
+          settings={settings}
+          canEdit={canEdit}
+          smsProviderStatus={smsStatus}
+        />
       ) : (
         <Card>
           <CardContent className="py-8 text-sm text-muted-foreground">

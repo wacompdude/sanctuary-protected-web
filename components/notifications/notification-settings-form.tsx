@@ -26,9 +26,11 @@ const initialState: ActionState = {};
 export function NotificationSettingsForm({
   settings,
   canEdit,
+  smsProviderStatus,
 }: {
   settings: ChurchNotificationSettings;
   canEdit: boolean;
+  smsProviderStatus: { provider: string; configured: boolean };
 }) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState(
@@ -93,7 +95,14 @@ export function NotificationSettingsForm({
                   />
                   <span>
                     Text/SMS enabled{" "}
-                    <span className="text-muted-foreground">(provider unavailable)</span>
+                    <span className="text-muted-foreground">
+                      {smsProviderStatus.configured
+                        ? `(${smsProviderStatus.provider})`
+                        : "(provider not configured)"}
+                      {settings.sms_notifications_enabled
+                        ? " · saved on"
+                        : " · saved off — check this box and click Save"}
+                    </span>
                   </span>
                 </label>
                 <label className="flex items-start gap-2 text-sm">

@@ -21,8 +21,18 @@ function birdFromNumber(): string | null {
   return value || null;
 }
 
+function birdApiKey(): string | null {
+  const value =
+    process.env.BIRD_SMS_API_KEY?.trim() || process.env.BIRD_API_KEY?.trim();
+  return value || null;
+}
+
+export function getBirdSmsFromNumber(): string | null {
+  return birdFromNumber();
+}
+
 export function isBirdSmsConfigured(): boolean {
-  return Boolean(process.env.BIRD_API_KEY?.trim() && birdFromNumber());
+  return Boolean(birdApiKey() && birdFromNumber());
 }
 
 export async function sendBirdSms(input: {
@@ -30,7 +40,7 @@ export async function sendBirdSms(input: {
   text: string;
   category: BirdSmsCategory;
 }): Promise<BirdSmsSendResult> {
-  const apiKey = process.env.BIRD_API_KEY?.trim();
+  const apiKey = birdApiKey();
   const from = birdFromNumber();
   if (!apiKey || !from) {
     return { ok: false, error: "Bird SMS is not configured." };

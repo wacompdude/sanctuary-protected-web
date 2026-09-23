@@ -333,6 +333,9 @@ export async function updateChurchNotificationSettingsAction(
 
     revalidatePath("/settings/notifications");
     revalidatePath("/notifications/settings");
+    revalidatePath("/notifications/new");
+    revalidatePath("/notifications/preferences");
+    revalidatePath("/notifications");
     return { success: true };
   } catch (error) {
     return {

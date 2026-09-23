@@ -22,6 +22,7 @@ import {
   listPreferableGroupsForUser,
 } from "@/lib/notifications/preference-rules/queries";
 import { getEmailProviderStatus } from "@/lib/notifications/providers/email-provider";
+import { getSmsProviderStatus } from "@/lib/notifications/providers/sms-provider";
 
 async function NotificationPreferencesContent() {
   const { supabase, church, user, membership } =
@@ -59,6 +60,7 @@ async function NotificationPreferencesContent() {
   ]);
 
   const emailStatus = getEmailProviderStatus();
+  const smsStatus = getSmsProviderStatus();
   const { data: churchSettings } = await supabase
     .from("organization_notification_settings")
     .select(
@@ -102,9 +104,13 @@ async function NotificationPreferencesContent() {
           </p>
           <p>
             Text/SMS:{" "}
+            {smsStatus.configured
+              ? `Configured (${smsStatus.provider})`
+              : "Provider not configured"}
+            {" · "}
             {churchSettings?.sms_notifications_enabled
-              ? "Church enabled (provider pending)"
-              : "Text/SMS provider not configured"}
+              ? "Church enabled"
+              : "Church disabled"}
           </p>
           <p>
             Push:{" "}

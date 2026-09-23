@@ -185,17 +185,85 @@ export function extractInboundSms(payload: unknown): {
   return { from: event.from, body: event.body };
 }
 
+export function birdWebhookDeliveryId(
+  headers?: Headers | Record<string, string | null | undefined>,
+): string | null {
+  if (!headers) return null;
+  if (headers instanceof Headers) {
+    return (
+      headers.get("webhook-id")?.trim() ||
+      headers.get("svix-id")?.trim() ||
+      null
+    );
+  }
+  const direct = headers["webhook-id"] ?? headers["svix-id"];
+  return typeof direct === "string" && direct.trim() ? direct.trim() : null;
+}
+
+export const BIRD_SMS_LIFECYCLE_EVENTS = [
+  "sms.accepted",
+  "sms.sent",
+  "sms.delivered",
+  "sms.undelivered",
+  "sms.failed",
+  "sms.expired",
+  "sms.rejected",
+] as const;
+
+export type BirdSmsLifecycleEvent = (typeof BIRD_SMS_LIFECYCLE_EVENTS)[number];
+
+export function isBirdSmsLifecycleEvent(
+  type: string | null,
+): type is BirdSmsLifecycleEvent {
+  return Boolean(type && (BIRD_SMS_LIFECYCLE_EVENTS as readonly string[]).includes(type));
+}
+
 export type BirdWebhookEvent = {
   type: string | null;
+  timestamp: string | null;
   channel: string | null;
   from: string | null;
+  to: string | null;
   body: string;
-  preference?: "granted" | "revoked" | "deleted" | null;
+  smsId: string | null;
+  preference: "granted" | "revoked" | "deleted" | null;
+  handle: string | null;
+  coverage: string | null;
+  topicId: string | null;
+  senderScope: string | null;
+  preferenceId: string | null;
+  suppressionId: string | null;
+  suppressionDestination: string | null;
+  suppressionOriginator: string | null;
+  suppressionReason: string | null;
+  errorCode: string | null;
+  errorDescription: string | null;
 };
 
 export function extractBirdWebhookEvent(payload: unknown): BirdWebhookEvent {
+  const empty: BirdWebhookEvent = {
+    type: null,
+    timestamp: null,
+    channel: null,
+    from: null,
+    to: null,
+    body: "",
+    smsId: null,
+    preference: null,
+    handle: null,
+    coverage: null,
+    topicId: null,
+    senderScope: null,
+    preferenceId: null,
+    suppressionId: null,
+    suppressionDestination: null,
+    suppressionOriginator: null,
+    suppressionReason: null,
+    errorCode: null,
+    errorDescription: null,
+  };
   if (!payload || typeof payload !== "object") {
-    return { type: null, channel: null, from: null, body: "", preference: null };
+    return empty;
   }
   const record = payload as Record<string, unknown>;
   const data =
@@ -204,38 +272,66 @@ export function extractBirdWebhookEvent(payload: unknown): BirdWebhookEvent {
     (record.message as Record<string, unknown> | undefined) ??
     record;
   const type = stringish(record.type) ?? stringish(record.event);
-  const channel = (
-    stringish(data.channel) ??
-    stringish(record.channel) ??
-    ""
-  ).toLowerCase();
-  const from =
-    stringish(data.handle) ||
-    stringish(data.originator) ||
-    stringish(data.from) ||
-    stringish(data.sender) ||
-    stringish(data.msisdn) ||
-    stringish(record.originator) ||
-    stringish(record.from);
-  const body =
-    stringish(data.body) ||
-    stringish(data.text) ||
-    stringish(data.message) ||
-    stringish(record.body) ||
-    stringish(record.text) ||
-    "";
+  const error =
+    data.error && typeof data.error === "object"
+      ? (data.error as Record<string, unknown>)
+      : null;
 
   let preference: BirdWebhookEvent["preference"] = null;
   if (type === "preference.granted") preference = "granted";
   if (type === "preference.revoked") preference = "revoked";
   if (type === "preference.deleted") preference = "deleted";
 
+  const handle = stringish(data.handle);
+  const smsFrom = stringish(data.from) || stringish(data.sender) || stringish(data.msisdn);
+  const suppressionDestination = stringish(data.destination);
+  const suppressionOriginator = stringish(data.originator);
+
+  // Subscriber number depends on event shape. Do not treat our sender
+  // (originator / outbound from) as the profile phone.
+  let from: string | null = null;
+  if (type === "sms_suppression.created") {
+    from = suppressionDestination;
+  } else if (type?.startsWith("preference.")) {
+    from = handle;
+  } else if (type === "sms.received") {
+    from = smsFrom;
+  } else {
+    from = smsFrom || handle;
+  }
+
+  const channel = (
+    stringish(data.channel) ??
+    stringish(record.channel) ??
+    ""
+  ).toLowerCase();
+
   return {
+    ...empty,
     type,
+    timestamp: stringish(record.timestamp),
     channel: channel || null,
     from,
-    body,
+    to: stringish(data.to),
+    body:
+      stringish(data.body) ||
+      stringish(data.text) ||
+      stringish(record.body) ||
+      stringish(record.text) ||
+      "",
+    smsId: stringish(data.sms_id) || stringish(data.id),
     preference,
+    handle,
+    coverage: stringish(data.coverage),
+    topicId: stringish(data.topic_id),
+    senderScope: stringish(data.sender_scope),
+    preferenceId: stringish(data.preference_id),
+    suppressionId: stringish(data.suppression_id),
+    suppressionDestination,
+    suppressionOriginator,
+    suppressionReason: stringish(data.reason),
+    errorCode: stringish(error?.code) || stringish(data.error_code),
+    errorDescription: stringish(error?.description),
   };
 }
 

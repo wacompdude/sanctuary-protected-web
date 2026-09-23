@@ -1,5 +1,6 @@
 export type { NotificationProvider } from "@/lib/notifications/providers/provider-interface";
 export { getEmailProvider, getEmailProviderStatus } from "@/lib/notifications/providers/email-provider";
+export { getSmsProvider, getSmsProviderStatus } from "@/lib/notifications/providers/sms-provider";
 export {
   createNotification,
   markNotificationRead,

@@ -22,8 +22,11 @@ import {
   listNotificationGroups,
 } from "@/lib/notifications/groups/queries";
 import { getChurchNotificationSettings } from "@/lib/notifications/settings";
+import { getSmsProviderStatus } from "@/lib/notifications/providers/sms-provider";
+import { connection } from "next/server";
 
 async function ComposerContent() {
+  await connection();
   const { supabase, church, membership } =
     await getAuthenticatedUserWithChurch();
 
@@ -53,6 +56,7 @@ async function ComposerContent() {
     listChurchTeamMemberships(church.id).catch(() => []),
     getChurchNotificationSettings(supabase, church.id),
   ]);
+  const smsStatus = getSmsProviderStatus();
 
   return (
     <div className="space-y-6">
@@ -63,6 +67,13 @@ async function ComposerContent() {
           </h1>
           <p className="mt-1 text-sm text-muted-foreground sm:text-base">
             Send to notification groups for {church.name}.
+            {" "}
+            Text/SMS channel:{" "}
+            {smsStatus.configured
+              ? `configured (${smsStatus.provider})`
+              : "provider not configured"}
+            {" · "}
+            church {settings.sms_notifications_enabled ? "enabled" : "disabled"}.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -105,7 +116,8 @@ async function ComposerContent() {
         canEmergencyOverride={canManageChurchNotificationSettings(
           membership.role,
         )}
-        smsConfigured={settings.sms_notifications_enabled}
+        smsProviderConfigured={smsStatus.configured}
+        smsChurchEnabled={settings.sms_notifications_enabled}
         pushConfigured={settings.push_notifications_enabled}
       />
     </div>

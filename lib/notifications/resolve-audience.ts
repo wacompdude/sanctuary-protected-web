@@ -815,24 +815,61 @@ export async function resolveNotificationAudience(params: {
               isVerified: endpoint?.is_verified,
               suppressed: Boolean(endpoint?.suppressed_at),
             });
-        const reason = eligibility.allowed
-          ? "provider_unavailable"
-          : suppressionReasonFromSmsEligibility(eligibility.reason);
 
+        if (!decision.enabled || !eligibility.allowed || !endpoint) {
+          deliveries.push({
+            userId: member.userId,
+            membershipId: member.membershipId,
+            displayName: member.displayName,
+            role: member.role,
+            channel,
+            destination: endpoint?.destination ?? null,
+            normalizedDestination: endpoint?.normalized_destination ?? null,
+            endpointId: endpoint?.id ?? null,
+            sourceGroups: member.sourceGroups,
+            preferenceRuleApplied: decision.preferenceRuleApplied,
+            overrideApplied: false,
+            status: "suppressed",
+            suppressionReason: !decision.enabled
+              ? decision.suppressionReason ?? "user_opted_out"
+              : suppressionReasonFromSmsEligibility(eligibility.reason),
+          });
+          continue;
+        }
+
+        const smsKey = `${member.userId}:sms:${endpoint.normalized_destination.toLowerCase()}`;
+        if (seenDelivery.has(smsKey)) {
+          deliveries.push({
+            userId: member.userId,
+            membershipId: member.membershipId,
+            displayName: member.displayName,
+            role: member.role,
+            channel,
+            destination: endpoint.destination,
+            normalizedDestination: endpoint.normalized_destination,
+            endpointId: endpoint.id,
+            sourceGroups: member.sourceGroups,
+            preferenceRuleApplied: decision.preferenceRuleApplied,
+            overrideApplied: false,
+            status: "suppressed",
+            suppressionReason: "duplicate_endpoint",
+          });
+          continue;
+        }
+        seenDelivery.add(smsKey);
         deliveries.push({
           userId: member.userId,
           membershipId: member.membershipId,
           displayName: member.displayName,
           role: member.role,
           channel,
-          destination: endpoint?.destination ?? null,
-          normalizedDestination: endpoint?.normalized_destination ?? null,
-          endpointId: endpoint?.id ?? null,
+          destination: endpoint.destination,
+          normalizedDestination: endpoint.normalized_destination,
+          endpointId: endpoint.id,
           sourceGroups: member.sourceGroups,
           preferenceRuleApplied: decision.preferenceRuleApplied,
           overrideApplied: false,
-          status: "suppressed",
-          suppressionReason: reason,
+          status: "pending",
         });
         continue;
       }

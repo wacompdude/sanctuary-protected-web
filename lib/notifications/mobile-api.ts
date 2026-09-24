@@ -270,21 +270,27 @@ export async function loadMobileNotificationComposer(
   }
 
   const admin = createAdminClient();
-  const [{ data: groupRows, error: groupError }, { data: memberRows, error: memberError }, hiddenUserIds] =
-    await Promise.all([
-      admin
-        .from("notification_groups")
-        .select(
-          "id, name, group_type, is_system_group, dynamic_rule_type, dynamic_rule_value, status",
-        )
-        .eq("organization_id", auth.membership.organizationId)
-        .eq("status", "active")
-        .order("name", { ascending: true }),
-      admin.rpc("list_organization_team_memberships", {
-        p_organization_id: auth.membership.organizationId,
-      }),
-      loadHiddenPlatformOperatorUserIds(),
-    ]);
+  const organizationIdForQuery = auth.membership.organizationId;
+  const [
+    { data: groupRows, error: groupError },
+    { data: memberRows, error: memberError },
+    hiddenUserIds,
+  ] = await Promise.all([
+    admin
+      .from("notification_groups")
+      .select(
+        "id, name, group_type, is_system_group, dynamic_rule_type, dynamic_rule_value, status",
+      )
+      .eq("organization_id", organizationIdForQuery)
+      .eq("status", "active")
+      .order("name", { ascending: true }),
+    admin
+      .from("organization_memberships")
+      .select("id, user_id, role, status")
+      .eq("organization_id", organizationIdForQuery)
+      .eq("status", "active"),
+    loadHiddenPlatformOperatorUserIds(),
+  ]);
 
   if (groupError) {
     return {
@@ -297,7 +303,13 @@ export async function loadMobileNotificationComposer(
   }
 
   if (memberError) {
-    console.error("mobile compose members failed:", memberError.message);
+    return {
+      status: 500,
+      body: {
+        status: "error",
+        error: memberError.message,
+      },
+    };
   }
 
   const groups: MobileComposeGroup[] = ((groupRows ?? []) as Array<{
@@ -327,28 +339,63 @@ export async function loadMobileNotificationComposer(
     .filter((row) => isDefaultSecurityGroup(row))
     .map((row) => String(row.id));
 
-  const members: MobileComposeMember[] = (
+  const visibleMemberships = (
     (memberRows ?? []) as Array<{
-      membership_id: string;
+      id: string;
       user_id: string;
-      email: string | null;
       role: string;
       status: string;
+    }>
+  ).filter(
+    (row) => row.status === "active" && !hiddenUserIds.has(row.user_id),
+  );
+
+  const profileByUserId = new Map<
+    string,
+    {
+      full_name: string | null;
+      first_name: string | null;
+      last_name: string | null;
+    }
+  >();
+  const visibleUserIds = [
+    ...new Set(visibleMemberships.map((row) => row.user_id)),
+  ];
+  if (visibleUserIds.length > 0) {
+    const { data: profileRows, error: profileError } = await admin
+      .from("profiles")
+      .select("id, first_name, last_name, full_name")
+      .in("id", visibleUserIds);
+
+    if (profileError) {
+      return {
+        status: 500,
+        body: {
+          status: "error",
+          error: profileError.message,
+        },
+      };
+    }
+
+    for (const row of (profileRows ?? []) as Array<{
+      id: string;
       first_name: string | null;
       last_name: string | null;
       full_name: string | null;
-    }>
-  )
-    .filter((row) => row.status === "active" && !hiddenUserIds.has(row.user_id))
-    .map((row) => ({
-      membershipId: String(row.membership_id),
-      name: displayMemberName({
+    }>) {
+      profileByUserId.set(String(row.id), {
         full_name: row.full_name,
         first_name: row.first_name,
         last_name: row.last_name,
-      }),
-      role: labelForMembershipRole(row.role),
-    }));
+      });
+    }
+  }
+
+  const members: MobileComposeMember[] = visibleMemberships.map((row) => ({
+    membershipId: String(row.id),
+    name: displayMemberName(profileByUserId.get(row.user_id) ?? null),
+    role: labelForMembershipRole(row.role),
+  }));
 
   return {
     status: 200,

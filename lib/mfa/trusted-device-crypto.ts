@@ -1,4 +1,5 @@
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+import { getTrustedDevicePepper } from "@/lib/mfa/secrets";
 
 export type TrustedDeviceCookieParts = {
   deviceId: string;
@@ -8,17 +9,6 @@ export type TrustedDeviceCookieParts = {
 const DEVICE_ID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const TOKEN_RE = /^[0-9a-f]{64}$/i;
-
-function getTrustedDevicePepper(): string {
-  return (
-    process.env.TRUSTED_DEVICE_PEPPER?.trim() ||
-    process.env.MFA_CODE_PEPPER?.trim() ||
-    process.env.MFA_SESSION_SECRET?.trim() ||
-    process.env.CRON_SECRET?.trim() ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
-    "sanctuary-trusted-device-dev-pepper"
-  );
-}
 
 export function generateTrustedDeviceId(): string {
   return randomUUID();

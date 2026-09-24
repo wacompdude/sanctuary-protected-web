@@ -1,7 +1,7 @@
 import { validateEmail, validatePassword } from "@/lib/auth/validation";
 import { AuditAction, AuditEntityType } from "@/lib/audit/actions";
 import { writeAuditLog } from "@/lib/audit/log";
-import { getMobileAuthContext } from "@/lib/mfa/mobile-api";
+import { requireMobileMfaContext } from "@/lib/mfa/mobile-api";
 import {
   buildInvitationUrl,
   canInviteMembers,
@@ -42,7 +42,7 @@ import {
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Authorization, Content-Type",
+  "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Sanctuary-MFA",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
@@ -58,6 +58,7 @@ type MembershipContext = {
 
 type AuthFailure =
   | { status: "unauthenticated"; error: string }
+  | { status: "mfa_required"; error: string }
   | { status: "forbidden"; error: string };
 
 export type MobileTeamResponse =
@@ -107,16 +108,14 @@ async function requireTeamActor(
   | { error: AuthFailure; status: number }
   | { userId: string; email: string; membership: MembershipContext }
 > {
-  const ctx = await getMobileAuthContext(request);
-  if (!ctx) {
+  const gated = await requireMobileMfaContext(request, organizationId);
+  if (!gated.ok) {
     return {
-      status: 401,
-      error: {
-        status: "unauthenticated",
-        error: "Sign in with your email and password first.",
-      },
+      status: gated.status,
+      error: gated.body,
     };
   }
+  const ctx = gated.ctx;
   if (!organizationId?.trim()) {
     return {
       status: 400,

@@ -1,7 +1,7 @@
 import { createNotification } from "@/lib/notifications/create-notification";
 import { OPERATIONAL_ALERT_CHANNELS } from "@/lib/notifications/constants";
 import { mapIncidentSeverityToNotification } from "@/lib/notifications/constants";
-import { getMobileAuthContext } from "@/lib/mfa/mobile-api";
+import { requireMobileMfaContext } from "@/lib/mfa/mobile-api";
 import { canCreateOperationalNotifications } from "@/lib/notifications/permissions";
 import {
   isUsableOrganizationStatus,
@@ -21,6 +21,7 @@ export type MobileIncidentNotifyInput = {
 
 export type MobileIncidentNotifyResponse =
   | { status: "unauthenticated"; error: string }
+  | { status: "mfa_required"; error: string }
   | { status: "forbidden"; error: string }
   | { status: "error"; error: string }
   | {
@@ -34,16 +35,14 @@ export async function notifyMobileIncident(
   request: Request,
   input: MobileIncidentNotifyInput,
 ): Promise<{ body: MobileIncidentNotifyResponse; status: number }> {
-  const ctx = await getMobileAuthContext(request);
-  if (!ctx) {
+  const gated = await requireMobileMfaContext(request, input.organizationId);
+  if (!gated.ok) {
     return {
-      status: 401,
-      body: {
-        status: "unauthenticated",
-        error: "Sign in with your email and password first.",
-      },
+      status: gated.status,
+      body: gated.body,
     };
   }
+  const ctx = gated.ctx;
 
   const organizationId = input.organizationId?.trim() || null;
   const incidentId = input.incidentId?.trim() || null;

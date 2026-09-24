@@ -13,8 +13,9 @@ export async function startBackupPhoneAction(
   formData: FormData,
 ): Promise<MfaActionState> {
   const phone = String(formData.get("phone") ?? "");
+  const currentPassword = String(formData.get("current_password") ?? "");
   try {
-    return await startPhoneEnrollment(phone);
+    return await startPhoneEnrollment(phone, currentPassword);
   } catch (error) {
     return {
       error:
@@ -46,9 +47,13 @@ export async function verifyBackupPhoneAction(
   }
 }
 
-export async function removeBackupPhoneAction(): Promise<MfaActionState> {
+export async function removeBackupPhoneAction(
+  _prev: MfaActionState,
+  formData: FormData,
+): Promise<MfaActionState> {
+  const currentPassword = String(formData.get("current_password") ?? "");
   try {
-    const result = await removeVerifiedPhone();
+    const result = await removeVerifiedPhone(currentPassword);
     revalidatePath("/profile");
     return result;
   } catch (error) {

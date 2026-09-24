@@ -1,6 +1,6 @@
 /** Keys / substrings that must never appear in audit metadata. */
 const SENSITIVE_KEY_PATTERN =
-  /(password|passwd|secret|token|authorization|api[_-]?key|service[_-]?role|refresh[_-]?token|access[_-]?token|private[_-]?key|credential|camera.?pass|supabase.?key)/i;
+  /(password|passwd|secret|token|authorization|api[_-]?key|service[_-]?role|refresh[_-]?token|access[_-]?token|private[_-]?key|credential|camera.?pass|supabase.?key|otp|mfa[_-]?code|one[_-]?time[_-]?code|verification[_-]?code|sms[_-]?code)/i;
 
 const MAX_DEPTH = 6;
 const MAX_STRING_LENGTH = 500;
@@ -44,6 +44,14 @@ function sanitizeObject(
 
   for (const key of keys) {
     if (SENSITIVE_KEY_PATTERN.test(key)) {
+      result[key] = "[redacted]";
+      continue;
+    }
+    if (
+      /^code$/i.test(key) &&
+      typeof input[key] === "string" &&
+      /^\d{4,8}$/.test(input[key] as string)
+    ) {
       result[key] = "[redacted]";
       continue;
     }

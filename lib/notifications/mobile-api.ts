@@ -1,6 +1,6 @@
 import { writeAuditLog } from "@/lib/audit/log";
 import { AuditAction, AuditEntityType } from "@/lib/audit/actions";
-import { getMobileAuthContext } from "@/lib/mfa/mobile-api";
+import { requireMobileMfaContext } from "@/lib/mfa/mobile-api";
 import { createNotification } from "@/lib/notifications/create-notification";
 import { retryFailedDelivery } from "@/lib/notifications/dispatch-notification";
 import {
@@ -43,6 +43,7 @@ export type MobileComposeMember = {
 
 type MobileAuthFailure =
   | { status: "unauthenticated"; error: string }
+  | { status: "mfa_required"; error: string }
   | { status: "forbidden"; error: string };
 
 export type MobileComposeResponse =
@@ -89,7 +90,7 @@ type MembershipContext = {
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Authorization, Content-Type",
+  "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Sanctuary-MFA",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
@@ -97,7 +98,7 @@ export function mobileNotificationCorsHeaders() {
   return CORS_HEADERS;
 }
 
-export { getMobileAuthContext };
+export { getMobileAuthContext, requireMobileMfaContext } from "@/lib/mfa/mobile-api";
 
 function parseDeliverableChannels(
   requested: string[] | null | undefined,
@@ -218,16 +219,14 @@ async function requireComposerMembership(
   | { error: MobileAuthFailure; status: number }
   | { userId: string; membership: MembershipContext }
 > {
-  const ctx = await getMobileAuthContext(request);
-  if (!ctx) {
+  const gated = await requireMobileMfaContext(request, organizationId);
+  if (!gated.ok) {
     return {
-      status: 401,
-      error: {
-        status: "unauthenticated",
-        error: "Sign in with your email and password first.",
-      },
+      status: gated.status,
+      error: gated.body,
     };
   }
+  const ctx = gated.ctx;
 
   const requested = organizationId?.trim() || null;
   if (!requested) {

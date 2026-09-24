@@ -14,6 +14,7 @@ import {
   getTrustedDeviceDurationMs,
 } from "@/lib/mfa/trusted-device-policy";
 import { parseUserAgent } from "@/lib/mfa/user-agent";
+import { isTrustedDevicePepperConfigured } from "@/lib/mfa/secrets";
 import type {
   CreateTrustedDeviceResult,
   TrustedDeviceListItem,
@@ -120,6 +121,13 @@ export async function createTrustedDevice(input: {
   userId: string;
   userAgent?: string | null;
 }): Promise<CreateTrustedDeviceResult> {
+  if (!isTrustedDevicePepperConfigured()) {
+    return {
+      ok: false,
+      error:
+        "Trusted-device hashing is not configured. Set TRUSTED_DEVICE_PEPPER.",
+    };
+  }
   const parsed = parseUserAgent(input.userAgent);
   const deviceId = generateTrustedDeviceId();
   const token = generateTrustedDeviceToken();

@@ -1,15 +1,6 @@
 import { createHash, randomInt, timingSafeEqual } from "node:crypto";
 import { MFA_CODE_LENGTH } from "@/lib/mfa/policy";
-
-function getMfaCodePepper(): string {
-  return (
-    process.env.MFA_CODE_PEPPER?.trim() ||
-    process.env.MFA_SESSION_SECRET?.trim() ||
-    process.env.CRON_SECRET?.trim() ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
-    "sanctuary-mfa-dev-pepper"
-  );
-}
+import { getMfaCodePepper } from "@/lib/mfa/secrets";
 
 export function generateMfaCode(): string {
   const max = 10 ** MFA_CODE_LENGTH;

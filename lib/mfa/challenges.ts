@@ -12,6 +12,7 @@ import {
   type MfaChannel,
   type MfaPurpose,
 } from "@/lib/mfa/policy";
+import { isMfaCodePepperConfigured } from "@/lib/mfa/secrets";
 import type { MfaChallengeRow } from "@/lib/mfa/types";
 
 type ChallengeDbRow = {
@@ -80,6 +81,12 @@ export async function createMfaChallenge(input: {
   channel: MfaChannel;
   destination: string;
 }): Promise<{ challenge: MfaChallengeRow; code: string; reused: boolean }> {
+  if (!isMfaCodePepperConfigured()) {
+    throw new Error(
+      "MFA code hashing is not configured. Set MFA_CODE_PEPPER.",
+    );
+  }
+
   const existing = await getLatestActiveChallenge(input);
   if (existing) {
     const wait = retryAfterSeconds(existing.createdAt);

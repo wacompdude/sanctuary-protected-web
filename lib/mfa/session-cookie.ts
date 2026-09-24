@@ -2,6 +2,10 @@ import {
   MFA_COOKIE_NAME,
   MFA_SESSION_DURATION_SECONDS,
 } from "@/lib/mfa/policy";
+import {
+  getMfaSessionSecret,
+  listMfaSessionVerifySecrets,
+} from "@/lib/mfa/secrets";
 
 export { MFA_COOKIE_NAME };
 
@@ -23,16 +27,6 @@ type MfaCookiePayload = {
   /** Organization-scoped policy skip. Null/omitted = platform-wide skip. */
   oid?: string | null;
 };
-
-function getMfaCookieSecret(): string {
-  return (
-    process.env.MFA_SESSION_SECRET?.trim() ||
-    process.env.CRON_SECRET?.trim() ||
-    process.env.NOTIFICATION_DISPATCH_SECRET?.trim() ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
-    (process.env.NODE_ENV === "production" ? "" : "sanctuary-mfa-dev-cookie-secret")
-  );
-}
 
 function bytesToBase64Url(bytes: ArrayBuffer | Uint8Array): string {
   const view = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
@@ -108,7 +102,7 @@ export async function createMfaCookieValue(input: {
   /** Last actual MFA time. Required for trusted-device-issued verified cookies. */
   lastMfaAtMs?: number | null;
 }): Promise<{ value: string; expires: Date } | null> {
-  const secret = getMfaCookieSecret();
+  const secret = getMfaSessionSecret();
   if (!secret) return null;
   const maxAge = input.maxAgeSeconds ?? MFA_SESSION_DURATION_SECONDS;
   const expires = new Date(Date.now() + maxAge * 1000);
@@ -163,20 +157,26 @@ export async function inspectMfaCookie(
     organizationId: null,
     staleDueToReauth: false,
   };
-  const secret = getMfaCookieSecret();
   const token = input.token?.trim();
-  if (!secret || !token) return empty;
+  if (!token) return empty;
   const dot = token.indexOf(".");
   if (dot <= 0) return empty;
   const body = token.slice(0, dot);
   const signature = token.slice(dot + 1);
-  const expected = await hmacSha256(secret, body);
-  if (expected.length !== signature.length) return empty;
-  let mismatch = 0;
-  for (let i = 0; i < expected.length; i += 1) {
-    mismatch |= expected.charCodeAt(i) ^ signature.charCodeAt(i);
+  let authentic = false;
+  for (const secret of listMfaSessionVerifySecrets()) {
+    const expected = await hmacSha256(secret, body);
+    if (expected.length !== signature.length) continue;
+    let mismatch = 0;
+    for (let i = 0; i < expected.length; i += 1) {
+      mismatch |= expected.charCodeAt(i) ^ signature.charCodeAt(i);
+    }
+    if (mismatch === 0) {
+      authentic = true;
+      break;
+    }
   }
-  if (mismatch !== 0) return empty;
+  if (!authentic) return empty;
   try {
     const payload = JSON.parse(
       new TextDecoder().decode(base64UrlToBytes(body)),

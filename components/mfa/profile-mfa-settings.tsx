@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
+import { useActionState } from "react";
 import {
   removeBackupPhoneAction,
   startBackupPhoneAction,
@@ -41,12 +41,13 @@ export function ProfileMfaSettings({
     verifyBackupPhoneAction,
     initialState,
   );
-  const [removeError, setRemoveError] = useState<string | null>(null);
-  const [removing, startRemove] = useTransition();
-
+  const [removeState, removeAction, removePending] = useActionState(
+    removeBackupPhoneAction,
+    initialState,
+  );
   const awaitingCode = Boolean(startState.success && startState.view && !verifyState.verified);
   const error =
-    verifyState.error || startState.error || removeError || null;
+    verifyState.error || startState.error || removeState.error || null;
 
   return (
     <SignInVerificationCard
@@ -121,6 +122,27 @@ export function ProfileMfaSettings({
               </p>
             )}
           </div>
+          {hasVerifiedPhone ? (
+            <div className="space-y-2">
+              <Label htmlFor="mfa_current_password">Current password</Label>
+              <Input
+                id="mfa_current_password"
+                name="current_password"
+                type="password"
+                autoComplete="current-password"
+                aria-invalid={!!startState.fieldErrors?.current_password}
+              />
+              {startState.fieldErrors?.current_password ? (
+                <p className="text-sm text-destructive">
+                  {startState.fieldErrors.current_password}
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Confirm your password to replace the verified backup number.
+                </p>
+              )}
+            </div>
+          ) : null}
           <Button type="submit" disabled={startPending || !smsConfigured}>
             {startPending
               ? "Sending..."
@@ -132,20 +154,31 @@ export function ProfileMfaSettings({
       )}
 
       {hasVerifiedPhone ? (
-        <Button
-          type="button"
-          variant="outline"
-          disabled={removing}
-          onClick={() => {
-            startRemove(async () => {
-              setRemoveError(null);
-              const result = await removeBackupPhoneAction();
-              if (result.error) setRemoveError(result.error);
-            });
-          }}
-        >
-          {removing ? "Removing..." : "Remove backup phone"}
-        </Button>
+        <form action={removeAction} className="space-y-3">
+          <div className="space-y-2">
+            <Label htmlFor="mfa_remove_password">Current password</Label>
+            <Input
+              id="mfa_remove_password"
+              name="current_password"
+              type="password"
+              autoComplete="current-password"
+              aria-invalid={!!removeState.fieldErrors?.current_password}
+            />
+            {removeState.fieldErrors?.current_password ? (
+              <p className="text-sm text-destructive">
+                {removeState.fieldErrors.current_password}
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Confirm your password to remove the backup number. Trusted
+                devices will be revoked.
+              </p>
+            )}
+          </div>
+          <Button type="submit" variant="outline" disabled={removePending}>
+            {removePending ? "Removing..." : "Remove backup phone"}
+          </Button>
+        </form>
       ) : null}
     </SignInVerificationCard>
   );

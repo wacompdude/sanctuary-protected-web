@@ -45,6 +45,7 @@ export type MfaActionState = {
   fieldErrors?: {
     code?: string;
     phone?: string;
+    current_password?: string;
   };
 };
 

@@ -13,6 +13,13 @@ import {
   type MfaPolicyAudience,
 } from "@/lib/mfa/effective-policy";
 import { inspectLoginMfaSatisfaction } from "@/lib/mfa/gate";
+import {
+  decideMobileMfaAccess,
+  MOBILE_MFA_HEADER,
+  MOBILE_MFA_REQUIRED_BODY,
+  readMobileMfaToken,
+  type MobileMfaRequiredBody,
+} from "@/lib/mfa/mobile-gate";
 import { maskEmailForMfa, maskPhoneForMfa } from "@/lib/mfa/mask";
 import { resolveLoginSmsDestination } from "@/lib/mfa/phone";
 import {
@@ -65,15 +72,19 @@ export type MobileMfaResponse =
   | { status: "challenge"; view: LoginMfaView }
   | { status: "error"; error: string; view?: LoginMfaView };
 
-type MobileAuthContext = {
+export type MobileAuthContext = {
   userId: string;
   email: string;
   sessionId: string;
 };
 
+export type MobileMfaGateFailure =
+  | { status: "unauthenticated"; error: string }
+  | MobileMfaRequiredBody;
+
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Authorization, Content-Type",
+  "Access-Control-Allow-Headers": `Authorization, Content-Type, ${MOBILE_MFA_HEADER}`,
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
@@ -99,6 +110,77 @@ export async function getMobileAuthContext(
     email: data.user.email,
     sessionId: getAuthSessionBinding(accessToken, data.user.id),
   };
+}
+
+export async function assertMobileMfaProof(
+  request: Request,
+  ctx: MobileAuthContext,
+  organizationId?: string | null,
+): Promise<
+  | { ok: true }
+  | { ok: false; status: 401; body: MobileMfaRequiredBody }
+> {
+  const policy = await getMobileEffectiveMfaPolicy({
+    userId: ctx.userId,
+    organizationId,
+  });
+  const { inspected } = await inspectLoginMfaSatisfaction({
+    userId: ctx.userId,
+    sessionId: ctx.sessionId,
+    cookieValue: readMobileMfaToken(request),
+    organizationId: policy.organizationId ?? organizationId ?? null,
+    platformDestination: false,
+  });
+  const decision = decideMobileMfaAccess({
+    policyRequired: policy.required,
+    inspected,
+  });
+  if (decision.allow) {
+    return { ok: true };
+  }
+
+  await writeMobileMfaAudit({
+    userId: ctx.userId,
+    action: AuditAction.AUTH_MFA_REQUIRED,
+    metadata: {
+      client: "mobile",
+      reason: "missing_or_invalid_proof",
+      organization_id: policy.organizationId ?? organizationId ?? null,
+    },
+  });
+
+  return { ok: false, status: 401, body: MOBILE_MFA_REQUIRED_BODY };
+}
+
+/**
+ * Password session + MFA proof when the effective organization policy requires it.
+ * Pre-MFA routes must keep using getMobileAuthContext() instead.
+ */
+export async function requireMobileMfaContext(
+  request: Request,
+  organizationId?: string | null,
+): Promise<
+  | { ok: true; ctx: MobileAuthContext }
+  | { ok: false; status: number; body: MobileMfaGateFailure }
+> {
+  const ctx = await getMobileAuthContext(request);
+  if (!ctx) {
+    return {
+      ok: false,
+      status: 401,
+      body: {
+        status: "unauthenticated",
+        error: "Sign in with your email and password first.",
+      },
+    };
+  }
+
+  const proof = await assertMobileMfaProof(request, ctx, organizationId);
+  if (!proof.ok) {
+    return proof;
+  }
+
+  return { ok: true, ctx };
 }
 
 async function listActiveMembershipOrganizationIds(
@@ -164,7 +246,7 @@ function resolveOrganizationFromMemberships(input: {
   };
 }
 
-async function getMobileEffectiveMfaPolicy(input: {
+export async function getMobileEffectiveMfaPolicy(input: {
   userId: string;
   organizationId?: string | null;
 }): Promise<EffectiveMfaPolicy> {
@@ -338,13 +420,15 @@ export async function continueMobileLoginMfa(input: {
   });
 
   if (inspected.authentic && inspected.satisfiesReauth) {
-    return issueMobileMfaToken({
-      userId: input.ctx.userId,
-      sessionId: input.ctx.sessionId,
-      kind: inspected.kind ?? "verified",
-      organizationId: inspected.organizationId,
-      lastMfaAtMs: inspected.lastMfaAtMs || null,
-    });
+    if (!policy.required || inspected.kind === "verified") {
+      return issueMobileMfaToken({
+        userId: input.ctx.userId,
+        sessionId: input.ctx.sessionId,
+        kind: inspected.kind ?? "verified",
+        organizationId: inspected.organizationId,
+        lastMfaAtMs: inspected.lastMfaAtMs || null,
+      });
+    }
   }
 
   if (!policy.required) {

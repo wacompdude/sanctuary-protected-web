@@ -1,4 +1,9 @@
 import { maskPhoneForMfa } from "@/lib/mfa/mask";
+import {
+  birdCategoryForAppMessage,
+  isBirdSmsConfigured,
+  sendBirdSms,
+} from "@/lib/sms/bird-send";
 
 export type MfaSmsSendResult = {
   ok: boolean;
@@ -26,32 +31,41 @@ class UnconfiguredMfaSmsSender implements MfaSmsSender {
   }
 }
 
-/** Bird Verify will replace this. Do not send from login until Bird is wired. */
-class BirdMfaSmsPlaceholder implements MfaSmsSender {
+class BirdMfaSmsSender implements MfaSmsSender {
   name = "bird";
   isConfigured(): boolean {
-    return false;
+    return isBirdSmsConfigured();
   }
-  async send(): Promise<MfaSmsSendResult> {
-    return {
-      ok: false,
-      provider: this.name,
-      error:
-        "Text/SMS delivery is not connected yet. Use the email code for now.",
-    };
+  async send(input: { toE164: string; code: string }): Promise<MfaSmsSendResult> {
+    const result = await sendBirdSms({
+      toE164: input.toE164,
+      text: `Your Sanctuary Protected verification code is ${input.code}. This code expires in 10 minutes.`,
+      category: birdCategoryForAppMessage("enrollment_otp"),
+    });
+    if (!result.ok) {
+      return {
+        ok: false,
+        provider: this.name,
+        error: result.error ?? "Unable to send the text message.",
+      };
+    }
+    return { ok: true, provider: this.name };
   }
 }
 
 class ConsoleMfaSmsSender implements MfaSmsSender {
   name = "console";
   isConfigured(): boolean {
-    return true;
+    return process.env.NODE_ENV !== "production";
   }
   async send(input: { toE164: string; code: string }): Promise<MfaSmsSendResult> {
-    console.info("[mfa:sms:console]", {
-      to: maskPhoneForMfa(input.toE164),
-      code: input.code,
-    });
+    void input.code;
+    if (process.env.NODE_ENV !== "production") {
+      console.info(
+        "[mfa:sms:console] verification code generated for",
+        maskPhoneForMfa(input.toE164),
+      );
+    }
     return { ok: true, provider: this.name };
   }
 }
@@ -61,11 +75,20 @@ export function getMfaSmsSender(): MfaSmsSender {
     .trim()
     .toLowerCase();
 
-  if (configured === "console" || process.env.NODE_ENV === "test") {
+  if (process.env.NODE_ENV === "test") {
     return new ConsoleMfaSmsSender();
   }
-  if (configured === "bird") {
-    return new BirdMfaSmsPlaceholder();
+  if (configured === "console") {
+    if (process.env.NODE_ENV === "production") {
+      return new UnconfiguredMfaSmsSender();
+    }
+    return new ConsoleMfaSmsSender();
+  }
+  if (configured === "none") {
+    return new UnconfiguredMfaSmsSender();
+  }
+  if (configured === "bird" || (!configured && isBirdSmsConfigured())) {
+    return new BirdMfaSmsSender();
   }
   if (!configured && process.env.NODE_ENV === "development") {
     return new ConsoleMfaSmsSender();

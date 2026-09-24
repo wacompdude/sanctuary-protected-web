@@ -1,4 +1,8 @@
-import { getMobileAuthContext } from "@/lib/mfa/mobile-api";
+import {
+  assertMobileMfaProof,
+  getMobileAuthContext,
+  getMobileEffectiveMfaPolicy,
+} from "@/lib/mfa/mobile-api";
 import { normalizeExpoPushToken } from "@/lib/notifications/endpoints/normalize";
 import { isUsableOrganizationStatus } from "@/lib/organization/types";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -14,6 +18,7 @@ export type MobilePushRegisterInput = {
 
 export type MobilePushRegisterResponse =
   | { status: "unauthenticated"; error: string }
+  | { status: "mfa_required"; error: string }
   | { status: "forbidden"; error: string }
   | { status: "error"; error: string }
   | { status: "ok"; registeredOrganizationIds: string[] };
@@ -90,6 +95,31 @@ export async function registerMobilePushToken(
         error: "You do not have access to this organization.",
       },
     };
+  }
+
+  const targetOrganizationIds = requestedOrganizationId
+    ? [requestedOrganizationId]
+    : active.map((row) => row.organization_id);
+  const policies = await Promise.all(
+    targetOrganizationIds.map((organizationId) =>
+      getMobileEffectiveMfaPolicy({
+        userId: ctx.userId,
+        organizationId,
+      }),
+    ),
+  );
+  const mfaOrganizationId =
+    policies.find((policy) => policy.required)?.organizationId ??
+    requestedOrganizationId;
+  if (policies.some((policy) => policy.required)) {
+    const proof = await assertMobileMfaProof(
+      request,
+      ctx,
+      mfaOrganizationId,
+    );
+    if (!proof.ok) {
+      return { status: proof.status, body: proof.body };
+    }
   }
 
   const organizationIds = [

@@ -14,6 +14,7 @@ import {
   getOrCreateUserSecuritySettings,
   setVerifiedPhone,
 } from "@/lib/mfa/settings";
+import { requirePasswordStepUp } from "@/lib/mfa/step-up";
 import type { MfaActionState } from "@/lib/mfa/types";
 
 async function requireUserId(): Promise<string | null> {
@@ -24,9 +25,23 @@ async function requireUserId(): Promise<string | null> {
   return user?.id ?? null;
 }
 
-export async function startPhoneEnrollment(phoneInput: string): Promise<MfaActionState> {
+export async function startPhoneEnrollment(
+  phoneInput: string,
+  currentPassword?: string,
+): Promise<MfaActionState> {
   const userId = await requireUserId();
   if (!userId) return { error: "You must be signed in." };
+
+  const settings = await getOrCreateUserSecuritySettings(userId);
+  if (settings.verifiedPhone) {
+    const stepUp = await requirePasswordStepUp(currentPassword ?? "");
+    if (!stepUp.ok) {
+      return {
+        error: stepUp.error,
+        fieldErrors: stepUp.fieldErrors,
+      };
+    }
+  }
 
   const phone = toVerifiedPhoneE164(phoneInput);
   if (!phone) {
@@ -84,10 +99,21 @@ export async function verifyPhoneEnrollment(code: string): Promise<MfaActionStat
     };
   }
 
+  const previous = await getOrCreateUserSecuritySettings(userId);
+  const replacing = Boolean(
+    previous.verifiedPhone &&
+      previous.verifiedPhone !== result.challenge.destination,
+  );
+
   await setVerifiedPhone({
     userId,
     phoneE164: result.challenge.destination,
   });
+
+  if (replacing) {
+    const { revokeAllTrustedDevices } = await import("@/lib/mfa/trusted-devices");
+    await revokeAllTrustedDevices(userId, "mfa_phone_replaced");
+  }
 
   const supabase = await createClient();
   await writeAuditLog(supabase, {
@@ -101,9 +127,19 @@ export async function verifyPhoneEnrollment(code: string): Promise<MfaActionStat
   return { success: true, verified: true };
 }
 
-export async function removeVerifiedPhone(): Promise<MfaActionState> {
+export async function removeVerifiedPhone(
+  currentPassword: string,
+): Promise<MfaActionState> {
   const userId = await requireUserId();
   if (!userId) return { error: "You must be signed in." };
+
+  const stepUp = await requirePasswordStepUp(currentPassword);
+  if (!stepUp.ok) {
+    return {
+      error: stepUp.error,
+      fieldErrors: stepUp.fieldErrors,
+    };
+  }
 
   await getOrCreateUserSecuritySettings(userId);
   await clearVerifiedPhone(userId);

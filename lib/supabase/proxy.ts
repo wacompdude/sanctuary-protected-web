@@ -10,6 +10,10 @@ import {
 } from "@/lib/auth/routes";
 import { isPlatformDestination } from "@/lib/mfa/effective-policy";
 import { hasSatisfiedLoginMfa } from "@/lib/mfa/gate";
+import {
+  resolveLoginOrganizationFromMemberships,
+  uniqueOrganizationIds,
+} from "@/lib/mfa/login-organization";
 import { MFA_COOKIE_NAME } from "@/lib/mfa/policy";
 import { getAuthSessionBinding } from "@/lib/mfa/session-cookie";
 import {
@@ -92,18 +96,40 @@ export async function updateSession(request: NextRequest) {
       data: { session },
     } = user ? await supabase.auth.getSession() : { data: { session: null } };
 
-    const activeOrganizationId =
+    const cookieOrganizationId =
       request.cookies.get(ACTIVE_ORGANIZATION_COOKIE)?.value?.trim() ||
       request.cookies.get(ACTIVE_CHURCH_COOKIE_LEGACY)?.value?.trim() ||
       null;
+    const platformDestination = isPlatformDestination(pathname);
+    let membershipIds: string[] = [];
+    if (user && !platformDestination) {
+      const { data, error } = await supabase
+        .from("organization_memberships")
+        .select("organization_id")
+        .eq("user_id", user.id)
+        .eq("status", "active");
+      if (error) {
+        console.error(
+          "proxy MFA organization membership lookup failed:",
+          error.message,
+        );
+      } else {
+        membershipIds = uniqueOrganizationIds(data);
+      }
+    }
+    const organizationResolution = resolveLoginOrganizationFromMemberships({
+      pathname,
+      cookieOrganizationId,
+      membershipIds,
+    });
 
     const mfaOk = user
       ? await hasSatisfiedLoginMfa({
           userId: user.id,
           sessionId: getAuthSessionBinding(session?.access_token, user.id),
           cookieValue: request.cookies.get(MFA_COOKIE_NAME)?.value,
-          organizationId: activeOrganizationId,
-          platformDestination: isPlatformDestination(pathname),
+          organizationId: organizationResolution.organizationId,
+          platformDestination,
         })
       : false;
 

@@ -11,6 +11,10 @@ import {
   mfaPolicyUserMessage,
 } from "@/lib/mfa/effective-policy";
 import {
+  resolveLoginOrganizationFromMemberships,
+  uniqueOrganizationIds,
+} from "@/lib/mfa/login-organization";
+import {
   MFA_COOKIE_NAME,
   MFA_POLICY_SKIP_DURATION_SECONDS,
   MFA_SESSION_DURATION_SECONDS,
@@ -443,6 +447,136 @@ async function main() {
   assert(
     !Boolean(organizationSearchOrFilter("Grace")?.includes("limit(500)")),
     "30 no 500 cap in search filter",
+  );
+
+  const viewingUserOrg = "1504f8d0-dc19-4052-b8f2-1524d2f5a140";
+  const proxyResolve = (
+    pathname: string,
+    cookieOrganizationId: string | null,
+    membershipIds: string[],
+  ) =>
+    resolveLoginOrganizationFromMemberships({
+      pathname,
+      cookieOrganizationId,
+      membershipIds,
+    });
+
+  // TEST A — single membership, no active-org cookie, org-scoped skip accepted
+  const testAResolution = proxyResolve("/home", null, [viewingUserOrg]);
+  assert(
+    testAResolution.organizationId === viewingUserOrg,
+    "TEST A single membership resolves without org cookie",
+  );
+  assert(testAResolution.audience === "organization", "TEST A audience is organization");
+  assert(!testAResolution.needsOrganizationSelection, "TEST A does not require selection");
+  const testASkip = await createMfaCookieValue({
+    userId: "user-1",
+    sessionId: "session-1",
+    kind: "policy_skip",
+    organizationId: testAResolution.organizationId,
+  });
+  assert(
+    await verifyMfaCookie({
+      token: testASkip?.value,
+      userId: "user-1",
+      sessionId: "session-1",
+      organizationId: testAResolution.organizationId,
+    }),
+    "TEST A proxy accepts org-scoped policy_skip after membership resolve",
+  );
+  assert(
+    !(await verifyMfaCookie({
+      token: testASkip?.value,
+      userId: "user-1",
+      sessionId: "session-1",
+      organizationId: null,
+    })),
+    "TEST A cookie-only null org still rejects scoped skip",
+  );
+
+  // TEST B — MFA required: missing proof cannot use policy_skip
+  const requiredPolicy = policy({ platform: true, organization: true });
+  assert(requiredPolicy.required, "TEST B organization MFA required");
+  assert(
+    mfaCookieFromPolicy(requiredPolicy).kind === "verified",
+    "TEST B required policy does not mint policy_skip",
+  );
+  assert(
+    !(await verifyMfaCookie({
+      token: undefined,
+      userId: "user-1",
+      sessionId: "session-1",
+      organizationId: viewingUserOrg,
+    })),
+    "TEST B missing sp_mfa is not satisfied",
+  );
+
+  // TEST C — wrong organization
+  const orgBResolution = proxyResolve("/home", "org-b", ["org-b"]);
+  assert(orgBResolution.organizationId === "org-b", "TEST C resolves org B");
+  assert(
+    !(await verifyMfaCookie({
+      token: testASkip?.value,
+      userId: "user-1",
+      sessionId: "session-1",
+      organizationId: orgBResolution.organizationId,
+    })),
+    "TEST C org A skip does not satisfy org B",
+  );
+
+  // TEST D — platform destination
+  const platformResolution = proxyResolve("/platform", viewingUserOrg, [
+    viewingUserOrg,
+  ]);
+  assert(platformResolution.audience === "platform", "TEST D platform audience");
+  assert(platformResolution.organizationId === null, "TEST D ignores org cookie on platform");
+  assert(
+    !(await verifyMfaCookie({
+      token: testASkip?.value,
+      userId: "user-1",
+      sessionId: "session-1",
+      organizationId: platformResolution.organizationId,
+      platformDestination: true,
+    })),
+    "TEST D org-scoped skip does not satisfy platform",
+  );
+
+  // TEST E — multi-organization ambiguity
+  const multiResolution = proxyResolve("/home", null, ["org-a", "org-b"]);
+  assert(multiResolution.organizationId === null, "TEST E does not pick first membership");
+  assert(multiResolution.needsOrganizationSelection, "TEST E requires selection");
+  assert(multiResolution.audience === "unknown", "TEST E unknown until selected");
+  assert(
+    !(await verifyMfaCookie({
+      token: testASkip?.value,
+      userId: "user-1",
+      sessionId: "session-1",
+      organizationId: multiResolution.organizationId,
+    })),
+    "TEST E scoped skip is not accepted while org is ambiguous",
+  );
+  const multiCookie = proxyResolve("/home", "org-b", ["org-a", "org-b"]);
+  assert(
+    multiCookie.organizationId === "org-b",
+    "TEST E valid cookie is used when membership matches",
+  );
+
+  // TEST F — stale/invalid active organization cookie
+  const staleVsSingle = proxyResolve("/home", "org-evil", [viewingUserOrg]);
+  assert(
+    staleVsSingle.organizationId === viewingUserOrg,
+    "TEST F stale cookie is ignored in favor of sole membership",
+  );
+  const staleVsMulti = proxyResolve("/home", "org-evil", ["org-a", "org-b"]);
+  assert(staleVsMulti.organizationId === null, "TEST F stale cookie cannot select an org");
+  assert(staleVsMulti.needsOrganizationSelection, "TEST F stale multi-org still requires selection");
+  assert(
+    uniqueOrganizationIds([
+      { organization_id: "org-a" },
+      { organization_id: "org-a" },
+      { organization_id: "org-b" },
+    ]).join(",") === "org-a,org-b",
+    "membership ids are de-duplicated",
   );
 
   console.log("mfa effective policy self-check: ok");

@@ -10,7 +10,11 @@ import { maskEmailForMfa, maskPhoneForMfa } from "@/lib/mfa/mask";
 import { isMfaEmergencyOverrideActive, isMfaLoginEnabled, type MfaChannel } from "@/lib/mfa/policy";
 import { inspectLoginMfaSatisfaction } from "@/lib/mfa/gate";
 import { isPlatformDestination, mfaCookieFromPolicy } from "@/lib/mfa/effective-policy";
-import { readMfaCookieValue, writeMfaSessionCookie } from "@/lib/mfa/session";
+import {
+  readMfaCookieValue,
+  writeMfaSessionCookie,
+  type MfaSessionCookieWriteInput,
+} from "@/lib/mfa/session";
 import { getAuthSessionBinding } from "@/lib/mfa/session-cookie";
 import { getEffectiveMfaPolicy } from "@/lib/mfa/resolve-policy";
 import { resolveLoginSmsDestination } from "@/lib/mfa/phone";
@@ -389,16 +393,16 @@ export async function shouldSkipLoginMfa(
   return !policy.required;
 }
 
-export async function tryCompleteLoginWithTrustedDevice(input: {
+export async function resolveTrustedDeviceMfaCookie(input: {
   cookieValue: string | undefined;
   forceFreshMfa?: boolean;
   pathname?: string | null;
   organizationId?: string | null;
-}): Promise<boolean> {
-  if (isMfaEmergencyOverrideActive()) return false;
-  if (input.forceFreshMfa) return false;
+}): Promise<MfaSessionCookieWriteInput | null> {
+  if (isMfaEmergencyOverrideActive()) return null;
+  if (input.forceFreshMfa) return null;
   const ctx = await getLoginMfaContext();
-  if (!ctx) return false;
+  if (!ctx) return null;
 
   const organizationId =
     input.organizationId?.trim() || (await readActiveOrganizationCookie());
@@ -414,21 +418,14 @@ export async function tryCompleteLoginWithTrustedDevice(input: {
       reauthAfterMs: reauth.effectiveAtMs,
     })
   ) {
-    return false;
+    return null;
   }
 
   const validated = await validateTrustedDevice({
     userId: ctx.userId,
     cookieValue: input.cookieValue,
   });
-  if (!validated.ok) return false;
-
-  const wrote = await writeMfaSessionCookie({
-    userId: ctx.userId,
-    sessionId: ctx.sessionId,
-    lastMfaAtMs,
-  });
-  if (!wrote) return false;
+  if (!validated.ok) return null;
 
   await updateTrustedDeviceLastUsed(validated.device.id);
   await recordTrustedDeviceUsed({
@@ -437,7 +434,23 @@ export async function tryCompleteLoginWithTrustedDevice(input: {
     browser: validated.device.browser,
     operatingSystem: validated.device.operatingSystem,
   });
-  return true;
+
+  return {
+    userId: ctx.userId,
+    sessionId: ctx.sessionId,
+    lastMfaAtMs,
+  };
+}
+
+export async function tryCompleteLoginWithTrustedDevice(input: {
+  cookieValue: string | undefined;
+  forceFreshMfa?: boolean;
+  pathname?: string | null;
+  organizationId?: string | null;
+}): Promise<boolean> {
+  const cookie = await resolveTrustedDeviceMfaCookie(input);
+  if (!cookie) return false;
+  return writeMfaSessionCookie(cookie);
 }
 
 async function readRequestUserAgent(): Promise<string | null> {

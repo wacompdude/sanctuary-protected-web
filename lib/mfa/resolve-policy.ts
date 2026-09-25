@@ -18,20 +18,19 @@ import {
   evaluateMfaPolicy,
   isPlatformDestination,
   type EffectiveMfaPolicy,
-  type MfaPolicyAudience,
 } from "@/lib/mfa/effective-policy";
+import {
+  resolveLoginOrganizationFromMemberships,
+  uniqueOrganizationIds,
+  type LoginOrganizationResolution,
+} from "@/lib/mfa/login-organization";
 import {
   getOrganizationSecuritySettings,
   getPlatformSecuritySettings,
 } from "@/lib/mfa/policy-settings";
 import { getOrCreateUserSecuritySettings } from "@/lib/mfa/settings";
 
-export type LoginOrganizationResolution = {
-  organizationId: string | null;
-  membershipIds: string[];
-  needsOrganizationSelection: boolean;
-  audience: MfaPolicyAudience;
-};
+export type { LoginOrganizationResolution };
 
 export async function listActiveMembershipOrganizationIds(
   userId: string,
@@ -48,7 +47,7 @@ export async function listActiveMembershipOrganizationIds(
     return [];
   }
 
-  return [...new Set((data ?? []).map((row) => String(row.organization_id)))];
+  return uniqueOrganizationIds(data);
 }
 
 export async function resolveLoginOrganization(input: {
@@ -56,60 +55,18 @@ export async function resolveLoginOrganization(input: {
   pathname?: string | null;
   organizationId?: string | null;
 }): Promise<LoginOrganizationResolution> {
-  if (isPlatformDestination(input.pathname)) {
-    return {
-      organizationId: null,
-      membershipIds: [],
-      needsOrganizationSelection: false,
-      audience: "platform",
-    };
-  }
-
-  const membershipIds = await listActiveMembershipOrganizationIds(input.userId);
-  const requested = input.organizationId?.trim() || null;
-  if (requested && membershipIds.includes(requested)) {
-    return {
-      organizationId: requested,
-      membershipIds,
-      needsOrganizationSelection: false,
-      audience: "organization",
-    };
-  }
-
-  const cookieId = await readActiveOrganizationCookie();
-  if (cookieId && membershipIds.includes(cookieId)) {
-    return {
-      organizationId: cookieId,
-      membershipIds,
-      needsOrganizationSelection: false,
-      audience: "organization",
-    };
-  }
-
-  if (membershipIds.length === 1) {
-    return {
-      organizationId: membershipIds[0],
-      membershipIds,
-      needsOrganizationSelection: false,
-      audience: "organization",
-    };
-  }
-
-  if (membershipIds.length > 1) {
-    return {
-      organizationId: null,
-      membershipIds,
-      needsOrganizationSelection: true,
-      audience: "unknown",
-    };
-  }
-
-  return {
-    organizationId: null,
+  const membershipIds = isPlatformDestination(input.pathname)
+    ? []
+    : await listActiveMembershipOrganizationIds(input.userId);
+  const cookieId = isPlatformDestination(input.pathname)
+    ? null
+    : await readActiveOrganizationCookie();
+  return resolveLoginOrganizationFromMemberships({
+    pathname: input.pathname,
+    requestedOrganizationId: input.organizationId,
+    cookieOrganizationId: cookieId,
     membershipIds,
-    needsOrganizationSelection: false,
-    audience: "unknown",
-  };
+  });
 }
 
 export async function getEffectiveMfaPolicy(input: {

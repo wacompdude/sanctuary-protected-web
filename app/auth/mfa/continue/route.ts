@@ -1,8 +1,7 @@
-import { redirect } from "next/navigation";
 import {
   getLoginMfaContext,
+  resolveTrustedDeviceMfaCookie,
   safeMfaNextPath,
-  tryCompleteLoginWithTrustedDevice,
 } from "@/lib/mfa/login";
 import {
   isPlatformDestination,
@@ -10,17 +9,25 @@ import {
 } from "@/lib/mfa/effective-policy";
 import { inspectLoginMfaSatisfaction } from "@/lib/mfa/gate";
 import { getEffectiveMfaPolicy } from "@/lib/mfa/resolve-policy";
-import { readMfaCookieValue, writeMfaSessionCookie } from "@/lib/mfa/session";
+import {
+  readMfaCookieValue,
+  redirectToSameOriginPath,
+  redirectWithMfaSessionCookie,
+} from "@/lib/mfa/session";
 import { readTrustedDeviceCookieValue } from "@/lib/mfa/trusted-device-session";
 
 /**
- * Route Handler so cookies().set is allowed.
+ * Route Handler so Set-Cookie can be attached to the redirect response.
  * Password login lands here first:
  *   resolve organization context
  *   evaluate MFA policy
  *   reject stale cookies after Require MFA Immediately
  *   skip challenge when policy does not require MFA
  *   otherwise trusted device (unless forced reauth), then /auth/mfa
+ *
+ * Policy-skip and trusted-device success must set `sp_mfa` on the
+ * NextResponse redirect. cookies().set() + redirect() drops the cookie
+ * and loops /auth/mfa/continue ↔ /home.
  */
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -29,7 +36,10 @@ export async function GET(request: Request) {
 
   const ctx = await getLoginMfaContext();
   if (!ctx) {
-    redirect(`/login?next=${encodeURIComponent(nextPath)}`);
+    return redirectToSameOriginPath(
+      request,
+      `/login?next=${encodeURIComponent(nextPath)}`,
+    );
   }
 
   const policy = await getEffectiveMfaPolicy({
@@ -38,7 +48,8 @@ export async function GET(request: Request) {
   });
 
   if (policy.needsOrganizationSelection) {
-    redirect(
+    return redirectToSameOriginPath(
+      request,
       `/auth/select-organization?next=${encodeURIComponent(nextPath)}`,
     );
   }
@@ -53,32 +64,42 @@ export async function GET(request: Request) {
   });
 
   if (inspected.authentic && inspected.satisfiesReauth) {
-    redirect(nextPath);
+    return redirectToSameOriginPath(request, nextPath);
   }
 
   if (!policy.required) {
-    const wrote = await writeMfaSessionCookie({
+    const skipped = await redirectWithMfaSessionCookie(request, nextPath, {
       userId: ctx.userId,
       sessionId: ctx.sessionId,
       ...mfaCookieFromPolicy(policy),
     });
-    if (wrote) {
-      redirect(nextPath);
+    if (skipped) {
+      return skipped;
     }
   }
 
   const cookieValue = await readTrustedDeviceCookieValue();
-  const skipped = await tryCompleteLoginWithTrustedDevice({
+  const trustedCookie = await resolveTrustedDeviceMfaCookie({
     cookieValue,
     pathname: nextPath,
     organizationId: policy.organizationId,
     forceFreshMfa: inspected.staleDueToReauth,
   });
-  if (skipped) {
-    redirect(nextPath);
+  if (trustedCookie) {
+    const trusted = await redirectWithMfaSessionCookie(
+      request,
+      nextPath,
+      trustedCookie,
+    );
+    if (trusted) {
+      return trusted;
+    }
   }
 
-  redirect(`/auth/mfa?next=${encodeURIComponent(nextPath)}`);
+  return redirectToSameOriginPath(
+    request,
+    `/auth/mfa?next=${encodeURIComponent(nextPath)}`,
+  );
 }
 
 export function POST(request: Request) {

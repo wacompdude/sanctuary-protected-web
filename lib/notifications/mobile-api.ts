@@ -100,7 +100,7 @@ export function mobileNotificationCorsHeaders() {
 
 export { getMobileAuthContext, requireMobileMfaContext } from "@/lib/mfa/mobile-api";
 
-function parseDeliverableChannels(
+export function parseDeliverableChannels(
   requested: string[] | null | undefined,
 ): NotificationChannel[] {
   const selected = (requested ?? [])
@@ -117,9 +117,6 @@ function parseDeliverableChannels(
       channel === "push" ||
       channel === "sms",
   );
-  if (!channels.includes("push")) {
-    channels.push("push");
-  }
   return channels.length > 0 ? channels : [...OPERATIONAL_ALERT_CHANNELS];
 }
 

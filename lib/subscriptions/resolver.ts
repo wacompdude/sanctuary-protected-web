@@ -41,8 +41,9 @@ import type {
 
 async function loadPlanEntitlements(
   plan: SubscriptionPlanRecord,
+  client?: SupabaseClient,
 ): Promise<ChurchEntitlements["values"]> {
-  const assignments = await listPlanFeatureAssignments(plan.id);
+  const assignments = await listPlanFeatureAssignments(plan.id, client);
   return buildEntitlementMap(assignments);
 }
 
@@ -106,7 +107,10 @@ export async function loadChurchEntitlements(
 
   const subscription = await getChurchSubscription(trimmed, client);
   if (subscription) {
-    const plan = await getSubscriptionPlanByKey(String(subscription.plan_key));
+    const plan = await getSubscriptionPlanByKey(
+      String(subscription.plan_key),
+      client,
+    );
     const resolvedPlan =
       plan ??
       ({
@@ -130,13 +134,13 @@ export async function loadChurchEntitlements(
       plan: resolvedPlan,
       usedDefaultPlanFallback: false,
       values: mergeEntitlementValues(
-        await loadPlanEntitlements(resolvedPlan),
+        await loadPlanEntitlements(resolvedPlan, client),
         await loadActiveEntitlementOverrides(trimmed, client),
       ),
     };
   }
 
-  const defaultPlan = await getDefaultSubscriptionPlan();
+  const defaultPlan = await getDefaultSubscriptionPlan(client);
   if (!defaultPlan) {
     return {
       organizationId: trimmed,
@@ -153,7 +157,7 @@ export async function loadChurchEntitlements(
     plan: defaultPlan,
     usedDefaultPlanFallback: true,
     values: mergeEntitlementValues(
-      await loadPlanEntitlements(defaultPlan),
+      await loadPlanEntitlements(defaultPlan, client),
       await loadActiveEntitlementOverrides(trimmed, client),
     ),
   };

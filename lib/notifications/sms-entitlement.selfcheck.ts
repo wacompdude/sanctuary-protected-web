@@ -6,6 +6,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { FEATURE_KEYS } from "@/lib/subscriptions/feature-keys";
 import { readBooleanEntitlement } from "@/lib/subscriptions/entitlement-values";
+import { hasFeature, loadChurchEntitlements } from "@/lib/subscriptions/resolver";
 import {
   evaluateSmsEligibility,
   suppressionReasonFromSmsEligibility,
@@ -23,7 +24,137 @@ function smsTierFromFeature(featureAllowed: boolean) {
   return featureAllowed ? "ALLOWED" : "ORGANIZATION_SMS_TIER_UNAVAILABLE";
 }
 
-function main() {
+const ORG = "d8e32fd9-f9b1-4650-b07a-c06ed94076f1";
+const OMNI_PLAN = "123171cf-0d3e-49a5-b7ad-8a10c5fb70c8";
+const DEFAULT_PLAN = "default-plan";
+
+function planRow(id: string, planKey: string, isDefault: boolean) {
+  return {
+    id,
+    plan_key: planKey,
+    display_name: planKey,
+    description: null,
+    status: "active",
+    billing_interval: "month",
+    monthly_price_cents: 0,
+    currency: "USD",
+    sort_order: 1,
+    is_public: true,
+    is_default: isDefault,
+    is_custom: false,
+  };
+}
+
+function trustedClient(options: {
+  sms: boolean | "missing";
+  useDefaultPlan?: boolean;
+}) {
+  const tables: string[] = [];
+  function from(table: string) {
+    tables.push(table);
+    const eqs: Record<string, unknown> = {};
+    const builder = {
+      select() {
+        return builder;
+      },
+      eq(key: string, value: unknown) {
+        eqs[key] = value;
+        return builder;
+      },
+      in() {
+        return builder;
+      },
+      order() {
+        return builder;
+      },
+      limit() {
+        return builder;
+      },
+      is() {
+        return builder;
+      },
+      async maybeSingle() {
+        if (table === "organization_subscriptions") {
+          if (options.useDefaultPlan) return { data: null, error: null };
+          return {
+            data: {
+              id: "sub",
+              organization_id: ORG,
+              plan_id: OMNI_PLAN,
+              status: "active",
+              billing_interval: "month",
+              billing_provider: null,
+              current_period_start: null,
+              current_period_end: null,
+              cancel_at_period_end: false,
+              cancelled_at: null,
+              trial_start: null,
+              trial_end: null,
+              grace_period_end: null,
+              started_at: "2026-07-26T07:09:46.044+00:00",
+              subscription_plans: {
+                plan_key: "omni_enterprise",
+                display_name: "Omni Enterprise",
+              },
+            },
+            error: null,
+          };
+        }
+        if (table === "subscription_plans") {
+          if (eqs.is_default === true) {
+            return {
+              data: planRow(DEFAULT_PLAN, "servant_standard", true),
+              error: null,
+            };
+          }
+          if (eqs.plan_key === "omni_enterprise") {
+            return {
+              data: planRow(OMNI_PLAN, "omni_enterprise", false),
+              error: null,
+            };
+          }
+          return { data: null, error: null };
+        }
+        return { data: null, error: null };
+      },
+      then(
+        resolve: (value: { data: unknown; error: null }) => unknown,
+        reject?: (reason: unknown) => unknown,
+      ) {
+        const result =
+          table === "plan_features"
+            ? {
+                data:
+                  options.sms === "missing"
+                    ? []
+                    : [
+                        {
+                          plan_id: String(eqs.plan_id ?? OMNI_PLAN),
+                          feature_id: "feature-sms",
+                          boolean_value: options.sms === true,
+                          integer_value: null,
+                          decimal_value: null,
+                          text_value: null,
+                          json_value: null,
+                          is_inherited: false,
+                          features: {
+                            feature_key: FEATURE_KEYS.SMS,
+                            value_type: "boolean",
+                          },
+                        },
+                      ],
+                error: null,
+              }
+            : { data: [], error: null };
+        return Promise.resolve(result).then(resolve, reject);
+      },
+    };
+    return builder;
+  }
+  return { from, tables };
+}
+
+async function main() {
   assert(
     smsTierFromFeature(true) === "ALLOWED",
     "1 organization with SMS feature permits SMS",
@@ -135,7 +266,74 @@ function main() {
     "7 only the SMS entitlement lookup was retargeted",
   );
 
+  const trusted = trustedClient({ sms: true });
+  const allowed = await hasFeature({
+    organizationId: ORG,
+    featureKey: FEATURE_KEYS.SMS,
+    client: trusted as never,
+  });
+  assert(allowed.allowed === true, "2 no-cookie trusted client returns SMS true");
+  assert(
+    trusted.tables.includes("organization_subscriptions"),
+    "1 trusted client reads the organization subscription",
+  );
+  assert(
+    trusted.tables.includes("subscription_plans"),
+    "1 trusted client reaches getSubscriptionPlanByKey",
+  );
+  assert(
+    trusted.tables.includes("plan_features"),
+    "1 trusted client reaches listPlanFeatureAssignments",
+  );
+
+  const denied = trustedClient({ sms: false });
+  const deniedEntitlements = await loadChurchEntitlements(ORG, denied as never);
+  assert(
+    readBooleanEntitlement(deniedEntitlements.values, FEATURE_KEYS.SMS) ===
+      false,
+    "3 false SMS entitlement stays false",
+  );
+  assert(
+    denied.tables.includes("plan_features"),
+    "3 false value is read from the trusted plan_features query",
+  );
+
+  const missing = trustedClient({ sms: "missing" });
+  const missingEntitlements = await loadChurchEntitlements(
+    ORG,
+    missing as never,
+  );
+  assert(
+    readBooleanEntitlement(missingEntitlements.values, FEATURE_KEYS.SMS) ===
+      false,
+    "4 missing feature fails closed",
+  );
+  assert(
+    missing.tables.includes("plan_features"),
+    "4 missing-feature lookup uses the trusted client",
+  );
+
+  const fallback = trustedClient({ sms: true, useDefaultPlan: true });
+  const defaulted = await hasFeature({
+    organizationId: ORG,
+    featureKey: FEATURE_KEYS.SMS,
+    client: fallback as never,
+  });
+  assert(
+    fallback.tables.filter((table) => table === "subscription_plans").length >=
+      1,
+    "5 default-plan lookup uses the trusted client",
+  );
+  assert(
+    fallback.tables.includes("plan_features"),
+    "5 default-plan features use the trusted client",
+  );
+  assert(defaulted.allowed === true, "5 trusted default plan can include SMS");
+
   console.log("sms entitlement selfcheck passed");
 }
 
-main();
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

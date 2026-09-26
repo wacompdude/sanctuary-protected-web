@@ -91,8 +91,9 @@ export async function listSubscriptionPlans(): Promise<SubscriptionPlanRecord[]>
 
 export async function getSubscriptionPlanByKey(
   planKey: string,
+  client?: SupabaseClient,
 ): Promise<SubscriptionPlanRecord | null> {
-  const supabase = await createClient();
+  const supabase = client ?? (await createClient());
   const { data, error } = await supabase
     .from("subscription_plans")
     .select(
@@ -109,8 +110,10 @@ export async function getSubscriptionPlanByKey(
   return mapPlan(data as Record<string, unknown>);
 }
 
-export async function getDefaultSubscriptionPlan(): Promise<SubscriptionPlanRecord | null> {
-  const supabase = await createClient();
+export async function getDefaultSubscriptionPlan(
+  client?: SupabaseClient,
+): Promise<SubscriptionPlanRecord | null> {
+  const supabase = client ?? (await createClient());
   const { data, error } = await supabase
     .from("subscription_plans")
     .select(
@@ -128,7 +131,7 @@ export async function getDefaultSubscriptionPlan(): Promise<SubscriptionPlanReco
   }
   if (data) return mapPlan(data as Record<string, unknown>);
 
-  return getSubscriptionPlanByKey("servant_standard");
+  return getSubscriptionPlanByKey("servant_standard", supabase);
 }
 
 export async function listFeatures(): Promise<FeatureRecord[]> {
@@ -150,8 +153,9 @@ export async function listFeatures(): Promise<FeatureRecord[]> {
 
 export async function listPlanFeatureAssignments(
   planId: string,
+  client?: SupabaseClient,
 ): Promise<PlanFeatureAssignment[]> {
-  const supabase = await createClient();
+  const supabase = client ?? (await createClient());
   const { data, error } = await supabase
     .from("plan_features")
     .select(

@@ -141,8 +141,24 @@ assert(
   "help.manage is a known platform permission",
 );
 assert(
-  PLATFORM_PERMISSIONS.includes("security.mfa_policy.manage"),
-  "security.mfa_policy.manage is a known platform permission",
+  hasPermissionInSet(superPerms, "system.sms.manage_regions"),
+  "super_admin can manage SMS regions",
+);
+assert(
+  hasPermissionInSet(developerPerms, "system.sms.test"),
+  "developer can still send test SMS",
+);
+assert(
+  !hasPermissionInSet(developerPerms, "system.sms.manage_regions"),
+  "developer test SMS does not manage regions",
+);
+assert(
+  !hasPermissionInSet(platformAdminPerms, "system.sms.manage_regions"),
+  "platform_admin does not manage SMS regions by default",
+);
+assert(
+  !hasPermissionInSet(supportPerms, "system.sms.manage_regions"),
+  "support cannot manage SMS regions",
 );
 
 const combined = resolvePermissionsFromRoleKeys([

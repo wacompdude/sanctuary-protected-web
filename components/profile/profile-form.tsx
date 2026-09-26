@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import type { ProfileActionState, UserProfile } from "@/lib/profile/types";
 import { SMS_PHONE_SAVE_HELPER } from "@/lib/sms/consent-copy";
+import { formatNationalNanpDisplay } from "@/lib/sms/phone-entry";
 
 const initialState: ProfileActionState = {};
 
@@ -84,13 +85,19 @@ export function ProfileForm({ profile }: { profile: UserProfile }) {
               id="phone"
               name="phone"
               type="tel"
-              defaultValue={profile.phone ?? ""}
+              defaultValue={
+                formatNationalNanpDisplay(profile.phone) ?? profile.phone ?? ""
+              }
               autoComplete="tel"
-              placeholder="+1 (425) 555-1234"
+              inputMode="tel"
+              placeholder="(425) 555-1212"
             />
             <p className="text-xs text-muted-foreground">
               {SMS_PHONE_SAVE_HELPER}
             </p>
+            {state.fieldErrors?.phone ? (
+              <p className="text-sm text-destructive">{state.fieldErrors.phone}</p>
+            ) : null}
           </div>
 
           <Button type="submit" disabled={pending}>

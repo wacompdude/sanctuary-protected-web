@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getUserMemberships } from "@/lib/organization/auth";
 import { getRequestIpAddress } from "@/lib/audit/request-ip";
 import { handleSmsPhoneNumberChange } from "@/lib/sms/consent";
+import { normalizeNanpNationalInput } from "@/lib/sms/phone-entry";
 import {
   validatePassword,
   validatePasswordConfirmation,
@@ -35,9 +36,13 @@ export async function updateOwnProfile(
 ): Promise<ProfileActionState> {
   const firstName = optionalText(formData.get("first_name"));
   const lastName = optionalText(formData.get("last_name"));
-  const phone = optionalText(formData.get("phone"), 40);
+  const phoneRaw = optionalText(formData.get("phone"), 40);
+  const normalizedPhone = phoneRaw ? normalizeNanpNationalInput(phoneRaw) : null;
 
   const fieldErrors: ProfileActionState["fieldErrors"] = {};
+  if (normalizedPhone && "error" in normalizedPhone) {
+    fieldErrors.phone = normalizedPhone.error;
+  }
   if (formData.get("first_name") && !firstName) {
     fieldErrors.first_name = "First name cannot be only spaces.";
   }
@@ -47,6 +52,8 @@ export async function updateOwnProfile(
   if (Object.keys(fieldErrors).length > 0) {
     return { fieldErrors };
   }
+  const phone =
+    normalizedPhone && "e164" in normalizedPhone ? normalizedPhone.e164 : null;
 
   try {
     const supabase = await createClient();

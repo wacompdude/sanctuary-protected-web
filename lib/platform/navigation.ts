@@ -101,6 +101,11 @@ export const PLATFORM_NAV_SECTIONS: PlatformNavSection[] = [
         label: "Multi-Factor Authentication",
         permission: "security.mfa_policy.manage",
       },
+      {
+        href: "/platform/sms",
+        label: "SMS regions",
+        permission: "system.sms.manage_regions",
+      },
     ],
   },
   {

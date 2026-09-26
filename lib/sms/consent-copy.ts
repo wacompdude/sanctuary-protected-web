@@ -48,6 +48,7 @@ export const SMS_ENABLE_BUTTON_LABEL = "Verify Number & Enable SMS";
 
 /** Web profile enrollment (Bird evidence). Distinct from MFA backup verification. */
 export const SMS_CONSENT_SOURCE_PROFILE_WEB = "profile_web";
+export const SMS_CONSENT_SOURCE_PROFILE_MOBILE = "profile_mobile";
 
 export function smsOnScreenConsentSnapshot(): string {
   return [

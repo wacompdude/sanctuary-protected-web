@@ -16,9 +16,9 @@ import { SMS_ENABLE_BUTTON_LABEL } from "@/lib/sms/consent-copy";
 import type { SmsEnrollmentState } from "@/lib/sms/consent";
 import {
   inspectMobileNumber,
-  formatNanpDisplay,
   maskMobileE164,
 } from "@/lib/sms/phone";
+import { formatNationalNanpDisplay } from "@/lib/sms/phone-entry";
 
 function formatConsentDate(iso: string | null): string | null {
   if (!iso) return null;
@@ -70,7 +70,7 @@ export function ProfileSmsEnrollment({
     {},
   );
 
-  const displayPhone = phone ? formatNanpDisplay(phone) : null;
+  const displayPhone = phone ? formatNationalNanpDisplay(phone) ?? phone : null;
   const pending =
     enrollmentState === "PENDING_VERIFICATION" || Boolean(enrollState.success);
   const phoneValid = Boolean(phone && inspectMobileNumber(phone).supported);

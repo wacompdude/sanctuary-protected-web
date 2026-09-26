@@ -61,6 +61,7 @@ export const PLATFORM_PERMISSIONS = [
   "system.webhooks.retry",
   "system.email.test",
   "system.sms.test",
+  "system.sms.manage_regions",
 
   "developer.tools.access",
   "developer.logs.read",

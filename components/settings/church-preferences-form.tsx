@@ -28,7 +28,7 @@ export function ChurchPreferencesForm({
   return (
     <SettingsSectionCard
       title="Application preferences"
-      description="Defaults for dates, landing pages, and feature toggles. Push, Text/SMS, IoT, and camera options are placeholders until those products ship."
+      description="Defaults for dates, landing pages, and which notification channels this organization makes available. Individual preferences, consent, and each alert's delivery methods still control what is sent."
       action={updateChurchPreferenceSettings}
       canEdit={canEdit}
     >
@@ -82,22 +82,23 @@ export function ChurchPreferencesForm({
             <LabeledCheckbox
               id="enable_email_notifications"
               name="enable_email_notifications"
-              label="Enable email notifications"
+              label="Enable Email Notifications"
               defaultChecked={preferences.enable_email_notifications}
+              hint="Makes email available. Personal email preferences and the sender's channel choice still apply."
             />
             <LabeledCheckbox
               id="enable_push_notifications"
               name="enable_push_notifications"
-              label="Enable push notifications (stored only)"
+              label="Enable Push Notifications"
               defaultChecked={preferences.enable_push_notifications}
-              hint="Saved for future use. Push delivery is not active yet."
+              hint="Makes push available for registered devices. Personal push preferences and the sender's channel choice still apply."
             />
             <LabeledCheckbox
               id="enable_sms_notifications"
               name="enable_sms_notifications"
-              label="Enable Text/SMS notifications (stored only)"
+              label="Enable Text/SMS Notifications"
               defaultChecked={preferences.enable_sms_notifications}
-              hint="Saved for future use. Text/SMS delivery is not active yet."
+              hint="Makes text messages available. Consent, STOP, personal SMS preferences, plan access, and the sender's channel choice still apply."
             />
             <LabeledCheckbox
               id="enable_iot_sensors"

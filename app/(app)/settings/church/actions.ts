@@ -391,7 +391,7 @@ export async function updateChurchPreferenceSettings(
     settings: validation.data.preferences,
   };
 
-  return updateChurchSection({
+  const result = await updateChurchSection({
     patch,
     before: {
       certification_warning_days: loaded.row.certification_warning_days,
@@ -399,6 +399,23 @@ export async function updateChurchPreferenceSettings(
     },
     action: AuditAction.CHURCH_SETTINGS_PREFERENCES_UPDATED,
   });
+
+  if (result.success) {
+    const prefs = validation.data.preferences;
+    await editor.context.supabase
+      .from("organization_notification_settings")
+      .upsert(
+        {
+          organization_id: editor.context.church.id,
+          email_notifications_enabled: prefs.enable_email_notifications,
+          push_notifications_enabled: prefs.enable_push_notifications,
+          sms_notifications_enabled: prefs.enable_sms_notifications,
+        },
+        { onConflict: "organization_id" },
+      );
+  }
+
+  return result;
 }
 
 export async function changeChurchAccountStatus(

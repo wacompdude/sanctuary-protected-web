@@ -72,8 +72,8 @@ export const DEFAULT_APP_PREFERENCES: ChurchAppPreferences = {
   default_dashboard_page: "/dashboard",
   default_incident_sort: "occurred_at_desc",
   enable_email_notifications: true,
-  enable_push_notifications: false,
-  enable_sms_notifications: false,
+  enable_push_notifications: true,
+  enable_sms_notifications: true,
   enable_iot_sensors: false,
   enable_camera_integration: false,
 };

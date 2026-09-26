@@ -537,6 +537,7 @@ export async function resolveNotificationAudience(params: {
         await hasFeature({
           organizationId,
           featureKey: FEATURE_KEYS.SMS,
+          client: supabase,
         }).catch(() => ({ allowed: false }))
       ).allowed
     : false;

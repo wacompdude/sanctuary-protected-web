@@ -166,6 +166,7 @@ export const getChurchEntitlements = cache(async (organizationId: string) =>
 export async function hasFeature(params: {
   organizationId: string;
   featureKey: FeatureKey | string;
+  client?: SupabaseClient;
 }): Promise<FeatureAccessResult> {
   const featureKey = String(params.featureKey);
   if (!isFeatureKey(featureKey)) {
@@ -182,7 +183,9 @@ export async function hasFeature(params: {
     };
   }
 
-  const entitlements = await getChurchEntitlements(params.organizationId);
+  const entitlements = params.client
+    ? await loadChurchEntitlements(params.organizationId, params.client)
+    : await getChurchEntitlements(params.organizationId);
   const allowed = readBooleanEntitlement(entitlements.values, featureKey);
   const planKey = entitlements.plan ? String(entitlements.plan.plan_key) : null;
   const planDisplayName = entitlements.plan?.display_name ?? null;

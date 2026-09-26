@@ -3,6 +3,7 @@ import { hasFeature, getFeatureLimit } from "@/lib/subscriptions/resolver";
 import { getSmsSegmentUsageMeter } from "@/lib/subscriptions/usage";
 import { inspectMobileNumber } from "@/lib/sms/phone";
 import type { ConsentStatus, EndpointStatus } from "@/lib/notifications/endpoints/types";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type SmsEligibilityReason =
   | "ALLOWED"
@@ -32,6 +33,8 @@ export type SmsEligibilityInput = {
   endpointStatus?: EndpointStatus | string | null;
   isVerified?: boolean;
   suppressed?: boolean;
+  /** Trusted server client. Notification sends must not depend on a browser cookie. */
+  client?: SupabaseClient;
 };
 
 export type SmsEligibilityResult = {
@@ -139,6 +142,7 @@ export async function canSendSms(
   const feature = await hasFeature({
     organizationId: input.organizationId,
     featureKey: FEATURE_KEYS.SMS,
+    client: input.client,
   }).catch(() => ({ allowed: false }));
   if (!feature.allowed) {
     return { allowed: false, reason: "ORGANIZATION_SMS_TIER_UNAVAILABLE" };
@@ -148,11 +152,15 @@ export async function canSendSms(
     const limit = await getFeatureLimit({
       organizationId: input.organizationId,
       featureKey: FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT,
+      client: input.client,
     });
     if (!limit.unlimited && (limit.limit ?? 0) <= 0) {
       return { allowed: false, reason: "ORGANIZATION_SMS_TIER_UNAVAILABLE" };
     }
-    const meter = await getSmsSegmentUsageMeter(input.organizationId);
+    const meter = await getSmsSegmentUsageMeter(
+      input.organizationId,
+      input.client,
+    );
     if (
       !meter.unlimited &&
       meter.limit !== null &&

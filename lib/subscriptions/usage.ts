@@ -158,7 +158,7 @@ export async function getUsageMeter(params: {
 
   const [subscription, limitResult] = await Promise.all([
     getChurchSubscription(organizationId, supabase),
-    getFeatureLimit({ organizationId, featureKey }),
+    getFeatureLimit({ organizationId, featureKey, client: params.client }),
   ]);
 
   if (!subscription) {
@@ -617,10 +617,12 @@ export async function getSeatUsageMeter(organizationId: string): Promise<UsageMe
 
 export async function getSmsSegmentUsageMeter(
   organizationId: string,
+  client?: SupabaseClient,
 ): Promise<UsageMeter> {
   return getUsageMeter({
     organizationId,
     featureKey: FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT,
+    client,
   });
 }
 

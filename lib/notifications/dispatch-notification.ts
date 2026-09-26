@@ -698,6 +698,7 @@ export async function sendSmsDelivery(
       endpointStatus: endpointRow?.status,
       isVerified: Boolean(endpointRow?.is_verified),
       suppressed: Boolean(endpointRow?.suppressed_at),
+      client: admin,
     });
 
     if (!eligibility.allowed) {

@@ -142,10 +142,7 @@ export function NotificationPreferencesForm({
                 defaultChecked={prefs.sms_enabled}
                 className="mt-1 h-4 w-4 rounded border border-input"
               />
-              <span>
-                Enable Text/SMS notifications{" "}
-                <span className="text-muted-foreground">(unavailable until configured)</span>
-              </span>
+              <span>Enable Text/SMS notifications</span>
             </label>
             <label className="flex items-start gap-2 text-sm">
               <input
@@ -154,10 +151,7 @@ export function NotificationPreferencesForm({
                 defaultChecked={prefs.push_enabled}
                 className="mt-1 h-4 w-4 rounded border border-input"
               />
-              <span>
-                Enable push notifications{" "}
-                <span className="text-muted-foreground">(coming soon)</span>
-              </span>
+              <span>Enable push notifications</span>
             </label>
           </div>
 

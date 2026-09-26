@@ -112,10 +112,7 @@ export function NotificationSettingsForm({
                     defaultChecked={settings.push_notifications_enabled}
                     className="mt-1 h-4 w-4 rounded border border-input"
                   />
-                  <span>
-                    Push enabled{" "}
-                    <span className="text-muted-foreground">(coming soon)</span>
-                  </span>
+                  <span>Push enabled</span>
                 </label>
                 <label className="flex items-start gap-2 text-sm">
                   <input

@@ -108,11 +108,11 @@ export function NotificationGroupDefaultsForm({
               </label>
               <label className="flex items-center gap-2">
                 <input type="checkbox" name="sms_enabled" />
-                Text/SMS enabled (stored; delivery not active yet)
+                Text/SMS enabled
               </label>
               <label className="flex items-center gap-2">
                 <input type="checkbox" name="push_enabled" />
-                Push enabled (stored; delivery not active yet)
+                Push enabled
               </label>
               <label className="flex items-center gap-2">
                 <input type="checkbox" name="in_app_enabled" defaultChecked />

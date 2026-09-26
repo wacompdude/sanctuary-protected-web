@@ -198,7 +198,8 @@ export function NotificationEndpointsPanel({
                 </div>
                 {endpoint.channel === "push" ? (
                   <p className="text-xs text-muted-foreground">
-                    Push devices are not registered yet.
+                    Registered from the mobile app. Notification permission is
+                    managed on that device.
                   </p>
                 ) : (
                   <EndpointActions endpoint={endpoint} />
@@ -207,9 +208,11 @@ export function NotificationEndpointsPanel({
             ))}
           </ul>
         )}
-        <p className="text-xs text-muted-foreground">
-          Push notifications: no devices registered (coming soon).
-        </p>
+        {endpoints.some((endpoint) => endpoint.channel === "push") ? null : (
+          <p className="text-xs text-muted-foreground">
+            Push notifications require a registered device.
+          </p>
+        )}
       </CardContent>
     </Card>
   );

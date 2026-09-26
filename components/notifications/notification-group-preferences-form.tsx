@@ -118,8 +118,8 @@ export function NotificationGroupPreferencesForm({
                 >
                   <option value="email">Email</option>
                   <option value="in_app">In-app</option>
-                  <option value="sms">Text/SMS (stored only)</option>
-                  <option value="push">Push (stored only)</option>
+                  <option value="sms">Text/SMS</option>
+                  <option value="push">Push</option>
                 </select>
               </div>
               <div className="space-y-2">

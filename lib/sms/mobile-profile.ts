@@ -31,6 +31,16 @@ import {
   phoneEntryMode,
 } from "@/lib/sms/phone-entry";
 import {
+  CARRIER_STOP_MESSAGE,
+  SAME_MOBILE_NUMBER_MESSAGE,
+  carrierSuppressionBlocksProfileEnrollment,
+  profilePhoneUnchanged,
+  profileOptOutPatch,
+  retirePreviousSmsPatch,
+  verifiedEnrollmentPatch,
+} from "@/lib/sms/phone-replacement";
+import {
+  findOpenSmsEnrollmentChallenge,
   sendSmsEnrollmentCode,
   sendSmsEnrollmentConfirmation,
   verifySmsEnrollmentCode,
@@ -91,24 +101,59 @@ export async function readMobileProfileSms(
     organizationId,
     gate.ctx.userId,
   );
+  const active =
+    endpoint &&
+    endpoint.is_primary &&
+    endpoint.status === "active" &&
+    endpoint.is_verified &&
+    endpoint.consent_status === "granted" &&
+    !endpoint.suppressed_at
+      ? endpoint
+      : null;
+  const enrollmentSource = active ?? endpoint;
   const enrollmentState = enrollmentStateFromEndpoint({
-    consentStatus: endpoint ? String(endpoint.consent_status) : "unknown",
-    isVerified: Boolean(endpoint?.is_verified),
-    status: endpoint ? String(endpoint.status) : null,
-    suppressedAt: (endpoint?.suppressed_at as string | null | undefined) ?? null,
+    consentStatus: enrollmentSource
+      ? String(enrollmentSource.consent_status)
+      : "unknown",
+    isVerified: Boolean(enrollmentSource?.is_verified),
+    status: enrollmentSource ? String(enrollmentSource.status) : null,
+    suppressedAt:
+      (enrollmentSource?.suppressed_at as string | null | undefined) ?? null,
+  });
+  const challenge = await findOpenSmsEnrollmentChallenge({
+    organizationId,
+    userId: gate.ctx.userId,
   });
   const regions = await listSmsDialingRegions(admin);
   const entry = phoneEntryMode(regions.regions);
+  const phoneE164 = phone ? inspectMobileNumber(phone).e164 : null;
+  const verifiedSmsE164 = active
+    ? String(active.normalized_destination)
+    : null;
+  const carrierSuppressed = carrierSuppressionBlocksProfileEnrollment(
+    (endpoint?.suppressed_at as string | null | undefined) ?? null,
+  );
 
   return {
     status: 200,
     body: {
       status: "ok",
-      phoneE164: phone ? inspectMobileNumber(phone).e164 : null,
+      phoneE164,
       phoneDisplay: formatNationalNanpDisplay(phone),
+      verifiedSmsE164,
+      verifiedSmsDisplay: formatNationalNanpDisplay(verifiedSmsE164),
+      profileDiffersFromVerifiedSms: Boolean(
+        verifiedSmsE164 && phoneE164 && verifiedSmsE164 !== phoneE164,
+      ),
       enrollmentState,
       statusLabel: statusLabel(enrollmentState),
       verified: enrollmentState === "OPTED_IN",
+      verificationChallengeActive: Boolean(challenge),
+      verificationPhoneDisplay: challenge
+        ? formatNationalNanpDisplay(challenge.phoneE164)
+        : null,
+      carrierSuppressed,
+      carrierStopMessage: carrierSuppressed ? CARRIER_STOP_MESSAGE : null,
       consentPreselected: false,
       showCountrySelector: entry.kind === "selector",
       dialingRegions:
@@ -158,6 +203,19 @@ export async function saveMobileProfilePhone(input: {
     .maybeSingle();
   const previous = typeof existing?.phone === "string" ? existing.phone : null;
   const next = normalized.e164;
+  if (profilePhoneUnchanged(previous, next)) {
+    return {
+      status: 200,
+      body: {
+        status: "ok",
+        unchanged: true,
+        phoneE164: next,
+        phoneDisplay: formatNationalNanpDisplay(next),
+        consentGranted: false,
+        message: SAME_MOBILE_NUMBER_MESSAGE,
+      },
+    };
+  }
 
   const { error } = await admin
     .from("profiles")
@@ -240,9 +298,30 @@ export async function startMobileSmsEnrollment(input: {
   if ("error" in upsert && upsert.error) {
     return { status: 400, body: { status: "error", error: upsert.error } };
   }
-  const endpoint = upsert.endpoint as { id: string } | null | undefined;
+  const endpoint = upsert.endpoint as {
+    id: string;
+    suppressed_at?: string | null;
+    status?: string | null;
+    is_verified?: boolean | null;
+    consent_status?: string | null;
+    normalized_destination?: string | null;
+  } | null | undefined;
   if (!endpoint?.id) {
     return { status: 400, body: { status: "error", error: "Unable to save SMS enrollment." } };
+  }
+  if (carrierSuppressionBlocksProfileEnrollment(endpoint.suppressed_at)) {
+    return { status: 400, body: { status: "error", error: CARRIER_STOP_MESSAGE } };
+  }
+  const alreadyActive =
+    endpoint.status === "active" &&
+    endpoint.is_verified &&
+    endpoint.consent_status === "granted" &&
+    String(endpoint.normalized_destination ?? "") === inspected.e164;
+  if (alreadyActive) {
+    return {
+      status: 400,
+      body: { status: "error", error: "This number is already enrolled for SMS messaging." },
+    };
   }
 
   const versions = smsConsentPolicyVersions();
@@ -259,7 +338,6 @@ export async function startMobileSmsEnrollment(input: {
       destination_region: inspected.region,
       status: "unverified",
       is_verified: false,
-      is_primary: true,
     })
     .eq("id", endpoint.id)
     .eq("user_id", gate.ctx.userId);
@@ -323,18 +401,35 @@ export async function verifyMobileSmsEnrollment(input: {
   const gate = await requireMobileMfaContext(input.request, input.organizationId);
   if (!gate.ok) return { status: gate.status, body: gate.body };
   const admin = createAdminClient();
-  const endpoint = await findPrimarySmsEndpoint(
-    admin,
-    input.organizationId,
-    gate.ctx.userId,
-  );
-  if (!endpoint) {
+  const challenge = await findOpenSmsEnrollmentChallenge({
+    organizationId: input.organizationId,
+    userId: gate.ctx.userId,
+  });
+  if (!challenge) {
+    return {
+      status: 400,
+      body: { status: "error", error: "That code is invalid or has expired." },
+    };
+  }
+  const phoneE164 = challenge.phoneE164;
+  const { data: endpoint, error: endpointError } = await admin
+    .from("notification_endpoints")
+    .select("id, suppressed_at, normalized_destination")
+    .eq("organization_id", input.organizationId)
+    .eq("user_id", gate.ctx.userId)
+    .eq("channel", "sms")
+    .eq("normalized_destination", phoneE164)
+    .neq("status", "revoked")
+    .maybeSingle();
+  if (endpointError || !endpoint) {
     return {
       status: 400,
       body: { status: "error", error: "Add a mobile number before verifying SMS." },
     };
   }
-  const phoneE164 = String(endpoint.normalized_destination);
+  if (carrierSuppressionBlocksProfileEnrollment(endpoint.suppressed_at as string | null)) {
+    return { status: 400, body: { status: "error", error: CARRIER_STOP_MESSAGE } };
+  }
   const verified = await verifySmsEnrollmentCode({
     organizationId: input.organizationId,
     userId: gate.ctx.userId,
@@ -352,18 +447,22 @@ export async function verifyMobileSmsEnrollment(input: {
   const { error } = await admin
     .from("notification_endpoints")
     .update({
-      consent_status: "granted",
-      is_verified: true,
+      ...verifiedEnrollmentPatch(),
       verified_at: now,
-      status: "active",
-      suppressed_at: null,
-      suppression_source: null,
     })
     .eq("id", endpoint.id)
     .eq("user_id", gate.ctx.userId);
   if (error) {
     return { status: 400, body: { status: "error", error: "Unable to verify that code." } };
   }
+  await admin
+    .from("notification_endpoints")
+    .update(retirePreviousSmsPatch())
+    .eq("organization_id", input.organizationId)
+    .eq("user_id", gate.ctx.userId)
+    .eq("channel", "sms")
+    .neq("id", endpoint.id)
+    .neq("status", "revoked");
 
   await recordSmsConsentEvent({
     supabase: admin,
@@ -420,9 +519,8 @@ export async function optOutMobileSms(input: {
   const { error } = await admin
     .from("notification_endpoints")
     .update({
-      consent_status: "revoked",
+      ...profileOptOutPatch(),
       consent_source: SMS_CONSENT_SOURCE_PROFILE_MOBILE,
-      status: "disabled",
     })
     .eq("id", endpoint.id)
     .eq("user_id", gate.ctx.userId);

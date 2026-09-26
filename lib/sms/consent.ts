@@ -151,19 +151,6 @@ export async function upsertSmsEndpointForPhone(params: {
     };
   }
 
-  const existing = await findPrimarySmsEndpoint(
-    params.supabase,
-    params.organizationId,
-    params.userId,
-  );
-
-  if (existing) {
-    await params.supabase
-      .from("notification_endpoints")
-      .update({ is_primary: false })
-      .eq("id", existing.id);
-  }
-
   const row = {
     organization_id: params.organizationId,
     user_id: params.userId,
@@ -172,7 +159,7 @@ export async function upsertSmsEndpointForPhone(params: {
     destination: params.phoneRaw.trim(),
     normalized_destination: inspected.e164,
     label: "Mobile phone",
-    is_primary: true,
+    is_primary: false,
     is_verified: false,
     verified_at: null,
     status: "unverified",
@@ -219,27 +206,6 @@ export async function handleSmsPhoneNumberChange(params: {
       : null;
     const next = params.nextPhone ? inspectMobileNumber(params.nextPhone).e164 : null;
     if (previous === next) return;
-
-    const { data: endpoints } = await params.supabase
-      .from("notification_endpoints")
-      .select("id, normalized_destination, consent_status")
-      .eq("organization_id", params.organizationId)
-      .eq("user_id", params.userId)
-      .eq("channel", "sms")
-      .neq("status", "revoked");
-
-    for (const row of endpoints ?? []) {
-      const destination = String(row.normalized_destination ?? "");
-      if (previous && destination === previous) {
-        await params.supabase
-          .from("notification_endpoints")
-          .update({
-            is_primary: false,
-            status: row.consent_status === "granted" ? "disabled" : "unverified",
-          })
-          .eq("id", row.id);
-      }
-    }
 
     await recordSmsConsentEvent({
       supabase: params.supabase,

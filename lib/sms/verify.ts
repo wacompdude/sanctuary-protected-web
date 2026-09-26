@@ -117,6 +117,26 @@ export async function verifySmsEnrollmentCode(params: {
   return { ok: true };
 }
 
+export async function findOpenSmsEnrollmentChallenge(params: {
+  organizationId: string;
+  userId: string;
+}): Promise<{ phoneE164: string } | null> {
+  if (!isServiceRoleConfigured()) return null;
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("sms_phone_verifications")
+    .select("phone_e164")
+    .eq("organization_id", params.organizationId)
+    .eq("user_id", params.userId)
+    .is("consumed_at", null)
+    .gt("expires_at", new Date().toISOString())
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error || !data?.phone_e164) return null;
+  return { phoneE164: String(data.phone_e164) };
+}
+
 export async function sendSmsEnrollmentConfirmation(toE164: string): Promise<void> {
   await sendBirdSms({
     toE164,

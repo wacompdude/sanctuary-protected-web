@@ -14,11 +14,18 @@ import {
 } from "@/lib/sms/consent-copy";
 import {
   findPrimarySmsEndpoint,
+  findSmsEndpointByDestination,
   recordSmsConsentEvent,
   upsertSmsEndpointForPhone,
 } from "@/lib/sms/consent";
+import {
+  CARRIER_STOP_MESSAGE,
+  retirePreviousSmsPatch,
+  verifiedEnrollmentPatch,
+} from "@/lib/sms/phone-replacement";
 import { inspectMobileNumber } from "@/lib/sms/phone";
 import {
+  findOpenSmsEnrollmentChallenge,
   sendSmsEnrollmentCode,
   sendSmsEnrollmentConfirmation,
   verifySmsEnrollmentCode,
@@ -68,9 +75,27 @@ export async function startSmsEnrollmentAction(
     if ("error" in upsert && upsert.error) {
       return { error: upsert.error };
     }
-    const endpoint = upsert.endpoint as { id: string } | null | undefined;
+    const endpoint = upsert.endpoint as {
+      id: string;
+      suppressed_at?: string | null;
+      status?: string | null;
+      is_verified?: boolean | null;
+      consent_status?: string | null;
+      normalized_destination?: string | null;
+    } | null | undefined;
     if (!endpoint?.id) {
       return { error: "Unable to save SMS enrollment." };
+    }
+    if (endpoint.suppressed_at) {
+      return { error: CARRIER_STOP_MESSAGE };
+    }
+    const alreadyActive =
+      endpoint.status === "active" &&
+      endpoint.is_verified &&
+      endpoint.consent_status === "granted" &&
+      String(endpoint.normalized_destination ?? "") === inspected.e164;
+    if (alreadyActive) {
+      return { error: "This number is already enrolled for SMS messaging." };
     }
     const versions = smsConsentPolicyVersions();
     const now = new Date().toISOString();
@@ -89,7 +114,6 @@ export async function startSmsEnrollmentAction(
         destination_region: inspected.region,
         status: "unverified",
         is_verified: false,
-        is_primary: true,
       })
       .eq("id", endpoint.id)
       .eq("user_id", user.id);
@@ -173,11 +197,26 @@ export async function verifySmsEnrollmentAction(
   try {
     const { supabase, church, user } = await getAuthenticatedUserWithChurch();
     const code = String(formData.get("code") ?? "").trim();
-    const endpoint = await findPrimarySmsEndpoint(supabase, church.id, user.id);
+    const challenge = await findOpenSmsEnrollmentChallenge({
+      organizationId: church.id,
+      userId: user.id,
+    });
+    if (!challenge) {
+      return { error: "That code is invalid or has expired." };
+    }
+    const phoneE164 = challenge.phoneE164;
+    const endpoint = await findSmsEndpointByDestination(
+      supabase,
+      church.id,
+      user.id,
+      phoneE164,
+    );
     if (!endpoint) {
       return { error: "Add a mobile number before verifying SMS." };
     }
-    const phoneE164 = String(endpoint.normalized_destination);
+    if (endpoint.suppressed_at) {
+      return { error: CARRIER_STOP_MESSAGE };
+    }
     const verified = await verifySmsEnrollmentCode({
       organizationId: church.id,
       userId: user.id,
@@ -193,16 +232,21 @@ export async function verifySmsEnrollmentAction(
     const { error } = await supabase
       .from("notification_endpoints")
       .update({
-        consent_status: "granted",
-        is_verified: true,
+        ...verifiedEnrollmentPatch(),
         verified_at: now,
-        status: "active",
-        suppressed_at: null,
-        suppression_source: null,
       })
       .eq("id", endpoint.id)
       .eq("user_id", user.id);
     if (error) return { error: error.message };
+
+    await supabase
+      .from("notification_endpoints")
+      .update(retirePreviousSmsPatch())
+      .eq("organization_id", church.id)
+      .eq("user_id", user.id)
+      .eq("channel", "sms")
+      .neq("id", endpoint.id)
+      .neq("status", "revoked");
 
     await recordSmsConsentEvent({
       supabase,

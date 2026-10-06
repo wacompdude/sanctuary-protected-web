@@ -98,9 +98,9 @@ async function main() {
       assert(provider instanceof StripeBillingProvider, "stripe provider class");
       assert(provider.id === "stripe", "stripe id");
       assert(provider.isConfigured(), "stripe configured with key");
-      assert(!isBillingProviderReady(), "stripe foundation not checkout-ready");
+      assert(isBillingProviderReady(), "stripe checkout-ready when configured");
       const caps = provider.capabilities();
-      assert(!caps.checkout, "checkout capability false");
+      assert(caps.checkout === true, "checkout capability true");
       assert(!caps.customerPortal, "portal capability false");
       assert(!caps.webhooks, "webhooks capability false");
     },
@@ -164,26 +164,26 @@ async function main() {
     assert(thrown instanceof BillingProviderUnknownError, "factory rejects unknown");
   });
 
-  // 5. no secret in returned error text
+  // 5. no secret in returned error text (live mode rejected before network)
   const probeSecret = "sk_live_phase4b1_selfcheck_PROBE_SECRET_VALUE_XYZ";
   await withEnv(
     { BILLING_PROVIDER: "stripe", STRIPE_SECRET_KEY: probeSecret },
     async () => {
       const provider = new StripeBillingProvider();
-      let notImpl: unknown;
+      let liveErr: unknown;
       try {
         await provider.createCheckoutSession({
           organizationId: "org_selfcheck",
           planKey: PLAN_KEYS.STEWARD_PRO,
-          successUrl: "https://example.test/ok",
-          cancelUrl: "https://example.test/cancel",
+          successUrl: "https://example.test/settings/billing?checkout=success",
+          cancelUrl: "https://example.test/settings/billing?checkout=cancelled",
         });
       } catch (error) {
-        notImpl = error;
+        liveErr = error;
       }
-      assert(notImpl instanceof BillingNotImplementedError, "not implemented");
-      assertNoSecretLeak(String((notImpl as Error).message), [probeSecret]);
-      assertNoSecretLeak(String((notImpl as Error).stack ?? ""), [probeSecret]);
+      assert(liveErr instanceof Error, "live checkout rejected");
+      assertNoSecretLeak(String((liveErr as Error).message), [probeSecret]);
+      assertNoSecretLeak(String((liveErr as Error).stack ?? ""), [probeSecret]);
 
       const status = getStripeBillingConfigStatus({
         BILLING_PROVIDER: "stripe",
@@ -266,7 +266,7 @@ async function main() {
     },
   );
 
-  // 10. unsupported financial methods do not make network calls
+  // 10. Portal/webhooks still unimplemented; Checkout is Phase 4B-3 (tested via mocks elsewhere)
   await withEnv(
     {
       BILLING_PROVIDER: "stripe",
@@ -274,32 +274,8 @@ async function main() {
     },
     async () => {
       const provider = new StripeBillingProvider();
-      // StripeBillingProvider must not import/use the SDK client for these methods.
-      const providerSource = readFileSync(
-        join(process.cwd(), "lib/billing/stripe/provider.ts"),
-        "utf8",
-      );
-      assert(
-        !providerSource.includes("getStripeClient"),
-        "provider does not call getStripeClient yet",
-      );
-      assert(
-        !providerSource.includes('from "stripe"'),
-        "provider does not import stripe SDK",
-      );
-
-      let checkoutErr: unknown;
-      try {
-        await provider.createCheckoutSession({
-          organizationId: "org_selfcheck",
-          planKey: PLAN_KEYS.SHEPHERD_PLUS,
-          successUrl: "https://example.test/ok",
-          cancelUrl: "https://example.test/cancel",
-        });
-      } catch (error) {
-        checkoutErr = error;
-      }
-      assert(checkoutErr instanceof BillingNotImplementedError, "checkout not implemented");
+      assert(provider.capabilities().checkout === true, "checkout enabled");
+      assert(provider.capabilities().customerPortal === false, "portal disabled");
 
       let portalErr: unknown;
       try {

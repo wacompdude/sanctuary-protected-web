@@ -371,7 +371,7 @@ async function main() {
   assert(mockCatalog.valid === true, "mock catalog valid");
   assert(mockCatalog.entriesChecked === 8, "mock checked 8");
 
-  // 16–18. Checkout/Portal/Webhook remain disabled
+  // 16–18. Portal/webhooks disabled; Checkout enabled when Stripe configured
   await withEnv(
     {
       BILLING_PROVIDER: "stripe",
@@ -380,13 +380,13 @@ async function main() {
     async () => {
       const provider = getBillingProvider();
       assert(provider.id === "stripe", "stripe provider");
-      assert(provider.capabilities().checkout === false, "checkout false");
+      assert(provider.capabilities().checkout === true, "checkout true");
       assert(
         provider.capabilities().customerPortal === false,
         "portal false",
       );
       assert(provider.capabilities().webhooks === false, "webhooks false");
-      assert(!isBillingProviderReady(), "provider not ready");
+      assert(isBillingProviderReady(), "provider ready");
       const webhook = await provider.verifyAndParseWebhook({
         rawBody: "{}",
         headers: new Headers(),

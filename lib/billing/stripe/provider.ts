@@ -1,11 +1,12 @@
 /**
- * Stripe billing provider adapter (Phase 4B-1 foundation).
+ * Stripe billing provider adapter.
  *
- * Establishes configuration, mode awareness, and commercial-catalog boundary.
- * Does NOT create Customers, Checkout Sessions, Portal sessions, Subscriptions,
- * Invoices, or PaymentIntents. Webhook signature verification lands in 4B-5.
+ * Phase 4B-3: subscription Checkout + Customer mapping (TEST mode only).
+ * Customer Portal and webhooks remain disabled until later phases.
+ * Checkout success redirects are NON-AUTHORITATIVE for entitlements.
  */
 
+import { randomUUID } from "node:crypto";
 import { BillingNotImplementedError } from "@/lib/billing/errors";
 import { COMMERCIAL_PLAN_CATALOG } from "@/lib/billing/commercial-catalog";
 import {
@@ -14,6 +15,20 @@ import {
   readStripeSecretKey,
   requireStripeSecretKey,
 } from "@/lib/billing/stripe/config";
+import { createStripeCatalogPriceLister } from "@/lib/billing/stripe/catalog-stripe";
+import {
+  assertNoClientPriceOverrides,
+  createSubscriptionCheckoutSession,
+} from "@/lib/billing/stripe/checkout";
+import {
+  resolveAppOrigin,
+  buildBillingCheckoutUrls,
+  assertSafeBillingCheckoutUrls,
+} from "@/lib/billing/stripe/checkout-urls";
+import {
+  createAdminBillingCustomerStore,
+} from "@/lib/billing/stripe/customers";
+import { getStripeClient } from "@/lib/billing/stripe/sdk";
 import type {
   BillingCheckoutRequest,
   BillingCheckoutSession,
@@ -31,31 +46,119 @@ export class StripeBillingProvider implements BillingProvider {
   }
 
   capabilities() {
-    // Financial operations arrive in later Phase 4B slices.
     return {
-      checkout: false,
+      checkout: this.isConfigured(),
       customerPortal: false,
       webhooks: false,
       cancelAtProvider: false,
     };
   }
 
-  /** Sanitized config snapshot for server diagnostics (no secrets). */
   getConfigStatus() {
     return getStripeBillingConfigStatus();
   }
 
-  /** Commercial catalog available to later Stripe Price resolution (4B-2). */
   getCommercialCatalog() {
     return COMMERCIAL_PLAN_CATALOG;
   }
 
   async createCheckoutSession(
-    _request: BillingCheckoutRequest,
+    request: BillingCheckoutRequest,
   ): Promise<BillingCheckoutSession> {
-    void _request;
-    this.assertSecretConfigured();
-    throw new BillingNotImplementedError("createCheckoutSession");
+    const secretKey = requireStripeSecretKey(readStripeSecretKey());
+
+    // Explicitly reject any accidental client price overrides if present on request bag.
+    assertNoClientPriceOverrides({
+      priceId: (request as { priceId?: string }).priceId,
+      productId: (request as { productId?: string }).productId,
+      amount: (request as { amount?: number }).amount,
+      currency: (request as { currency?: string }).currency,
+      lookupKey: (request as { lookupKey?: string }).lookupKey,
+    });
+
+    const configuredOrigin = process.env.NEXT_PUBLIC_APP_URL?.trim()
+      ? resolveAppOrigin({ appUrl: process.env.NEXT_PUBLIC_APP_URL })
+      : null;
+    const ownedFallbackOrigin =
+      configuredOrigin ?? "http://localhost:3000";
+    const owned = buildBillingCheckoutUrls(ownedFallbackOrigin);
+    const successUrl = request.successUrl?.trim() || owned.successUrl;
+    const cancelUrl = request.cancelUrl?.trim() || owned.cancelUrl;
+    const origin =
+      configuredOrigin ?? new URL(successUrl).origin;
+    assertSafeBillingCheckoutUrls({
+      successUrl,
+      cancelUrl,
+      expectedOrigin: origin,
+    });
+
+    const stripe = getStripeClient(secretKey);
+    const store = createAdminBillingCustomerStore();
+    const listPrices = createStripeCatalogPriceLister(secretKey);
+
+    const result = await createSubscriptionCheckoutSession(
+      {
+        organizationId: request.organizationId,
+        planKey: String(request.planKey),
+        origin,
+        successUrl,
+        cancelUrl,
+        fallbackEmail: request.customerEmail,
+        attemptToken: randomUUID(),
+        stripeSecretKey: secretKey,
+      },
+      {
+        listPrices,
+        store,
+        stripeCustomers: {
+          async createCustomer(input) {
+            const customer = await stripe.customers.create(
+              {
+                email: input.email || undefined,
+                name: input.name || undefined,
+                metadata: input.metadata,
+              },
+              { idempotencyKey: input.idempotencyKey },
+            );
+            return { id: customer.id };
+          },
+        },
+        stripeCheckout: {
+          async createSubscriptionCheckoutSession(input) {
+            const session = await stripe.checkout.sessions.create(
+              {
+                mode: "subscription",
+                customer: input.customerId,
+                line_items: [{ price: input.priceId, quantity: 1 }],
+                success_url: input.successUrl,
+                cancel_url: input.cancelUrl,
+                allow_promotion_codes: input.allowPromotionCodes,
+                client_reference_id: input.organizationId,
+                metadata: {
+                  organization_id: input.organizationId,
+                  plan_key: input.planKey,
+                  sanctuary_checkout: "subscription_initial",
+                },
+                subscription_data: {
+                  metadata: {
+                    organization_id: input.organizationId,
+                    plan_key: input.planKey,
+                  },
+                },
+              },
+              { idempotencyKey: input.idempotencyKey },
+            );
+            return { id: session.id, url: session.url };
+          },
+        },
+      },
+    );
+
+    return {
+      provider: result.provider,
+      sessionId: result.sessionId,
+      url: result.url,
+    };
   }
 
   async createCustomerPortalSession(
@@ -66,10 +169,6 @@ export class StripeBillingProvider implements BillingProvider {
     throw new BillingNotImplementedError("createCustomerPortalSession");
   }
 
-  /**
-   * Phase 4B-1: reject all webhooks. Signature verification + handlers are 4B-5.
-   * Never accept unsigned events.
-   */
   async verifyAndParseWebhook(_input: {
     rawBody: string;
     headers: Headers;

@@ -3,12 +3,21 @@
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import {
+  BillingCheckoutPlanError,
+  BillingCheckoutUrlError,
   BillingNotImplementedError,
   BillingProviderNotConfiguredError,
   buildDowngradeImpactReport,
   getBillingProvider,
   requireBillingManageAccess,
 } from "@/lib/billing";
+import {
+  assertNoClientPriceOverrides,
+} from "@/lib/billing/stripe/checkout";
+import {
+  buildBillingCheckoutUrls,
+  resolveAppOrigin,
+} from "@/lib/billing/stripe/checkout-urls";
 import { isPlanKey } from "@/lib/subscriptions/plan-keys";
 import {
   changeChurchSubscriptionPlan,
@@ -24,17 +33,6 @@ export type BillingActionState = {
   url?: string;
   impact?: DowngradeImpactReport;
 };
-
-function appOriginFromHeaders(headerStore: Headers): string {
-  const host =
-    headerStore.get("x-forwarded-host") || headerStore.get("host") || "";
-  const proto = headerStore.get("x-forwarded-proto") || "http";
-  if (process.env.NEXT_PUBLIC_APP_URL?.trim()) {
-    return process.env.NEXT_PUBLIC_APP_URL.trim().replace(/\/$/, "");
-  }
-  if (!host) return "http://localhost:3000";
-  return `${proto}://${host}`;
-}
 
 export async function previewPlanChangeImpactAction(
   planKey: string,
@@ -77,20 +75,50 @@ export async function startCheckoutAction(
     }
 
     const headerStore = await headers();
-    const origin = appOriginFromHeaders(headerStore);
+    const origin = resolveAppOrigin({
+      appUrl: process.env.NEXT_PUBLIC_APP_URL,
+      forwardedHost: headerStore.get("x-forwarded-host"),
+      host: headerStore.get("host"),
+      forwardedProto: headerStore.get("x-forwarded-proto"),
+    });
+    const { successUrl, cancelUrl } = buildBillingCheckoutUrls(origin);
+
+    // Reject accidental client price/amount fields if present on the form.
+    assertNoClientPriceOverrides({
+      priceId: String(formData.get("price_id") ?? "") || null,
+      productId: String(formData.get("product_id") ?? "") || null,
+      amount: String(formData.get("amount") ?? "") || null,
+      currency: String(formData.get("currency") ?? "") || null,
+      lookupKey: String(formData.get("lookup_key") ?? "") || null,
+    });
+
+    if (!isPlanKey(planKey)) {
+      return { error: "Select a valid subscription plan." };
+    }
+
+    if (!isServiceRoleConfigured()) {
+      return {
+        error:
+          "Server is missing SUPABASE_SERVICE_ROLE_KEY required for Checkout customer mapping.",
+      };
+    }
+
     const session = await provider.createCheckoutSession({
       organizationId: church.id,
       planKey,
-      successUrl: `${origin}/settings/billing?checkout=success`,
-      cancelUrl: `${origin}/settings/billing?checkout=cancelled`,
+      successUrl,
+      cancelUrl,
       customerEmail: user.email,
     });
 
+    // Non-authoritative: redirect only. Entitlements wait for verified webhooks.
     return { success: true, url: session.url };
   } catch (error) {
     if (
       error instanceof BillingProviderNotConfiguredError ||
-      error instanceof BillingNotImplementedError
+      error instanceof BillingNotImplementedError ||
+      error instanceof BillingCheckoutPlanError ||
+      error instanceof BillingCheckoutUrlError
     ) {
       return { error: error.message };
     }
@@ -113,7 +141,12 @@ export async function openCustomerPortalAction(): Promise<BillingActionState> {
     }
 
     const headerStore = await headers();
-    const origin = appOriginFromHeaders(headerStore);
+    const origin = resolveAppOrigin({
+      appUrl: process.env.NEXT_PUBLIC_APP_URL,
+      forwardedHost: headerStore.get("x-forwarded-host"),
+      host: headerStore.get("host"),
+      forwardedProto: headerStore.get("x-forwarded-proto"),
+    });
     const session = await provider.createCustomerPortalSession({
       organizationId: church.id,
       returnUrl: `${origin}/settings/billing`,

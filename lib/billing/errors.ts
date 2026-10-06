@@ -88,3 +88,30 @@ export class StripeUnknownModeForbiddenError extends Error {
     this.name = "StripeUnknownModeForbiddenError";
   }
 }
+
+export class BillingCheckoutPlanError extends Error {
+  readonly code = "billing_checkout_plan_error";
+
+  constructor(message: string) {
+    super(message);
+    this.name = "BillingCheckoutPlanError";
+  }
+}
+
+export class BillingCheckoutUrlError extends Error {
+  readonly code = "billing_checkout_url_error";
+
+  constructor(message: string) {
+    super(message);
+    this.name = "BillingCheckoutUrlError";
+  }
+}
+
+export class BillingAuthorizationError extends Error {
+  readonly code = "billing_authorization_error";
+
+  constructor(message: string) {
+    super(message);
+    this.name = "BillingAuthorizationError";
+  }
+}

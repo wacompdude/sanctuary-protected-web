@@ -22,6 +22,9 @@ export {
   BillingConfigurationError,
   BillingProviderUnknownError,
   BillingNotImplementedError,
+  BillingCheckoutPlanError,
+  BillingCheckoutUrlError,
+  BillingAuthorizationError,
   StripeCatalogNotFoundError,
   StripeCatalogAmbiguousError,
   StripeCatalogMismatchError,
@@ -50,6 +53,21 @@ export type {
   StripeCommercialCatalogValidationReport,
   StripePriceSnapshot,
 } from "@/lib/billing/stripe/catalog";
+
+export {
+  assertNoClientPriceOverrides,
+  assertSubscriptionCheckoutPlanKey,
+  createSubscriptionCheckoutSession,
+} from "@/lib/billing/stripe/checkout";
+export {
+  buildBillingCheckoutUrls,
+  resolveAppOrigin,
+  assertSafeBillingCheckoutUrls,
+} from "@/lib/billing/stripe/checkout-urls";
+export {
+  ensureStripeCustomerForOrganization,
+  stripeCustomerIdempotencyKey,
+} from "@/lib/billing/stripe/customers";
 
 export {
   getConfiguredBillingProviderId,

@@ -19,6 +19,19 @@ export {
 } from "@/lib/billing/unconfigured-provider";
 
 export {
+  BillingConfigurationError,
+  BillingProviderUnknownError,
+  BillingNotImplementedError,
+} from "@/lib/billing/errors";
+
+export {
+  classifyStripeSecretMode,
+  getStripeBillingConfigStatus,
+  isStripeSecretConfigured,
+  resolveBillingProviderIdFromEnv,
+} from "@/lib/billing/stripe/config";
+
+export {
   getConfiguredBillingProviderId,
   getBillingProvider,
   isBillingProviderReady,

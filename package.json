@@ -17,6 +17,7 @@
     "selfcheck:help": "npx --yes tsx lib/help/foundation.selfcheck.ts && npx --yes tsx lib/help/mobile.selfcheck.ts",
     "selfcheck:training": "npx --yes tsx lib/training/foundation.selfcheck.ts",
     "selfcheck:subscriptions": "npx --yes tsx lib/subscriptions/foundation.selfcheck.ts && npx --yes tsx lib/subscriptions/entitlements.selfcheck.ts && npx --yes tsx lib/subscriptions/feature-access.selfcheck.ts",
+    "selfcheck:billing": "npx --yes tsx lib/billing/stripe/foundation.selfcheck.ts && npx --yes tsx lib/billing/commercial-catalog.selfcheck.ts",
     "selfcheck:campuses": "npx --yes tsx lib/campuses/authorization.selfcheck.ts",
     "selfcheck:compat": "npx --yes tsx lib/organization/brand-theme.selfcheck.ts",
     "selfcheck:onboarding": "npx --yes tsx lib/organization/slug.selfcheck.ts && npx --yes tsx lib/organization/onboarding.selfcheck.ts",
@@ -42,6 +43,8 @@
     "next-themes": "^0.4.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "server-only": "^0.0.1",
+    "stripe": "^23.0.0",
     "tailwind-merge": "^3.3.0"
   },
   "devDependencies": {

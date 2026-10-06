@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import {
+  BillingNotImplementedError,
   BillingProviderNotConfiguredError,
   buildDowngradeImpactReport,
   getBillingProvider,
@@ -68,7 +69,7 @@ export async function startCheckoutAction(
     if (!planKey) return { error: "Select a plan to continue." };
 
     const provider = getBillingProvider();
-    if (!provider.isConfigured()) {
+    if (!provider.isConfigured() || !provider.capabilities().checkout) {
       return {
         error:
           "Checkout is not available yet. A billing provider adapter must be connected first.",
@@ -87,7 +88,10 @@ export async function startCheckoutAction(
 
     return { success: true, url: session.url };
   } catch (error) {
-    if (error instanceof BillingProviderNotConfiguredError) {
+    if (
+      error instanceof BillingProviderNotConfiguredError ||
+      error instanceof BillingNotImplementedError
+    ) {
       return { error: error.message };
     }
     return {
@@ -101,7 +105,7 @@ export async function openCustomerPortalAction(): Promise<BillingActionState> {
   try {
     const { church } = await requireBillingManageAccess();
     const provider = getBillingProvider();
-    if (!provider.isConfigured()) {
+    if (!provider.isConfigured() || !provider.capabilities().customerPortal) {
       return {
         error:
           "Customer portal is not available yet. A billing provider adapter must be connected first.",
@@ -116,7 +120,10 @@ export async function openCustomerPortalAction(): Promise<BillingActionState> {
     });
     return { success: true, url: session.url };
   } catch (error) {
-    if (error instanceof BillingProviderNotConfiguredError) {
+    if (
+      error instanceof BillingProviderNotConfiguredError ||
+      error instanceof BillingNotImplementedError
+    ) {
       return { error: error.message };
     }
     return {

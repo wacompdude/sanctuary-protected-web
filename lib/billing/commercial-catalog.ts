@@ -87,3 +87,79 @@ export function smsPackageForPlan(
 ): CommercialPlanCatalogEntry | undefined {
   return commercialPlanByKey(planKey);
 }
+
+export const COMMERCIAL_CURRENCY = "usd" as const;
+
+export type CommercialPriceKind = "subscription" | "sms_package";
+
+export type CommercialBillingScheme = "recurring_month" | "one_time";
+
+/**
+ * Approved Stripe Price expectation derived from the commercial catalog.
+ * Used by Phase 4B-2 lookup-key resolution — never hard-code price_/prod_ IDs.
+ */
+export type CommercialPriceExpectation = {
+  kind: CommercialPriceKind;
+  /** Plan key (subscription) or sms_block_* key (SMS package). */
+  internalKey: string;
+  lookupKey: string;
+  currency: typeof COMMERCIAL_CURRENCY;
+  unitAmountCents: number;
+  billingScheme: CommercialBillingScheme;
+  smsCredits: number | null;
+};
+
+/** All eight approved commercial Stripe Price expectations (4 subs + 4 SMS). */
+export function listCommercialPriceExpectations(): CommercialPriceExpectation[] {
+  return COMMERCIAL_PLAN_CATALOG.flatMap((entry) => [
+    {
+      kind: "subscription" as const,
+      internalKey: entry.planKey,
+      lookupKey: entry.subscriptionLookupKey,
+      currency: COMMERCIAL_CURRENCY,
+      unitAmountCents: entry.monthlyPriceCents,
+      billingScheme: "recurring_month" as const,
+      smsCredits: null,
+    },
+    {
+      kind: "sms_package" as const,
+      internalKey: entry.smsExtraItemKey,
+      lookupKey: entry.smsPackageLookupKey,
+      currency: COMMERCIAL_CURRENCY,
+      unitAmountCents: entry.smsPackagePriceCents,
+      billingScheme: "one_time" as const,
+      smsCredits: entry.smsPackageCredits,
+    },
+  ]);
+}
+
+export function commercialExpectationByInternalKey(
+  internalKey: string,
+): CommercialPriceExpectation | undefined {
+  return listCommercialPriceExpectations().find(
+    (entry) => entry.internalKey === internalKey,
+  );
+}
+
+export function commercialExpectationByLookupKey(
+  lookupKey: string,
+): CommercialPriceExpectation | undefined {
+  return listCommercialPriceExpectations().find(
+    (entry) => entry.lookupKey === lookupKey,
+  );
+}
+
+export function subscriptionLookupKeyForPlan(
+  planKey: string,
+): string | undefined {
+  return commercialPlanByKey(planKey)?.subscriptionLookupKey;
+}
+
+export function smsLookupKeyForExtraItem(
+  smsExtraItemKey: string,
+): string | undefined {
+  return listCommercialPriceExpectations().find(
+    (entry) =>
+      entry.kind === "sms_package" && entry.internalKey === smsExtraItemKey,
+  )?.lookupKey;
+}

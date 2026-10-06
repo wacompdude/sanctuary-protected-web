@@ -22,6 +22,11 @@ export {
   BillingConfigurationError,
   BillingProviderUnknownError,
   BillingNotImplementedError,
+  StripeCatalogNotFoundError,
+  StripeCatalogAmbiguousError,
+  StripeCatalogMismatchError,
+  StripeLiveModeForbiddenError,
+  StripeUnknownModeForbiddenError,
 } from "@/lib/billing/errors";
 
 export {
@@ -30,6 +35,21 @@ export {
   isStripeSecretConfigured,
   resolveBillingProviderIdFromEnv,
 } from "@/lib/billing/stripe/config";
+
+export {
+  assertSandboxCatalogValidationMode,
+  matchStripePriceToExpectation,
+  resolveStripePriceByInternalKey,
+  resolveStripePriceByLookupKey,
+  validateStripeCommercialCatalog,
+} from "@/lib/billing/stripe/catalog";
+export type {
+  CatalogEntryValidationResult,
+  ListPricesByLookupKey,
+  ResolvedStripePrice,
+  StripeCommercialCatalogValidationReport,
+  StripePriceSnapshot,
+} from "@/lib/billing/stripe/catalog";
 
 export {
   getConfiguredBillingProviderId,
@@ -51,6 +71,14 @@ export {
   COMMERCIAL_PLAN_CATALOG,
   commercialPlanByKey,
   smsPackageForPlan,
+  listCommercialPriceExpectations,
+  commercialExpectationByInternalKey,
+  subscriptionLookupKeyForPlan,
+  smsLookupKeyForExtraItem,
+} from "@/lib/billing/commercial-catalog";
+export type {
+  CommercialPriceExpectation,
+  CommercialPriceKind,
 } from "@/lib/billing/commercial-catalog";
 
 export {

@@ -321,17 +321,27 @@ async function main() {
     },
   );
 
-  // Client module stays server-only + lazy (do not import under tsx — server-only throws)
+  // Client module stays server-only; SDK factory is lazy in sdk.ts
   const clientSource = readFileSync(
     join(process.cwd(), "lib/billing/stripe/client.ts"),
     "utf8",
   );
   assert(clientSource.includes('import "server-only"'), "client uses server-only");
-  assert(clientSource.includes("new Stripe"), "client constructs Stripe lazily");
   assert(
-    !clientSource.includes("new Stripe(process.env"),
-    "client does not construct at import with env",
+    clientSource.includes('from "@/lib/billing/stripe/sdk"'),
+    "client re-exports sdk factory",
   );
+
+  const sdkSource = readFileSync(
+    join(process.cwd(), "lib/billing/stripe/sdk.ts"),
+    "utf8",
+  );
+  assert(sdkSource.includes("new Stripe"), "sdk constructs Stripe lazily");
+  assert(
+    !sdkSource.includes("new Stripe(process.env"),
+    "sdk does not construct at import with env",
+  );
+  assert(!sdkSource.includes('import "server-only"'), "sdk free of server-only");
 
   console.log("stripe foundation self-check passed");
 }

@@ -33,3 +33,58 @@ export class BillingNotImplementedError extends Error {
     this.name = "BillingNotImplementedError";
   }
 }
+
+export class StripeCatalogNotFoundError extends Error {
+  readonly code = "stripe_catalog_not_found";
+
+  constructor(lookupKey: string) {
+    super(
+      `No Stripe Price found for lookup key "${lookupKey.slice(0, 64)}".`,
+    );
+    this.name = "StripeCatalogNotFoundError";
+  }
+}
+
+export class StripeCatalogAmbiguousError extends Error {
+  readonly code = "stripe_catalog_ambiguous";
+
+  constructor(lookupKey: string, matchCount: number) {
+    super(
+      `Expected exactly one Stripe Price for lookup key "${lookupKey.slice(0, 64)}", found ${matchCount}.`,
+    );
+    this.name = "StripeCatalogAmbiguousError";
+  }
+}
+
+export class StripeCatalogMismatchError extends Error {
+  readonly code = "stripe_catalog_mismatch";
+
+  constructor(lookupKey: string, detail: string) {
+    super(
+      `Stripe Price for lookup key "${lookupKey.slice(0, 64)}" failed validation: ${detail}`,
+    );
+    this.name = "StripeCatalogMismatchError";
+  }
+}
+
+export class StripeLiveModeForbiddenError extends Error {
+  readonly code = "stripe_live_mode_forbidden";
+
+  constructor(context = "Phase 4B-2 catalog validation") {
+    super(
+      `${context} refuses live Stripe secret keys. Use a sandbox (sk_test_) key only.`,
+    );
+    this.name = "StripeLiveModeForbiddenError";
+  }
+}
+
+export class StripeUnknownModeForbiddenError extends Error {
+  readonly code = "stripe_unknown_mode_forbidden";
+
+  constructor(context = "Phase 4B-2 catalog validation") {
+    super(
+      `${context} requires a recognizable Stripe test secret key (sk_test_...).`,
+    );
+    this.name = "StripeUnknownModeForbiddenError";
+  }
+}

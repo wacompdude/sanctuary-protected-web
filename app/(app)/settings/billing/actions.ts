@@ -6,8 +6,8 @@ import {
   BillingProviderNotConfiguredError,
   buildDowngradeImpactReport,
   getBillingProvider,
+  requireBillingManageAccess,
 } from "@/lib/billing";
-import { requireMinChurchRole } from "@/lib/organization/auth";
 import { isPlanKey } from "@/lib/subscriptions/plan-keys";
 import {
   changeChurchSubscriptionPlan,
@@ -39,7 +39,7 @@ export async function previewPlanChangeImpactAction(
   planKey: string,
 ): Promise<BillingActionState> {
   try {
-    const { church } = await requireMinChurchRole("owner");
+    const { church } = await requireBillingManageAccess();
     if (!isPlanKey(planKey) && !planKey.trim()) {
       return { error: "Select a valid plan." };
     }
@@ -63,7 +63,7 @@ export async function startCheckoutAction(
   formData: FormData,
 ): Promise<BillingActionState> {
   try {
-    const { church, user } = await requireMinChurchRole("owner");
+    const { church, user } = await requireBillingManageAccess();
     const planKey = String(formData.get("plan_key") ?? "").trim();
     if (!planKey) return { error: "Select a plan to continue." };
 
@@ -99,7 +99,7 @@ export async function startCheckoutAction(
 
 export async function openCustomerPortalAction(): Promise<BillingActionState> {
   try {
-    const { church } = await requireMinChurchRole("owner");
+    const { church } = await requireBillingManageAccess();
     const provider = getBillingProvider();
     if (!provider.isConfigured()) {
       return {
@@ -137,7 +137,7 @@ export async function applyPlanWithoutProviderAction(
   formData: FormData,
 ): Promise<BillingActionState> {
   try {
-    const { church, user } = await requireMinChurchRole("owner");
+    const { church, user } = await requireBillingManageAccess();
     if (!isServiceRoleConfigured()) {
       return {
         error:
@@ -197,7 +197,7 @@ export async function requestCancellationAction(
   formData: FormData,
 ): Promise<BillingActionState> {
   try {
-    const { church, user } = await requireMinChurchRole("owner");
+    const { church, user } = await requireBillingManageAccess();
     if (!isServiceRoleConfigured()) {
       return {
         error:

@@ -33,12 +33,14 @@ export function BillingPlanPanel({
   providerReady,
   providerMessage,
   cancelAtPeriodEnd,
+  canManageBilling = true,
 }: {
   plans: SubscriptionPlanRecord[];
   currentPlanKey: string | null;
   providerReady: boolean;
   providerMessage: string;
   cancelAtPeriodEnd: boolean;
+  canManageBilling?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -154,12 +156,16 @@ export function BillingPlanPanel({
             <button
               key={plan.id}
               type="button"
-              onClick={() => runPreview(key)}
+              disabled={!canManageBilling}
+              onClick={() => {
+                if (!canManageBilling) return;
+                runPreview(key);
+              }}
               className={`rounded-lg border p-4 text-left transition ${
                 selected
                   ? "border-foreground bg-muted/40"
                   : "border-border hover:border-foreground/40"
-              }`}
+              } ${!canManageBilling ? "cursor-default opacity-90" : ""}`}
             >
               <div className="flex items-start justify-between gap-2">
                 <h3 className="font-medium">{plan.display_name}</h3>
@@ -220,33 +226,42 @@ export function BillingPlanPanel({
           ) : null}
 
           <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              disabled={
-                pending ||
-                impact.isSamePlan ||
-                (impact.isDowngrade && !confirmDowngrade)
-              }
-              onClick={applySelectedPlan}
-            >
-              {pending
-                ? "Working…"
-                : providerReady
-                  ? "Continue to checkout"
-                  : impact.isDowngrade
-                    ? "Apply downgrade"
-                    : "Apply plan"}
-            </Button>
-            {providerReady ? (
-              <Button
-                type="button"
-                variant="outline"
-                disabled={pending}
-                onClick={openPortal}
-              >
-                Open customer portal
-              </Button>
-            ) : null}
+            {canManageBilling ? (
+              <>
+                <Button
+                  type="button"
+                  disabled={
+                    pending ||
+                    impact.isSamePlan ||
+                    (impact.isDowngrade && !confirmDowngrade)
+                  }
+                  onClick={applySelectedPlan}
+                >
+                  {pending
+                    ? "Working…"
+                    : providerReady
+                      ? "Continue to checkout"
+                      : impact.isDowngrade
+                        ? "Apply downgrade"
+                        : "Apply plan"}
+                </Button>
+                {providerReady ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={pending}
+                    onClick={openPortal}
+                  >
+                    Open customer portal
+                  </Button>
+                ) : null}
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Plan changes, checkout, and payment methods are available to
+                owners and co-owners.
+              </p>
+            )}
           </div>
         </div>
       ) : null}
@@ -257,7 +272,11 @@ export function BillingPlanPanel({
           Cancel at period end. Church data, campuses, inventory, and history are
           never deleted by cancellation.
         </p>
-        {cancelAtPeriodEnd ? (
+        {!canManageBilling ? (
+          <p className="text-sm text-muted-foreground">
+            Only owners and co-owners can schedule cancellation.
+          </p>
+        ) : cancelAtPeriodEnd ? (
           <p className="text-sm">Cancellation is already scheduled for this period.</p>
         ) : (
           <Button

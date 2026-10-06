@@ -70,7 +70,7 @@ export const FEATURE_DISPLAY_NAMES: Record<FeatureKey, string> = {
   [FEATURE_KEYS.GROUP_EMAIL]: "Group email messaging",
   [FEATURE_KEYS.EMAIL]: "Email messaging",
   [FEATURE_KEYS.SMS]: "Text/SMS messaging",
-  [FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT]: "Monthly SMS Recipients",
+  [FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT]: "Monthly SMS segments",
   [FEATURE_KEYS.TEAM_SCHEDULING]: "Team scheduling",
   [FEATURE_KEYS.MEDICAL_INVENTORY]: "Medical inventory",
   [FEATURE_KEYS.MEDICAL_INCIDENT_USAGE]: "Medical supplies on incidents",
@@ -90,5 +90,5 @@ export const FEATURE_DISPLAY_NAMES: Record<FeatureKey, string> = {
 /** Short customer-facing help. Internal keys and usage math stay unchanged. */
 export const FEATURE_CUSTOMER_HELP: Partial<Record<FeatureKey, string>> = {
   [FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT]:
-    "Each recipient counts as one SMS. A message sent to 3 people uses 3 SMS.",
+    "Application SMS usage is measured in carrier SMS segments. A long message may use more than one segment per recipient. MFA/security texts do not use this allowance.",
 };

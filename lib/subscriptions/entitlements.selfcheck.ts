@@ -108,6 +108,11 @@ for (const planKey of PLAN_KEY_LIST) {
       "Steward Pro photo count is 2",
     );
     assert(
+      readIntegerEntitlement(values, FEATURE_KEYS.USERS_ACTIVE_LIMIT).limit ===
+        20,
+      "Steward Pro user limit is 20",
+    );
+    assert(
       readIntegerEntitlement(values, FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT)
         .limit === 250,
       "Steward Pro Text/SMS limit is 250",
@@ -131,12 +136,22 @@ for (const planKey of PLAN_KEY_LIST) {
     assert(campus.unlimited === true, "Shepherd Plus campus limit is unlimited");
     assert(
       readIntegerEntitlement(values, FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT)
-        .limit === 1000,
-      "Shepherd Plus Text/SMS limit is 1000",
+        .limit === 500,
+      "Shepherd Plus Text/SMS limit is 500",
     );
   }
 
   if (planKey === PLAN_KEYS.OMNI_ENTERPRISE) {
+    assert(
+      readIntegerEntitlement(values, FEATURE_KEYS.USERS_ACTIVE_LIMIT)
+        .unlimited === true,
+      "Omni Enterprise unlimited users",
+    );
+    assert(
+      readIntegerEntitlement(values, FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT)
+        .limit === 1000,
+      "Omni Enterprise Text/SMS limit is 1000",
+    );
     assert(
       readIntegerEntitlement(values, FEATURE_KEYS.SAFETY_CONCERN_PROFILE_LIMIT)
         .unlimited === true,

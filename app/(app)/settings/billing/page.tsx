@@ -14,12 +14,10 @@ import {
   billingProviderStatusMessage,
   isBillingProviderReady,
   listBillingHistory,
+  requireBillingViewAccess,
 } from "@/lib/billing";
-import {
-  ChurchAccessError,
-  requireMinChurchRole,
-} from "@/lib/organization/auth";
 import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
+import { ChurchAccessError } from "@/lib/organization/errors";
 import { formatChurchDateTime } from "@/lib/datetime/format";
 import {
   getChurchSubscription,
@@ -83,7 +81,7 @@ function UsageMeterRow({
 }
 
 async function BillingContent() {
-  const { supabase, church } = await requireMinChurchRole("owner");
+  const { supabase, church, canManageBilling } = await requireBillingViewAccess();
   const { data } = await supabase
     .from("organizations")
     .select("plan_name, trial_ends_at, status")
@@ -184,9 +182,9 @@ async function BillingContent() {
                 note="Pending invitations do not count until accepted."
               />
               <UsageMeterRow
-                label="Monthly SMS Recipients"
+                label="Monthly SMS segments"
                 meter={smsMeter}
-                note="Each recipient counts as one SMS. A message sent to 3 people uses 3 SMS."
+                note="Application SMS usage is measured in carrier SMS segments. Long messages may use more than one segment per recipient. MFA/security texts do not use this allowance."
               />
             </dl>
           </div>
@@ -210,6 +208,7 @@ async function BillingContent() {
             providerReady={isBillingProviderReady()}
             providerMessage={billingProviderStatusMessage()}
             cancelAtPeriodEnd={Boolean(subscription?.cancel_at_period_end)}
+            canManageBilling={canManageBilling}
           />
         </CardContent>
       </Card>

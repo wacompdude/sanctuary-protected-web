@@ -441,7 +441,7 @@ export const APP_NAV_SECTIONS: NavSection[] = [
             kind: "link",
             id: "billing",
             href: "/settings/billing",
-            minRole: "owner",
+            minRole: "administrator",
             label: "Billing",
           },
           {

@@ -256,7 +256,7 @@ const TOP_LEVEL_CAMPUS_ADMIN_PERMISSIONS: PermissionKey[] = [
 ];
 
 /** Full org billing management — Owner / Co-owner. */
-const BILLING_MANAGE_PERMISSIONS: PermissionKey[] = [
+export const BILLING_MANAGE_PERMISSIONS: PermissionKey[] = [
   PERMISSION_KEYS.BILLING_READ,
   PERMISSION_KEYS.BILLING_MANAGE,
   PERMISSION_KEYS.BILLING_PAYMENT_METHOD_MANAGE,
@@ -268,7 +268,7 @@ const BILLING_MANAGE_PERMISSIONS: PermissionKey[] = [
 ];
 
 /** Read-only billing — Administrator. */
-const BILLING_READ_PERMISSIONS: PermissionKey[] = [
+export const BILLING_READ_PERMISSIONS: PermissionKey[] = [
   PERMISSION_KEYS.BILLING_READ,
   PERMISSION_KEYS.BILLING_INVOICES_READ,
   PERMISSION_KEYS.BILLING_TRANSACTIONS_READ,

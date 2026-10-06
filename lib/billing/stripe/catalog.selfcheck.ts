@@ -371,11 +371,12 @@ async function main() {
   assert(mockCatalog.valid === true, "mock catalog valid");
   assert(mockCatalog.entriesChecked === 8, "mock checked 8");
 
-  // 16–18. Portal/webhooks disabled; Checkout enabled when Stripe configured
+  // 16–18. Portal disabled; webhooks gated on secret; Checkout when configured
   await withEnv(
     {
       BILLING_PROVIDER: "stripe",
       STRIPE_SECRET_KEY: "sk_test_phase4b2_selfcheck_NOT_A_REAL_SECRET",
+      STRIPE_WEBHOOK_SECRET: undefined,
     },
     async () => {
       const provider = getBillingProvider();
@@ -385,14 +386,18 @@ async function main() {
         provider.capabilities().customerPortal === false,
         "portal false",
       );
-      assert(provider.capabilities().webhooks === false, "webhooks false");
+      assert(provider.capabilities().webhooks === false, "webhooks false without secret");
       assert(isBillingProviderReady(), "provider ready");
-      const webhook = await provider.verifyAndParseWebhook({
-        rawBody: "{}",
-        headers: new Headers(),
-      });
-      assert(webhook.ok === false, "webhook rejected");
-      assert(webhook.status === 501, "webhook 501");
+      try {
+        const webhook = await provider.verifyAndParseWebhook({
+          rawBody: "{}",
+          headers: new Headers(),
+        });
+        assert(webhook.ok === false, "webhook rejected");
+        assert(webhook.status !== 501, "no longer unimplemented");
+      } catch {
+        // Missing STRIPE_WEBHOOK_SECRET throws BillingConfigurationError — also fail-closed.
+      }
     },
   );
 

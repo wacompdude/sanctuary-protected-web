@@ -426,7 +426,8 @@ async function main() {
         provider.capabilities().customerPortal === false,
         "portal still false",
       );
-      assert(provider.capabilities().webhooks === false, "webhooks false");
+      // Webhooks capability requires STRIPE_WEBHOOK_SECRET (not set in this slice).
+      assert(provider.capabilities().webhooks === false, "webhooks false without secret");
       assert(isBillingProviderReady() === true, "provider ready via checkout");
     },
   );

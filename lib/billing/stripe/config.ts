@@ -74,6 +74,12 @@ export function isStripeSecretConfigured(
   return Boolean((secretKey ?? "").trim());
 }
 
+export function isStripeWebhookSecretConfigured(
+  webhookSecret: string | null | undefined = readStripeWebhookSecret(),
+): boolean {
+  return Boolean((webhookSecret ?? "").trim());
+}
+
 /**
  * Sanitized status for server diagnostics (never includes secret material).
  */

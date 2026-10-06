@@ -102,7 +102,8 @@ async function main() {
       const caps = provider.capabilities();
       assert(caps.checkout === true, "checkout capability true");
       assert(!caps.customerPortal, "portal capability false");
-      assert(!caps.webhooks, "webhooks capability false");
+      // Webhooks require STRIPE_WEBHOOK_SECRET (absent in this env slice).
+      assert(!caps.webhooks, "webhooks false without webhook secret");
     },
   );
 
@@ -266,16 +267,18 @@ async function main() {
     },
   );
 
-  // 10. Portal/webhooks still unimplemented; Checkout is Phase 4B-3 (tested via mocks elsewhere)
+  // 10. Portal remains unimplemented; webhooks require signing secret (Phase 4B-4)
   await withEnv(
     {
       BILLING_PROVIDER: "stripe",
       STRIPE_SECRET_KEY: "sk_test_phase4b1_selfcheck_not_a_real_secret",
+      STRIPE_WEBHOOK_SECRET: undefined,
     },
     async () => {
       const provider = new StripeBillingProvider();
       assert(provider.capabilities().checkout === true, "checkout enabled");
       assert(provider.capabilities().customerPortal === false, "portal disabled");
+      assert(provider.capabilities().webhooks === false, "webhooks false without secret");
 
       let portalErr: unknown;
       try {
@@ -288,12 +291,37 @@ async function main() {
       }
       assert(portalErr instanceof BillingNotImplementedError, "portal not implemented");
 
-      const webhook = await provider.verifyAndParseWebhook({
-        rawBody: "{}",
-        headers: new Headers({ "stripe-signature": "t=1,v1=fake" }),
-      });
-      assert(webhook.ok === false, "webhook rejected");
-      assert(webhook.status === 501, "webhook not implemented status");
+      // Without webhook secret, verification fails closed as configuration error path
+      // or signature reject — never 501 unimplemented.
+      let webhookStatus: number | null = null;
+      try {
+        const webhook = await provider.verifyAndParseWebhook({
+          rawBody: "{}",
+          headers: new Headers({ "stripe-signature": "t=1,v1=fake" }),
+        });
+        webhookStatus = webhook.status;
+        assert(webhook.ok === false, "webhook rejected without secret");
+        assert(webhook.status !== 501, "webhook no longer unimplemented");
+      } catch (error) {
+        assert(
+          error instanceof BillingConfigurationError,
+          "missing webhook secret → config error",
+        );
+      }
+      void webhookStatus;
+    },
+  );
+
+  await withEnv(
+    {
+      BILLING_PROVIDER: "stripe",
+      STRIPE_SECRET_KEY: "sk_test_phase4b1_selfcheck_not_a_real_secret",
+      STRIPE_WEBHOOK_SECRET: "whsec_phase4b1_selfcheck_not_real",
+    },
+    () => {
+      const provider = new StripeBillingProvider();
+      assert(provider.capabilities().webhooks === true, "webhooks true with secret");
+      assert(provider.capabilities().customerPortal === false, "portal still false");
     },
   );
 

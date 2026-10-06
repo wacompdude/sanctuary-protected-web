@@ -5,9 +5,8 @@ import { processBillingWebhook } from "@/lib/billing/webhooks";
  * Billing provider webhook receiver.
  * URL shape: /api/billing/webhooks/<provider>
  *
- * No provider adapter is installed yet. Events are rejected unless a provider
- * verifies them; when an adapter is added, persistence is idempotent via
- * billing_events.provider_event_id.
+ * POST body is read as exact raw text for Stripe-Signature verification.
+ * Persistence is idempotent via billing_events (provider, provider_event_id).
  */
 
 export async function GET(

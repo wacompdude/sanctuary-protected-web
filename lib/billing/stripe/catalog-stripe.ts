@@ -69,3 +69,23 @@ export function createStripeCatalogPriceLister(
     return result.data.map((price) => toPriceSnapshot(price));
   };
 }
+
+/**
+ * Read-only Stripe Price retrieve for webhook plan correlation when lookup_key
+ * is absent from the event payload. Never creates/updates Prices.
+ */
+export function createStripePriceByIdRetriever(
+  secretKey?: string | null,
+): (priceId: string) => Promise<StripePriceSnapshot | null> {
+  return async (priceId: string): Promise<StripePriceSnapshot | null> => {
+    const id = priceId.trim();
+    if (!id) return null;
+    const stripe = getStripeClient(secretKey);
+    try {
+      const price = await stripe.prices.retrieve(id);
+      return toPriceSnapshot(price);
+    } catch {
+      return null;
+    }
+  };
+}

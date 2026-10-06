@@ -1,9 +1,9 @@
 /**
  * Stripe billing provider adapter.
  *
- * Phase 4B-3: subscription Checkout + Customer mapping (TEST mode only).
- * Customer Portal and webhooks remain disabled until later phases.
- * Checkout success redirects are NON-AUTHORITATIVE for entitlements.
+ * Phase 4B-4: signed webhooks + subscription/invoice sync foundation.
+ * Customer Portal remains disabled. Checkout success redirects are
+ * NON-AUTHORITATIVE for entitlements — verified webhooks are.
  */
 
 import { randomUUID } from "node:crypto";
@@ -12,7 +12,9 @@ import { COMMERCIAL_PLAN_CATALOG } from "@/lib/billing/commercial-catalog";
 import {
   getStripeBillingConfigStatus,
   isStripeSecretConfigured,
+  isStripeWebhookSecretConfigured,
   readStripeSecretKey,
+  readStripeWebhookSecret,
   requireStripeSecretKey,
 } from "@/lib/billing/stripe/config";
 import { createStripeCatalogPriceLister } from "@/lib/billing/stripe/catalog-stripe";
@@ -29,6 +31,7 @@ import {
   createAdminBillingCustomerStore,
 } from "@/lib/billing/stripe/customers";
 import { getStripeClient } from "@/lib/billing/stripe/sdk";
+import { verifyStripeWebhookSignature } from "@/lib/billing/stripe/webhook-verify";
 import type {
   BillingCheckoutRequest,
   BillingCheckoutSession,
@@ -49,7 +52,8 @@ export class StripeBillingProvider implements BillingProvider {
     return {
       checkout: this.isConfigured(),
       customerPortal: false,
-      webhooks: false,
+      // Webhooks capability requires the signing secret — code alone is not enough.
+      webhooks: isStripeWebhookSecretConfigured(readStripeWebhookSecret()),
       cancelAtProvider: false,
     };
   }
@@ -169,20 +173,38 @@ export class StripeBillingProvider implements BillingProvider {
     throw new BillingNotImplementedError("createCustomerPortalSession");
   }
 
-  async verifyAndParseWebhook(_input: {
+  async verifyAndParseWebhook(input: {
     rawBody: string;
     headers: Headers;
   }) {
-    void _input;
+    const verified = verifyStripeWebhookSignature({
+      rawBody: input.rawBody,
+      headers: input.headers,
+    });
+
+    if (!verified.ok) {
+      return {
+        ok: false as const,
+        status: verified.status,
+        error: verified.error,
+        eventType: "stripe.webhook.rejected",
+        providerEventId: null,
+        organizationId: null,
+        metadata: {},
+      };
+    }
+
     return {
-      ok: false as const,
-      status: 501,
-      error:
-        "Stripe webhook verification is not implemented yet (Phase 4B-5).",
-      eventType: "stripe.webhook.not_implemented",
-      providerEventId: null,
-      organizationId: null,
-      metadata: {},
+      ok: true as const,
+      status: 200,
+      eventType: verified.eventType,
+      providerEventId: verified.eventId,
+      organizationId: verified.object.metadataOrganizationId,
+      metadata: {
+        stripe_api_version: verified.apiVersion,
+        stripe_created: verified.created,
+        stripe_object: verified.object,
+      },
     };
   }
 

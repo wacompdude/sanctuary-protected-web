@@ -11,25 +11,18 @@ import {
   startCheckoutAction,
 } from "@/app/(app)/settings/billing/actions";
 import { Button } from "@/components/ui/button";
+import {
+  canStartInitialSubscriptionCheckout,
+  formatBillingPlanPrice,
+  initialSamePlanCheckoutSummary,
+} from "@/lib/billing/checkout-eligibility";
 import type { DowngradeImpactReport } from "@/lib/billing/types";
 import type { SubscriptionPlanRecord } from "@/lib/subscriptions/types";
-
-function formatPrice(cents: number | null, currency: string): string {
-  if (cents === null || cents === undefined) return "Contact us";
-  try {
-    return new Intl.NumberFormat(undefined, {
-      style: "currency",
-      currency: currency || "USD",
-      maximumFractionDigits: 0,
-    }).format(cents / 100);
-  } catch {
-    return `$${(cents / 100).toFixed(0)}`;
-  }
-}
 
 export function BillingPlanPanel({
   plans,
   currentPlanKey,
+  hasProviderSubscription,
   providerReady,
   providerMessage,
   cancelAtPeriodEnd,
@@ -37,6 +30,8 @@ export function BillingPlanPanel({
 }: {
   plans: SubscriptionPlanRecord[];
   currentPlanKey: string | null;
+  /** True when organization_subscriptions.billing_subscription_id is set. */
+  hasProviderSubscription: boolean;
   providerReady: boolean;
   providerMessage: string;
   cancelAtPeriodEnd: boolean;
@@ -127,6 +122,25 @@ export function BillingPlanPanel({
     });
   }
 
+  const allowInitialSamePlanCheckout =
+    impact != null &&
+    canStartInitialSubscriptionCheckout({
+      isSamePlan: impact.isSamePlan,
+      hasProviderSubscription,
+      checkoutAvailable: providerReady,
+    });
+
+  const checkoutDisabled =
+    pending ||
+    !impact ||
+    (impact.isSamePlan && !allowInitialSamePlanCheckout) ||
+    (impact.isDowngrade && !impact.isSamePlan && !confirmDowngrade);
+
+  const reviewSummary =
+    impact?.isSamePlan && !hasProviderSubscription && providerReady
+      ? initialSamePlanCheckoutSummary()
+      : impact?.summary;
+
   return (
     <div className="space-y-6">
       <p className="text-sm text-muted-foreground">{providerMessage}</p>
@@ -174,7 +188,7 @@ export function BillingPlanPanel({
                 ) : null}
               </div>
               <p className="mt-2 text-lg font-semibold">
-                {formatPrice(plan.monthly_price_cents, plan.currency)}
+                {formatBillingPlanPrice(plan.monthly_price_cents, plan.currency)}
                 <span className="text-xs font-normal text-muted-foreground">
                   {" "}
                   / {plan.billing_interval}
@@ -194,7 +208,7 @@ export function BillingPlanPanel({
         <div className="rounded-lg border border-border p-4 space-y-3">
           <div>
             <h3 className="text-sm font-medium">Plan change review</h3>
-            <p className="mt-1 text-sm text-muted-foreground">{impact.summary}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{reviewSummary}</p>
           </div>
           {impact.items.length > 0 ? (
             <ul className="space-y-2 text-sm">
@@ -230,11 +244,7 @@ export function BillingPlanPanel({
               <>
                 <Button
                   type="button"
-                  disabled={
-                    pending ||
-                    impact.isSamePlan ||
-                    (impact.isDowngrade && !confirmDowngrade)
-                  }
+                  disabled={checkoutDisabled}
                   onClick={applySelectedPlan}
                 >
                   {pending

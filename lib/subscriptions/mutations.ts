@@ -136,6 +136,10 @@ function mapSubscriptionRow(
   plan: { plan_key: string; display_name: string },
 ): ChurchSubscriptionRecord {
   const planKey = plan.plan_key;
+  const providerSubId =
+    typeof row.billing_subscription_id === "string"
+      ? row.billing_subscription_id.trim()
+      : "";
   return {
     id: String(row.id),
     organization_id: String(row.organization_id),
@@ -144,6 +148,7 @@ function mapSubscriptionRow(
     billing_interval:
       row.billing_interval as ChurchSubscriptionRecord["billing_interval"],
     billing_provider: (row.billing_provider as string | null) ?? null,
+    billing_subscription_id: providerSubId || null,
     current_period_start: (row.current_period_start as string | null) ?? null,
     current_period_end: (row.current_period_end as string | null) ?? null,
     cancel_at_period_end: Boolean(row.cancel_at_period_end),
@@ -171,6 +176,7 @@ async function getCurrentSubscription(
       status,
       billing_interval,
       billing_provider,
+      billing_subscription_id,
       current_period_start,
       current_period_end,
       cancel_at_period_end,

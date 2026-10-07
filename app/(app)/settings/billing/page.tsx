@@ -16,6 +16,7 @@ import {
   listBillingHistory,
   requireBillingViewAccess,
 } from "@/lib/billing";
+import { organizationHasProviderSubscription } from "@/lib/billing/checkout-eligibility";
 import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
 import { ChurchAccessError } from "@/lib/organization/errors";
 import { formatChurchDateTime } from "@/lib/datetime/format";
@@ -205,6 +206,9 @@ async function BillingContent() {
             currentPlanKey={
               subscription ? String(subscription.plan_key) : null
             }
+            hasProviderSubscription={organizationHasProviderSubscription(
+              subscription?.billing_subscription_id,
+            )}
             providerReady={isBillingProviderReady()}
             providerMessage={billingProviderStatusMessage()}
             cancelAtPeriodEnd={Boolean(subscription?.cancel_at_period_end)}

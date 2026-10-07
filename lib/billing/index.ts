@@ -105,3 +105,11 @@ export {
   requireBillingViewAccess,
   requireBillingManageAccess,
 } from "@/lib/billing/access";
+
+export {
+  organizationHasProviderSubscription,
+  canStartInitialSubscriptionCheckout,
+  assertNoExistingProviderSubscriptionForInitialCheckout,
+  formatBillingPlanPrice,
+  initialSamePlanCheckoutSummary,
+} from "@/lib/billing/checkout-eligibility";

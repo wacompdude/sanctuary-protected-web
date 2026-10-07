@@ -73,6 +73,8 @@ export type ChurchSubscriptionRecord = {
   status: ChurchSubscriptionStatus;
   billing_interval: SubscriptionBillingInterval;
   billing_provider: string | null;
+  /** Stripe (or other provider) subscription id when payment is connected. */
+  billing_subscription_id: string | null;
   current_period_start: string | null;
   current_period_end: string | null;
   cancel_at_period_end: boolean;

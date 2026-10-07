@@ -231,6 +231,7 @@ export async function getChurchSubscription(
       status,
       billing_interval,
       billing_provider,
+      billing_subscription_id,
       current_period_start,
       current_period_end,
       cancel_at_period_end,
@@ -260,6 +261,10 @@ export async function getChurchSubscription(
   const row = data as Record<string, unknown>;
   const plan = row.subscription_plans as Record<string, unknown> | null;
   const planKey = String(plan?.plan_key ?? "");
+  const providerSubId =
+    typeof row.billing_subscription_id === "string"
+      ? row.billing_subscription_id.trim()
+      : "";
 
   return {
     id: String(row.id),
@@ -269,6 +274,7 @@ export async function getChurchSubscription(
     billing_interval:
       row.billing_interval as ChurchSubscriptionRecord["billing_interval"],
     billing_provider: (row.billing_provider as string | null) ?? null,
+    billing_subscription_id: providerSubId || null,
     current_period_start: (row.current_period_start as string | null) ?? null,
     current_period_end: (row.current_period_end as string | null) ?? null,
     cancel_at_period_end: Boolean(row.cancel_at_period_end),

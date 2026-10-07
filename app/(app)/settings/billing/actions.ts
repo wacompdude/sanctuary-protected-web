@@ -11,6 +11,7 @@ import {
   getBillingProvider,
   requireBillingManageAccess,
 } from "@/lib/billing";
+import { assertNoExistingProviderSubscriptionForInitialCheckout } from "@/lib/billing/checkout-eligibility";
 import {
   assertNoClientPriceOverrides,
 } from "@/lib/billing/stripe/checkout";
@@ -23,6 +24,7 @@ import {
   changeChurchSubscriptionPlan,
   scheduleChurchSubscriptionCancellation,
 } from "@/lib/subscriptions/mutations";
+import { getChurchSubscription } from "@/lib/subscriptions/queries";
 import { isServiceRoleConfigured } from "@/lib/supabase/admin";
 import type { DowngradeImpactReport } from "@/lib/billing/types";
 
@@ -102,6 +104,13 @@ export async function startCheckoutAction(
           "Server is missing SUPABASE_SERVICE_ROLE_KEY required for Checkout customer mapping.",
       };
     }
+
+    // Re-read authoritative subscription state before any Stripe Checkout create.
+    // A Stripe Customer alone must not block; only an existing provider subscription.
+    const currentSubscription = await getChurchSubscription(church.id);
+    assertNoExistingProviderSubscriptionForInitialCheckout(
+      currentSubscription?.billing_subscription_id,
+    );
 
     const session = await provider.createCheckoutSession({
       organizationId: church.id,

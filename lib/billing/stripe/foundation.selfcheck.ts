@@ -10,6 +10,7 @@ import {
   BillingProviderUnknownError,
 } from "@/lib/billing/errors";
 import {
+  billingProviderStatusMessage,
   getBillingProvider,
   isBillingProviderReady,
 } from "@/lib/billing/provider";
@@ -279,6 +280,11 @@ async function main() {
       assert(provider.capabilities().checkout === true, "checkout enabled");
       assert(provider.capabilities().customerPortal === false, "portal disabled");
       assert(provider.capabilities().webhooks === false, "webhooks false without secret");
+      assert(
+        billingProviderStatusMessage() ===
+          "Stripe Checkout is available. Customer portal and webhook processing are not enabled yet.",
+        "status message without webhook secret",
+      );
 
       let portalErr: unknown;
       try {
@@ -322,6 +328,11 @@ async function main() {
       const provider = new StripeBillingProvider();
       assert(provider.capabilities().webhooks === true, "webhooks true with secret");
       assert(provider.capabilities().customerPortal === false, "portal still false");
+      assert(
+        billingProviderStatusMessage() ===
+          "Stripe Checkout and webhook processing are enabled. Customer portal is not enabled yet.",
+        "status message with webhook secret",
+      );
     },
   );
 

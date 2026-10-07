@@ -65,7 +65,19 @@ export function billingProviderStatusMessage(): string {
         return "Stripe server foundation is configured. Checkout and customer portal are not enabled yet.";
       }
       if (caps.checkout && !caps.customerPortal) {
+        if (caps.webhooks) {
+          return "Stripe Checkout and webhook processing are enabled. Customer portal is not enabled yet.";
+        }
         return "Stripe Checkout is available. Customer portal and webhook processing are not enabled yet.";
+      }
+      if (caps.checkout && caps.customerPortal && caps.webhooks) {
+        return "Stripe Checkout, customer portal, and webhook processing are enabled.";
+      }
+      if (caps.checkout && caps.customerPortal) {
+        return "Stripe Checkout and customer portal are enabled. Webhook processing is not enabled yet.";
+      }
+      if (caps.webhooks && !caps.checkout && !caps.customerPortal) {
+        return "Stripe webhook processing is enabled. Checkout and customer portal are not enabled yet.";
       }
       return "Stripe is connected.";
     }

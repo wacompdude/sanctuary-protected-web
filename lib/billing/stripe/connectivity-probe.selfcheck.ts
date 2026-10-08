@@ -133,6 +133,21 @@ async function main() {
       networkSyscall: "connect",
       networkHostname: "api.stripe.com",
     }),
+    async () => {
+      const error = new Stripe.errors.StripeConnectionError({
+        message:
+          "An error occurred with our connection to Stripe. Request was retried 2 times.",
+      });
+      Object.assign(error, {
+        detail: {
+          code: "ERR_INVALID_CHAR",
+          message:
+            'Invalid character in header content ["X-Stripe-Client-Telemetry"] Bearer ' +
+            SECRET,
+        },
+      });
+      throw error;
+    },
   );
 
   assert(result.https.ok === false, "https fail");
@@ -144,6 +159,13 @@ async function main() {
   assert(result.account.identity === "MATCH", "account match from 403");
   assert(result.account.httpStatus === 403, "account status");
   assert(result.account.code === "more_permissions_required", "account code");
+  assert(result.catalog.ok === false, "catalog fail");
+  assert(result.catalog.networkCode === "ERR_INVALID_CHAR", "catalog network code");
+  assert(
+    result.catalog.invalidHeaderName === "X-Stripe-Client-Telemetry",
+    "catalog header name",
+  );
+  assert(result.catalog.httpResponseReceived === false, "catalog no http");
   const serialized = JSON.stringify(result);
   assert(!serialized.includes(SECRET), "probe result omits key");
   assert(!serialized.includes("Authorization"), "probe result omits header");
@@ -181,11 +203,29 @@ async function main() {
       durationMs: 7,
       message: SECRET,
     },
+    catalog: {
+      ok: false,
+      httpResponseReceived: false,
+      httpStatus: null,
+      requestId: null,
+      errorType: "StripeConnectionError",
+      code: null,
+      durationMs: 9,
+      networkCode: "ERR_INVALID_CHAR",
+      networkErrno: null,
+      networkSyscall: null,
+      invalidHeaderName: "Not A Header",
+      nodeMessage: `Invalid character in header content ["Authorization"] ${SECRET}`,
+      priceId: "price_secret",
+    },
   } as StripeConnectivityProbeResult);
   const clean = JSON.stringify(dirty);
   assert(!clean.includes(SECRET), "sanitize strips secrets");
   assert(!clean.includes("price_secret"), "sanitize strips price id");
   assert(!clean.includes("message"), "sanitize strips message");
+  assert(dirty.catalog.invalidHeaderName === "unavailable", "bad header name rejected");
+  assert(!clean.includes("price_secret"), "catalog price id stripped");
+  assert(!clean.includes("nodeMessage"), "node message field stripped");
 
   const probeSource = readRepo("lib/billing/stripe/connectivity-probe.ts");
   const actionSource = readRepo(
@@ -205,6 +245,37 @@ async function main() {
   assert(probeSource.includes("prices.list"), "uses prices.list");
   assert(probeSource.includes("retrieveCurrent"), "uses account retrieve");
   assert(probeSource.includes("https.get"), "uses node https");
+  assert(
+    probeSource.includes("resolveStripePriceByInternalKey"),
+    "uses checkout catalog resolver",
+  );
+  assert(
+    probeSource.includes("createStripeCatalogPriceLister"),
+    "uses checkout price lister",
+  );
+  const catalogFn = probeSource.slice(
+    probeSource.indexOf("export async function runExactCheckoutCatalogResolution"),
+    probeSource.indexOf("export async function runStripeConnectivityProbeWithClient"),
+  );
+  assert(!catalogFn.includes("timeout"), "catalog request has no timeout override");
+  assert(
+    !catalogFn.includes("maxNetworkRetries"),
+    "catalog request has no retry override",
+  );
+  assert(!catalogFn.includes("supabase"), "catalog resolver does not touch supabase");
+  const runFn = probeSource.slice(
+    probeSource.indexOf(
+      "export async function runStripeConnectivityProbeWithClient",
+    ),
+  );
+  assert(
+    runFn.indexOf("await httpsProbe()") < runFn.indexOf("stripe.prices.list") &&
+      runFn.indexOf("stripe.prices.list") <
+        runFn.indexOf("stripe.accounts.retrieveCurrent") &&
+      runFn.indexOf("stripe.accounts.retrieveCurrent") <
+        runFn.indexOf("await catalogProbe()"),
+    "diagnostic order is A B C D",
+  );
   assert(actionSource.includes("system.health.read"), "platform permission");
   assert(
     !probeSource.includes("customers.create") &&

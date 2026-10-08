@@ -33,7 +33,9 @@ export function StripeConnectivityDiagnostic() {
         </h2>
         <p className="mt-1 text-sm text-slate-400">
           Temporary read-only checks. This does not create Stripe customers,
-          Checkout sessions, subscriptions, prices, or payments.
+          Checkout sessions, subscriptions, prices, or payments. Order: HTTPS/DNS/TLS,
+          Stripe SDK price list, account identity, then exact Checkout catalog
+          resolution.
         </p>
       </div>
       <form action={action}>
@@ -85,6 +87,32 @@ export function StripeConnectivityDiagnostic() {
             <p>Error type: {state.result.account.errorType ?? "—"}</p>
             <p>Error code: {state.result.account.code ?? "—"}</p>
             <p>Duration: {state.result.account.durationMs} ms</p>
+          </div>
+          <div>
+            <p className="font-medium text-slate-100">
+              Exact Checkout Catalog Resolution:{" "}
+              {state.result.catalog.ok ? "PASS" : "FAIL"}
+            </p>
+            <p>
+              HTTP response received:{" "}
+              {state.result.catalog.httpResponseReceived ? "yes" : "no"}
+            </p>
+            {state.result.catalog.ok ? null : (
+              <>
+                <p>HTTP status: {state.result.catalog.httpStatus ?? "—"}</p>
+                <p>Request ID: {state.result.catalog.requestId ?? "—"}</p>
+                <p>Error type: {state.result.catalog.errorType ?? "—"}</p>
+                <p>Error code: {state.result.catalog.code ?? "—"}</p>
+                {networkLines(state.result.catalog).map((line) => (
+                  <p key={`catalog-${line}`}>{line}</p>
+                ))}
+                <p>
+                  invalidHeaderName:{" "}
+                  {state.result.catalog.invalidHeaderName ?? "—"}
+                </p>
+              </>
+            )}
+            <p>Duration: {state.result.catalog.durationMs} ms</p>
           </div>
         </div>
       ) : null}

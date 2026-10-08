@@ -17,6 +17,12 @@ export type SafeNetworkDiagnostics = {
   networkSyscall: string | null;
   /** Present only when the hostname is exactly api.stripe.com. */
   networkHostname?: typeof STRIPE_API_HOSTNAME;
+  /**
+   * Present only for ERR_INVALID_CHAR.
+   * A header token, or "unavailable" when the Node message cannot be parsed.
+   * Never a header value.
+   */
+  invalidHeaderName?: string;
 };
 
 export type SafeStripeErrorLog = SafeNetworkDiagnostics & {
@@ -104,6 +110,22 @@ function readNetworkHostname(
     : undefined;
 }
 
+/** RFC 7230 token. Rejects spaces, quotes, and values. */
+const HEADER_NAME_TOKEN = /^[!#$%&'*+.^_`|~0-9A-Za-z-]{1,64}$/;
+const INVALID_HEADER_MESSAGE =
+  /Invalid character in header content \["([^"]*)"\]/;
+
+/**
+ * Pull only the header name from Node's ERR_INVALID_CHAR message.
+ * Returns "unavailable" when the name is missing, too long, or not a token.
+ */
+export function extractInvalidHeaderName(message: string): string {
+  const match = INVALID_HEADER_MESSAGE.exec(message);
+  const name = match?.[1] ?? "";
+  if (!HEADER_NAME_TOKEN.test(name)) return "unavailable";
+  return name;
+}
+
 /**
  * Allowlisted network cause from StripeConnectionError.detail or detail.exception.
  * Never returns the nested objects themselves.
@@ -115,11 +137,19 @@ export function extractSafeNetworkDiagnostics(
   const exception = asRecord(record?.exception);
   const source = exception ?? record;
   const networkHostname = readNetworkHostname(source?.hostname);
+  const networkCode = readShortScalar(source?.code);
+  const invalidHeaderName =
+    networkCode === "ERR_INVALID_CHAR"
+      ? extractInvalidHeaderName(
+          typeof source?.message === "string" ? source.message : "",
+        )
+      : undefined;
   return {
-    networkCode: readShortScalar(source?.code),
+    networkCode,
     networkErrno: readNetworkErrno(source?.errno),
     networkSyscall: readShortScalar(source?.syscall),
     ...(networkHostname ? { networkHostname } : {}),
+    ...(invalidHeaderName ? { invalidHeaderName } : {}),
   };
 }
 

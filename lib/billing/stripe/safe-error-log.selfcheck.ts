@@ -8,6 +8,7 @@ import {
   StripeCatalogMismatchError,
 } from "@/lib/billing/errors";
 import {
+  extractInvalidHeaderName,
   extractSafeStripeErrorLog,
   isStripeSdkError,
   logStripeBillingError,
@@ -120,6 +121,61 @@ async function main() {
   );
   assert(sessionLog.operation === "checkout_session_create", "session op");
   assert(sessionLog.code === "resource_missing", "session code");
+
+  const nodeMessage =
+    'Invalid character in header content ["X-Stripe-Client-Telemetry"]';
+  const headerLog = extractSafeStripeErrorLog("catalog_price_resolution", {
+    type: "StripeConnectionError",
+    message: "An error occurred with our connection to Stripe. Request was retried 2 times.",
+    detail: {
+      exception: {
+        code: "ERR_INVALID_CHAR",
+        message: `${nodeMessage} Bearer ${SECRET}`,
+        raw: SECRET,
+        headers: { Authorization: SECRET },
+      },
+    },
+  });
+  assert(headerLog.networkCode === "ERR_INVALID_CHAR", "invalid char code");
+  assert(
+    headerLog.invalidHeaderName === "X-Stripe-Client-Telemetry",
+    "header name extracted",
+  );
+  assert(extractInvalidHeaderName(nodeMessage) === "X-Stripe-Client-Telemetry", "parser");
+  assert(
+    extractInvalidHeaderName(
+      'Invalid character in header content ["Authorization"]',
+    ) === "Authorization",
+    "authorization name allowed",
+  );
+  assert(
+    extractInvalidHeaderName("something else entirely") === "unavailable",
+    "malformed unavailable",
+  );
+  assert(
+    extractInvalidHeaderName(
+      `Invalid character in header content ["${"A".repeat(65)}"]`,
+    ) === "unavailable",
+    "oversized name rejected",
+  );
+  assert(
+    extractInvalidHeaderName(
+      'Invalid character in header content ["Bad Name"]',
+    ) === "unavailable",
+    "space rejected",
+  );
+  assert(
+    extractInvalidHeaderName(
+      'Invalid character in header content ["X-Value: Bearer secret"]',
+    ) === "unavailable",
+    "value-like token rejected",
+  );
+  const headerJson = JSON.stringify(headerLog);
+  assert(!headerJson.includes(SECRET), "header value not returned");
+  assert(!headerJson.includes(nodeMessage), "node message not returned");
+  assert(!headerJson.includes("Invalid character"), "node phrase not returned");
+  assert(!("detail" in headerLog), "detail excluded");
+  assert(!("exception" in headerLog), "exception excluded");
 
   const redacted = redactStripeErrorMessage(`Bearer ${SECRET} ${WEBHOOK}`);
   assert(!redacted.includes(SECRET), "bearer secret redacted");

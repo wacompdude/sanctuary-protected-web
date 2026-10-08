@@ -4,13 +4,17 @@
  */
 
 import https from "node:https";
+import { resolveStripePriceByInternalKey } from "@/lib/billing/stripe/catalog";
+import { createStripeCatalogPriceLister } from "@/lib/billing/stripe/catalog-stripe";
 import { getStripeClient } from "@/lib/billing/stripe/sdk";
 import {
+  extractInvalidHeaderName,
   extractSafeNetworkDiagnostics,
   extractSafeStripeErrorLog,
   STRIPE_API_HOSTNAME,
   type SafeNetworkDiagnostics,
 } from "@/lib/billing/stripe/safe-error-log";
+import { PLAN_KEYS } from "@/lib/subscriptions/plan-keys";
 
 export const EXPECTED_STRIPE_ACCOUNT_ID = "acct_1UGx3WRxaGtyRkAV";
 export const CONNECTIVITY_PROBE_TIMEOUT_MS = 8000;
@@ -41,10 +45,22 @@ export type AccountIdentityResult = {
   durationMs: number;
 };
 
+export type CatalogResolutionResult = SafeNetworkDiagnostics & {
+  ok: boolean;
+  httpResponseReceived: boolean;
+  httpStatus: number | null;
+  requestId: string | null;
+  errorType: string | null;
+  code: string | null;
+  durationMs: number;
+};
+
 export type StripeConnectivityProbeResult = {
   https: HttpsConnectivityResult;
   sdkRead: SdkReadConnectivityResult;
   account: AccountIdentityResult;
+  /** Exact Checkout catalog resolution. Runs after A, B, and C. */
+  catalog: CatalogResolutionResult;
 };
 
 const ACCOUNT_ID_PATTERN = /acct_[A-Za-z0-9]+/g;
@@ -68,6 +84,20 @@ function emptyNetwork(): SafeNetworkDiagnostics {
   return { networkCode: null, networkErrno: null, networkSyscall: null };
 }
 
+function sanitizeInvalidHeaderName(
+  networkCode: string | null,
+  value: unknown,
+): string | undefined {
+  if (networkCode !== "ERR_INVALID_CHAR") return undefined;
+  if (value === "unavailable") return "unavailable";
+  if (typeof value === "string" && extractInvalidHeaderName(
+    `Invalid character in header content ["${value}"]`,
+  ) === value) {
+    return value;
+  }
+  return "unavailable";
+}
+
 /** Drop any extra fields before display or logging. */
 export function sanitizeConnectivityProbeResult(
   input: StripeConnectivityProbeResult,
@@ -84,6 +114,16 @@ export function sanitizeConnectivityProbeResult(
     syscall: input.sdkRead.networkSyscall,
     hostname: input.sdkRead.networkHostname,
   });
+  const catalogNetwork = extractSafeNetworkDiagnostics({
+    code: input.catalog.networkCode,
+    errno: input.catalog.networkErrno,
+    syscall: input.catalog.networkSyscall,
+    hostname: input.catalog.networkHostname,
+  });
+  const invalidHeaderName = sanitizeInvalidHeaderName(
+    catalogNetwork.networkCode,
+    input.catalog.invalidHeaderName,
+  );
   return {
     https: {
       ok: Boolean(input.https.ok),
@@ -120,6 +160,31 @@ export function sanitizeConnectivityProbeResult(
         typeof input.account.errorType === "string" ? input.account.errorType : null,
       code: typeof input.account.code === "string" ? input.account.code : null,
       durationMs: Math.max(0, Math.round(input.account.durationMs || 0)),
+    },
+    catalog: {
+      ok: Boolean(input.catalog.ok),
+      httpResponseReceived: Boolean(input.catalog.httpResponseReceived),
+      httpStatus:
+        typeof input.catalog.httpStatus === "number"
+          ? input.catalog.httpStatus
+          : null,
+      requestId:
+        typeof input.catalog.requestId === "string"
+          ? input.catalog.requestId
+          : null,
+      errorType:
+        typeof input.catalog.errorType === "string"
+          ? input.catalog.errorType
+          : null,
+      code: typeof input.catalog.code === "string" ? input.catalog.code : null,
+      durationMs: Math.max(0, Math.round(input.catalog.durationMs || 0)),
+      networkCode: catalogNetwork.networkCode,
+      networkErrno: catalogNetwork.networkErrno,
+      networkSyscall: catalogNetwork.networkSyscall,
+      ...(catalogNetwork.networkHostname
+        ? { networkHostname: catalogNetwork.networkHostname }
+        : {}),
+      ...(invalidHeaderName ? { invalidHeaderName } : {}),
     },
   };
 }
@@ -214,9 +279,61 @@ function sdkFailure(error: unknown, started: number): SdkReadConnectivityResult 
   };
 }
 
+function catalogFailure(error: unknown, started: number): CatalogResolutionResult {
+  const safe = extractSafeStripeErrorLog("catalog_price_resolution", error);
+  return {
+    ok: false,
+    httpResponseReceived: safe.statusCode != null || safe.requestId != null,
+    httpStatus: safe.statusCode,
+    requestId: safe.requestId,
+    errorType: safe.errorType,
+    code: safe.code,
+    durationMs: Date.now() - started,
+    networkCode: safe.networkCode,
+    networkErrno: safe.networkErrno,
+    networkSyscall: safe.networkSyscall,
+    ...(safe.networkHostname ? { networkHostname: safe.networkHostname } : {}),
+    ...(safe.invalidHeaderName
+      ? { invalidHeaderName: safe.invalidHeaderName }
+      : {}),
+  };
+}
+
+/**
+ * Same catalog resolution Checkout uses for Servant Standard.
+ * No timeout, retry, idempotency, account, or API-version overrides.
+ * Ignores the resolved Price so ids are not returned.
+ */
+export async function runExactCheckoutCatalogResolution(): Promise<CatalogResolutionResult> {
+  const started = Date.now();
+  try {
+    await resolveStripePriceByInternalKey(PLAN_KEYS.SERVANT_STANDARD, {
+      listPrices: createStripeCatalogPriceLister(),
+    });
+    return {
+      ok: true,
+      httpResponseReceived: true,
+      httpStatus: null,
+      requestId: null,
+      errorType: null,
+      code: null,
+      durationMs: Date.now() - started,
+      ...emptyNetwork(),
+    };
+  } catch (error) {
+    return catalogFailure(error, started);
+  }
+}
+
+/**
+ * Diagnostic order is fixed so telemetry from earlier Stripe calls is
+ * observed rather than manufactured:
+ * A HTTPS, B prices.list limit 1, C accounts.retrieveCurrent, D catalog.
+ */
 export async function runStripeConnectivityProbeWithClient(
   stripe: StripeReadClient,
   httpsProbe: () => Promise<HttpsConnectivityResult> = probeStripeHttps,
+  catalogProbe: () => Promise<CatalogResolutionResult> = runExactCheckoutCatalogResolution,
 ): Promise<StripeConnectivityProbeResult> {
   const httpsResult = await httpsProbe();
 
@@ -261,10 +378,19 @@ export async function runStripeConnectivityProbeWithClient(
     };
   }
 
+  let catalog: CatalogResolutionResult;
+  const catalogStarted = Date.now();
+  try {
+    catalog = await catalogProbe();
+  } catch (error) {
+    catalog = catalogFailure(error, catalogStarted);
+  }
+
   return sanitizeConnectivityProbeResult({
     https: httpsResult,
     sdkRead,
     account,
+    catalog,
   });
 }
 

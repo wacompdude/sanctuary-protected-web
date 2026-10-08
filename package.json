@@ -17,7 +17,7 @@
     "selfcheck:help": "npx --yes tsx lib/help/foundation.selfcheck.ts && npx --yes tsx lib/help/mobile.selfcheck.ts",
     "selfcheck:training": "npx --yes tsx lib/training/foundation.selfcheck.ts",
     "selfcheck:subscriptions": "npx --yes tsx lib/subscriptions/foundation.selfcheck.ts && npx --yes tsx lib/subscriptions/entitlements.selfcheck.ts && npx --yes tsx lib/subscriptions/feature-access.selfcheck.ts",
-    "selfcheck:billing": "npx --yes tsx lib/billing/stripe/foundation.selfcheck.ts && npx --yes tsx lib/billing/stripe/catalog.selfcheck.ts && npx --yes tsx lib/billing/stripe/checkout.selfcheck.ts && npx --yes tsx lib/billing/stripe/webhook.selfcheck.ts && npx --yes tsx lib/billing/commercial-catalog.selfcheck.ts && npx --yes tsx lib/billing/checkout-eligibility.selfcheck.ts",
+    "selfcheck:billing": "npx --yes tsx lib/billing/stripe/foundation.selfcheck.ts && npx --yes tsx lib/billing/stripe/catalog.selfcheck.ts && npx --yes tsx lib/billing/stripe/checkout.selfcheck.ts && npx --yes tsx lib/billing/stripe/safe-error-log.selfcheck.ts && npx --yes tsx lib/billing/stripe/webhook.selfcheck.ts && npx --yes tsx lib/billing/commercial-catalog.selfcheck.ts && npx --yes tsx lib/billing/checkout-eligibility.selfcheck.ts",
     "billing:stripe:validate-catalog": "npx --yes tsx scripts/validate-stripe-catalog.ts",
     "selfcheck:campuses": "npx --yes tsx lib/campuses/authorization.selfcheck.ts",
     "selfcheck:compat": "npx --yes tsx lib/organization/brand-theme.selfcheck.ts",

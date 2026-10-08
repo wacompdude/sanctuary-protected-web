@@ -29,6 +29,7 @@ import {
   type ResolvedStripePrice,
 } from "@/lib/billing/stripe/catalog";
 import { assertSandboxCatalogValidationMode } from "@/lib/billing/stripe/catalog";
+import { withStripeBillingErrorLog } from "@/lib/billing/stripe/safe-error-log";
 import type { BillingCheckoutSession } from "@/lib/billing/types";
 
 export type StripeCheckoutSessionCreateApi = {
@@ -176,32 +177,42 @@ export async function createSubscriptionCheckoutSession(
     expectedOrigin: input.origin,
   });
 
-  const resolved = await resolveStripePriceByInternalKey(planKey, {
-    listPrices: deps.listPrices,
-  });
+  const resolved = await withStripeBillingErrorLog(
+    "catalog_price_resolution",
+    () =>
+      resolveStripePriceByInternalKey(planKey, {
+        listPrices: deps.listPrices,
+      }),
+  );
   assertResolvedSubscriptionPrice(resolved);
 
-  const customer = await ensureStripeCustomerForOrganization({
-    organizationId: input.organizationId,
-    fallbackEmail: input.fallbackEmail,
-    store: deps.store,
-    stripeCustomers: deps.stripeCustomers,
-  });
-
-  const session = await deps.stripeCheckout.createSubscriptionCheckoutSession({
-    customerId: customer.providerCustomerId,
-    priceId: resolved.stripePriceId,
-    successUrl: input.successUrl,
-    cancelUrl: input.cancelUrl,
-    organizationId: input.organizationId,
-    planKey,
-    idempotencyKey: stripeCheckoutIdempotencyKey({
+  const customer = await withStripeBillingErrorLog("customer_ensure", () =>
+    ensureStripeCustomerForOrganization({
       organizationId: input.organizationId,
-      planKey,
-      attemptToken: input.attemptToken,
+      fallbackEmail: input.fallbackEmail,
+      store: deps.store,
+      stripeCustomers: deps.stripeCustomers,
     }),
-    allowPromotionCodes: true,
-  });
+  );
+
+  const session = await withStripeBillingErrorLog(
+    "checkout_session_create",
+    () =>
+      deps.stripeCheckout.createSubscriptionCheckoutSession({
+        customerId: customer.providerCustomerId,
+        priceId: resolved.stripePriceId,
+        successUrl: input.successUrl,
+        cancelUrl: input.cancelUrl,
+        organizationId: input.organizationId,
+        planKey,
+        idempotencyKey: stripeCheckoutIdempotencyKey({
+          organizationId: input.organizationId,
+          planKey,
+          attemptToken: input.attemptToken,
+        }),
+        allowPromotionCodes: true,
+      }),
+  );
 
   if (!session.url) {
     throw new BillingConfigurationError(

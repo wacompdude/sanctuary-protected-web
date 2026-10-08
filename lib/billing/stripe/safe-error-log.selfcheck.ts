@@ -29,7 +29,20 @@ async function main() {
     requestId: "req_conn_1",
   });
   Object.assign(connection, {
-    detail: { code: "ECONNRESET", Authorization: `Bearer ${SECRET}` },
+    detail: {
+      code: "ECONNRESET",
+      errno: -4077,
+      syscall: "connect",
+      hostname: "api.stripe.com",
+      Authorization: `Bearer ${SECRET}`,
+      exception: {
+        code: "ENOTFOUND",
+        errno: "ENOTFOUND",
+        syscall: "getaddrinfo",
+        hostname: "evil.example",
+        raw: { secret: SECRET },
+      },
+    },
     headers: { Authorization: `Bearer ${SECRET}` },
     raw: { secret: SECRET },
   });
@@ -48,6 +61,31 @@ async function main() {
   assert(!("detail" in connectionLog), "no detail field");
   assert(!("headers" in connectionLog), "no headers field");
   assert(!("raw" in connectionLog), "no raw field");
+  assert(!("exception" in connectionLog), "no exception field");
+  assert(connectionLog.networkCode === "ENOTFOUND", "nested network code");
+  assert(connectionLog.networkErrno === "ENOTFOUND", "nested errno");
+  assert(connectionLog.networkSyscall === "getaddrinfo", "nested syscall");
+  assert(
+    connectionLog.networkHostname === undefined,
+    "non-stripe hostname omitted",
+  );
+
+  const allowedHost = extractSafeStripeErrorLog("catalog_price_resolution", {
+    type: "StripeConnectionError",
+    message: "An error occurred with our connection to Stripe.",
+    detail: {
+      code: "ECONNREFUSED",
+      errno: -111,
+      syscall: "connect",
+      hostname: "api.stripe.com",
+      certificate: SECRET,
+    },
+  });
+  assert(allowedHost.networkCode === "ECONNREFUSED", "network code");
+  assert(allowedHost.networkErrno === -111, "numeric errno");
+  assert(allowedHost.networkSyscall === "connect", "syscall");
+  assert(allowedHost.networkHostname === "api.stripe.com", "stripe hostname");
+  assert(!JSON.stringify(allowedHost).includes(SECRET), "detail secret excluded");
 
   const permission = new Stripe.errors.StripePermissionError({
     message: `The provided key '${SECRET}' does not have permissions. Contact billing@example.test. ${WEBHOOK}`,
@@ -129,7 +167,9 @@ async function main() {
   assert(!joined.includes("customer_ensure"), "app error not logged");
   assert(!joined.includes(SECRET), "log omits secret");
   assert(!joined.includes("Authorization"), "log omits auth header");
-  assert(!joined.includes("ECONNRESET"), "log omits connection detail");
+  assert(joined.includes("ENOTFOUND"), "logs allowlisted network code");
+  assert(!joined.includes("evil.example"), "rejects other hostname");
+  assert(!joined.includes("ECONNRESET"), "does not log outer detail when exception exists");
   assert(!joined.includes("pm_test"), "log omits payment method id");
   assert(!joined.includes("payment_method"), "log omits payment object");
   assert(!joined.includes('"raw"'), "log omits raw");

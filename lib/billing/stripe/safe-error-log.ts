@@ -9,7 +9,17 @@ export type StripeBillingOperation =
   | "customer_ensure"
   | "checkout_session_create";
 
-export type SafeStripeErrorLog = {
+export const STRIPE_API_HOSTNAME = "api.stripe.com";
+
+export type SafeNetworkDiagnostics = {
+  networkCode: string | null;
+  networkErrno: string | number | null;
+  networkSyscall: string | null;
+  /** Present only when the hostname is exactly api.stripe.com. */
+  networkHostname?: typeof STRIPE_API_HOSTNAME;
+};
+
+export type SafeStripeErrorLog = SafeNetworkDiagnostics & {
   operation: StripeBillingOperation;
   errorType: string | null;
   code: string | null;
@@ -66,6 +76,53 @@ function readStatusCode(value: unknown): number | null {
   return value;
 }
 
+function looksSensitive(value: string): boolean {
+  return /sk_|rk_|pk_|whsec_|bearer|authorization|cookie|password/i.test(value);
+}
+
+/** Short non-secret scalar. Objects and long strings are dropped. */
+function readShortScalar(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > 64 || /[\r\n]/.test(trimmed)) return null;
+  if (looksSensitive(trimmed)) return null;
+  return trimmed;
+}
+
+function readNetworkErrno(value: unknown): string | number | null {
+  if (typeof value === "number" && Number.isInteger(value) && Math.abs(value) < 1_000_000) {
+    return value;
+  }
+  return readShortScalar(value);
+}
+
+function readNetworkHostname(
+  value: unknown,
+): typeof STRIPE_API_HOSTNAME | undefined {
+  return readShortScalar(value) === STRIPE_API_HOSTNAME
+    ? STRIPE_API_HOSTNAME
+    : undefined;
+}
+
+/**
+ * Allowlisted network cause from StripeConnectionError.detail or detail.exception.
+ * Never returns the nested objects themselves.
+ */
+export function extractSafeNetworkDiagnostics(
+  detail: unknown,
+): SafeNetworkDiagnostics {
+  const record = asRecord(detail);
+  const exception = asRecord(record?.exception);
+  const source = exception ?? record;
+  const networkHostname = readNetworkHostname(source?.hostname);
+  return {
+    networkCode: readShortScalar(source?.code),
+    networkErrno: readNetworkErrno(source?.errno),
+    networkSyscall: readShortScalar(source?.syscall),
+    ...(networkHostname ? { networkHostname } : {}),
+  };
+}
+
 /** Strip credential-like and email-like tokens from a Stripe error message. */
 export function redactStripeErrorMessage(message: string): string {
   let next = message;
@@ -118,6 +175,7 @@ export function extractSafeStripeErrorLog(
     message: redactStripeErrorMessage(message),
     connectionError: errorType === "StripeConnectionError",
     retries: readStripeRetryCount(message),
+    ...extractSafeNetworkDiagnostics(record?.detail),
   };
 }
 

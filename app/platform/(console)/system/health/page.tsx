@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { PlatformStatusBadge } from "@/components/platform/platform-status-badge";
+import { StripeConnectivityDiagnostic } from "@/components/platform/stripe-connectivity-diagnostic";
 import { getPlatformHealthStatus } from "@/lib/platform/console-queries";
 
 async function HealthContent() {
@@ -106,6 +107,7 @@ async function HealthContent() {
           </tbody>
         </table>
       </div>
+      <StripeConnectivityDiagnostic />
     </div>
   );
 }

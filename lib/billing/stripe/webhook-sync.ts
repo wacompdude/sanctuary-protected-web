@@ -4,8 +4,11 @@
  */
 
 import {
+  periodForApprovedBasePlanItem,
   resolveApprovedSubscriptionPlanFromItems,
+  type ApprovedPlanResolution,
   type GetStripePriceById,
+  type WebhookPriceItemRef,
 } from "@/lib/billing/stripe/plan-correlation";
 import {
   mapStripeInvoiceStatus,
@@ -15,6 +18,7 @@ import {
 import type { StripeWebhookObjectSummary } from "@/lib/billing/stripe/webhook-verify";
 import type { ChurchSubscriptionStatus } from "@/lib/subscriptions/types";
 import { isPlanKey, type PlanKey } from "@/lib/subscriptions/plan-keys";
+import { subscriptionGrantsAccess } from "@/lib/subscriptions/status";
 
 export type OrgCustomerMapping = {
   organizationId: string;
@@ -29,7 +33,11 @@ export type SyncedSubscriptionSnapshot = {
   status: ChurchSubscriptionStatus;
   billingSubscriptionId: string | null;
   paymentStatus: string | null;
+  currentPeriodStart?: string | null;
+  currentPeriodEnd?: string | null;
 };
+
+export type TrialActivationResult = "activated" | "noop" | "unchanged";
 
 export type WebhookSyncStore = {
   findOrganizationByStripeCustomerId(
@@ -109,6 +117,13 @@ export type WebhookSyncStore = {
     paymentStatus: string;
     providerLatestInvoiceId?: string | null;
   }): Promise<void>;
+  /**
+   * trial → active only. Already active is a no-op.
+   * suspended and closed stay unchanged.
+   */
+  activateTrialOrganization(
+    organizationId: string,
+  ): Promise<TrialActivationResult>;
   /** Optional billing notice hook — must be idempotent; tests use no-op. */
   notifyBillingCharge?(input: {
     organizationId: string;
@@ -138,6 +153,28 @@ export class StripeWebhookCorrelationError extends Error {
 function unixToIso(seconds: number | null): string | null {
   if (seconds === null || !Number.isFinite(seconds)) return null;
   return new Date(seconds * 1000).toISOString();
+}
+
+async function resolveBasePlanServicePeriod(
+  items: WebhookPriceItemRef[],
+  getPriceById?: GetStripePriceById,
+): Promise<{
+  resolution: ApprovedPlanResolution;
+  periodStart: string | null;
+  periodEnd: string | null;
+}> {
+  const resolution = await resolveApprovedSubscriptionPlanFromItems(items, {
+    getPriceById,
+  });
+  if (!resolution.ok) {
+    return { resolution, periodStart: null, periodEnd: null };
+  }
+  const period = periodForApprovedBasePlanItem(items, resolution);
+  return {
+    resolution,
+    periodStart: unixToIso(period?.periodStart ?? null),
+    periodEnd: unixToIso(period?.periodEnd ?? null),
+  };
 }
 
 export async function resolveOrganizationForStripeObject(
@@ -261,10 +298,11 @@ export async function handleSubscriptionLifecycle(
           },
         ];
 
-  const planResolution = await resolveApprovedSubscriptionPlanFromItems(
-    priceItems,
-    { getPriceById: options.getPriceById },
-  );
+  const {
+    resolution: planResolution,
+    periodStart,
+    periodEnd,
+  } = await resolveBasePlanServicePeriod(priceItems, options.getPriceById);
 
   const existingByProvider = await store.getSubscriptionByProviderId(
     object.subscriptionId,
@@ -284,8 +322,8 @@ export async function handleSubscriptionLifecycle(
         status,
         billingCustomerId: org.providerCustomerId,
         billingSubscriptionId: object.subscriptionId,
-        currentPeriodStart: unixToIso(object.periodStart),
-        currentPeriodEnd: unixToIso(object.periodEnd),
+        currentPeriodStart: null,
+        currentPeriodEnd: null,
         cancelAtPeriodEnd: Boolean(object.cancelAtPeriodEnd),
         cancelledAt,
       });
@@ -344,8 +382,8 @@ export async function handleSubscriptionLifecycle(
     status,
     billingCustomerId: org.providerCustomerId,
     billingSubscriptionId: object.subscriptionId,
-    currentPeriodStart: unixToIso(object.periodStart),
-    currentPeriodEnd: unixToIso(object.periodEnd),
+    currentPeriodStart: periodStart,
+    currentPeriodEnd: periodEnd,
     cancelAtPeriodEnd: Boolean(object.cancelAtPeriodEnd),
     cancelledAt,
   });
@@ -422,6 +460,7 @@ async function maybeWriteHistory(
 export async function handleInvoicePaid(
   store: WebhookSyncStore,
   object: StripeWebhookObjectSummary,
+  options: SubscriptionLifecycleOptions = {},
 ): Promise<WebhookHandlerResult> {
   let org: OrgCustomerMapping;
   try {
@@ -441,6 +480,21 @@ export async function handleInvoicePaid(
   const invoiceStatus = mapStripeInvoiceStatus(object.status ?? "paid");
   const currency = (object.currency ?? "usd").toUpperCase();
   const total = Math.max(0, object.amountPaid ?? object.amountDue ?? 0);
+  const priceItems =
+    object.priceItems?.length > 0
+      ? object.priceItems
+      : [
+          {
+            priceId: object.priceId,
+            lookupKey: object.priceLookupKey,
+            productName: null,
+          },
+        ];
+  const {
+    resolution: planResolution,
+    periodStart,
+    periodEnd,
+  } = await resolveBasePlanServicePeriod(priceItems, options.getPriceById);
 
   const invoice = await store.upsertInvoice({
     organizationId: org.organizationId,
@@ -450,8 +504,8 @@ export async function handleInvoicePaid(
     totalCents: total,
     amountPaidCents: Math.max(0, object.amountPaid ?? total),
     amountDueCents: Math.max(0, object.amountDue ?? 0),
-    periodStart: unixToIso(object.periodStart),
-    periodEnd: unixToIso(object.periodEnd),
+    periodStart,
+    periodEnd,
     hostedInvoiceUrl: object.hostedInvoiceUrl,
     metadata: {
       stripe_subscription_id: object.subscriptionId,
@@ -491,6 +545,18 @@ export async function handleInvoicePaid(
     });
   }
 
+  let organizationActivation: TrialActivationResult | "skipped" = "skipped";
+  if (planResolution.ok) {
+    const linked = object.subscriptionId
+      ? await store.getSubscriptionByProviderId(object.subscriptionId)
+      : await store.getCurrentSubscription(org.organizationId);
+    if (linked && subscriptionGrantsAccess(linked.status)) {
+      organizationActivation = await store.activateTrialOrganization(
+        org.organizationId,
+      );
+    }
+  }
+
   return {
     outcome: "processed",
     detail: "Invoice paid synchronized.",
@@ -499,6 +565,8 @@ export async function handleInvoicePaid(
       stripe_invoice_id: object.invoiceId,
       invoice_row_created: invoice.created,
       transaction_created: txn.created,
+      organization_activation: organizationActivation,
+      base_plan_resolved: planResolution.ok,
     },
   };
 }
@@ -506,6 +574,7 @@ export async function handleInvoicePaid(
 export async function handleInvoicePaymentFailed(
   store: WebhookSyncStore,
   object: StripeWebhookObjectSummary,
+  options: SubscriptionLifecycleOptions = {},
 ): Promise<WebhookHandlerResult> {
   let org: OrgCustomerMapping;
   try {
@@ -524,6 +593,20 @@ export async function handleInvoicePaymentFailed(
 
   const currency = (object.currency ?? "usd").toUpperCase();
   const due = Math.max(0, object.amountDue ?? 0);
+  const priceItems =
+    object.priceItems?.length > 0
+      ? object.priceItems
+      : [
+          {
+            priceId: object.priceId,
+            lookupKey: object.priceLookupKey,
+            productName: null,
+          },
+        ];
+  const { periodStart, periodEnd } = await resolveBasePlanServicePeriod(
+    priceItems,
+    options.getPriceById,
+  );
 
   const invoice = await store.upsertInvoice({
     organizationId: org.organizationId,
@@ -533,8 +616,8 @@ export async function handleInvoicePaymentFailed(
     totalCents: due,
     amountPaidCents: Math.max(0, object.amountPaid ?? 0),
     amountDueCents: due,
-    periodStart: unixToIso(object.periodStart),
-    periodEnd: unixToIso(object.periodEnd),
+    periodStart,
+    periodEnd,
     hostedInvoiceUrl: object.hostedInvoiceUrl,
     metadata: {
       stripe_subscription_id: object.subscriptionId,

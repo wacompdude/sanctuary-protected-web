@@ -27,6 +27,12 @@ export type WebhookPriceItemRef = {
   lookupKey: string | null;
   /** Informational only — never used for entitlement authority. */
   productName: string | null;
+  /**
+   * Service period from the same Stripe item or invoice line.
+   * Subscription items use current_period_*; invoice lines use period.start/end.
+   */
+  periodStart?: number | null;
+  periodEnd?: number | null;
 };
 
 export type GetStripePriceById = (
@@ -82,6 +88,43 @@ export function resolvePlanKeyFromStripeLookupKey(
     throw new BillingCheckoutPlanError("Resolved plan key is invalid.");
   }
   return expectation.internalKey;
+}
+
+/**
+ * Period of the same item that resolved the approved base plan.
+ * SMS package items are ignored because their lookup key does not match.
+ * Disagreeing periods, or a missing period, return null so callers do not
+ * invent dates or erase a stored period.
+ */
+export function periodForApprovedBasePlanItem(
+  items: WebhookPriceItemRef[],
+  approved: { lookupKey: string; priceId: string | null },
+): { periodStart: number; periodEnd: number } | null {
+  const lookup = approved.lookupKey.trim();
+  const matches = items.filter((item) => {
+    const itemLookup = (item.lookupKey ?? "").trim();
+    if (itemLookup && itemLookup === lookup) return true;
+    if (!itemLookup && approved.priceId && item.priceId === approved.priceId) {
+      return true;
+    }
+    return false;
+  });
+  const complete = matches.filter(
+    (item) =>
+      typeof item.periodStart === "number" &&
+      Number.isFinite(item.periodStart) &&
+      typeof item.periodEnd === "number" &&
+      Number.isFinite(item.periodEnd) &&
+      item.periodEnd >= item.periodStart,
+  );
+  if (complete.length === 0) return null;
+  const periodStart = complete[0]!.periodStart!;
+  const periodEnd = complete[0]!.periodEnd!;
+  const unanimous = complete.every(
+    (item) => item.periodStart === periodStart && item.periodEnd === periodEnd,
+  );
+  if (!unanimous) return null;
+  return { periodStart, periodEnd };
 }
 
 export function isApprovedSubscriptionLookupKey(lookupKey: string): boolean {

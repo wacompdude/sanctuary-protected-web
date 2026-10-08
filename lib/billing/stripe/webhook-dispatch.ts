@@ -70,9 +70,13 @@ export async function dispatchStripeWebhookEvent(input: {
         lifecycleOptions,
       );
     case "invoice.paid":
-      return handleInvoicePaid(input.store, input.object);
+      return handleInvoicePaid(input.store, input.object, lifecycleOptions);
     case "invoice.payment_failed":
-      return handleInvoicePaymentFailed(input.store, input.object);
+      return handleInvoicePaymentFailed(
+        input.store,
+        input.object,
+        lifecycleOptions,
+      );
     default:
       return {
         outcome: "ignored",

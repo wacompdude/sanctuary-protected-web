@@ -171,6 +171,13 @@ export function createAdminWebhookSyncStore(): WebhookSyncStore {
 
       const previousPlanId = current.planId;
       const previousStatus = current.status;
+      const periodPatch =
+        input.currentPeriodStart && input.currentPeriodEnd
+          ? {
+              current_period_start: input.currentPeriodStart,
+              current_period_end: input.currentPeriodEnd,
+            }
+          : {};
       const { data, error } = await admin
         .from("organization_subscriptions")
         .update({
@@ -179,8 +186,7 @@ export function createAdminWebhookSyncStore(): WebhookSyncStore {
           billing_provider: "stripe",
           billing_customer_id: input.billingCustomerId,
           billing_subscription_id: input.billingSubscriptionId,
-          current_period_start: input.currentPeriodStart,
-          current_period_end: input.currentPeriodEnd,
+          ...periodPatch,
           cancel_at_period_end: input.cancelAtPeriodEnd,
           cancelled_at: input.cancelledAt,
           ...(input.paymentStatus
@@ -245,6 +251,13 @@ export function createAdminWebhookSyncStore(): WebhookSyncStore {
         .maybeSingle();
 
       if (existing?.id) {
+        const periodPatch =
+          input.periodStart && input.periodEnd
+            ? {
+                period_start: input.periodStart,
+                period_end: input.periodEnd,
+              }
+            : {};
         await admin
           .from("billing_invoices")
           .update({
@@ -253,8 +266,7 @@ export function createAdminWebhookSyncStore(): WebhookSyncStore {
             total_cents: input.totalCents,
             amount_paid_cents: input.amountPaidCents,
             amount_due_cents: input.amountDueCents,
-            period_start: input.periodStart,
-            period_end: input.periodEnd,
+            ...periodPatch,
             hosted_invoice_url: input.hostedInvoiceUrl,
             metadata: input.metadata,
           })
@@ -364,6 +376,22 @@ export function createAdminWebhookSyncStore(): WebhookSyncStore {
       }
 
       await query;
+    },
+
+    async activateTrialOrganization(organizationId) {
+      const { data, error } = await admin.rpc(
+        "activate_organization_after_paid_base_subscription",
+        { p_organization_id: organizationId },
+      );
+      if (error) {
+        throw new Error(
+          `Unable to activate trial organization: ${error.message}`,
+        );
+      }
+      if (data === "activated" || data === "noop" || data === "unchanged") {
+        return data;
+      }
+      return "unchanged";
     },
 
     async notifyBillingCharge() {

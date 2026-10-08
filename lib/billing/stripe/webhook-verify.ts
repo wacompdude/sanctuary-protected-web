@@ -131,15 +131,40 @@ export function extractWebhookPriceItems(
   obj: Record<string, unknown>,
 ): WebhookPriceItemRef[] {
   const items: WebhookPriceItemRef[] = [];
-  const seen = new Set<string>();
 
   const push = (ref: WebhookPriceItemRef | null) => {
     if (!ref) return;
     const key = `${ref.priceId ?? ""}|${ref.lookupKey ?? ""}`;
     if (!key || key === "|") return;
-    if (seen.has(key)) return;
-    seen.add(key);
+    const existing = items.find(
+      (item) => `${item.priceId ?? ""}|${item.lookupKey ?? ""}` === key,
+    );
+    if (existing) {
+      if (
+        existing.periodStart == null &&
+        existing.periodEnd == null &&
+        ref.periodStart != null &&
+        ref.periodEnd != null
+      ) {
+        existing.periodStart = ref.periodStart;
+        existing.periodEnd = ref.periodEnd;
+      }
+      return;
+    }
     items.push(ref);
+  };
+
+  const withItemPeriod = (
+    ref: WebhookPriceItemRef | null,
+    periodStart: number | null,
+    periodEnd: number | null,
+  ): WebhookPriceItemRef | null => {
+    if (!ref) return null;
+    return {
+      ...ref,
+      periodStart: ref.periodStart ?? periodStart,
+      periodEnd: ref.periodEnd ?? periodEnd,
+    };
   };
 
   const subscriptionItems = asRecord(obj.items);
@@ -148,19 +173,36 @@ export function extractWebhookPriceItems(
     : [];
   for (const entry of itemData) {
     const row = asRecord(entry);
-    push(priceRefFromUnknown(row?.price));
+    push(
+      withItemPeriod(
+        priceRefFromUnknown(row?.price),
+        num(row?.current_period_start),
+        num(row?.current_period_end),
+      ),
+    );
   }
 
-  // Invoice lines (when present)
+  // Invoice lines (when present). Line period is the service period.
   const lines = asRecord(obj.lines);
   const lineData = Array.isArray(lines?.data) ? lines.data : [];
   for (const entry of lineData) {
     const row = asRecord(entry);
-    push(priceRefFromUnknown(row?.price));
+    const linePeriod = asRecord(row?.period);
+    const lineStart = num(linePeriod?.start);
+    const lineEnd = num(linePeriod?.end);
+    push(
+      withItemPeriod(priceRefFromUnknown(row?.price), lineStart, lineEnd),
+    );
     const pricing = asRecord(row?.pricing);
     const priceDetails = asRecord(pricing?.price_details);
     if (priceDetails?.price) {
-      push(priceRefFromUnknown(priceDetails.price));
+      push(
+        withItemPeriod(
+          priceRefFromUnknown(priceDetails.price),
+          lineStart,
+          lineEnd,
+        ),
+      );
     }
   }
 
@@ -186,6 +228,23 @@ export function summarizeStripeEventObject(
 
   if (!subscriptionId && objectType === "invoice") {
     subscriptionId = str(obj.subscription);
+    const parent = asRecord(obj.parent);
+    const parentSubscription = asRecord(parent?.subscription_details);
+    subscriptionId =
+      subscriptionId ?? str(parentSubscription?.subscription);
+    if (!subscriptionId) {
+      const lines = asRecord(obj.lines);
+      const lineData = Array.isArray(lines?.data) ? lines.data : [];
+      for (const entry of lineData) {
+        const row = asRecord(entry);
+        subscriptionId = str(row?.subscription);
+        if (subscriptionId) break;
+        const lineParent = asRecord(row?.parent);
+        const itemDetails = asRecord(lineParent?.subscription_item_details);
+        subscriptionId = str(itemDetails?.subscription);
+        if (subscriptionId) break;
+      }
+    }
   }
   if (objectType === "checkout.session") {
     subscriptionId = subscriptionId ?? str(obj.subscription);
@@ -209,8 +268,11 @@ export function summarizeStripeEventObject(
     amountDue: num(obj.amount_due),
     currency: str(obj.currency)?.toLowerCase() ?? null,
     hostedInvoiceUrl: str(obj.hosted_invoice_url),
-    periodStart: num(obj.current_period_start) ?? num(obj.period_start),
-    periodEnd: num(obj.current_period_end) ?? num(obj.period_end),
+    // Endive (2026-09-30) moved subscription periods onto items and documents
+    // invoice.period_* as the association window, not the service period.
+    // Handlers read the approved base-plan item/line period from priceItems.
+    periodStart: null,
+    periodEnd: null,
     cancelAtPeriodEnd: bool(obj.cancel_at_period_end),
     metadataOrganizationId: str(metadata.organization_id),
     metadataPlanKey: str(metadata.plan_key),

@@ -190,12 +190,20 @@ function createMemoryClaimStore(): BillingEventClaimStore & {
   };
 }
 
+type OrganizationAccountStatus = "trial" | "active" | "suspended" | "closed";
+
 type MemorySyncStore = WebhookSyncStore & {
   subscriptions: SyncedSubscriptionSnapshot[];
-  invoices: { providerInvoiceId: string; status: string }[];
+  invoices: {
+    providerInvoiceId: string;
+    status: string;
+    periodStart: string | null;
+    periodEnd: string | null;
+  }[];
   transactions: { idempotencyKey: string; status: string }[];
   history: { changeType: string; eventId: string | null }[];
   notices: number;
+  organizationStatus: OrganizationAccountStatus;
   conflictCustomer?: string;
 };
 
@@ -212,7 +220,7 @@ function createMemorySyncStore(seed?: {
     omni_enterprise: "plan_omni",
   };
   const subscriptions: SyncedSubscriptionSnapshot[] = [];
-  const invoices: { providerInvoiceId: string; status: string }[] = [];
+  const invoices: MemorySyncStore["invoices"] = [];
   const transactions: { idempotencyKey: string; status: string }[] = [];
   const history: { changeType: string; eventId: string | null }[] = [];
   const store: MemorySyncStore = {
@@ -221,6 +229,7 @@ function createMemorySyncStore(seed?: {
     transactions,
     history,
     notices: 0,
+    organizationStatus: "trial",
     conflictCustomer: undefined,
     async findOrganizationByStripeCustomerId(id: string) {
       if (store.conflictCustomer && id === store.conflictCustomer) {
@@ -263,6 +272,8 @@ function createMemorySyncStore(seed?: {
           status: input.status,
           billingSubscriptionId: input.billingSubscriptionId,
           paymentStatus: input.paymentStatus ?? "unknown",
+          currentPeriodStart: input.currentPeriodStart,
+          currentPeriodEnd: input.currentPeriodEnd,
         };
         subscriptions.push(created);
         return {
@@ -280,6 +291,10 @@ function createMemorySyncStore(seed?: {
       existing.planKey = input.planKey;
       existing.status = input.status;
       existing.billingSubscriptionId = input.billingSubscriptionId;
+      if (input.currentPeriodStart && input.currentPeriodEnd) {
+        existing.currentPeriodStart = input.currentPeriodStart;
+        existing.currentPeriodEnd = input.currentPeriodEnd;
+      }
       if (input.paymentStatus) existing.paymentStatus = input.paymentStatus;
       return {
         subscription: existing,
@@ -308,11 +323,17 @@ function createMemorySyncStore(seed?: {
       );
       if (existing) {
         existing.status = input.status;
+        if (input.periodStart && input.periodEnd) {
+          existing.periodStart = input.periodStart;
+          existing.periodEnd = input.periodEnd;
+        }
         return { id: `inv_${input.providerInvoiceId}`, created: false };
       }
       invoices.push({
         providerInvoiceId: input.providerInvoiceId,
         status: input.status,
+        periodStart: input.periodStart,
+        periodEnd: input.periodEnd,
       });
       return { id: `inv_${input.providerInvoiceId}`, created: true };
     },
@@ -338,6 +359,13 @@ function createMemorySyncStore(seed?: {
         }
         sub.paymentStatus = input.paymentStatus;
       }
+    },
+    async activateTrialOrganization(organizationId) {
+      if (organizationId !== orgId) return "unchanged";
+      if (store.organizationStatus === "active") return "noop";
+      if (store.organizationStatus !== "trial") return "unchanged";
+      store.organizationStatus = "active";
+      return "activated";
     },
     async notifyBillingCharge() {
       store.notices += 1;
@@ -768,6 +796,7 @@ async function main() {
   });
   assert(invStore.transactions.length === 1, "txn not duplicated");
   assert(invStore.notices === 1, "notice once");
+  assert(invStore.organizationStatus === "active", "paid invoice activates trial");
 
   await dispatchStripeWebhookEvent({
     eventType: "invoice.payment_failed",
@@ -802,6 +831,7 @@ async function main() {
   assert(checkout.metadata.authoritative_activation === false, "checkout non-auth");
   assert(checkoutStore.subscriptions.length === 0, "checkout no sub");
   assert(checkoutStore.transactions.length === 0, "checkout no txn");
+  assert(checkoutStore.organizationStatus === "trial", "checkout does not activate");
 
   // Full pipeline claim semantics
   await withEnv(
@@ -1065,6 +1095,339 @@ async function main() {
       const provider = new StripeBillingProvider();
       assert(provider.capabilities().webhooks === false, "webhooks false without secret");
     },
+  );
+
+  const ITEM_START = 1_791_448_814;
+  const ITEM_END = 1_794_040_814;
+  const itemIsoStart = new Date(ITEM_START * 1000).toISOString();
+  const itemIsoEnd = new Date(ITEM_END * 1000).toISOString();
+
+  const endiveSubscription = summarizeStripeEventObject(
+    fakeStripeEvent({
+      id: "evt_endive_sub",
+      type: "customer.subscription.updated",
+      object: {
+        object: "subscription",
+        id: "sub_endive",
+        customer: "cus_selfcheck_1",
+        status: "active",
+        current_period_start: ITEM_START,
+        current_period_end: ITEM_START,
+        metadata: { organization_id: "org_selfcheck" },
+        items: {
+          data: [
+            {
+              current_period_start: ITEM_START,
+              current_period_end: ITEM_END,
+              price: {
+                id: "price_base",
+                lookup_key: "servant_standard_monthly",
+              },
+            },
+            {
+              current_period_start: 1,
+              current_period_end: 2,
+              price: {
+                id: "price_sms",
+                lookup_key: "servant_standard_sms_50",
+              },
+            },
+          ],
+        },
+      },
+    }),
+  );
+  assert(endiveSubscription.periodStart === null, "top-level subscription period ignored");
+  assert(endiveSubscription.periodEnd === null, "top-level subscription period end ignored");
+  const baseItem = endiveSubscription.priceItems.find(
+    (item) => item.lookupKey === "servant_standard_monthly",
+  );
+  const smsItem = endiveSubscription.priceItems.find(
+    (item) => item.lookupKey === "servant_standard_sms_50",
+  );
+  assert(baseItem?.periodStart === ITEM_START, "base item period start");
+  assert(baseItem?.periodEnd === ITEM_END, "base item period end");
+  assert(smsItem?.periodStart === 1, "sms item period kept separate");
+
+  const endiveStore = createMemorySyncStore();
+  const endiveSync = await dispatchStripeWebhookEvent({
+    eventType: "customer.subscription.updated",
+    object: {
+      ...endiveSubscription,
+      subscriptionId: "sub_endive",
+    },
+    store: endiveStore,
+    providerEventId: "evt_endive_sub",
+  });
+  assert(endiveSync.outcome === "processed", "endive subscription processed");
+  assert(
+    endiveStore.subscriptions[0]?.currentPeriodStart === itemIsoStart,
+    "stored base-plan period start",
+  );
+  assert(
+    endiveStore.subscriptions[0]?.currentPeriodEnd === itemIsoEnd,
+    "stored base-plan period end",
+  );
+  assert(
+    endiveStore.organizationStatus === "trial",
+    "subscription update does not activate",
+  );
+
+  const createdOnly = createMemorySyncStore();
+  await dispatchStripeWebhookEvent({
+    eventType: "customer.subscription.created",
+    object: {
+      ...endiveSubscription,
+      subscriptionId: "sub_endive_created",
+    },
+    store: createdOnly,
+    providerEventId: "evt_endive_created",
+  });
+  assert(createdOnly.organizationStatus === "trial", "created alone stays trial");
+
+  const preserveStore = createMemorySyncStore();
+  preserveStore.subscriptions.push({
+    id: "sub_row_keep",
+    organizationId: "org_selfcheck",
+    planId: "plan_servant",
+    planKey: "servant_standard",
+    status: "active",
+    billingSubscriptionId: "sub_keep",
+    paymentStatus: "ok",
+    currentPeriodStart: "2026-07-23T00:00:00.000Z",
+    currentPeriodEnd: "2026-08-22T00:00:00.000Z",
+  });
+  await dispatchStripeWebhookEvent({
+    eventType: "customer.subscription.updated",
+    object: baseObject({
+      id: "sub_keep",
+      subscriptionId: "sub_keep",
+      priceItems: [
+        {
+          priceId: "price_selfcheck_servant",
+          lookupKey: "servant_standard_monthly",
+          productName: null,
+        },
+      ],
+      periodStart: null,
+      periodEnd: null,
+    }),
+    store: preserveStore,
+    providerEventId: "evt_keep_period",
+  });
+  assert(
+    preserveStore.subscriptions[0]?.currentPeriodStart ===
+      "2026-07-23T00:00:00.000Z",
+    "missing period does not clear start",
+  );
+  assert(
+    preserveStore.subscriptions[0]?.currentPeriodEnd ===
+      "2026-08-22T00:00:00.000Z",
+    "missing period does not clear end",
+  );
+
+  const ambiguousStore = createMemorySyncStore();
+  ambiguousStore.subscriptions.push({
+    id: "sub_row_amb",
+    organizationId: "org_selfcheck",
+    planId: "plan_servant",
+    planKey: "servant_standard",
+    status: "active",
+    billingSubscriptionId: "sub_amb",
+    paymentStatus: "ok",
+    currentPeriodStart: itemIsoStart,
+    currentPeriodEnd: itemIsoEnd,
+  });
+  const ambiguous = await dispatchStripeWebhookEvent({
+    eventType: "customer.subscription.updated",
+    object: baseObject({
+      id: "sub_amb",
+      subscriptionId: "sub_amb",
+      priceItems: [
+        {
+          priceId: "a",
+          lookupKey: "servant_standard_monthly",
+          productName: null,
+          periodStart: ITEM_START,
+          periodEnd: ITEM_END,
+        },
+        {
+          priceId: "b",
+          lookupKey: "steward_pro_monthly",
+          productName: null,
+          periodStart: 10,
+          periodEnd: 20,
+        },
+      ],
+    }),
+    store: ambiguousStore,
+  });
+  assert(ambiguous.outcome === "ignored", "ambiguous endive ignored");
+  assert(
+    ambiguousStore.subscriptions[0]?.planKey === "servant_standard",
+    "ambiguous plan unchanged",
+  );
+  assert(
+    ambiguousStore.subscriptions[0]?.currentPeriodStart === itemIsoStart,
+    "ambiguous period unchanged",
+  );
+
+  const endiveInvoice = summarizeStripeEventObject(
+    fakeStripeEvent({
+      id: "evt_endive_inv",
+      type: "invoice.paid",
+      object: {
+        object: "invoice",
+        id: "in_endive",
+        customer: "cus_selfcheck_1",
+        status: "paid",
+        currency: "usd",
+        amount_paid: 2995,
+        amount_due: 0,
+        period_start: ITEM_START,
+        period_end: ITEM_START,
+        parent: {
+          type: "subscription_details",
+          subscription_details: { subscription: "sub_endive_inv" },
+        },
+        lines: {
+          data: [
+            {
+              period: { start: ITEM_START, end: ITEM_END },
+              pricing: {
+                price_details: {
+                  price: {
+                    id: "price_base",
+                    lookup_key: "servant_standard_monthly",
+                  },
+                },
+              },
+            },
+            {
+              period: { start: 11, end: 12 },
+              price: {
+                id: "price_sms",
+                lookup_key: "servant_standard_sms_50",
+              },
+            },
+          ],
+        },
+      },
+    }),
+  );
+  assert(endiveInvoice.periodStart === null, "invoice association window ignored");
+  assert(endiveInvoice.subscriptionId === "sub_endive_inv", "invoice parent subscription");
+  const invoiceBase = endiveInvoice.priceItems.find(
+    (item) => item.lookupKey === "servant_standard_monthly",
+  );
+  assert(invoiceBase?.periodStart === ITEM_START, "invoice line period start");
+  assert(invoiceBase?.periodEnd === ITEM_END, "invoice line period end");
+
+  const invoiceStore = createMemorySyncStore();
+  invoiceStore.subscriptions.push({
+    id: "sub_row_inv",
+    organizationId: "org_selfcheck",
+    planId: "plan_servant",
+    planKey: "servant_standard",
+    status: "active",
+    billingSubscriptionId: "sub_endive_inv",
+    paymentStatus: "unknown",
+  });
+  const paid = await dispatchStripeWebhookEvent({
+    eventType: "invoice.paid",
+    object: endiveInvoice,
+    store: invoiceStore,
+    providerEventId: "evt_endive_inv",
+  });
+  assert(paid.outcome === "processed", "endive invoice processed");
+  assert(invoiceStore.invoices[0]?.periodStart === itemIsoStart, "invoice stores line start");
+  assert(invoiceStore.invoices[0]?.periodEnd === itemIsoEnd, "invoice stores line end");
+  assert(paid.metadata.organization_activation === "activated", "trial activated");
+  assert(invoiceStore.organizationStatus === "active", "organization active");
+
+  const paidAgain = await dispatchStripeWebhookEvent({
+    eventType: "invoice.paid",
+    object: endiveInvoice,
+    store: invoiceStore,
+    providerEventId: "evt_endive_inv_2",
+  });
+  assert(invoiceStore.transactions.length === 1, "repeat invoice no extra txn");
+  assert(invoiceStore.invoices.length === 1, "repeat invoice no extra row");
+  assert(paidAgain.metadata.organization_activation === "noop", "repeat activation no-op");
+  assert(invoiceStore.organizationStatus === "active", "stays active");
+
+  for (const locked of ["suspended", "closed"] as const) {
+    const lockedStore = createMemorySyncStore();
+    lockedStore.organizationStatus = locked;
+    lockedStore.subscriptions.push({
+      id: `sub_row_${locked}`,
+      organizationId: "org_selfcheck",
+      planId: "plan_servant",
+      planKey: "servant_standard",
+      status: "active",
+      billingSubscriptionId: "sub_endive_inv",
+      paymentStatus: "ok",
+    });
+    const lockedPaid = await dispatchStripeWebhookEvent({
+      eventType: "invoice.paid",
+      object: { ...endiveInvoice, invoiceId: `in_${locked}`, id: `in_${locked}` },
+      store: lockedStore,
+    });
+    assert(
+      lockedPaid.metadata.organization_activation === "unchanged",
+      `${locked} not activated`,
+    );
+    assert(lockedStore.organizationStatus === locked, `${locked} unchanged`);
+  }
+
+  const already = createMemorySyncStore();
+  already.organizationStatus = "active";
+  already.subscriptions.push({
+    id: "sub_row_already",
+    organizationId: "org_selfcheck",
+    planId: "plan_servant",
+    planKey: "servant_standard",
+    status: "active",
+    billingSubscriptionId: "sub_endive_inv",
+    paymentStatus: "ok",
+  });
+  const alreadyPaid = await dispatchStripeWebhookEvent({
+    eventType: "invoice.paid",
+    object: { ...endiveInvoice, invoiceId: "in_already", id: "in_already" },
+    store: already,
+  });
+  assert(alreadyPaid.metadata.organization_activation === "noop", "already active no-op");
+  assert(already.organizationStatus === "active", "already active stays");
+
+  const migrationSrc = readFileSync(
+    join(process.cwd(), "supabase/migrations/104_billing_trial_activation.sql"),
+    "utf8",
+  );
+  assert(
+    migrationSrc.includes("OLD.status = 'trial'") &&
+      migrationSrc.includes("NEW.status = 'active'"),
+    "trigger allows only trial to active",
+  );
+  assert(
+    migrationSrc.includes("auth.role() IS DISTINCT FROM 'service_role'"),
+    "activation rpc is service role",
+  );
+  assert(
+    migrationSrc.includes(
+      "REVOKE ALL ON FUNCTION public.activate_organization_after_paid_base_subscription(uuid) FROM authenticated",
+    ),
+    "authenticated cannot execute activation",
+  );
+  assert(
+    migrationSrc.includes(
+      "GRANT EXECUTE ON FUNCTION public.activate_organization_after_paid_base_subscription(uuid) TO service_role",
+    ),
+    "service role can execute activation",
+  );
+  assert(
+    !migrationSrc.includes("SET status = 'suspended'") &&
+      !migrationSrc.includes("SET status = 'closed'"),
+    "activation cannot set suspended or closed",
   );
 
   const entitlementsSrc = readFileSync(

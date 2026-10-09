@@ -34,6 +34,8 @@ import {
   previewSubscriptionUpgrade,
   confirmSubscriptionUpgrade,
   assertClientUpgradePayload,
+  previewFailureMessage,
+  safeStripePreviewErrorLog,
   upgradeFailureMessage,
   type LocalUpgradeSubscription,
   type SubscriptionUpgradePreview,
@@ -410,7 +412,8 @@ export async function previewSubscriptionUpgradeAction(
     });
     return { success: true, upgradePreview: preview };
   } catch (error) {
-    return { error: upgradeActionError(error) };
+    console.error(JSON.stringify(safeStripePreviewErrorLog(error)));
+    return { error: previewFailureMessage(error) };
   }
 }
 

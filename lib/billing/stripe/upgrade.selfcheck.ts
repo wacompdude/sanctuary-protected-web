@@ -12,7 +12,10 @@ import type { StripePriceSnapshot } from "@/lib/billing/stripe/catalog";
 import {
   assertClientUpgradePayload,
   confirmSubscriptionUpgrade,
+  previewFailureMessage,
   previewSubscriptionUpgrade,
+  safeStripePreviewErrorLog,
+  upgradeFailureMessage,
   type LiveSubscriptionItem,
   type LocalUpgradeSubscription,
   type RetrievedUpgradeSubscription,
@@ -88,12 +91,17 @@ function deps(options?: {
   failUpdate?: boolean;
 }): UpgradeStripeDeps & {
   calls: { preview: number; update: number; checkout: number; createSubscription: number };
+  lastPreview: unknown;
   lastUpdate: { id: string; params: unknown } | null;
 } {
   const calls = { preview: 0, update: 0, checkout: 0, createSubscription: 0 };
+  let lastPreview: unknown = null;
   let lastUpdate: { id: string; params: unknown } | null = null;
   return {
     calls,
+    get lastPreview() {
+      return lastPreview;
+    },
     get lastUpdate() {
       return lastUpdate;
     },
@@ -110,8 +118,9 @@ function deps(options?: {
       }
       return [];
     },
-    createPreview: async () => {
+    createPreview: async (request) => {
       calls.preview += 1;
+      lastPreview = request;
       return { amountDueCents: 512, currency: "usd" };
     },
     updateSubscription: async (id, params) => {
@@ -340,6 +349,31 @@ async function main(): Promise<void> {
   assert(!JSON.stringify(preview).includes("price_"), "no price id in preview");
   assert(!JSON.stringify(preview).includes("cus_"), "no customer id in preview");
   assert(!JSON.stringify(preview).includes("si_"), "no item id in preview");
+  const previewRequest = stripe.lastPreview as {
+    subscription_details: {
+      items: { id: string; price: string; quantity: number }[];
+      proration_behavior: string;
+      billing_cycle_anchor: { type: string } | string;
+    };
+  };
+  assert(
+    typeof previewRequest.subscription_details.billing_cycle_anchor !== "string",
+    "A preview anchor is not the obsolete string",
+  );
+  assert(
+    previewRequest.subscription_details.billing_cycle_anchor.type === "unchanged",
+    "A preview anchor type unchanged",
+  );
+  assert(
+    previewRequest.subscription_details.proration_behavior === "always_invoice",
+    "D preview proration",
+  );
+  assert(previewRequest.subscription_details.items[0]?.id === "si_base", "F preview item id");
+  assert(
+    previewRequest.subscription_details.items[0]?.price === "price_steward",
+    "G preview target price",
+  );
+  assert(previewRequest.subscription_details.items[0]?.quantity === 1, "H preview quantity");
 
   const confirmed = await confirmSubscriptionUpgrade({
     local: local(),
@@ -353,16 +387,17 @@ async function main(): Promise<void> {
     items: { id: string; price: string; quantity: number }[];
     proration_behavior: string;
     payment_behavior: string;
-    billing_cycle_anchor: string;
+    billing_cycle_anchor: { type: string } | string;
   };
   assert(stripe.lastUpdate?.id === "sub_existing", "H server subscription id");
   assert(params.items.length === 1, "K sms item omitted");
   assert(params.items[0]?.id === "si_base", "J/M existing base item");
   assert(params.items[0]?.price === "price_steward", "I/N catalog target price");
   assert(params.items[0]?.quantity === 1, "O quantity");
-  assert(params.proration_behavior === "always_invoice", "P proration");
-  assert(params.payment_behavior === "error_if_incomplete", "Q payment behavior");
-  assert(params.billing_cycle_anchor === "unchanged", "R anniversary");
+  assert(params.proration_behavior === "always_invoice", "E update proration");
+  assert(params.payment_behavior === "error_if_incomplete", "E payment behavior");
+  assert(typeof params.billing_cycle_anchor !== "string", "B/C update anchor is not a string");
+  assert(params.billing_cycle_anchor.type === "unchanged", "B update anchor type unchanged");
 
   const failing = deps({ failUpdate: true });
   const localPlan = "servant_standard";
@@ -584,7 +619,54 @@ async function main(): Promise<void> {
   assert(failedInvoice.organizationStatus === "active", "AB organization stays active");
   assert(failedInvoice.subscriptions[0]?.paymentStatus === "failed", "AB payment status");
 
+  const previewMessage = previewFailureMessage({
+    type: "invalid_request_error",
+    code: "parameter_unknown",
+    statusCode: 400,
+    requestId: "req_preview",
+    message: "sk_test_secret card 4242",
+  });
+  assert(
+    previewMessage ===
+      "Unable to calculate the prorated upgrade amount. Your subscription was not changed.",
+    "J preview-specific message",
+  );
+  assert(!previewMessage.includes("could not be completed"), "J preview is not the confirm message");
+  assert(!previewMessage.includes("sk_test"), "J preview message has no secret");
+  const confirmMessage = upgradeFailureMessage({
+    type: "invalid_request_error",
+    message: "sk_test_secret",
+  });
+  assert(
+    confirmMessage ===
+      "The subscription upgrade could not be completed. Your current plan was not changed.",
+    "K confirm-specific message",
+  );
+  const logged = safeStripePreviewErrorLog({
+    type: "invalid_request_error",
+    code: "parameter_unknown",
+    statusCode: 400,
+    requestId: "req_preview",
+    message: "sk_test_secret",
+    raw: { number: "4242424242424242" },
+  });
+  assert(logged.operation === "subscription_upgrade_preview", "safe log operation");
+  assert(logged.stripeErrorType === "invalid_request_error", "safe log type");
+  assert(logged.stripeErrorCode === "parameter_unknown", "safe log code");
+  assert(logged.httpStatus === 400, "safe log status");
+  assert(logged.stripeRequestId === "req_preview", "safe log request id");
+  assert(!JSON.stringify(logged).includes("sk_test"), "safe log omits secret");
+  assert(!JSON.stringify(logged).includes("4242"), "safe log omits card");
+
   const upgradeSource = readFileSync("lib/billing/stripe/upgrade.ts", "utf8");
+  const liveSource = readFileSync(
+    `lib/billing/stripe/${"upgrade-" + "live"}.ts`,
+    "utf8",
+  );
+  assert(!upgradeSource.includes("as unknown"), "no unsafe cast in upgrade");
+  assert(!liveSource.includes("as unknown"), "no unsafe cast in live adapter");
+  assert(!upgradeSource.includes('billing_cycle_anchor: "unchanged"'), "C no string anchor");
+  assert(!liveSource.includes('billing_cycle_anchor: "unchanged"'), "C live adapter has no string anchor");
   assert(!upgradeSource.includes("changeChurchSubscriptionPlan"), "no local plan write");
   assert(!upgradeSource.includes("checkout.sessions"), "AD no checkout create");
   assert(!upgradeSource.includes("subscriptions.create"), "AE no subscription create");

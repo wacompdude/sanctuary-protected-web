@@ -22,10 +22,18 @@ import {
   PLAN_DISPLAY_NAMES,
   type PlanKey,
 } from "@/lib/subscriptions/plan-keys";
+import type Stripe from "stripe";
 
 export const UPGRADE_PRORATION_BEHAVIOR = "always_invoice" as const;
 export const UPGRADE_PAYMENT_BEHAVIOR = "error_if_incomplete" as const;
-export const UPGRADE_BILLING_CYCLE_ANCHOR = "unchanged" as const;
+/** Endive billing-cycle anchor: object form, not the obsolete string. */
+export const UPGRADE_BILLING_CYCLE_ANCHOR = {
+  type: "unchanged",
+} as const satisfies Stripe.SubscriptionUpdateParams.BillingCycleAnchor &
+  Stripe.InvoiceCreatePreviewParams.SubscriptionDetails.BillingCycleAnchor;
+
+export const UPGRADE_PREVIEW_FAILURE_MESSAGE =
+  "Unable to calculate the prorated upgrade amount. Your subscription was not changed.";
 
 const UPGRADE_CREDIT_STATEMENT =
   "Stripe will apply credit for unused time on your current plan and calculate the prorated amount due today.";
@@ -140,6 +148,29 @@ export function assertClientUpgradePayload(
     throw new BillingUpgradeError("Choose a plan to upgrade.");
   }
   return target;
+}
+
+export function previewFailureMessage(error: unknown): string {
+  if (error instanceof BillingUpgradeError) return error.message;
+  return UPGRADE_PREVIEW_FAILURE_MESSAGE;
+}
+
+export function safeStripePreviewErrorLog(error: unknown): {
+  operation: "subscription_upgrade_preview";
+  stripeErrorType: string | null;
+  stripeErrorCode: string | null;
+  httpStatus: number | null;
+  stripeRequestId: string | null;
+} {
+  const record =
+    error && typeof error === "object" ? (error as Record<string, unknown>) : {};
+  return {
+    operation: "subscription_upgrade_preview",
+    stripeErrorType: typeof record.type === "string" ? record.type : null,
+    stripeErrorCode: typeof record.code === "string" ? record.code : null,
+    httpStatus: typeof record.statusCode === "number" ? record.statusCode : null,
+    stripeRequestId: typeof record.requestId === "string" ? record.requestId : null,
+  };
 }
 
 export function upgradeFailureMessage(error: unknown): string {

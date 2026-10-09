@@ -12,8 +12,6 @@ import {
 import type {
   LiveSubscriptionItem,
   RetrievedUpgradeSubscription,
-  SubscriptionUpgradePreviewRequest,
-  SubscriptionUpgradeUpdate,
   UpgradeStripeDeps,
 } from "@/lib/billing/stripe/upgrade";
 
@@ -56,11 +54,9 @@ async function retrieveUpgradeSubscription(
 
 async function createUpgradePreview(
   stripe: Stripe,
-  request: SubscriptionUpgradePreviewRequest,
+  request: Stripe.InvoiceCreatePreviewParams,
 ): Promise<{ amountDueCents: number | null; currency: string | null }> {
-  const invoice = await stripe.invoices.createPreview(
-    request as unknown as Stripe.InvoiceCreatePreviewParams,
-  );
+  const invoice = await stripe.invoices.createPreview(request);
   return {
     amountDueCents: invoice.amount_due ?? null,
     currency: invoice.currency ?? null,
@@ -70,11 +66,8 @@ async function createUpgradePreview(
 async function updateExistingSubscription(
   stripe: Stripe,
   subscriptionId: string,
-  params: SubscriptionUpgradeUpdate["params"],
+  params: Stripe.SubscriptionUpdateParams,
 ): Promise<{ id: string }> {
-  const updated = await stripe.subscriptions.update(
-    subscriptionId,
-    params as unknown as Stripe.SubscriptionUpdateParams,
-  );
+  const updated = await stripe.subscriptions.update(subscriptionId, params);
   return { id: updated.id };
 }

@@ -53,6 +53,17 @@ export type StripeWebhookObjectSummary = {
   cancelAtPeriodEnd: boolean | null;
   metadataOrganizationId: string | null;
   metadataPlanKey: string | null;
+  /**
+   * Attached schedule on a subscription object.
+   * Not present for schedule events; those use id.
+   */
+  scheduleId?: string | null;
+  /** Present only for subscription_schedule events. Not entitlement authority. */
+  schedulePhases?: {
+    startDate: number | null;
+    endDate: number | null;
+    items: WebhookPriceItemRef[];
+  }[];
 };
 
 export type StripeWebhookConstructFn = (input: {
@@ -214,6 +225,33 @@ export function extractWebhookPriceItems(
   return items;
 }
 
+function extractSchedulePhases(obj: Record<string, unknown>): {
+  startDate: number | null;
+  endDate: number | null;
+  items: WebhookPriceItemRef[];
+}[] {
+  const phases = Array.isArray(obj.phases) ? obj.phases : [];
+  return phases.flatMap((entry) => {
+    const phase = asRecord(entry);
+    if (!phase) return [];
+    const phaseItems = Array.isArray(phase.items) ? phase.items : [];
+    const items: WebhookPriceItemRef[] = [];
+    for (const itemEntry of phaseItems) {
+      const item = asRecord(itemEntry);
+      const ref = priceRefFromUnknown(item?.price);
+      if (!ref) continue;
+      items.push(ref);
+    }
+    return [
+      {
+        startDate: num(phase.start_date),
+        endDate: num(phase.end_date),
+        items,
+      },
+    ];
+  });
+}
+
 export function summarizeStripeEventObject(
   event: Stripe.Event,
 ): StripeWebhookObjectSummary {
@@ -253,6 +291,17 @@ export function summarizeStripeEventObject(
     invoiceId = invoiceId ?? str(obj.invoice);
   }
 
+  const schedulePhases =
+    objectType === "subscription_schedule" ? extractSchedulePhases(obj) : undefined;
+  if (objectType === "subscription_schedule") {
+    subscriptionId = subscriptionId ?? str(obj.subscription);
+    if (!subscriptionId) {
+      const released = obj.released_subscription;
+      subscriptionId =
+        typeof released === "string" ? released : str(asRecord(released)?.id);
+    }
+  }
+
   return {
     objectType,
     id: str(obj.id),
@@ -270,14 +319,13 @@ export function summarizeStripeEventObject(
     amountDue: num(obj.amount_due),
     currency: str(obj.currency)?.toLowerCase() ?? null,
     hostedInvoiceUrl: str(obj.hosted_invoice_url),
-    // Endive (2026-09-30) moved subscription periods onto items and documents
-    // invoice.period_* as the association window, not the service period.
-    // Handlers read the approved base-plan item/line period from priceItems.
     periodStart: null,
     periodEnd: null,
     cancelAtPeriodEnd: bool(obj.cancel_at_period_end),
     metadataOrganizationId: str(metadata.organization_id),
     metadataPlanKey: str(metadata.plan_key),
+    scheduleId: objectType === "subscription" ? str(obj.schedule) : null,
+    ...(schedulePhases ? { schedulePhases } : {}),
   };
 }
 

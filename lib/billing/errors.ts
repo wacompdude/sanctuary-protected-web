@@ -89,6 +89,15 @@ export class StripeUnknownModeForbiddenError extends Error {
   }
 }
 
+export class BillingDowngradeError extends Error {
+  readonly code = "billing_downgrade_rejected";
+
+  constructor(message: string) {
+    super(message);
+    this.name = "BillingDowngradeError";
+  }
+}
+
 export class BillingUpgradeError extends Error {
   readonly code = "billing_upgrade_rejected";
 

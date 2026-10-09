@@ -17,6 +17,7 @@ import {
   type WebhookPriceItemRef,
 } from "@/lib/billing/stripe/plan-correlation";
 import { isPlanDowngrade, isPlanUpgrade } from "@/lib/subscriptions/status";
+import { DOWNGRADE_UPGRADE_CONFLICT_MESSAGE } from "@/lib/billing/stripe/downgrade";
 import {
   isPlanKey,
   PLAN_DISPLAY_NAMES,
@@ -66,6 +67,7 @@ export type RetrievedUpgradeSubscription = {
   customerId: string;
   status: string;
   items: LiveSubscriptionItem[];
+  scheduleId?: string | null;
 };
 
 export type LocalUpgradeSubscription = {
@@ -73,6 +75,8 @@ export type LocalUpgradeSubscription = {
   billingProvider: string | null;
   billingCustomerId: string;
   billingSubscriptionId: string;
+  /** True when a downgrade schedule is still pending. */
+  activeDowngradeSchedule?: boolean;
 };
 
 export type SubscriptionUpgradePreview = {
@@ -288,6 +292,12 @@ export async function prepareSubscriptionUpgrade(input: {
     throw new BillingUpgradeError(
       "This subscription cannot be upgraded in its current status.",
     );
+  }
+  if (
+    input.local.activeDowngradeSchedule === true ||
+    Boolean((input.stripeSubscription.scheduleId ?? "").trim())
+  ) {
+    throw new BillingUpgradeError(DOWNGRADE_UPGRADE_CONFLICT_MESSAGE);
   }
   if (!isPlanKey(input.local.planKey)) {
     throw new BillingUpgradeError("The current plan could not be verified.");

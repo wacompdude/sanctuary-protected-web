@@ -239,7 +239,7 @@ export async function listPlatformChurches(input: {
       ? admin
           .from("organization_subscriptions")
           .select(
-            "organization_id, status, subscription_plans ( plan_key, display_name )",
+            "organization_id, status, subscription_plans!church_subscriptions_plan_id_fkey ( plan_key, display_name )",
           )
           .in("organization_id", organizationIds)
           .in("status", [...CURRENT_SUBSCRIPTION_STATUSES])
@@ -339,7 +339,7 @@ export async function getPlatformChurchDetail(
     admin
       .from("organization_subscriptions")
       .select(
-        "id, status, trial_end, current_period_end, cancel_at_period_end, subscription_plans ( plan_key, display_name )",
+        "id, status, trial_end, current_period_end, cancel_at_period_end, subscription_plans!church_subscriptions_plan_id_fkey ( plan_key, display_name )",
       )
       .eq("organization_id", organizationId)
       .in("status", [...CURRENT_SUBSCRIPTION_STATUSES])
@@ -608,7 +608,7 @@ export async function listCurrentSubscriptions(input: {
   const { data, error, count } = await admin
     .from("organization_subscriptions")
     .select(
-      "id, organization_id, status, churches ( name ), subscription_plans ( plan_key, display_name )",
+      "id, organization_id, status, churches ( name ), subscription_plans!church_subscriptions_plan_id_fkey ( plan_key, display_name )",
       { count: "exact" },
     )
     .in("status", [...CURRENT_SUBSCRIPTION_STATUSES])

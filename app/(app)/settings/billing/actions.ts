@@ -6,6 +6,7 @@ import {
   BillingCheckoutPlanError,
   BillingCheckoutUrlError,
   BillingConfigurationError,
+  BillingDowngradeError,
   BillingNotImplementedError,
   BillingProviderNotConfiguredError,
   BillingUpgradeError,
@@ -30,6 +31,16 @@ import {
 import { getChurchSubscription } from "@/lib/subscriptions/queries";
 import { requireStripeSecretKey } from "@/lib/billing/stripe/config";
 import { createStripeUpgradeDeps } from "@/lib/billing/stripe/upgrade-live";
+import { createStripeDowngradeDeps } from "@/lib/billing/stripe/downgrade-live";
+import {
+  assertCancellationAllowed,
+  assertClientDowngradePayload,
+  downgradeFailureMessage,
+  releaseScheduledDowngrade,
+  safeStripeDowngradeErrorLog,
+  scheduleSubscriptionDowngrade,
+  DOWNGRADE_CANCELLATION_CONFLICT_MESSAGE,
+} from "@/lib/billing/stripe/downgrade";
 import {
   previewSubscriptionUpgrade,
   confirmSubscriptionUpgrade,
@@ -276,6 +287,18 @@ export async function requestCancellationAction(
       return { error: "Confirm cancellation to continue." };
     }
 
+    const scheduleStatus = await readScheduleStatus(church.id);
+    try {
+      assertCancellationAllowed(scheduleStatus);
+    } catch (error) {
+      return {
+        error:
+          error instanceof BillingDowngradeError
+            ? error.message
+            : DOWNGRADE_CANCELLATION_CONFLICT_MESSAGE,
+      };
+    }
+
     const provider = getBillingProvider();
     if (provider.isConfigured() && provider.capabilities().cancelAtProvider) {
       return {
@@ -341,7 +364,9 @@ async function loadLocalUpgradeSubscription(
       billing_provider,
       billing_customer_id,
       billing_subscription_id,
-      subscription_plans!inner ( plan_key )
+      cancel_at_period_end,
+      schedule_status,
+      subscription_plans!church_subscriptions_plan_id_fkey!inner ( plan_key )
     `,
     )
     .eq("organization_id", organizationId)
@@ -376,6 +401,7 @@ async function loadLocalUpgradeSubscription(
       typeof row.billing_provider === "string" ? row.billing_provider : null,
     billingCustomerId: customerId,
     billingSubscriptionId: subscriptionId,
+    activeDowngradeSchedule: row.schedule_status === "scheduled",
   };
 }
 
@@ -446,3 +472,199 @@ export async function confirmSubscriptionUpgradeAction(
     return { error: upgradeActionError(error) };
   }
 }
+
+export async function scheduleSubscriptionDowngradeAction(
+  planKey: string,
+): Promise<BillingActionState> {
+  try {
+    const { church, user } = await requireBillingManageAccess();
+    if (!isServiceRoleConfigured()) {
+      return {
+        error:
+          "Server is missing SUPABASE_SERVICE_ROLE_KEY required to update billing.",
+      };
+    }
+    assertStripeUpgradeProvider();
+    const targetPlanKey = assertClientDowngradePayload({ plan_key: planKey });
+    const local = await loadLocalDowngradeSubscription(church.id);
+    await scheduleSubscriptionDowngrade({
+      local,
+      targetPlanKey,
+      requestedBy: user.id,
+      deps: createStripeDowngradeDeps(requireStripeSecretKey(), {
+        saveScheduledMirror: (mirror) =>
+          saveScheduledDowngradeMirror(church.id, local.billingSubscriptionId, mirror),
+        saveReleasedMirror: async () => undefined,
+      }),
+    });
+    revalidatePath("/settings/billing");
+    return {
+      success: true,
+      message:
+        "Downgrade scheduled. Your current plan stays active until the renewal date.",
+    };
+  } catch (error) {
+    console.error(JSON.stringify(safeStripeDowngradeErrorLog(error)));
+    return { error: downgradeFailureMessage(error) };
+  }
+}
+
+export async function cancelScheduledDowngradeAction(): Promise<BillingActionState> {
+  try {
+    const { church } = await requireBillingManageAccess();
+    if (!isServiceRoleConfigured()) {
+      return {
+        error:
+          "Server is missing SUPABASE_SERVICE_ROLE_KEY required to update billing.",
+      };
+    }
+    assertStripeUpgradeProvider();
+    const local = await loadLocalDowngradeSubscription(church.id);
+    await releaseScheduledDowngrade({
+      local,
+      deps: createStripeDowngradeDeps(requireStripeSecretKey(), {
+        saveScheduledMirror: async () => undefined,
+        saveReleasedMirror: (mirror) =>
+          saveReleasedDowngradeMirror(church.id, local.billingSubscriptionId, mirror),
+      }),
+    });
+    revalidatePath("/settings/billing");
+    return {
+      success: true,
+      message: "Scheduled downgrade canceled. Your current plan will continue.",
+    };
+  } catch (error) {
+    console.error(JSON.stringify(safeStripeDowngradeErrorLog(error)));
+    return { error: downgradeFailureMessage(error) };
+  }
+}
+
+async function readScheduleStatus(organizationId: string): Promise<string | null> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("organization_subscriptions")
+    .select("schedule_status")
+    .eq("organization_id", organizationId)
+    .in("status", [...CURRENT_SUBSCRIPTION_STATUSES])
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return typeof data?.schedule_status === "string" ? data.schedule_status : null;
+}
+
+async function loadLocalDowngradeSubscription(organizationId: string) {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("organization_subscriptions")
+    .select(
+      `
+      id,
+      billing_provider,
+      billing_customer_id,
+      billing_subscription_id,
+      cancel_at_period_end,
+      schedule_status,
+      subscription_plans!church_subscriptions_plan_id_fkey!inner ( plan_key )
+    `,
+    )
+    .eq("organization_id", organizationId)
+    .in("status", [...CURRENT_SUBSCRIPTION_STATUSES])
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error || !data) {
+    throw new BillingDowngradeError(
+      "A connected Stripe subscription is required before a downgrade can be scheduled.",
+    );
+  }
+  const row = data as Record<string, unknown>;
+  const plan = row.subscription_plans as Record<string, unknown> | null;
+  const planKey = String(plan?.plan_key ?? "");
+  const customerId =
+    typeof row.billing_customer_id === "string" ? row.billing_customer_id.trim() : "";
+  const subscriptionId =
+    typeof row.billing_subscription_id === "string"
+      ? row.billing_subscription_id.trim()
+      : "";
+  if (!isPlanKey(planKey) || !customerId || !subscriptionId) {
+    throw new BillingDowngradeError(
+      "A connected Stripe subscription is required before a downgrade can be scheduled.",
+    );
+  }
+  return {
+    subscriptionRowId: String(row.id),
+    planKey,
+    billingProvider:
+      typeof row.billing_provider === "string" ? row.billing_provider : null,
+    billingCustomerId: customerId,
+    billingSubscriptionId: subscriptionId,
+    cancelAtPeriodEnd: row.cancel_at_period_end === true,
+    activeDowngradeSchedule: row.schedule_status === "scheduled",
+  };
+}
+
+async function saveScheduledDowngradeMirror(
+  organizationId: string,
+  billingSubscriptionId: string,
+  mirror: {
+    providerScheduleId: string;
+    scheduledPlanKey: string;
+    scheduledEffectiveAt: string;
+    requestedBy: string | null;
+  },
+): Promise<void> {
+  const admin = createAdminClient();
+  const { data: plan, error: planError } = await admin
+    .from("subscription_plans")
+    .select("id")
+    .eq("plan_key", mirror.scheduledPlanKey)
+    .maybeSingle();
+  if (planError || !plan?.id) {
+    throw new BillingDowngradeError(
+      "The scheduled plan could not be saved. Your current plan was not changed.",
+    );
+  }
+  const { error } = await admin
+    .from("organization_subscriptions")
+    .update({
+      provider_schedule_id: mirror.providerScheduleId,
+      scheduled_plan_id: plan.id,
+      scheduled_effective_at: mirror.scheduledEffectiveAt,
+      schedule_status: "scheduled",
+      schedule_requested_by: mirror.requestedBy,
+      schedule_requested_at: new Date().toISOString(),
+      schedule_released_at: null,
+    })
+    .eq("organization_id", organizationId)
+    .eq("billing_subscription_id", billingSubscriptionId);
+  if (error) {
+    throw new BillingDowngradeError(
+      "The scheduled plan could not be saved. Your current plan was not changed.",
+    );
+  }
+}
+
+async function saveReleasedDowngradeMirror(
+  organizationId: string,
+  billingSubscriptionId: string,
+  mirror: { providerScheduleId: string; scheduleReleasedAt: string },
+): Promise<void> {
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("organization_subscriptions")
+    .update({
+      schedule_status: "released",
+      schedule_released_at: mirror.scheduleReleasedAt,
+      ...(mirror.providerScheduleId
+        ? { provider_schedule_id: mirror.providerScheduleId }
+        : {}),
+    })
+    .eq("organization_id", organizationId)
+    .eq("billing_subscription_id", billingSubscriptionId);
+  if (error) {
+    throw new BillingDowngradeError(
+      "The scheduled downgrade was released, but the billing display could not be updated. Refresh and try again.",
+    );
+  }
+}
+

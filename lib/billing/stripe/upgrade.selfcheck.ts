@@ -262,6 +262,7 @@ function memoryStore(): WebhookSyncStore & {
       return "unchanged" as const;
     },
     async syncOrganizationPlanName() {},
+    async syncScheduleMirror() {},
   };
   return store;
 }

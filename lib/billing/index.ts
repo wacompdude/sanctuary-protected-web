@@ -23,6 +23,7 @@ export {
   BillingProviderUnknownError,
   BillingNotImplementedError,
   BillingCheckoutPlanError,
+  BillingDowngradeError,
   BillingUpgradeError,
   BillingCheckoutUrlError,
   BillingAuthorizationError,

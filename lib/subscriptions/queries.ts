@@ -236,11 +236,18 @@ export async function getChurchSubscription(
       current_period_end,
       cancel_at_period_end,
       cancelled_at,
+      provider_schedule_id,
+      scheduled_effective_at,
+      schedule_status,
       trial_start,
       trial_end,
       grace_period_end,
       started_at,
-      subscription_plans!inner (
+      subscription_plans!church_subscriptions_plan_id_fkey!inner (
+        plan_key,
+        display_name
+      ),
+      scheduled_plan:subscription_plans!organization_subscriptions_scheduled_plan_id_fkey (
         plan_key,
         display_name
       )
@@ -266,6 +273,9 @@ export async function getChurchSubscription(
       ? row.billing_subscription_id.trim()
       : "";
 
+  const scheduled = row.scheduled_plan as Record<string, unknown> | null;
+  const scheduledPlanKey = String(scheduled?.plan_key ?? "");
+
   return {
     id: String(row.id),
     organization_id: String(row.organization_id),
@@ -285,6 +295,17 @@ export async function getChurchSubscription(
     started_at: String(row.started_at),
     plan_key: isPlanKey(planKey) ? planKey : planKey,
     plan_display_name: String(plan?.display_name ?? planKey),
+    provider_schedule_id:
+      typeof row.provider_schedule_id === "string"
+        ? row.provider_schedule_id
+        : null,
+    scheduled_effective_at:
+      (row.scheduled_effective_at as string | null) ?? null,
+    schedule_status:
+      typeof row.schedule_status === "string" ? row.schedule_status : null,
+    scheduled_plan_key: isPlanKey(scheduledPlanKey) ? scheduledPlanKey : null,
+    scheduled_plan_name:
+      typeof scheduled?.display_name === "string" ? scheduled.display_name : null,
   };
 }
 

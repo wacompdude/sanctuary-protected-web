@@ -98,6 +98,12 @@ export type DowngradeImpactReport = {
   blocking: boolean;
   items: DowngradeImpactItem[];
   summary: string;
+  activeSeats?: number;
+  currentUserLimit?: number | null;
+  targetUserLimit?: number | null;
+  currentSmsLimit?: number | null;
+  targetSmsLimit?: number | null;
+  targetMonthlyPriceCents?: number | null;
 };
 
 export type BillingHistoryItem = {

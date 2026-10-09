@@ -24,6 +24,14 @@ import {
   type GetStripePriceById,
 } from "@/lib/billing/stripe/plan-correlation";
 import { BillingCheckoutPlanError } from "@/lib/billing/errors";
+import {
+  DOWNGRADE_UPGRADE_CONFLICT_MESSAGE,
+  evaluatePostEffectiveScheduleRelease,
+  postEffectiveReleaseIdempotencyKey,
+  releaseScheduledDowngrade,
+  type DowngradeStripeDeps,
+} from "@/lib/billing/stripe/downgrade";
+import { prepareSubscriptionUpgrade } from "@/lib/billing/stripe/upgrade";
 import type { StripePriceSnapshot } from "@/lib/billing/stripe/catalog";
 import {
   verifyStripeWebhookSignature,
@@ -38,6 +46,7 @@ import {
   handleInvoicePaid,
   handleInvoicePaymentFailed,
   handleSubscriptionLifecycle,
+  handleSubscriptionSchedule,
   type SyncedSubscriptionSnapshot,
   type WebhookSyncStore,
 } from "@/lib/billing/stripe/webhook-sync";
@@ -209,6 +218,12 @@ type MemorySyncStore = WebhookSyncStore & {
   notices: number;
   organizationStatus: OrganizationAccountStatus;
   organizationPlanName: string | null;
+  scheduleMirror: {
+    scheduleStatus: string;
+    scheduledPlanId?: string | null;
+    planKey: string | null;
+    planName: string | null;
+  } | null;
   conflictCustomer?: string;
 };
 
@@ -236,6 +251,7 @@ function createMemorySyncStore(seed?: {
     notices: 0,
     organizationStatus: "trial",
     organizationPlanName: "Servant Standard",
+    scheduleMirror: null,
     conflictCustomer: undefined,
     async findOrganizationByStripeCustomerId(id: string) {
       if (store.conflictCustomer && id === store.conflictCustomer) {
@@ -375,6 +391,26 @@ function createMemorySyncStore(seed?: {
     },
     async syncOrganizationPlanName(input) {
       store.organizationPlanName = PLAN_DISPLAY_NAMES[input.planKey];
+    },
+    async syncScheduleMirror(input) {
+      store.scheduleMirror = {
+        ...input,
+        planKey: store.subscriptions[0]?.planKey ?? null,
+        planName: store.organizationPlanName,
+      };
+      for (const sub of subscriptions) {
+        if (
+          sub.organizationId === input.organizationId &&
+          sub.billingSubscriptionId === input.billingSubscriptionId
+        ) {
+          sub.scheduleStatus = input.scheduleStatus;
+          sub.providerScheduleId = input.providerScheduleId;
+          if (input.scheduledPlanId) sub.scheduledPlanId = input.scheduledPlanId;
+          if (input.scheduledEffectiveAt) {
+            sub.scheduledEffectiveAt = input.scheduledEffectiveAt;
+          }
+        }
+      }
     },
     async notifyBillingCharge() {
       store.notices += 1;
@@ -1753,6 +1789,128 @@ async function main() {
   assert(failedPay.organizationPlanName === "Servant Standard", "C failed invoice keeps display plan");
   assert(failedPay.organizationStatus === "active", "C organization status unchanged");
 
+  const scheduled = createMemorySyncStore();
+  scheduled.organizationStatus = "active";
+  scheduled.organizationPlanName = "Steward Pro";
+  scheduled.subscriptions.push({
+    id: "sub_row_schedule",
+    organizationId: "org_selfcheck",
+    planId: "plan_steward",
+    planKey: "steward_pro",
+    status: "active",
+    billingSubscriptionId: "sub_existing",
+    paymentStatus: "ok",
+  });
+  const scheduleEvent = {
+    objectType: "subscription_schedule",
+    id: "sub_sched_1",
+    customerId: "cus_selfcheck_1",
+    subscriptionId: "sub_existing",
+    invoiceId: null,
+    checkoutSessionId: null,
+    priceItems: [],
+    priceId: null,
+    priceLookupKey: null,
+    status: "active",
+    mode: null,
+    paymentStatus: null,
+    amountPaid: null,
+    amountDue: null,
+    currency: null,
+    hostedInvoiceUrl: null,
+    periodStart: null,
+    periodEnd: null,
+    cancelAtPeriodEnd: null,
+    metadataOrganizationId: null,
+    metadataPlanKey: null,
+    schedulePhases: [
+      {
+        startDate: cycleStart,
+        endDate: renewalEnd,
+        items: [
+          {
+            priceId: "price_steward",
+            lookupKey: "steward_pro_monthly",
+            productName: null,
+          },
+        ],
+      },
+      {
+        startDate: renewalEnd,
+        endDate: null,
+        items: [
+          {
+            priceId: "price_servant",
+            lookupKey: "servant_standard_monthly",
+            productName: null,
+          },
+        ],
+      },
+    ],
+  } satisfies StripeWebhookObjectSummary;
+  await handleSubscriptionSchedule(scheduled, scheduleEvent);
+  await handleSubscriptionSchedule(scheduled, scheduleEvent);
+  assert(scheduled.subscriptions[0]?.planKey === "steward_pro", "31 schedule webhook keeps live plan");
+  assert(scheduled.organizationPlanName === "Steward Pro", "31 schedule webhook keeps display plan");
+  assert(scheduled.scheduleMirror?.scheduleStatus === "scheduled", "20 schedule mirror is scheduled");
+  assert(scheduled.scheduleMirror?.scheduledPlanId === "plan_servant", "20 scheduled target is servant");
+  assert(scheduled.history.length === 0, "32 repeated schedule webhook writes no plan history");
+
+  const effective = createMemorySyncStore();
+  effective.organizationStatus = "active";
+  effective.subscriptions.push({
+    id: "sub_row_effective",
+    organizationId: "org_selfcheck",
+    planId: "plan_steward",
+    planKey: "steward_pro",
+    status: "active",
+    billingSubscriptionId: "sub_existing",
+    paymentStatus: "ok",
+  });
+  const effectiveUpdate = {
+    ...scheduleEvent,
+    objectType: "subscription",
+    id: "sub_existing",
+    priceItems: [
+      {
+        priceId: "price_servant",
+        lookupKey: "servant_standard_monthly",
+        productName: null,
+        periodStart: renewalEnd,
+        periodEnd: renewalEnd + 2678400,
+      },
+    ],
+    priceId: "price_servant",
+    priceLookupKey: "servant_standard_monthly",
+    status: "active",
+    schedulePhases: undefined,
+  } satisfies StripeWebhookObjectSummary;
+  await handleSubscriptionLifecycle(effective, effectiveUpdate, "stripe_subscription_updated", {
+    providerEventId: "evt_effective_downgrade",
+  });
+  await handleSubscriptionLifecycle(effective, effectiveUpdate, "stripe_subscription_updated", {
+    providerEventId: "evt_effective_downgrade",
+  });
+  assert(effective.subscriptions[0]?.planKey === "servant_standard", "33 effective update changes live plan");
+  assert(effective.organizationPlanName === "Servant Standard", "33 effective update changes display plan");
+  assert(effective.history.length === 1, "33 effective update writes history once");
+  await handleInvoicePaymentFailed(effective, {
+    ...effectiveUpdate,
+    objectType: "invoice",
+    id: "in_renewal_fail",
+    invoiceId: "in_renewal_fail",
+    status: "open",
+    amountDue: 2995,
+    amountPaid: 0,
+  });
+  assert(effective.subscriptions[0]?.planKey === "servant_standard", "34 failed renewal does not restore the old plan");
+
+  assert(
+    STRIPE_WEBHOOK_EVENT_TYPES.includes("subscription_schedule.released"),
+    "schedule events are handled",
+  );
+  await assertPostEffectiveScheduleRelease();
+
   const verifySrc = readFileSync(
     join(process.cwd(), "lib/billing/stripe/webhook-verify.ts"),
     "utf8",
@@ -1777,3 +1935,524 @@ main().catch((error) => {
   console.error(error);
   process.exitCode = 1;
 });
+
+const RELEASE_EFFECTIVE_AT = "2026-11-08T08:40:14.000Z";
+
+function scheduledStewardRow(
+  overrides: Partial<SyncedSubscriptionSnapshot> = {},
+): SyncedSubscriptionSnapshot {
+  return {
+    id: "sub_row_release",
+    organizationId: "org_selfcheck",
+    planId: "plan_steward",
+    planKey: "steward_pro",
+    status: "active",
+    billingSubscriptionId: "sub_existing",
+    paymentStatus: "ok",
+    billingCustomerId: "cus_selfcheck_1",
+    providerScheduleId: "sub_sched_1",
+    scheduleStatus: "scheduled",
+    scheduledPlanId: "plan_servant",
+    scheduledPlanKey: "servant_standard",
+    scheduledEffectiveAt: RELEASE_EFFECTIVE_AT,
+    ...overrides,
+  };
+}
+
+function livePlanEvent(
+  plan: "steward_pro" | "servant_standard",
+  overrides: Partial<StripeWebhookObjectSummary> = {},
+): StripeWebhookObjectSummary {
+  const lookup =
+    plan === "steward_pro" ? "steward_pro_monthly" : "servant_standard_monthly";
+  return baseObject({
+    objectType: "subscription",
+    id: "sub_existing",
+    customerId: "cus_selfcheck_1",
+    subscriptionId: "sub_existing",
+    scheduleId: "sub_sched_1",
+    status: "active",
+    priceItems: [
+      {
+        priceId: `price_${plan}`,
+        lookupKey: lookup,
+        productName: null,
+        periodStart: 1_762_592_000,
+        periodEnd: 1_765_267_200,
+      },
+    ],
+    priceId: `price_${plan}`,
+    priceLookupKey: lookup,
+    metadataOrganizationId: "org_selfcheck",
+    metadataPlanKey: null,
+    ...overrides,
+  });
+}
+
+async function assertPostEffectiveScheduleRelease(): Promise<void> {
+  const after = new Date(RELEASE_EFFECTIVE_AT);
+  const before = new Date("2026-11-01T00:00:00.000Z");
+  const mirror = {
+    now: after,
+    organizationId: "org_selfcheck",
+    livePlanKey: "steward_pro",
+    liveCustomerId: "cus_selfcheck_1",
+    liveSubscriptionId: "sub_existing",
+    liveScheduleId: "sub_sched_1",
+    mirrorOrganizationId: "org_selfcheck",
+    mirrorCustomerId: "cus_selfcheck_1",
+    mirrorSubscriptionId: "sub_existing",
+    scheduleStatus: "scheduled" as string | null,
+    providerScheduleId: "sub_sched_1",
+    scheduledPlanKey: "servant_standard",
+    scheduledEffectiveAt: RELEASE_EFFECTIVE_AT,
+  };
+  assert(
+    !evaluatePostEffectiveScheduleRelease({ ...mirror, now: before }).eligible,
+    "1 pending Steward does not release early",
+  );
+  assert(
+    !evaluatePostEffectiveScheduleRelease({ ...mirror, livePlanKey: "steward_pro" }).eligible,
+    "2 effective time with live Steward does not release",
+  );
+  assert(
+    !evaluatePostEffectiveScheduleRelease({
+      ...mirror,
+      now: before,
+      livePlanKey: "servant_standard",
+    }).eligible,
+    "3 live Servant before the effective time does not release",
+  );
+  const eligible = evaluatePostEffectiveScheduleRelease({
+    ...mirror,
+    livePlanKey: "servant_standard",
+  });
+  assert(eligible.eligible, "4 matching live Servant can release");
+  assert(
+    eligible.eligible &&
+      eligible.idempotencyKey === postEffectiveReleaseIdempotencyKey("sub_sched_1"),
+    "4 idempotency key is the schedule id",
+  );
+  assert(
+    !evaluatePostEffectiveScheduleRelease({
+      ...mirror,
+      livePlanKey: "servant_standard",
+      liveScheduleId: "sub_sched_other",
+    }).eligible,
+    "5 mismatched schedule id cannot release",
+  );
+  assert(
+    !evaluatePostEffectiveScheduleRelease({
+      ...mirror,
+      livePlanKey: "servant_standard",
+      liveSubscriptionId: "sub_other",
+    }).eligible,
+    "6 mismatched subscription cannot release",
+  );
+  assert(
+    !evaluatePostEffectiveScheduleRelease({
+      ...mirror,
+      livePlanKey: "servant_standard",
+      liveCustomerId: "cus_other",
+    }).eligible,
+    "7 mismatched customer cannot release",
+  );
+  assert(
+    !evaluatePostEffectiveScheduleRelease({
+      ...mirror,
+      livePlanKey: "servant_standard",
+      organizationId: "org_other",
+    }).eligible,
+    "8 mismatched organization cannot release",
+  );
+
+  const success = createMemorySyncStore();
+  success.organizationStatus = "active";
+  success.subscriptions.push(scheduledStewardRow());
+  const releaseCalls: { scheduleId: string; idempotencyKey: string }[] = [];
+  await handleSubscriptionLifecycle(
+    success,
+    livePlanEvent("servant_standard"),
+    "stripe_subscription_updated",
+    {
+      providerEventId: "evt_effective_release",
+      now: after,
+      releaseCompletedSchedule: async (input) => {
+        assert(success.subscriptions[0]?.planKey === "servant_standard", "9 release follows plan sync");
+        assert(success.history.length === 1, "9 history is written before release");
+        assert(
+          Object.keys(input).sort().join(",") === "idempotencyKey,scheduleId",
+          "27 release requests no invoice or proration",
+        );
+        releaseCalls.push(input);
+        return { status: "released" };
+      },
+    },
+  );
+  assert(success.subscriptions[0]?.planKey === "servant_standard", "10 release keeps Servant");
+  assert(success.scheduleMirror?.scheduleStatus === "completed", "11 release sets completed");
+  assert(success.transactions.length === 0, "26 release creates no transaction");
+  assert(releaseCalls.length === 1, "4 release is called once");
+
+  await handleSubscriptionLifecycle(
+    success,
+    livePlanEvent("servant_standard", { scheduleId: null }),
+    "stripe_subscription_updated",
+    {
+      providerEventId: "evt_after_release",
+      now: after,
+      releaseCompletedSchedule: async () => {
+        releaseCalls.push({ scheduleId: "again", idempotencyKey: "again" });
+        return { status: "released" };
+      },
+    },
+  );
+  assert(success.history.length === 1, "21 follow-up subscription update adds no history");
+  assert(releaseCalls.length === 1, "21 follow-up update does not release again");
+  assert(success.subscriptions[0]?.planKey === "servant_standard", "21 plan stays Servant");
+
+  const failed = createMemorySyncStore();
+  failed.organizationStatus = "active";
+  failed.subscriptions.push(scheduledStewardRow());
+  let failedRelease = false;
+  try {
+    await handleSubscriptionLifecycle(
+      failed,
+      livePlanEvent("servant_standard"),
+      "stripe_subscription_updated",
+      {
+        providerEventId: "evt_release_fail",
+        now: after,
+        releaseCompletedSchedule: async () => {
+          failedRelease = true;
+          throw new Error("timeout");
+        },
+        confirmScheduleStatus: async () => "active",
+      },
+    );
+    assert(false, "12 release failure throws");
+  } catch (error) {
+    assert(error instanceof Error, "12 release failure throws");
+    assert(!error.message.includes("timeout"), "12 raw Stripe error is not exposed");
+  }
+  assert(failedRelease, "12 release was attempted");
+  assert(failed.subscriptions[0]?.planKey === "servant_standard", "12 failure keeps Servant");
+  assert(failed.subscriptions[0]?.scheduleStatus === "scheduled", "13 failure stays scheduled");
+  assert(failed.scheduleMirror?.scheduleStatus !== "completed", "13 failure does not complete");
+  assert(failed.history.length === 1, "15 first attempt writes one history row");
+
+  let retryReleases = 0;
+  await handleSubscriptionLifecycle(
+    failed,
+    livePlanEvent("servant_standard"),
+    "stripe_subscription_updated",
+    {
+      providerEventId: "evt_release_fail",
+      now: after,
+      releaseCompletedSchedule: async () => {
+        retryReleases += 1;
+        return { status: "released" };
+      },
+    },
+  );
+  assert(retryReleases === 1, "16 retry releases the attached schedule");
+  assert(failed.history.length === 1, "15 retry does not duplicate history");
+  assert(failed.scheduleMirror?.scheduleStatus === "completed", "16 retry completes");
+  assert(failed.subscriptions[0]?.planKey === "servant_standard", "16 retry keeps Servant");
+
+  const already = createMemorySyncStore();
+  already.organizationStatus = "active";
+  already.subscriptions.push(scheduledStewardRow());
+  let alreadyCalls = 0;
+  await handleSubscriptionLifecycle(
+    already,
+    livePlanEvent("servant_standard"),
+    "stripe_subscription_updated",
+    {
+      providerEventId: "evt_already_released",
+      now: after,
+      releaseCompletedSchedule: async () => {
+        alreadyCalls += 1;
+        throw new Error("already released");
+      },
+      confirmScheduleStatus: async () => "released",
+    },
+  );
+  assert(alreadyCalls === 1, "17 already-released schedule is confirmed once");
+  assert(already.scheduleMirror?.scheduleStatus === "completed", "17 already released becomes completed");
+  assert(already.subscriptions[0]?.planKey === "servant_standard", "17 plan stays Servant");
+  assert(already.history.length === 1, "23 effective downgrade writes one history row");
+
+  let scheduleReleaseCalls = 0;
+  const releasedOld = createMemorySyncStore();
+  releasedOld.subscriptions.push(scheduledStewardRow());
+  await handleSubscriptionSchedule(
+    releasedOld,
+    livePlanEvent("steward_pro", {
+      objectType: "subscription_schedule",
+      id: "sub_sched_1",
+      status: "released",
+      scheduleId: null,
+      priceItems: [],
+    }),
+    {
+      now: before,
+      readLiveApprovedPlanKey: async () => "steward_pro",
+      releaseCompletedSchedule: async () => {
+        scheduleReleaseCalls += 1;
+        return { status: "released" };
+      },
+    },
+  );
+  assert(scheduleReleaseCalls === 0, "18 schedule.released does not call release");
+  assert(releasedOld.scheduleMirror?.scheduleStatus === "released", "19 live old plan stays released");
+  assert(releasedOld.subscriptions[0]?.planKey === "steward_pro", "19 schedule event does not change the plan");
+
+  const releasedNew = createMemorySyncStore();
+  releasedNew.subscriptions.push(scheduledStewardRow({ planKey: "servant_standard", planId: "plan_servant" }));
+  await handleSubscriptionSchedule(
+    releasedNew,
+    livePlanEvent("servant_standard", {
+      objectType: "subscription_schedule",
+      id: "sub_sched_1",
+      status: "released",
+      scheduleId: null,
+      priceItems: [],
+    }),
+    {
+      now: after,
+      readLiveApprovedPlanKey: async () => "servant_standard",
+      releaseCompletedSchedule: async () => {
+        scheduleReleaseCalls += 1;
+        return { status: "released" };
+      },
+    },
+  );
+  assert(scheduleReleaseCalls === 0, "20 schedule.released still does not call release");
+  assert(releasedNew.scheduleMirror?.scheduleStatus === "completed", "20 live target after effective time is completed");
+
+  const customerDeps: DowngradeStripeDeps = {
+    retrieveSubscription: async () => ({
+      id: "sub_test",
+      customerId: "cus_test",
+      status: "active",
+      cancelAtPeriodEnd: false,
+      pendingUpdate: false,
+      scheduleId: "sub_sched_customer",
+      items: [
+        {
+          id: "si_base",
+          priceId: "price_steward_pro_monthly",
+          lookupKey: "steward_pro_monthly",
+          quantity: 1,
+          recurring: true,
+          periodStart: 1760000000,
+          periodEnd: 1762592000,
+        },
+      ],
+    }),
+    listPrices: async () => [],
+    createScheduleFromSubscription: async () => {
+      throw new Error("create");
+    },
+    retrieveSchedule: async () => ({
+      id: "sub_sched_customer",
+      status: "active",
+      subscriptionId: "sub_test",
+      phases: [],
+    }),
+    updateSchedule: async () => {
+      throw new Error("update");
+    },
+    releaseSchedule: async () => ({ id: "sub_sched_customer", status: "released" }),
+    saveScheduledMirror: async () => undefined,
+    saveReleasedMirror: async () => undefined,
+  };
+  const customerCanceled = await releaseScheduledDowngrade({
+    local: {
+      subscriptionRowId: "row",
+      planKey: "steward_pro",
+      billingProvider: "stripe",
+      billingCustomerId: "cus_test",
+      billingSubscriptionId: "sub_test",
+      cancelAtPeriodEnd: false,
+      activeDowngradeSchedule: true,
+    },
+    deps: customerDeps,
+  });
+  assert(customerCanceled.scheduleStatus === "released", "22 customer cancel stays released");
+
+  let upgradeBlocked = false;
+  try {
+    await prepareSubscriptionUpgrade({
+      local: {
+        planKey: "steward_pro",
+        billingProvider: "stripe",
+        billingCustomerId: "cus_test",
+        billingSubscriptionId: "sub_test",
+        activeDowngradeSchedule: true,
+      },
+      targetPlanKey: "shepherd_plus",
+      stripeSubscription: {
+        id: "sub_test",
+        customerId: "cus_test",
+        status: "active",
+        scheduleId: "sub_sched_1",
+        items: [
+          {
+            id: "si_base",
+            priceId: "price_steward_pro_monthly",
+            lookupKey: "steward_pro_monthly",
+            periodStart: 1760000000,
+            periodEnd: 1762592000,
+          },
+        ],
+      },
+      listPrices: async () => [],
+    });
+  } catch (error) {
+    upgradeBlocked = error instanceof Error && error.message === DOWNGRADE_UPGRADE_CONFLICT_MESSAGE;
+  }
+  assert(upgradeBlocked, "24 immediate upgrade stays blocked while scheduled");
+
+  const upgradeReady = await prepareSubscriptionUpgrade({
+    local: {
+      planKey: "servant_standard",
+      billingProvider: "stripe",
+      billingCustomerId: "cus_test",
+      billingSubscriptionId: "sub_test",
+      activeDowngradeSchedule: false,
+    },
+    targetPlanKey: "steward_pro",
+    stripeSubscription: {
+      id: "sub_test",
+      customerId: "cus_test",
+      status: "active",
+      scheduleId: null,
+      items: [
+        {
+          id: "si_base",
+          priceId: "price_servant_standard_monthly",
+          lookupKey: "servant_standard_monthly",
+          periodStart: 1762592000,
+          periodEnd: 1765270400,
+        },
+      ],
+    },
+    listPrices: async (lookupKey) => [
+      {
+        id: `price_${lookupKey}`,
+        productId: "prod",
+        active: true,
+        currency: "usd",
+        unitAmount: lookupKey === "steward_pro_monthly" ? 3995 : 2995,
+        type: "recurring",
+        recurringInterval: "month",
+        lookupKey,
+      },
+    ],
+  });
+  assert(
+    upgradeReady.update.params.items[0]?.price === "price_steward_pro_monthly",
+    "25 upgrade is available after completed cleanup",
+  );
+
+  const claim = createMemoryClaimStore();
+  const retryable = createMemorySyncStore();
+  retryable.organizationStatus = "active";
+  retryable.subscriptions.push(scheduledStewardRow());
+  let webhookReleases = 0;
+  const provider = {
+    id: "stripe" as const,
+    capabilities: () => getBillingProvider().capabilities(),
+    isConfigured: () => true,
+    async verifyAndParseWebhook() {
+      return {
+        ok: true as const,
+        status: 200,
+        eventType: "customer.subscription.updated",
+        providerEventId: "evt_retryable_release",
+        organizationId: "org_selfcheck",
+        metadata: { stripe_object: livePlanEvent("servant_standard") },
+      };
+    },
+    async createCheckoutSession() {
+      throw new Error("checkout");
+    },
+    async createCustomerPortalSession() {
+      throw new Error("portal");
+    },
+  };
+  const firstWebhook = await processBillingWebhook(
+    {
+      providerSlug: "stripe",
+      rawBody: "{}",
+      headers: new Headers({ "stripe-signature": "t=1,v1=ok" }),
+    },
+    {
+      isServiceRoleConfigured: () => true,
+      getProvider: () => provider as never,
+      createClaimStore: () => claim,
+      createSyncStore: () => retryable,
+      getPriceById: async () => null,
+      now: after,
+      releaseCompletedSchedule: async () => {
+        webhookReleases += 1;
+        throw new Error("timeout");
+      },
+      confirmScheduleStatus: async () => "active",
+    },
+  );
+  assert(firstWebhook.ok === false && firstWebhook.status === 500, "14 release failure returns retryable 500");
+  const failedRow = [...claim.rows.values()][0];
+  assert(failedRow?.processingStatus === "failed", "14 billing event stays failed");
+  assert(retryable.subscriptions[0]?.planKey === "servant_standard", "14 plan stays Servant");
+  assert(retryable.history.length === 1, "14 history written once before failure");
+
+  const secondWebhook = await processBillingWebhook(
+    {
+      providerSlug: "stripe",
+      rawBody: "{}",
+      headers: new Headers({ "stripe-signature": "t=1,v1=ok" }),
+    },
+    {
+      isServiceRoleConfigured: () => true,
+      getProvider: () => provider as never,
+      createClaimStore: () => claim,
+      createSyncStore: () => retryable,
+      getPriceById: async () => null,
+      now: after,
+      releaseCompletedSchedule: async () => {
+        webhookReleases += 1;
+        return { status: "released" };
+      },
+      confirmScheduleStatus: async () => "active",
+    },
+  );
+  assert(secondWebhook.ok === true, "14 retry processes");
+  assert(webhookReleases === 2, "16 webhook retry releases");
+  assert(retryable.history.length === 1, "15 webhook retry does not duplicate history");
+  assert(retryable.scheduleMirror?.scheduleStatus === "completed", "23 webhook cleanup becomes completed");
+  assert(retryable.transactions.length === 0, "26 webhook release creates no transaction");
+
+  const liveAdapter = readFileSync(
+    join(process.cwd(), "lib/billing/stripe/" + "downgrade-" + "live.ts"),
+    "utf8",
+  );
+  const releaseStart = liveAdapter.indexOf("async function releaseSchedule");
+  const releaseBody = liveAdapter.slice(releaseStart, releaseStart + 500);
+  assert(releaseBody.includes("subscription" + "Schedules.release"), "5 release operation");
+  assert(releaseBody.includes("{}"), "27 release params do not invoice or prorate");
+  assert(!releaseBody.includes("invoice_now"), "27 no invoice_now");
+  assert(!releaseBody.includes("prorat"), "27 no proration");
+  const selfSource = readFileSync(
+    join(process.cwd(), "lib/billing/stripe/webhook.selfcheck.ts"),
+    "utf8",
+  );
+  assert(!selfSource.includes("get" + "StripeClient"), "28 self-check does not call Stripe");
+  assert(!selfSource.includes("subscription" + "Schedules"), "28 self-check does not call Stripe");
+  assert(
+    !selfSource.includes("downgrade-" + "live"),
+    "28 self-check does not import the live adapter",
+  );
+}

@@ -127,8 +127,8 @@ function main() {
       isSamePlan: false,
       isUpgrade: false,
       isDowngrade: true,
-    }) === "downgrade_unavailable",
-    "lower plan is not checkout or immediate upgrade",
+    }) === "schedule_downgrade",
+    "lower plan schedules a renewal downgrade and is not checkout or an immediate upgrade",
   );
   assert(
     completedUpgradeReviewIsCurrent({

@@ -185,7 +185,7 @@ async function getCurrentSubscription(
       trial_end,
       grace_period_end,
       started_at,
-      subscription_plans!inner (
+      subscription_plans!church_subscriptions_plan_id_fkey!inner (
         plan_key,
         display_name
       )
@@ -632,6 +632,17 @@ export async function scheduleChurchSubscriptionCancellation(params: {
   const existing = await getCurrentSubscription(admin, organizationId);
   if (!existing) {
     throw new Error("Church has no current subscription to cancel.");
+  }
+
+  const { data: scheduleRow } = await admin
+    .from("organization_subscriptions")
+    .select("schedule_status")
+    .eq("id", existing.id)
+    .maybeSingle();
+  if (scheduleRow?.schedule_status === "scheduled") {
+    throw new Error(
+      "Cancel the scheduled plan downgrade before canceling the subscription.",
+    );
   }
 
   if (existing.cancel_at_period_end) {

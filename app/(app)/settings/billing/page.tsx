@@ -203,7 +203,7 @@ async function BillingContent() {
         </CardHeader>
         <CardContent>
           <BillingPlanPanel
-            key={subscription ? String(subscription.plan_key) : "none"}
+            key={`${subscription ? String(subscription.plan_key) : "none"}-${subscription?.schedule_status ?? "none"}`}
             plans={publicPlans}
             currentPlanKey={
               subscription ? String(subscription.plan_key) : null
@@ -215,6 +215,20 @@ async function BillingContent() {
             providerMessage={billingProviderStatusMessage()}
             cancelAtPeriodEnd={Boolean(subscription?.cancel_at_period_end)}
             canManageBilling={canManageBilling}
+            scheduledDowngrade={
+              subscription?.schedule_status === "scheduled" &&
+              subscription.scheduled_plan_key &&
+              subscription.scheduled_effective_at
+                ? {
+                    currentPlanName: subscription.plan_display_name,
+                    targetPlanKey: String(subscription.scheduled_plan_key),
+                    targetPlanName:
+                      subscription.scheduled_plan_name ??
+                      String(subscription.scheduled_plan_key),
+                    effectiveAt: subscription.scheduled_effective_at,
+                  }
+                : null
+            }
           />
         </CardContent>
       </Card>

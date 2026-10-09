@@ -21,6 +21,7 @@ import {
   isPlanUpgrade,
   planRank,
 } from "@/lib/subscriptions/status";
+import { commercialPlanByKey } from "@/lib/billing/commercial-catalog";
 import { getSmsSegmentUsageMeter } from "@/lib/subscriptions/usage";
 import type {
   DowngradeImpactItem,
@@ -219,6 +220,16 @@ export async function buildDowngradeImpactReport(params: {
     summary = `Plan change to ${toPlanDisplayName}.`;
   }
 
+  const currentSeatLimit = readIntegerEntitlement(
+    current.values,
+    FEATURE_KEYS.USERS_ACTIVE_LIMIT,
+  );
+  const currentSmsLimit = readIntegerEntitlement(
+    current.values,
+    FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT,
+  );
+  const catalogTarget = commercialPlanByKey(toPlanKey);
+
   return {
     fromPlanKey,
     toPlanKey,
@@ -230,5 +241,11 @@ export async function buildDowngradeImpactReport(params: {
     blocking,
     items,
     summary,
+    activeSeats,
+    currentUserLimit: currentSeatLimit.unlimited ? null : currentSeatLimit.limit,
+    targetUserLimit: seatLimit.unlimited ? null : seatLimit.limit,
+    currentSmsLimit: currentSmsLimit.unlimited ? null : currentSmsLimit.limit,
+    targetSmsLimit: smsLimit.unlimited ? null : smsLimit.limit,
+    targetMonthlyPriceCents: catalogTarget?.monthlyPriceCents ?? null,
   };
 }

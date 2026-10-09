@@ -44,10 +44,14 @@ async function retrieveUpgradeSubscription(
     periodStart: item.current_period_start ?? null,
     periodEnd: item.current_period_end ?? null,
   }));
+  const schedule = subscription.schedule;
+  const scheduleId =
+    typeof schedule === "string" ? schedule : schedule?.id ?? null;
   return {
     id: subscription.id,
     customerId,
     status: subscription.status,
+    scheduleId,
     items,
   };
 }

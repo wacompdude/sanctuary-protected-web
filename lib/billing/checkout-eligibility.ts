@@ -22,11 +22,12 @@ export type ConnectedPlanAction =
   | "initial_checkout"
   | "current"
   | "upgrade"
-  | "downgrade_unavailable";
+  | "schedule_downgrade";
 
 /**
  * A connected Stripe subscription never starts Checkout.
- * Higher plans use the dedicated upgrade path. Lower plans stay unavailable.
+ * Higher plans use the immediate upgrade path.
+ * Lower plans schedule a downgrade at the next renewal.
  */
 export function connectedSubscriptionPlanAction(input: {
   hasProviderSubscription: boolean;
@@ -37,7 +38,7 @@ export function connectedSubscriptionPlanAction(input: {
   if (!input.hasProviderSubscription) return "initial_checkout";
   if (input.isSamePlan) return "current";
   if (input.isUpgrade) return "upgrade";
-  if (input.isDowngrade) return "downgrade_unavailable";
+  if (input.isDowngrade) return "schedule_downgrade";
   return "current";
 }
 

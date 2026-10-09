@@ -85,6 +85,11 @@ export type ChurchSubscriptionRecord = {
   started_at: string;
   plan_key: PlanKey | string;
   plan_display_name: string;
+  provider_schedule_id?: string | null;
+  scheduled_plan_key?: string | null;
+  scheduled_plan_name?: string | null;
+  scheduled_effective_at?: string | null;
+  schedule_status?: string | null;
 };
 
 /** Resolved scalar for one feature key. */

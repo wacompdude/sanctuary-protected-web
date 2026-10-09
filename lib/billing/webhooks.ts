@@ -16,11 +16,16 @@ import type { BillingWebhookReceiveResult } from "@/lib/billing/types";
 import { BillingConfigurationError } from "@/lib/billing/errors";
 import { createStripePriceByIdRetriever } from "@/lib/billing/stripe/catalog-stripe";
 import { readStripeSecretKey } from "@/lib/billing/stripe/config";
+import { createStripeScheduleCleanupDeps } from "@/lib/billing/stripe/downgrade-live";
 import { dispatchStripeWebhookEvent } from "@/lib/billing/stripe/webhook-dispatch";
 import { createAdminWebhookSyncStore } from "@/lib/billing/stripe/webhook-store";
 import type { GetStripePriceById } from "@/lib/billing/stripe/plan-correlation";
 import type { StripeWebhookObjectSummary } from "@/lib/billing/stripe/webhook-verify";
-import type { WebhookSyncStore } from "@/lib/billing/stripe/webhook-sync";
+import type {
+  ScheduleReleaseCall,
+  SubscriptionLifecycleOptions,
+  WebhookSyncStore,
+} from "@/lib/billing/stripe/webhook-sync";
 
 /** Fresh "received" rows are treated as in-flight; older ones may be reclaimed. */
 export const BILLING_EVENT_STALE_RECEIVED_MS = 2 * 60 * 1000;
@@ -77,6 +82,10 @@ export type ProcessBillingWebhookDeps = {
   getPriceById?: GetStripePriceById;
   /** Injectable clock for stale-received tests. */
   nowMs?: () => number;
+  now?: Date;
+  releaseCompletedSchedule?: SubscriptionLifecycleOptions["releaseCompletedSchedule"];
+  confirmScheduleStatus?: SubscriptionLifecycleOptions["confirmScheduleStatus"];
+  readLiveApprovedPlanKey?: SubscriptionLifecycleOptions["readLiveApprovedPlanKey"];
 };
 
 function createAdminBillingEventClaimStore(): BillingEventClaimStore {
@@ -367,11 +376,33 @@ export async function processBillingWebhook(
     (provider.id === "stripe"
       ? createStripePriceByIdRetriever(readStripeSecretKey())
       : undefined);
+  const scheduleCleanup = (() => {
+    if (provider.id !== "stripe") return null;
+    let created: ReturnType<typeof createStripeScheduleCleanupDeps> | null = null;
+    const load = () => {
+      created ??= createStripeScheduleCleanupDeps(readStripeSecretKey());
+      return created;
+    };
+    return {
+      releaseCompletedSchedule: (input: ScheduleReleaseCall) =>
+        load().releaseCompletedSchedule(input),
+      confirmScheduleStatus: (scheduleId: string) => load().confirmScheduleStatus(scheduleId),
+      readLiveApprovedPlanKey: (subscriptionId: string) =>
+        load().readLiveApprovedPlanKey(subscriptionId),
+    };
+  })();
 
   return finalizeStripeOrGeneric({
     claimStore,
     createSyncStore: deps.createSyncStore,
     getPriceById,
+    now: deps.now,
+    releaseCompletedSchedule:
+      deps.releaseCompletedSchedule ?? scheduleCleanup?.releaseCompletedSchedule,
+    confirmScheduleStatus:
+      deps.confirmScheduleStatus ?? scheduleCleanup?.confirmScheduleStatus,
+    readLiveApprovedPlanKey:
+      deps.readLiveApprovedPlanKey ?? scheduleCleanup?.readLiveApprovedPlanKey,
     providerId: provider.id,
     providerEventId,
     eventRowId,
@@ -384,6 +415,10 @@ async function finalizeStripeOrGeneric(input: {
   claimStore: BillingEventClaimStore;
   createSyncStore?: () => WebhookSyncStore;
   getPriceById?: GetStripePriceById;
+  now?: Date;
+  releaseCompletedSchedule?: SubscriptionLifecycleOptions["releaseCompletedSchedule"];
+  confirmScheduleStatus?: SubscriptionLifecycleOptions["confirmScheduleStatus"];
+  readLiveApprovedPlanKey?: SubscriptionLifecycleOptions["readLiveApprovedPlanKey"];
   providerId: string;
   providerEventId: string | null;
   eventRowId: string;
@@ -438,6 +473,10 @@ async function finalizeStripeOrGeneric(input: {
       store,
       providerEventId: input.providerEventId,
       getPriceById: input.getPriceById,
+      now: input.now,
+      releaseCompletedSchedule: input.releaseCompletedSchedule,
+      confirmScheduleStatus: input.confirmScheduleStatus,
+      readLiveApprovedPlanKey: input.readLiveApprovedPlanKey,
     });
 
     const mergedMetadata = sanitizeAuditMetadata({

@@ -10,6 +10,8 @@ import {
   previewPlanChangeImpactAction,
   previewSubscriptionUpgradeAction,
   requestCancellationAction,
+  scheduleSubscriptionDowngradeAction,
+  cancelScheduledDowngradeAction,
   startCheckoutAction,
 } from "@/app/(app)/settings/billing/actions";
 import { Button } from "@/components/ui/button";
@@ -33,6 +35,7 @@ export function BillingPlanPanel({
   providerMessage,
   cancelAtPeriodEnd,
   canManageBilling = true,
+  scheduledDowngrade = null,
 }: {
   plans: SubscriptionPlanRecord[];
   currentPlanKey: string | null;
@@ -42,6 +45,12 @@ export function BillingPlanPanel({
   providerMessage: string;
   cancelAtPeriodEnd: boolean;
   canManageBilling?: boolean;
+  scheduledDowngrade?: {
+    currentPlanName: string;
+    targetPlanKey: string;
+    targetPlanName: string;
+    effectiveAt: string;
+  } | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -120,6 +129,12 @@ export function BillingPlanPanel({
   }
 
   function confirmUpgrade() {
+    if (scheduledDowngrade) {
+      setError(
+        "You currently have a plan downgrade scheduled. Cancel the scheduled downgrade before upgrading to another plan.",
+      );
+      return;
+    }
     setError(null);
     setMessage(null);
     startTransition(async () => {
@@ -144,6 +159,36 @@ export function BillingPlanPanel({
         return;
       }
       setError(result.error ?? "Customer portal is unavailable.");
+    });
+  }
+
+  function scheduleDowngrade() {
+    setError(null);
+    setMessage(null);
+    startTransition(async () => {
+      const result = await scheduleSubscriptionDowngradeAction(
+        String(selectedPlanKey),
+      );
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      setMessage(result.message ?? "Downgrade scheduled.");
+      router.refresh();
+    });
+  }
+
+  function cancelScheduledDowngrade() {
+    setError(null);
+    setMessage(null);
+    startTransition(async () => {
+      const result = await cancelScheduledDowngradeAction();
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      setMessage(result.message ?? "Scheduled downgrade canceled.");
+      router.refresh();
     });
   }
 
@@ -199,8 +244,8 @@ export function BillingPlanPanel({
   const reviewSummary =
     planAction === "upgrade" && upgradePreview
       ? `Upgrade to ${upgradePreview.targetPlanName}. Your upgrade will take effect immediately. ${upgradePreview.creditStatement} Your normal monthly renewal date will remain unchanged.`
-      : planAction === "downgrade_unavailable"
-        ? "Downgrade at next renewal is not available yet."
+      : planAction === "schedule_downgrade"
+        ? `Downgrade to ${impact?.toPlanDisplayName ?? "the selected plan"}. No refund will be issued for the current paid period.`
         : impact?.isSamePlan && !hasProviderSubscription && providerReady
           ? initialSamePlanCheckoutSummary()
           : impact?.summary;
@@ -208,6 +253,31 @@ export function BillingPlanPanel({
   return (
     <div className="space-y-6">
       <p className="text-sm text-muted-foreground">{providerMessage}</p>
+      {scheduledDowngrade ? (
+        <div className="rounded-lg border border-border p-4 space-y-2 text-sm">
+          <h3 className="font-medium">Scheduled downgrade</h3>
+          <p>Current plan: {scheduledDowngrade.currentPlanName}</p>
+          <p>New plan: {scheduledDowngrade.targetPlanName}</p>
+          <p>
+            Effective:{" "}
+            {new Date(scheduledDowngrade.effectiveAt).toLocaleDateString(
+              "en-US",
+              { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" },
+            )}
+          </p>
+          <p>Until then, {scheduledDowngrade.currentPlanName} remains active.</p>
+          {canManageBilling ? (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={pending}
+              onClick={cancelScheduledDowngrade}
+            >
+              {pending ? "Working…" : "Cancel scheduled downgrade"}
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
       <p className="text-sm text-muted-foreground">
         Plan prices, billing frequency, automatic renewal (when a payment
         processor is connected), cancellation, and refunds are described in our{" "}
@@ -240,12 +310,15 @@ export function BillingPlanPanel({
               currentPlanKey && isPlanDowngrade(currentPlanKey, key),
             ),
           });
-          const planLabel =
-            planAction === "current"
-              ? "Current"
+          const scheduled =
+            scheduledDowngrade?.targetPlanKey === key && !current;
+          const planLabel = current
+            ? "Current"
+            : scheduled
+              ? "Scheduled"
               : planAction === "upgrade"
                 ? "Upgrade"
-                : planAction === "downgrade_unavailable"
+                : planAction === "schedule_downgrade"
                   ? "Downgrade at next renewal"
                   : null;
           return (
@@ -331,6 +404,52 @@ export function BillingPlanPanel({
             </div>
           ) : null}
 
+          {planAction === "schedule_downgrade" && impact ? (
+            <div className="space-y-1 text-sm">
+              <p>Downgrade to {impact.toPlanDisplayName}</p>
+              <p>
+                Effective:{" "}
+                {scheduledDowngrade
+                  ? new Date(scheduledDowngrade.effectiveAt).toLocaleDateString(
+                      "en-US",
+                      {
+                        month: "long",
+                        day: "numeric",
+                        year: "numeric",
+                        timeZone: "UTC",
+                      },
+                    )
+                  : "the next renewal"}
+              </p>
+              <p>Until then: {impact.fromPlanDisplayName} remains active.</p>
+              {impact.targetMonthlyPriceCents != null ? (
+                <p>
+                  New monthly price:{" "}
+                  {formatBillingPlanPrice(impact.targetMonthlyPriceCents, "usd")}
+                </p>
+              ) : null}
+              <p>
+                User limit: {impact.currentUserLimit ?? "current"} →{" "}
+                {impact.targetUserLimit ?? "target"}
+              </p>
+              <p>
+                Included monthly SMS: {impact.currentSmsLimit ?? 0} →{" "}
+                {impact.targetSmsLimit ?? 0}
+              </p>
+              {impact.activeSeats != null &&
+              impact.targetUserLimit != null &&
+              impact.activeSeats > impact.targetUserLimit ? (
+                <p>
+                  Current active users: {impact.activeSeats}. {impact.toPlanDisplayName}{" "}
+                  limit: {impact.targetUserLimit}. After the downgrade takes effect,
+                  existing users remain, but new invitations cannot be accepted until
+                  usage is within the plan limit.
+                </p>
+              ) : null}
+              <p>No refund will be issued for the current paid period.</p>
+            </div>
+          ) : null}
+
           {impact.isDowngrade && !impact.isSamePlan && !hasProviderSubscription ? (
             <label className="flex items-start gap-2 text-sm">
               <input
@@ -352,13 +471,20 @@ export function BillingPlanPanel({
                 {planAction === "upgrade" ? (
                   <Button
                     type="button"
-                    disabled={pending || !upgradePreview}
+                    disabled={pending || !upgradePreview || Boolean(scheduledDowngrade)}
                     onClick={confirmUpgrade}
                   >
                     {pending ? "Working…" : "Confirm Upgrade"}
                   </Button>
-                ) : planAction === "downgrade_unavailable" ||
-                  planAction === "current" ? null : (
+                ) : planAction === "schedule_downgrade" && !scheduledDowngrade ? (
+                  <Button
+                    type="button"
+                    disabled={pending || !providerReady}
+                    onClick={scheduleDowngrade}
+                  >
+                    {pending ? "Working…" : "Schedule Downgrade"}
+                  </Button>
+                ) : planAction === "current" || planAction === "schedule_downgrade" ? null : (
                   <Button
                     type="button"
                     disabled={checkoutDisabled}
@@ -406,6 +532,10 @@ export function BillingPlanPanel({
           </p>
         ) : cancelAtPeriodEnd ? (
           <p className="text-sm">Cancellation is already scheduled for this period.</p>
+        ) : scheduledDowngrade ? (
+          <p className="text-sm">
+            Cancel the scheduled plan downgrade before canceling the subscription.
+          </p>
         ) : (
           <Button
             type="button"

@@ -42,6 +42,58 @@ export function createAdminWebhookSyncStore(): WebhookSyncStore {
   }
   const admin = createAdminClient();
 
+  async function withScheduleMirror(
+    snapshot: SyncedSubscriptionSnapshot,
+  ): Promise<SyncedSubscriptionSnapshot> {
+    const { data, error } = await admin
+      .from("organization_subscriptions")
+      .select(
+        "billing_customer_id, provider_schedule_id, schedule_status, scheduled_plan_id, scheduled_effective_at",
+      )
+      .eq("id", snapshot.id)
+      .maybeSingle();
+    if (error || !data) {
+      if (error) {
+        console.error(
+          "Failed to read subscription schedule mirror:",
+          error.message.slice(0, 160),
+        );
+      }
+      return snapshot;
+    }
+    let scheduledPlanKey: string | null = null;
+    if (data.scheduled_plan_id) {
+      const { data: scheduledPlan } = await admin
+        .from("subscription_plans")
+        .select("plan_key")
+        .eq("id", data.scheduled_plan_id)
+        .maybeSingle();
+      scheduledPlanKey = scheduledPlan?.plan_key
+        ? String(scheduledPlan.plan_key)
+        : null;
+    }
+    return {
+      ...snapshot,
+      billingCustomerId:
+        typeof data.billing_customer_id === "string"
+          ? data.billing_customer_id
+          : null,
+      providerScheduleId:
+        typeof data.provider_schedule_id === "string"
+          ? data.provider_schedule_id
+          : null,
+      scheduleStatus:
+        typeof data.schedule_status === "string" ? data.schedule_status : null,
+      scheduledPlanId:
+        typeof data.scheduled_plan_id === "string" ? data.scheduled_plan_id : null,
+      scheduledPlanKey,
+      scheduledEffectiveAt:
+        typeof data.scheduled_effective_at === "string"
+          ? data.scheduled_effective_at
+          : null,
+    };
+  }
+
   return {
     async findOrganizationByStripeCustomerId(customerId) {
       const { data: profile } = await admin
@@ -94,9 +146,11 @@ export function createAdminWebhookSyncStore(): WebhookSyncStore {
         .select("plan_key")
         .eq("id", data.plan_id)
         .maybeSingle();
-      return mapSubRow(
-        data as Record<string, unknown>,
-        plan?.plan_key ? String(plan.plan_key) : "",
+      return withScheduleMirror(
+        mapSubRow(
+          data as Record<string, unknown>,
+          plan?.plan_key ? String(plan.plan_key) : "",
+        ),
       );
     },
 
@@ -123,9 +177,11 @@ export function createAdminWebhookSyncStore(): WebhookSyncStore {
         .select("plan_key")
         .eq("id", data.plan_id)
         .maybeSingle();
-      return mapSubRow(
-        data as Record<string, unknown>,
-        plan?.plan_key ? String(plan.plan_key) : "",
+      return withScheduleMirror(
+        mapSubRow(
+          data as Record<string, unknown>,
+          plan?.plan_key ? String(plan.plan_key) : "",
+        ),
       );
     },
 
@@ -409,6 +465,34 @@ export function createAdminWebhookSyncStore(): WebhookSyncStore {
           "Failed to sync organization plan name:",
           error.message,
         );
+      }
+    },
+
+    async syncScheduleMirror(input) {
+      const patch: {
+        provider_schedule_id: string;
+        schedule_status: string;
+        scheduled_plan_id?: string;
+        scheduled_effective_at?: string;
+        schedule_released_at?: string;
+      } = {
+        provider_schedule_id: input.providerScheduleId,
+        schedule_status: input.scheduleStatus,
+      };
+      if (input.scheduledPlanId) patch.scheduled_plan_id = input.scheduledPlanId;
+      if (input.scheduledEffectiveAt) {
+        patch.scheduled_effective_at = input.scheduledEffectiveAt;
+      }
+      if (input.scheduleReleasedAt) {
+        patch.schedule_released_at = input.scheduleReleasedAt;
+      }
+      const { error } = await admin
+        .from("organization_subscriptions")
+        .update(patch)
+        .eq("organization_id", input.organizationId)
+        .eq("billing_subscription_id", input.billingSubscriptionId);
+      if (error) {
+        console.error("Failed to sync subscription schedule:", error.message);
       }
     },
 

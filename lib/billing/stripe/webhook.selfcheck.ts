@@ -20,6 +20,7 @@ import { mapStripeSubscriptionStatus } from "@/lib/billing/stripe/status-map";
 import {
   resolveApprovedSubscriptionPlanFromItems,
   resolvePlanKeyFromStripeLookupKey,
+  servicePeriodForApprovedSubscriptionLines,
   type GetStripePriceById,
 } from "@/lib/billing/stripe/plan-correlation";
 import { BillingCheckoutPlanError } from "@/lib/billing/errors";
@@ -33,12 +34,15 @@ import {
   dispatchStripeWebhookEvent,
   STRIPE_WEBHOOK_EVENT_TYPES,
 } from "@/lib/billing/stripe/webhook-dispatch";
-import type {
-  SyncedSubscriptionSnapshot,
-  WebhookSyncStore,
+import {
+  handleInvoicePaid,
+  handleInvoicePaymentFailed,
+  handleSubscriptionLifecycle,
+  type SyncedSubscriptionSnapshot,
+  type WebhookSyncStore,
 } from "@/lib/billing/stripe/webhook-sync";
 import type { ChurchSubscriptionStatus } from "@/lib/subscriptions/types";
-import { PLAN_KEYS } from "@/lib/subscriptions/plan-keys";
+import { PLAN_DISPLAY_NAMES, PLAN_KEYS } from "@/lib/subscriptions/plan-keys";
 import { ACCESS_GRANTING_STATUSES } from "@/lib/subscriptions/status";
 
 const WHSEC = "whsec_phase4b4_selfcheck_NOT_A_REAL_SECRET";
@@ -204,6 +208,7 @@ type MemorySyncStore = WebhookSyncStore & {
   history: { changeType: string; eventId: string | null }[];
   notices: number;
   organizationStatus: OrganizationAccountStatus;
+  organizationPlanName: string | null;
   conflictCustomer?: string;
 };
 
@@ -222,7 +227,7 @@ function createMemorySyncStore(seed?: {
   const subscriptions: SyncedSubscriptionSnapshot[] = [];
   const invoices: MemorySyncStore["invoices"] = [];
   const transactions: { idempotencyKey: string; status: string }[] = [];
-  const history: { changeType: string; eventId: string | null }[] = [];
+  const   history: { changeType: string; eventId: string | null }[] = [];
   const store: MemorySyncStore = {
     subscriptions,
     invoices,
@@ -230,6 +235,7 @@ function createMemorySyncStore(seed?: {
     history,
     notices: 0,
     organizationStatus: "trial",
+    organizationPlanName: "Servant Standard",
     conflictCustomer: undefined,
     async findOrganizationByStripeCustomerId(id: string) {
       if (store.conflictCustomer && id === store.conflictCustomer) {
@@ -366,6 +372,9 @@ function createMemorySyncStore(seed?: {
       if (store.organizationStatus !== "trial") return "unchanged";
       store.organizationStatus = "active";
       return "activated";
+    },
+    async syncOrganizationPlanName(input) {
+      store.organizationPlanName = PLAN_DISPLAY_NAMES[input.planKey];
     },
     async notifyBillingCharge() {
       store.notices += 1;
@@ -1435,6 +1444,314 @@ async function main() {
     "utf8",
   );
   assert(!entitlementsSrc.includes("stripe.subscriptions"), "DB-driven entitlements");
+
+  const upgradeStart = Math.floor(Date.parse("2026-10-09T07:01:33Z") / 1000);
+  const renewalEnd = Math.floor(Date.parse("2026-11-08T08:40:14Z") / 1000);
+  const cycleStart = Math.floor(Date.parse("2026-10-08T08:40:14Z") / 1000);
+  const oneLine = await servicePeriodForApprovedSubscriptionLines([
+    {
+      priceId: "price_servant",
+      lookupKey: "servant_standard_monthly",
+      productName: null,
+      periodStart: cycleStart,
+      periodEnd: renewalEnd,
+    },
+  ]);
+  assert(
+    oneLine?.periodStart === cycleStart && oneLine.periodEnd === renewalEnd,
+    "A one approved base-plan line uses its period",
+  );
+  const shared = await servicePeriodForApprovedSubscriptionLines([
+    {
+      priceId: "price_servant",
+      lookupKey: "servant_standard_monthly",
+      productName: null,
+      periodStart: upgradeStart,
+      periodEnd: renewalEnd,
+    },
+    {
+      priceId: "price_steward",
+      lookupKey: "steward_pro_monthly",
+      productName: null,
+      periodStart: upgradeStart,
+      periodEnd: renewalEnd,
+    },
+  ]);
+  assert(
+    shared?.periodStart === upgradeStart && shared.periodEnd === renewalEnd,
+    "B identical credit and charge periods are stored",
+  );
+  const conflictingPeriod = await servicePeriodForApprovedSubscriptionLines([
+    {
+      priceId: "price_servant",
+      lookupKey: "servant_standard_monthly",
+      productName: null,
+      periodStart: cycleStart,
+      periodEnd: renewalEnd,
+    },
+    {
+      priceId: "price_steward",
+      lookupKey: "steward_pro_monthly",
+      productName: null,
+      periodStart: upgradeStart,
+      periodEnd: renewalEnd,
+    },
+  ]);
+  assert(conflictingPeriod === null, "C conflicting plan periods are not invented");
+  const withSms = await servicePeriodForApprovedSubscriptionLines([
+    {
+      priceId: "price_steward",
+      lookupKey: "steward_pro_monthly",
+      productName: null,
+      periodStart: upgradeStart,
+      periodEnd: renewalEnd,
+    },
+    {
+      priceId: "price_sms",
+      lookupKey: "steward_pro_sms_100",
+      productName: null,
+      periodStart: cycleStart,
+      periodEnd: upgradeStart,
+    },
+  ]);
+  assert(
+    withSms?.periodStart === upgradeStart && withSms.periodEnd === renewalEnd,
+    "D SMS line does not set the service period",
+  );
+
+  const periodStore = createMemorySyncStore();
+  periodStore.subscriptions.push({
+    id: "sub_row_period",
+    organizationId: "org_selfcheck",
+    planId: "plan_steward",
+    planKey: "steward_pro",
+    status: "active",
+    billingSubscriptionId: "sub_existing",
+    paymentStatus: "ok",
+    currentPeriodStart: new Date(cycleStart * 1000).toISOString(),
+    currentPeriodEnd: new Date(renewalEnd * 1000).toISOString(),
+  });
+  const pointInTime = upgradeStart;
+  await handleInvoicePaid(periodStore, {
+    objectType: "invoice",
+    id: "in_upgrade",
+    customerId: "cus_selfcheck_1",
+    subscriptionId: "sub_existing",
+    invoiceId: "in_upgrade",
+    checkoutSessionId: null,
+    priceItems: [
+      {
+        priceId: "price_servant",
+        lookupKey: "servant_standard_monthly",
+        productName: null,
+        periodStart: upgradeStart,
+        periodEnd: renewalEnd,
+      },
+      {
+        priceId: "price_steward",
+        lookupKey: "steward_pro_monthly",
+        productName: null,
+        periodStart: upgradeStart,
+        periodEnd: renewalEnd,
+      },
+    ],
+    priceId: null,
+    priceLookupKey: null,
+    status: "paid",
+    mode: null,
+    paymentStatus: null,
+    amountPaid: 970,
+    amountDue: 970,
+    currency: "usd",
+    hostedInvoiceUrl: null,
+    periodStart: pointInTime,
+    periodEnd: pointInTime,
+    cancelAtPeriodEnd: null,
+    metadataOrganizationId: null,
+    metadataPlanKey: null,
+  });
+  assert(
+    periodStore.invoices[0]?.periodStart === new Date(upgradeStart * 1000).toISOString(),
+    "E line period is used instead of the point-in-time invoice period",
+  );
+  assert(periodStore.subscriptions[0]?.planKey === "steward_pro", "invoice does not change plan");
+  assert(periodStore.organizationPlanName === "Servant Standard", "invoice does not change display plan");
+  await handleInvoicePaid(periodStore, {
+    objectType: "invoice",
+    id: "in_conflict",
+    customerId: "cus_selfcheck_1",
+    subscriptionId: "sub_existing",
+    invoiceId: "in_upgrade",
+    checkoutSessionId: null,
+    priceItems: [
+      {
+        priceId: "price_servant",
+        lookupKey: "servant_standard_monthly",
+        productName: null,
+        periodStart: cycleStart,
+        periodEnd: renewalEnd,
+      },
+      {
+        priceId: "price_steward",
+        lookupKey: "steward_pro_monthly",
+        productName: null,
+        periodStart: upgradeStart,
+        periodEnd: renewalEnd,
+      },
+    ],
+    priceId: null,
+    priceLookupKey: null,
+    status: "paid",
+    mode: null,
+    paymentStatus: null,
+    amountPaid: 970,
+    amountDue: 0,
+    currency: "usd",
+    hostedInvoiceUrl: null,
+    periodStart: null,
+    periodEnd: null,
+    cancelAtPeriodEnd: null,
+    metadataOrganizationId: null,
+    metadataPlanKey: null,
+  });
+  assert(
+    periodStore.invoices[0]?.periodStart === new Date(upgradeStart * 1000).toISOString(),
+    "F missing or conflicting period does not erase a stored period",
+  );
+
+  const display = createMemorySyncStore();
+  display.organizationStatus = "active";
+  display.subscriptions.push({
+    id: "sub_row_display",
+    organizationId: "org_selfcheck",
+    planId: "plan_servant",
+    planKey: "servant_standard",
+    status: "active",
+    billingSubscriptionId: "sub_existing",
+    paymentStatus: "ok",
+  });
+  const liveUpdate = {
+    objectType: "subscription",
+    id: "sub_existing",
+    customerId: "cus_selfcheck_1",
+    subscriptionId: "sub_existing",
+    invoiceId: null,
+    checkoutSessionId: null,
+    priceItems: [
+      {
+        priceId: "price_steward",
+        lookupKey: "steward_pro_monthly",
+        productName: null,
+        periodStart: cycleStart,
+        periodEnd: renewalEnd,
+      },
+    ],
+    priceId: "price_steward",
+    priceLookupKey: "steward_pro_monthly",
+    status: "active",
+    mode: null,
+    paymentStatus: null,
+    amountPaid: null,
+    amountDue: null,
+    currency: "usd",
+    hostedInvoiceUrl: null,
+    periodStart: null,
+    periodEnd: null,
+    cancelAtPeriodEnd: false,
+    metadataOrganizationId: null,
+    metadataPlanKey: null,
+  } satisfies StripeWebhookObjectSummary;
+  await handleSubscriptionLifecycle(display, liveUpdate, "customer.subscription.updated", {
+    providerEventId: "evt_live_upgrade",
+  });
+  assert(display.subscriptions[0]?.planKey === "steward_pro", "A live plan changes");
+  assert(display.organizationPlanName === "Steward Pro", "A display plan follows live plan");
+  assert(display.organizationStatus === "active", "E organization status unchanged");
+  assert(display.history.length === 1, "A one history row");
+  await handleSubscriptionLifecycle(display, liveUpdate, "customer.subscription.updated", {
+    providerEventId: "evt_live_upgrade",
+  });
+  assert(display.history.length === 1, "D replay does not add history");
+  assert(display.organizationPlanName === "Steward Pro", "D display plan stays Steward");
+
+  const pending = createMemorySyncStore();
+  pending.organizationStatus = "active";
+  pending.subscriptions.push({
+    id: "sub_row_pending",
+    organizationId: "org_selfcheck",
+    planId: "plan_servant",
+    planKey: "servant_standard",
+    status: "active",
+    billingSubscriptionId: "sub_existing",
+    paymentStatus: "ok",
+  });
+  await handleSubscriptionLifecycle(
+    pending,
+    {
+      ...liveUpdate,
+      priceItems: [
+        {
+          priceId: "price_servant",
+          lookupKey: "servant_standard_monthly",
+          productName: null,
+          periodStart: cycleStart,
+          periodEnd: renewalEnd,
+        },
+      ],
+      priceLookupKey: "servant_standard_monthly",
+    },
+    "customer.subscription.updated",
+    { providerEventId: "evt_pending" },
+  );
+  assert(pending.subscriptions[0]?.planKey === "servant_standard", "B pending target is not live");
+  assert(pending.organizationPlanName === "Servant Standard", "B display plan unchanged");
+  assert(pending.history.length === 0, "F same-plan webhook writes no history");
+
+  const failedPay = createMemorySyncStore();
+  failedPay.organizationStatus = "active";
+  failedPay.subscriptions.push({
+    id: "sub_row_failed",
+    organizationId: "org_selfcheck",
+    planId: "plan_servant",
+    planKey: "servant_standard",
+    status: "active",
+    billingSubscriptionId: "sub_existing",
+    paymentStatus: "ok",
+  });
+  await handleInvoicePaymentFailed(failedPay, {
+    objectType: "invoice",
+    id: "in_fail",
+    customerId: "cus_selfcheck_1",
+    subscriptionId: "sub_existing",
+    invoiceId: "in_fail",
+    checkoutSessionId: null,
+    priceItems: [
+      {
+        priceId: "price_steward",
+        lookupKey: "steward_pro_monthly",
+        productName: null,
+        periodStart: upgradeStart,
+        periodEnd: renewalEnd,
+      },
+    ],
+    priceId: null,
+    priceLookupKey: null,
+    status: "open",
+    mode: null,
+    paymentStatus: null,
+    amountPaid: 0,
+    amountDue: 970,
+    currency: "usd",
+    hostedInvoiceUrl: null,
+    periodStart: null,
+    periodEnd: null,
+    cancelAtPeriodEnd: null,
+    metadataOrganizationId: null,
+    metadataPlanKey: null,
+  });
+  assert(failedPay.subscriptions[0]?.planKey === "servant_standard", "C failed invoice keeps plan");
+  assert(failedPay.organizationPlanName === "Servant Standard", "C failed invoice keeps display plan");
+  assert(failedPay.organizationStatus === "active", "C organization status unchanged");
 
   const verifySrc = readFileSync(
     join(process.cwd(), "lib/billing/stripe/webhook-verify.ts"),

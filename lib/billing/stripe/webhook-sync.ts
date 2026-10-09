@@ -6,6 +6,7 @@
 import {
   periodForApprovedBasePlanItem,
   resolveApprovedSubscriptionPlanFromItems,
+  servicePeriodForApprovedSubscriptionLines,
   type ApprovedPlanResolution,
   type GetStripePriceById,
   type WebhookPriceItemRef,
@@ -124,6 +125,11 @@ export type WebhookSyncStore = {
   activateTrialOrganization(
     organizationId: string,
   ): Promise<TrialActivationResult>;
+  /** Display name only. Does not change organizations.status or trial state. */
+  syncOrganizationPlanName(input: {
+    organizationId: string;
+    planKey: PlanKey;
+  }): Promise<void>;
   /** Optional billing notice hook — must be idempotent; tests use no-op. */
   notifyBillingCharge?(input: {
     organizationId: string;
@@ -402,6 +408,11 @@ export async function handleSubscriptionLifecycle(
     object,
   });
 
+  await store.syncOrganizationPlanName({
+    organizationId: org.organizationId,
+    planKey,
+  });
+
   return {
     outcome: "processed",
     detail: `Subscription synchronized (${status}/${planKey}).`,
@@ -490,11 +501,16 @@ export async function handleInvoicePaid(
             productName: null,
           },
         ];
-  const {
-    resolution: planResolution,
-    periodStart,
-    periodEnd,
-  } = await resolveBasePlanServicePeriod(priceItems, options.getPriceById);
+  const planResolution = await resolveApprovedSubscriptionPlanFromItems(
+    priceItems,
+    { getPriceById: options.getPriceById },
+  );
+  const sharedPeriod = await servicePeriodForApprovedSubscriptionLines(
+    priceItems,
+    options.getPriceById,
+  );
+  const periodStart = unixToIso(sharedPeriod?.periodStart ?? null);
+  const periodEnd = unixToIso(sharedPeriod?.periodEnd ?? null);
 
   const invoice = await store.upsertInvoice({
     organizationId: org.organizationId,
@@ -603,10 +619,12 @@ export async function handleInvoicePaymentFailed(
             productName: null,
           },
         ];
-  const { periodStart, periodEnd } = await resolveBasePlanServicePeriod(
+  const sharedPeriod = await servicePeriodForApprovedSubscriptionLines(
     priceItems,
     options.getPriceById,
   );
+  const periodStart = unixToIso(sharedPeriod?.periodStart ?? null);
+  const periodEnd = unixToIso(sharedPeriod?.periodEnd ?? null);
 
   const invoice = await store.upsertInvoice({
     organizationId: org.organizationId,

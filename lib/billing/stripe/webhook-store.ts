@@ -9,7 +9,11 @@ import type {
   WebhookSyncStore,
 } from "@/lib/billing/stripe/webhook-sync";
 import type { ChurchSubscriptionStatus } from "@/lib/subscriptions/types";
-import type { PlanKey } from "@/lib/subscriptions/plan-keys";
+import {
+  PLAN_DISPLAY_NAMES,
+  isPlanKey,
+  type PlanKey,
+} from "@/lib/subscriptions/plan-keys";
 
 function mapSubRow(
   row: Record<string, unknown>,
@@ -392,6 +396,20 @@ export function createAdminWebhookSyncStore(): WebhookSyncStore {
         return data;
       }
       return "unchanged";
+    },
+
+    async syncOrganizationPlanName(input) {
+      if (!isPlanKey(input.planKey)) return;
+      const { error } = await admin
+        .from("organizations")
+        .update({ plan_name: PLAN_DISPLAY_NAMES[input.planKey] })
+        .eq("id", input.organizationId);
+      if (error) {
+        console.error(
+          "Failed to sync organization plan name:",
+          error.message,
+        );
+      }
     },
 
     async notifyBillingCharge() {

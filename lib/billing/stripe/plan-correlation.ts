@@ -127,6 +127,55 @@ export function periodForApprovedBasePlanItem(
   return { periodStart, periodEnd };
 }
 
+/**
+ * Service window for an invoice that may contain several approved base-plan
+ * lines, such as a proration credit and the replacement charge.
+ * SMS package lines are ignored. A period is returned only when every
+ * approved subscription line has the same start and end.
+ */
+export async function servicePeriodForApprovedSubscriptionLines(
+  items: WebhookPriceItemRef[],
+  getPriceById?: GetStripePriceById,
+): Promise<{ periodStart: number; periodEnd: number } | null> {
+  const periods: { periodStart: number; periodEnd: number }[] = [];
+  for (const item of items) {
+    if (!(await isApprovedSubscriptionLine(item, getPriceById))) continue;
+    const periodStart = item.periodStart;
+    const periodEnd = item.periodEnd;
+    if (
+      typeof periodStart !== "number" ||
+      typeof periodEnd !== "number" ||
+      !Number.isFinite(periodStart) ||
+      !Number.isFinite(periodEnd) ||
+      periodEnd < periodStart
+    ) {
+      return null;
+    }
+    periods.push({ periodStart, periodEnd });
+  }
+  if (periods.length === 0) return null;
+  const window = periods[0]!;
+  const unanimous = periods.every(
+    (period) =>
+      period.periodStart === window.periodStart &&
+      period.periodEnd === window.periodEnd,
+  );
+  return unanimous ? window : null;
+}
+
+async function isApprovedSubscriptionLine(
+  item: WebhookPriceItemRef,
+  getPriceById?: GetStripePriceById,
+): Promise<boolean> {
+  const lookup = (item.lookupKey ?? "").trim();
+  if (lookup) return isApprovedSubscriptionLookupKey(lookup);
+  const priceId = (item.priceId ?? "").trim();
+  if (!priceId || !getPriceById) return false;
+  const snapshot = await getPriceById(priceId);
+  if (!snapshot) return false;
+  return resolvePlanKeyFromTrustedPriceSnapshot(snapshot).ok;
+}
+
 export function isApprovedSubscriptionLookupKey(lookupKey: string): boolean {
   return listCommercialPriceExpectations().some(
     (entry) =>

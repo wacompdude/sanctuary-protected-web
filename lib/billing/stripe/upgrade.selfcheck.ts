@@ -261,6 +261,7 @@ function memoryStore(): WebhookSyncStore & {
       if (store.organizationStatus === "active") return "noop" as const;
       return "unchanged" as const;
     },
+    async syncOrganizationPlanName() {},
   };
   return store;
 }

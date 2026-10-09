@@ -41,6 +41,21 @@ export function connectedSubscriptionPlanAction(input: {
   return "current";
 }
 
+/** A completed upgrade review is stale once the selected plan is already current. */
+export function completedUpgradeReviewIsCurrent(input: {
+  hasProviderSubscription: boolean;
+  currentPlanKey: string | null;
+  selectedPlanKey: string;
+  impactSaysUpgrade: boolean;
+}): boolean {
+  return (
+    input.hasProviderSubscription &&
+    input.impactSaysUpgrade &&
+    input.currentPlanKey != null &&
+    input.currentPlanKey === input.selectedPlanKey
+  );
+}
+
 /**
  * Whether the Billing UI may start initial subscription Checkout for the
  * selected plan. An existing provider subscription is never Checkout.

@@ -196,12 +196,14 @@ async function BillingContent() {
         <CardHeader>
           <CardTitle>Plans</CardTitle>
           <CardDescription>
-            Compare plans, review downgrade impact, then checkout (when a
-            provider is connected) or apply a manual plan change for now.
+            Choose a plan to start billing, upgrade immediately, or review a
+            future downgrade. Checkout is used for the first subscription.
+            Existing paid subscriptions upgrade in place.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <BillingPlanPanel
+            key={subscription ? String(subscription.plan_key) : "none"}
             plans={publicPlans}
             currentPlanKey={
               subscription ? String(subscription.plan_key) : null

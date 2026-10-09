@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import {
   canStartInitialSubscriptionCheckout,
   connectedSubscriptionPlanAction,
+  completedUpgradeReviewIsCurrent,
   formatBillingPlanPrice,
   initialSamePlanCheckoutSummary,
 } from "@/lib/billing/checkout-eligibility";
@@ -170,14 +171,23 @@ export function BillingPlanPanel({
       checkoutAvailable: providerReady,
     });
 
-  const planAction = impact
-    ? connectedSubscriptionPlanAction({
-        hasProviderSubscription,
-        isSamePlan: impact.isSamePlan,
-        isUpgrade: impact.isUpgrade,
-        isDowngrade: impact.isDowngrade,
-      })
-    : null;
+  const completedReviewIsCurrent = completedUpgradeReviewIsCurrent({
+    hasProviderSubscription,
+    currentPlanKey,
+    selectedPlanKey,
+    impactSaysUpgrade: Boolean(impact?.isUpgrade),
+  });
+
+  const planAction = completedReviewIsCurrent
+    ? "current"
+    : impact
+      ? connectedSubscriptionPlanAction({
+          hasProviderSubscription,
+          isSamePlan: impact.isSamePlan,
+          isUpgrade: impact.isUpgrade,
+          isDowngrade: impact.isDowngrade,
+        })
+      : null;
 
   const checkoutDisabled =
     pending ||
@@ -276,7 +286,7 @@ export function BillingPlanPanel({
         })}
       </div>
 
-      {impact ? (
+      {impact && !completedReviewIsCurrent ? (
         <div className="rounded-lg border border-border p-4 space-y-3">
           <div>
             <h3 className="text-sm font-medium">Plan change review</h3>
@@ -296,7 +306,7 @@ export function BillingPlanPanel({
             </ul>
           ) : null}
 
-          {planAction === "upgrade" && upgradePreview ? (
+          {planAction === "upgrade" && upgradePreview && !completedReviewIsCurrent ? (
             <div className="space-y-1 text-sm">
               <p>Upgrade to {upgradePreview.targetPlanName}</p>
               <p>Your upgrade will take effect immediately.</p>

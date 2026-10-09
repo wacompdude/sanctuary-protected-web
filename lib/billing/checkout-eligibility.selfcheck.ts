@@ -10,6 +10,7 @@ import {
   assertNoExistingProviderSubscriptionForInitialCheckout,
   canStartInitialSubscriptionCheckout,
   connectedSubscriptionPlanAction,
+  completedUpgradeReviewIsCurrent,
   formatBillingPlanPrice,
   initialSamePlanCheckoutSummary,
   organizationHasProviderSubscription,
@@ -128,6 +129,24 @@ function main() {
       isDowngrade: true,
     }) === "downgrade_unavailable",
     "lower plan is not checkout or immediate upgrade",
+  );
+  assert(
+    completedUpgradeReviewIsCurrent({
+      hasProviderSubscription: true,
+      currentPlanKey: "steward_pro",
+      selectedPlanKey: "steward_pro",
+      impactSaysUpgrade: true,
+    }) === true,
+    "completed upgrade review is current once the target is the live plan",
+  );
+  assert(
+    completedUpgradeReviewIsCurrent({
+      hasProviderSubscription: true,
+      currentPlanKey: "servant_standard",
+      selectedPlanKey: "steward_pro",
+      impactSaysUpgrade: true,
+    }) === false,
+    "upgrade review remains while the target is still higher",
   );
 
   // Server guard

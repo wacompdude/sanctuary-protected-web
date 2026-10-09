@@ -18,9 +18,32 @@ export function organizationHasProviderSubscription(
   );
 }
 
+export type ConnectedPlanAction =
+  | "initial_checkout"
+  | "current"
+  | "upgrade"
+  | "downgrade_unavailable";
+
+/**
+ * A connected Stripe subscription never starts Checkout.
+ * Higher plans use the dedicated upgrade path. Lower plans stay unavailable.
+ */
+export function connectedSubscriptionPlanAction(input: {
+  hasProviderSubscription: boolean;
+  isSamePlan: boolean;
+  isUpgrade: boolean;
+  isDowngrade: boolean;
+}): ConnectedPlanAction {
+  if (!input.hasProviderSubscription) return "initial_checkout";
+  if (input.isSamePlan) return "current";
+  if (input.isUpgrade) return "upgrade";
+  if (input.isDowngrade) return "downgrade_unavailable";
+  return "current";
+}
+
 /**
  * Whether the Billing UI may start initial subscription Checkout for the
- * selected plan (including the current internal plan when unpaid at Stripe).
+ * selected plan. An existing provider subscription is never Checkout.
  */
 export function canStartInitialSubscriptionCheckout(input: {
   isSamePlan: boolean;
@@ -28,7 +51,7 @@ export function canStartInitialSubscriptionCheckout(input: {
   checkoutAvailable: boolean;
 }): boolean {
   if (!input.checkoutAvailable) return false;
-  if (input.isSamePlan && input.hasProviderSubscription) return false;
+  if (input.hasProviderSubscription) return false;
   return true;
 }
 

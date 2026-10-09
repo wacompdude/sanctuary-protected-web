@@ -5,10 +5,13 @@ import { headers } from "next/headers";
 import {
   BillingCheckoutPlanError,
   BillingCheckoutUrlError,
+  BillingConfigurationError,
   BillingNotImplementedError,
   BillingProviderNotConfiguredError,
+  BillingUpgradeError,
   buildDowngradeImpactReport,
   getBillingProvider,
+  getConfiguredBillingProviderId,
   requireBillingManageAccess,
 } from "@/lib/billing";
 import { assertNoExistingProviderSubscriptionForInitialCheckout } from "@/lib/billing/checkout-eligibility";
@@ -25,7 +28,18 @@ import {
   scheduleChurchSubscriptionCancellation,
 } from "@/lib/subscriptions/mutations";
 import { getChurchSubscription } from "@/lib/subscriptions/queries";
-import { isServiceRoleConfigured } from "@/lib/supabase/admin";
+import { requireStripeSecretKey } from "@/lib/billing/stripe/config";
+import { createStripeUpgradeDeps } from "@/lib/billing/stripe/upgrade-live";
+import {
+  previewSubscriptionUpgrade,
+  confirmSubscriptionUpgrade,
+  assertClientUpgradePayload,
+  upgradeFailureMessage,
+  type LocalUpgradeSubscription,
+  type SubscriptionUpgradePreview,
+} from "@/lib/billing/stripe/upgrade";
+import { ChurchAccessError } from "@/lib/organization/errors";
+import { createAdminClient, isServiceRoleConfigured } from "@/lib/supabase/admin";
 import type { DowngradeImpactReport } from "@/lib/billing/types";
 
 export type BillingActionState = {
@@ -34,6 +48,7 @@ export type BillingActionState = {
   message?: string;
   url?: string;
   impact?: DowngradeImpactReport;
+  upgradePreview?: SubscriptionUpgradePreview;
 };
 
 export async function previewPlanChangeImpactAction(
@@ -290,5 +305,141 @@ export async function requestCancellationAction(
           ? error.message
           : "Unable to cancel subscription.",
     };
+  }
+}
+
+const CURRENT_SUBSCRIPTION_STATUSES = [
+  "trialing",
+  "active",
+  "past_due",
+  "grace_period",
+  "incomplete",
+] as const;
+
+function upgradeActionError(error: unknown): string {
+  if (
+    error instanceof ChurchAccessError ||
+    error instanceof BillingConfigurationError ||
+    error instanceof BillingUpgradeError ||
+    error instanceof BillingProviderNotConfiguredError
+  ) {
+    return error.message;
+  }
+  return upgradeFailureMessage(error);
+}
+
+async function loadLocalUpgradeSubscription(
+  organizationId: string,
+): Promise<LocalUpgradeSubscription> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("organization_subscriptions")
+    .select(
+      `
+      billing_provider,
+      billing_customer_id,
+      billing_subscription_id,
+      subscription_plans!inner ( plan_key )
+    `,
+    )
+    .eq("organization_id", organizationId)
+    .in("status", [...CURRENT_SUBSCRIPTION_STATUSES])
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) {
+    throw new BillingUpgradeError(
+      "A connected Stripe subscription is required before a plan can be upgraded.",
+    );
+  }
+
+  const row = data as Record<string, unknown>;
+  const plan = row.subscription_plans as Record<string, unknown> | null;
+  const planKey = String(plan?.plan_key ?? "");
+  const customerId =
+    typeof row.billing_customer_id === "string" ? row.billing_customer_id.trim() : "";
+  const subscriptionId =
+    typeof row.billing_subscription_id === "string"
+      ? row.billing_subscription_id.trim()
+      : "";
+  if (!isPlanKey(planKey) || !customerId || !subscriptionId) {
+    throw new BillingUpgradeError(
+      "A connected Stripe subscription is required before a plan can be upgraded.",
+    );
+  }
+  return {
+    planKey,
+    billingProvider:
+      typeof row.billing_provider === "string" ? row.billing_provider : null,
+    billingCustomerId: customerId,
+    billingSubscriptionId: subscriptionId,
+  };
+}
+
+function assertStripeUpgradeProvider(): void {
+  if (getConfiguredBillingProviderId() !== "stripe") {
+    throw new BillingUpgradeError("This organization is not billed through Stripe.");
+  }
+  const provider = getBillingProvider();
+  if (!provider.isConfigured()) {
+    throw new BillingProviderNotConfiguredError(
+      "Stripe billing is not configured.",
+    );
+  }
+}
+
+export async function previewSubscriptionUpgradeAction(
+  planKey: string,
+): Promise<BillingActionState> {
+  try {
+    const { church } = await requireBillingManageAccess();
+    if (!isServiceRoleConfigured()) {
+      return {
+        error:
+          "Server is missing SUPABASE_SERVICE_ROLE_KEY required to read billing.",
+      };
+    }
+    assertStripeUpgradeProvider();
+    const targetPlanKey = assertClientUpgradePayload({ plan_key: planKey });
+    const local = await loadLocalUpgradeSubscription(church.id);
+    const preview = await previewSubscriptionUpgrade({
+      local,
+      targetPlanKey,
+      deps: createStripeUpgradeDeps(requireStripeSecretKey()),
+    });
+    return { success: true, upgradePreview: preview };
+  } catch (error) {
+    return { error: upgradeActionError(error) };
+  }
+}
+
+export async function confirmSubscriptionUpgradeAction(
+  planKey: string,
+): Promise<BillingActionState> {
+  try {
+    const { church } = await requireBillingManageAccess();
+    if (!isServiceRoleConfigured()) {
+      return {
+        error:
+          "Server is missing SUPABASE_SERVICE_ROLE_KEY required to read billing.",
+      };
+    }
+    assertStripeUpgradeProvider();
+    const targetPlanKey = assertClientUpgradePayload({ plan_key: planKey });
+    const local = await loadLocalUpgradeSubscription(church.id);
+    await confirmSubscriptionUpgrade({
+      local,
+      targetPlanKey,
+      deps: createStripeUpgradeDeps(requireStripeSecretKey()),
+    });
+    revalidatePath("/settings/billing");
+    return {
+      success: true,
+      message:
+        "Upgrade payment succeeded. Your plan updates when Stripe billing sync completes.",
+    };
+  } catch (error) {
+    return { error: upgradeActionError(error) };
   }
 }

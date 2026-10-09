@@ -23,6 +23,7 @@ export {
   BillingProviderUnknownError,
   BillingNotImplementedError,
   BillingCheckoutPlanError,
+  BillingUpgradeError,
   BillingCheckoutUrlError,
   BillingAuthorizationError,
   StripeCatalogNotFoundError,
@@ -109,6 +110,7 @@ export {
 export {
   organizationHasProviderSubscription,
   canStartInitialSubscriptionCheckout,
+  connectedSubscriptionPlanAction,
   assertNoExistingProviderSubscriptionForInitialCheckout,
   formatBillingPlanPrice,
   initialSamePlanCheckoutSummary,

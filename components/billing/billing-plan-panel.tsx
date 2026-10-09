@@ -5,18 +5,23 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
   applyPlanWithoutProviderAction,
+  confirmSubscriptionUpgradeAction,
   openCustomerPortalAction,
   previewPlanChangeImpactAction,
+  previewSubscriptionUpgradeAction,
   requestCancellationAction,
   startCheckoutAction,
 } from "@/app/(app)/settings/billing/actions";
 import { Button } from "@/components/ui/button";
 import {
   canStartInitialSubscriptionCheckout,
+  connectedSubscriptionPlanAction,
   formatBillingPlanPrice,
   initialSamePlanCheckoutSummary,
 } from "@/lib/billing/checkout-eligibility";
+import type { SubscriptionUpgradePreview } from "@/lib/billing/stripe/upgrade";
 import type { DowngradeImpactReport } from "@/lib/billing/types";
+import { isPlanDowngrade, isPlanUpgrade } from "@/lib/subscriptions/status";
 import type { SubscriptionPlanRecord } from "@/lib/subscriptions/types";
 
 export function BillingPlanPanel({
@@ -43,6 +48,8 @@ export function BillingPlanPanel({
     currentPlanKey ?? plans[0]?.plan_key ?? "",
   );
   const [impact, setImpact] = useState<DowngradeImpactReport | null>(null);
+  const [upgradePreview, setUpgradePreview] =
+    useState<SubscriptionUpgradePreview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [confirmDowngrade, setConfirmDowngrade] = useState(false);
@@ -50,6 +57,7 @@ export function BillingPlanPanel({
   function runPreview(planKey: string) {
     setSelectedPlanKey(planKey);
     setConfirmDowngrade(false);
+    setUpgradePreview(null);
     setError(null);
     setMessage(null);
     startTransition(async () => {
@@ -60,10 +68,26 @@ export function BillingPlanPanel({
         return;
       }
       setImpact(result.impact ?? null);
+      const action = connectedSubscriptionPlanAction({
+        hasProviderSubscription,
+        isSamePlan: result.impact?.isSamePlan ?? false,
+        isUpgrade: result.impact?.isUpgrade ?? false,
+        isDowngrade: result.impact?.isDowngrade ?? false,
+      });
+      if (action === "upgrade" && providerReady) {
+        const preview = await previewSubscriptionUpgradeAction(String(planKey));
+        if (preview.error) {
+          setError(preview.error);
+          setUpgradePreview(null);
+          return;
+        }
+        setUpgradePreview(preview.upgradePreview ?? null);
+      }
     });
   }
 
   function applySelectedPlan() {
+    if (hasProviderSubscription) return;
     setError(null);
     setMessage(null);
     const formData = new FormData();
@@ -90,6 +114,22 @@ export function BillingPlanPanel({
       }
       setMessage(result.message ?? "Plan updated.");
       setImpact(result.impact ?? null);
+      router.refresh();
+    });
+  }
+
+  function confirmUpgrade() {
+    setError(null);
+    setMessage(null);
+    startTransition(async () => {
+      const result = await confirmSubscriptionUpgradeAction(
+        String(selectedPlanKey),
+      );
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      setMessage(result.message ?? "Upgrade payment succeeded.");
       router.refresh();
     });
   }
@@ -130,16 +170,30 @@ export function BillingPlanPanel({
       checkoutAvailable: providerReady,
     });
 
+  const planAction = impact
+    ? connectedSubscriptionPlanAction({
+        hasProviderSubscription,
+        isSamePlan: impact.isSamePlan,
+        isUpgrade: impact.isUpgrade,
+        isDowngrade: impact.isDowngrade,
+      })
+    : null;
+
   const checkoutDisabled =
     pending ||
     !impact ||
+    hasProviderSubscription ||
     (impact.isSamePlan && !allowInitialSamePlanCheckout) ||
     (impact.isDowngrade && !impact.isSamePlan && !confirmDowngrade);
 
   const reviewSummary =
-    impact?.isSamePlan && !hasProviderSubscription && providerReady
-      ? initialSamePlanCheckoutSummary()
-      : impact?.summary;
+    planAction === "upgrade" && upgradePreview
+      ? `Upgrade to ${upgradePreview.targetPlanName}. Your upgrade will take effect immediately. ${upgradePreview.creditStatement} Your normal monthly renewal date will remain unchanged.`
+      : planAction === "downgrade_unavailable"
+        ? "Downgrade at next renewal is not available yet."
+        : impact?.isSamePlan && !hasProviderSubscription && providerReady
+          ? initialSamePlanCheckoutSummary()
+          : impact?.summary;
 
   return (
     <div className="space-y-6">
@@ -166,6 +220,24 @@ export function BillingPlanPanel({
           const key = String(plan.plan_key);
           const selected = selectedPlanKey === key;
           const current = currentPlanKey === key;
+          const planAction = connectedSubscriptionPlanAction({
+            hasProviderSubscription,
+            isSamePlan: current,
+            isUpgrade: Boolean(
+              currentPlanKey && isPlanUpgrade(currentPlanKey, key),
+            ),
+            isDowngrade: Boolean(
+              currentPlanKey && isPlanDowngrade(currentPlanKey, key),
+            ),
+          });
+          const planLabel =
+            planAction === "current"
+              ? "Current"
+              : planAction === "upgrade"
+                ? "Upgrade"
+                : planAction === "downgrade_unavailable"
+                  ? "Downgrade at next renewal"
+                  : null;
           return (
             <button
               key={plan.id}
@@ -183,8 +255,8 @@ export function BillingPlanPanel({
             >
               <div className="flex items-start justify-between gap-2">
                 <h3 className="font-medium">{plan.display_name}</h3>
-                {current ? (
-                  <span className="text-xs text-muted-foreground">Current</span>
+                {planLabel ? (
+                  <span className="text-xs text-muted-foreground">{planLabel}</span>
                 ) : null}
               </div>
               <p className="mt-2 text-lg font-semibold">
@@ -224,7 +296,32 @@ export function BillingPlanPanel({
             </ul>
           ) : null}
 
-          {impact.isDowngrade && !impact.isSamePlan ? (
+          {planAction === "upgrade" && upgradePreview ? (
+            <div className="space-y-1 text-sm">
+              <p>Upgrade to {upgradePreview.targetPlanName}</p>
+              <p>Your upgrade will take effect immediately.</p>
+              <p>{upgradePreview.creditStatement}</p>
+              <p>Your normal monthly renewal date will remain unchanged.</p>
+              <p>
+                Amount due today:{" "}
+                {formatBillingPlanPrice(
+                  upgradePreview.amountDueCents,
+                  upgradePreview.currency,
+                )}
+              </p>
+              <p>
+                Then{" "}
+                {formatBillingPlanPrice(
+                  upgradePreview.targetMonthlyPriceCents,
+                  upgradePreview.currency,
+                )}{" "}
+                / month. Renewal{" "}
+                {new Date(upgradePreview.renewalAt).toLocaleDateString()}.
+              </p>
+            </div>
+          ) : null}
+
+          {impact.isDowngrade && !impact.isSamePlan && !hasProviderSubscription ? (
             <label className="flex items-start gap-2 text-sm">
               <input
                 type="checkbox"
@@ -242,20 +339,31 @@ export function BillingPlanPanel({
           <div className="flex flex-wrap gap-2">
             {canManageBilling ? (
               <>
-                <Button
-                  type="button"
-                  disabled={checkoutDisabled}
-                  onClick={applySelectedPlan}
-                >
-                  {pending
-                    ? "Working…"
-                    : providerReady
-                      ? "Continue to checkout"
-                      : impact.isDowngrade
-                        ? "Apply downgrade"
-                        : "Apply plan"}
-                </Button>
-                {providerReady ? (
+                {planAction === "upgrade" ? (
+                  <Button
+                    type="button"
+                    disabled={pending || !upgradePreview}
+                    onClick={confirmUpgrade}
+                  >
+                    {pending ? "Working…" : "Confirm Upgrade"}
+                  </Button>
+                ) : planAction === "downgrade_unavailable" ||
+                  planAction === "current" ? null : (
+                  <Button
+                    type="button"
+                    disabled={checkoutDisabled}
+                    onClick={applySelectedPlan}
+                  >
+                    {pending
+                      ? "Working…"
+                      : providerReady
+                        ? "Continue to checkout"
+                        : impact.isDowngrade
+                          ? "Apply downgrade"
+                          : "Apply plan"}
+                  </Button>
+                )}
+                {providerReady && !hasProviderSubscription ? (
                   <Button
                     type="button"
                     variant="outline"

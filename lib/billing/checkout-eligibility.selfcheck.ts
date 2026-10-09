@@ -9,6 +9,7 @@ import { BillingCheckoutPlanError } from "@/lib/billing/errors";
 import {
   assertNoExistingProviderSubscriptionForInitialCheckout,
   canStartInitialSubscriptionCheckout,
+  connectedSubscriptionPlanAction,
   formatBillingPlanPrice,
   initialSamePlanCheckoutSummary,
   organizationHasProviderSubscription,
@@ -98,8 +99,35 @@ function main() {
       isSamePlan: false,
       hasProviderSubscription: true,
       checkoutAvailable: true,
-    }) === true,
-    "different plan still allowed at UI layer (upgrade path; server may refine later)",
+    }) === false,
+    "existing subscription never starts initial checkout, including upgrades",
+  );
+  assert(
+    connectedSubscriptionPlanAction({
+      hasProviderSubscription: true,
+      isSamePlan: false,
+      isUpgrade: true,
+      isDowngrade: false,
+    }) === "upgrade",
+    "higher plan on a connected subscription uses upgrade",
+  );
+  assert(
+    connectedSubscriptionPlanAction({
+      hasProviderSubscription: true,
+      isSamePlan: true,
+      isUpgrade: false,
+      isDowngrade: false,
+    }) === "current",
+    "current connected plan does not start checkout",
+  );
+  assert(
+    connectedSubscriptionPlanAction({
+      hasProviderSubscription: true,
+      isSamePlan: false,
+      isUpgrade: false,
+      isDowngrade: true,
+    }) === "downgrade_unavailable",
+    "lower plan is not checkout or immediate upgrade",
   );
 
   // Server guard

@@ -167,6 +167,8 @@ export function extractWebhookPriceItems(
     };
   };
 
+  // Live subscription items only. pending_update.subscription_items are
+  // applied by Stripe after payment and are not the active plan.
   const subscriptionItems = asRecord(obj.items);
   const itemData = Array.isArray(subscriptionItems?.data)
     ? subscriptionItems.data

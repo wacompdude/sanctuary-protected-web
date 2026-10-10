@@ -51,6 +51,11 @@ export type StripeWebhookObjectSummary = {
   periodStart: number | null;
   periodEnd: number | null;
   cancelAtPeriodEnd: boolean | null;
+  /**
+   * Stripe canceled_at. For period-end cancellation this is when the
+   * request was made, not the paid-through date.
+   */
+  canceledAt?: number | null;
   metadataOrganizationId: string | null;
   metadataPlanKey: string | null;
   /**
@@ -322,6 +327,7 @@ export function summarizeStripeEventObject(
     periodStart: null,
     periodEnd: null,
     cancelAtPeriodEnd: bool(obj.cancel_at_period_end),
+    canceledAt: num(obj.canceled_at),
     metadataOrganizationId: str(metadata.organization_id),
     metadataPlanKey: str(metadata.plan_key),
     scheduleId: objectType === "subscription" ? str(obj.schedule) : null,

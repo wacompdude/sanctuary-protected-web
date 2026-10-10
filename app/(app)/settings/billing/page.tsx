@@ -22,6 +22,7 @@ import { ChurchAccessError } from "@/lib/organization/errors";
 import { formatChurchDateTime } from "@/lib/datetime/format";
 import {
   getChurchSubscription,
+  getLatestChurchSubscription,
   getSeatUsageMeter,
   getSmsSegmentUsageMeter,
   listSubscriptionPlans,
@@ -89,13 +90,22 @@ async function BillingContent() {
     .eq("id", church.id)
     .maybeSingle();
 
-  const [subscription, seatMeter, smsMeter, plans, history] = await Promise.all([
-    getChurchSubscription(church.id),
-    getSeatUsageMeter(church.id),
-    getSmsSegmentUsageMeter(church.id),
-    listSubscriptionPlans(),
-    listBillingHistory(church.id, 20),
-  ]);
+  const [subscription, latestSubscription, seatMeter, smsMeter, plans, history] =
+    await Promise.all([
+      getChurchSubscription(church.id),
+      getLatestChurchSubscription(church.id),
+      getSeatUsageMeter(church.id),
+      getSmsSegmentUsageMeter(church.id),
+      listSubscriptionPlans(),
+      listBillingHistory(church.id, 20),
+    ]);
+  const cancelledSubscription =
+    !subscription && latestSubscription?.status === "cancelled"
+      ? latestSubscription
+      : null;
+  const hasProviderSubscription = organizationHasProviderSubscription(
+    subscription?.billing_subscription_id,
+  );
 
   const publicPlans = plans.filter(
     (plan) => plan.is_public && plan.status === "active",
@@ -130,6 +140,7 @@ async function BillingContent() {
               </dt>
               <dd className="mt-1 text-sm">
                 {subscription?.plan_display_name ||
+                  cancelledSubscription?.plan_display_name ||
                   data?.plan_name?.trim() ||
                   "Not configured"}
               </dd>
@@ -159,7 +170,8 @@ async function BillingContent() {
                 Subscription status
               </dt>
               <dd className="mt-1 text-sm capitalize">
-                {subscription?.status ?? "no subscription"}
+                {subscription?.status ??
+                  (cancelledSubscription ? "cancelled" : "no subscription")}
                 {subscription?.cancel_at_period_end
                   ? " · cancels at period end"
                   : ""}
@@ -204,17 +216,24 @@ async function BillingContent() {
         </CardHeader>
         <CardContent>
           <BillingPlanPanel
-            key={`${subscription ? String(subscription.plan_key) : "none"}-${subscription?.schedule_status ?? "none"}`}
+            key={`${subscription ? String(subscription.plan_key) : cancelledSubscription ? "cancelled" : "none"}-${subscription?.schedule_status ?? "none"}-${subscription?.cancel_at_period_end ? "canceling" : "renewing"}`}
             plans={publicPlans}
             currentPlanKey={
               subscription ? String(subscription.plan_key) : null
             }
-            hasProviderSubscription={organizationHasProviderSubscription(
-              subscription?.billing_subscription_id,
-            )}
+            hasProviderSubscription={hasProviderSubscription}
             providerReady={isBillingProviderReady()}
             providerMessage={billingProviderStatusMessage()}
             cancelAtPeriodEnd={Boolean(subscription?.cancel_at_period_end)}
+            paidThroughIso={subscription?.current_period_end ?? null}
+            currentPlanName={subscription?.plan_display_name ?? null}
+            cancellationMode={
+              hasProviderSubscription
+                ? "paid"
+                : cancelledSubscription
+                  ? "cancelled"
+                  : "trial"
+            }
             canManageBilling={canManageBilling}
             scheduledDowngrade={
               subscription?.schedule_status === "scheduled" &&

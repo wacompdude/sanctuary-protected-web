@@ -28,9 +28,11 @@ import {
 import {
   getChurchSubscription,
   getDefaultSubscriptionPlan,
+  getLatestChurchSubscription,
   getSubscriptionPlanByKey,
   listPlanFeatureAssignments,
 } from "@/lib/subscriptions/queries";
+import { resolveChurchEntitlementSource } from "@/lib/subscriptions/entitlement-resolution";
 import type {
   ChurchEntitlements,
   FeatureAccessResult,
@@ -82,9 +84,10 @@ export async function getPlanEntitlements(params: {
 
 /**
  * Resolve entitlements for a church.
- * If no current subscription exists, falls back to the default plan
- * (Servant Standard) and sets usedDefaultPlanFallback.
- * Active platform overrides overlay plan_features for that organization only.
+ * A current subscription, including one with cancel_at_period_end, uses that
+ * plan until Stripe marks it cancelled. A cancelled subscription does not
+ * fall back to the default plan and does not keep the historical plan's
+ * features. No subscription row at all still uses the default plan.
  *
  * Pass a service-role client when the caller is not yet a member (invite
  * accept). Member-scoped RLS hides organization_subscriptions from invitees,
@@ -137,6 +140,22 @@ export async function loadChurchEntitlements(
         await loadPlanEntitlements(resolvedPlan, client),
         await loadActiveEntitlementOverrides(trimmed, client),
       ),
+    };
+  }
+
+  const latest = await getLatestChurchSubscription(trimmed, client);
+  if (
+    resolveChurchEntitlementSource({
+      hasCurrentSubscription: false,
+      latestStatus: latest?.status ?? null,
+    }) === "none"
+  ) {
+    return {
+      organizationId: trimmed,
+      subscription: null,
+      plan: null,
+      usedDefaultPlanFallback: false,
+      values: {},
     };
   }
 

@@ -26,20 +26,25 @@ import {
 import { isPlanKey } from "@/lib/subscriptions/plan-keys";
 import {
   changeChurchSubscriptionPlan,
-  scheduleChurchSubscriptionCancellation,
 } from "@/lib/subscriptions/mutations";
 import { getChurchSubscription } from "@/lib/subscriptions/queries";
 import { requireStripeSecretKey } from "@/lib/billing/stripe/config";
 import { createStripeUpgradeDeps } from "@/lib/billing/stripe/upgrade-live";
 import { createStripeDowngradeDeps } from "@/lib/billing/stripe/downgrade-live";
+import { createStripeCancellationDeps } from "@/lib/billing/stripe/cancellation-live";
 import {
-  assertCancellationAllowed,
+  BillingCancellationError,
+  pendingCancellationCopy,
+  setSubscriptionCancelAtPeriodEnd,
+  TRIAL_CANCELLATION_MESSAGE,
+  type LocalCancellationSubscription,
+} from "@/lib/billing/stripe/cancellation";
+import {
   assertClientDowngradePayload,
   downgradeFailureMessage,
   releaseScheduledDowngrade,
   safeStripeDowngradeErrorLog,
   scheduleSubscriptionDowngrade,
-  DOWNGRADE_CANCELLATION_CONFLICT_MESSAGE,
 } from "@/lib/billing/stripe/downgrade";
 import {
   previewSubscriptionUpgrade,
@@ -273,8 +278,25 @@ export async function requestCancellationAction(
   _prev: BillingActionState,
   formData: FormData,
 ): Promise<BillingActionState> {
+  return changePeriodEndCancellation(formData, true);
+}
+
+export async function keepSubscriptionAction(): Promise<BillingActionState> {
+  return changePeriodEndCancellation(null, false);
+}
+
+async function changePeriodEndCancellation(
+  formData: FormData | null,
+  cancelAtPeriodEnd: boolean,
+): Promise<BillingActionState> {
   try {
-    const { church, user } = await requireBillingManageAccess();
+    const { church } = await requireBillingManageAccess();
+    if (cancelAtPeriodEnd) {
+      const confirmed = String(formData?.get("confirmed") ?? "") === "1";
+      if (!confirmed) {
+        return { error: "Confirm cancellation to continue." };
+      }
+    }
     if (!isServiceRoleConfigured()) {
       return {
         error:
@@ -282,55 +304,179 @@ export async function requestCancellationAction(
       };
     }
 
-    const confirmed = String(formData.get("confirmed") ?? "") === "1";
-    if (!confirmed) {
-      return { error: "Confirm cancellation to continue." };
+    const local = await loadLocalCancellationSubscription(church.id);
+    if (!local) {
+      return { error: TRIAL_CANCELLATION_MESSAGE };
     }
 
-    const scheduleStatus = await readScheduleStatus(church.id);
-    try {
-      assertCancellationAllowed(scheduleStatus);
-    } catch (error) {
-      return {
-        error:
-          error instanceof BillingDowngradeError
-            ? error.message
-            : DOWNGRADE_CANCELLATION_CONFLICT_MESSAGE,
-      };
-    }
+    const secretKey = requireStripeSecretKey();
+    const result = await setSubscriptionCancelAtPeriodEnd({
+      local,
+      cancelAtPeriodEnd,
+      deps: createStripeCancellationDeps(secretKey),
+    });
 
-    const provider = getBillingProvider();
-    if (provider.isConfigured() && provider.capabilities().cancelAtProvider) {
-      return {
-        error:
-          "Use the customer portal to cancel when a billing provider is connected.",
-      };
+    if (result.changed && result.history) {
+      await writeCancellationHistoryIfAbsent({
+        organizationId: church.id,
+        local,
+        result,
+      });
     }
-
-    // Soft-cancel at period end until a provider owns lifecycle.
-    const result = await scheduleChurchSubscriptionCancellation({
+    await mirrorCancelAtPeriodEnd({
       organizationId: church.id,
-      userId: user.id,
-      source: "billing_settings_manual",
-      reason: "Cancel at period end requested from billing settings (no provider)",
+      billingSubscriptionId: result.subscriptionId,
+      cancelAtPeriodEnd: result.cancelAtPeriodEnd,
     });
 
     revalidatePath("/settings/billing");
     revalidatePath("/", "layout");
+    if (cancelAtPeriodEnd) {
+      const copy = pendingCancellationCopy({
+        planDisplayName: local.planDisplayName,
+        paidThroughIso: result.currentPeriodEnd ?? "",
+      });
+      return {
+        success: true,
+        message: result.changed
+          ? `${copy.title}. ${copy.through} Church data is preserved.`
+          : "Cancellation is already scheduled. Church data is preserved.",
+      };
+    }
     return {
       success: true,
-      message: result.subscription.current_period_end
-        ? `Cancellation scheduled. Access continues until ${new Date(result.subscription.current_period_end).toLocaleDateString()}. Church data is preserved.`
-        : "Cancellation scheduled at period end. Church data is preserved.",
+      message: result.changed
+        ? "Subscription kept. It will continue renewing on the current plan."
+        : "This subscription is already set to continue.",
     };
   } catch (error) {
-    return {
-      error:
-        error instanceof Error
-          ? error.message
-          : "Unable to cancel subscription.",
-    };
+    if (
+      error instanceof BillingCancellationError ||
+      error instanceof BillingDowngradeError ||
+      error instanceof BillingConfigurationError
+    ) {
+      return { error: error.message };
+    }
+    return { error: "Unable to update subscription cancellation." };
   }
+}
+
+async function loadLocalCancellationSubscription(
+  organizationId: string,
+): Promise<LocalCancellationSubscription | null> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("organization_subscriptions")
+    .select(
+      `
+      billing_provider,
+      billing_customer_id,
+      billing_subscription_id,
+      status,
+      cancel_at_period_end,
+      schedule_status,
+      current_period_end,
+      subscription_plans!church_subscriptions_plan_id_fkey!inner (
+        plan_key,
+        display_name
+      )
+    `,
+    )
+    .eq("organization_id", organizationId)
+    .in("status", [...CURRENT_SUBSCRIPTION_STATUSES])
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error || !data) return null;
+  const row = data as Record<string, unknown>;
+  const plan = row.subscription_plans as Record<string, unknown> | null;
+  const planKey = String(plan?.plan_key ?? "");
+  const customerId =
+    typeof row.billing_customer_id === "string" ? row.billing_customer_id.trim() : "";
+  const subscriptionId =
+    typeof row.billing_subscription_id === "string"
+      ? row.billing_subscription_id.trim()
+      : "";
+  if (!isPlanKey(planKey) || !customerId || !subscriptionId) return null;
+  if (String(row.billing_provider ?? "").trim().toLowerCase() !== "stripe") {
+    return null;
+  }
+  return {
+    planKey,
+    planDisplayName: String(plan?.display_name ?? planKey),
+    billingProvider: "stripe",
+    billingCustomerId: customerId,
+    billingSubscriptionId: subscriptionId,
+    status: String(row.status ?? ""),
+    cancelAtPeriodEnd: row.cancel_at_period_end === true,
+    activeDowngradeSchedule: row.schedule_status === "scheduled",
+    currentPeriodEnd:
+      typeof row.current_period_end === "string" ? row.current_period_end : null,
+  };
+}
+
+async function writeCancellationHistoryIfAbsent(input: {
+  organizationId: string;
+  local: LocalCancellationSubscription;
+  result: {
+    subscriptionId: string;
+    history: { changeType: string; transition: string } | null;
+    cancelAtPeriodEnd: boolean;
+    currentPeriodEnd: string | null;
+  };
+}): Promise<void> {
+  const history = input.result.history;
+  if (!history) return;
+  const admin = createAdminClient();
+  const { data: existing } = await admin
+    .from("subscription_change_history")
+    .select("id")
+    .eq("organization_id", input.organizationId)
+    .contains("metadata", { cancellation_transition: history.transition })
+    .limit(1)
+    .maybeSingle();
+  if (existing?.id) return;
+  const { data: subscription } = await admin
+    .from("organization_subscriptions")
+    .select("id, plan_id, status")
+    .eq("organization_id", input.organizationId)
+    .eq("billing_subscription_id", input.result.subscriptionId)
+    .maybeSingle();
+  if (!subscription?.id || !subscription.plan_id) return;
+  await admin.from("subscription_change_history").insert({
+    organization_id: input.organizationId,
+    subscription_id: subscription.id,
+    old_plan_id: subscription.plan_id,
+    new_plan_id: subscription.plan_id,
+    old_status: subscription.status,
+    new_status: subscription.status,
+    change_type: history.changeType,
+    reason:
+      history.changeType === "cancellation_scheduled"
+        ? "Cancellation scheduled at period end"
+        : "Subscription kept",
+    metadata: {
+      stripe_subscription_id: input.result.subscriptionId,
+      plan_key: input.local.planKey,
+      cancel_at_period_end: input.result.cancelAtPeriodEnd,
+      current_period_end: input.result.currentPeriodEnd,
+      cancellation_transition: history.transition,
+      source: "stripe_subscription_update",
+    },
+  });
+}
+
+async function mirrorCancelAtPeriodEnd(input: {
+  organizationId: string;
+  billingSubscriptionId: string;
+  cancelAtPeriodEnd: boolean;
+}): Promise<void> {
+  const admin = createAdminClient();
+  await admin
+    .from("organization_subscriptions")
+    .update({ cancel_at_period_end: input.cancelAtPeriodEnd })
+    .eq("organization_id", input.organizationId)
+    .eq("billing_subscription_id", input.billingSubscriptionId);
 }
 
 const CURRENT_SUBSCRIPTION_STATUSES = [
@@ -402,6 +548,7 @@ async function loadLocalUpgradeSubscription(
     billingCustomerId: customerId,
     billingSubscriptionId: subscriptionId,
     activeDowngradeSchedule: row.schedule_status === "scheduled",
+    cancelAtPeriodEnd: row.cancel_at_period_end === true,
   };
 }
 
@@ -537,19 +684,6 @@ export async function cancelScheduledDowngradeAction(): Promise<BillingActionSta
     console.error(JSON.stringify(safeStripeDowngradeErrorLog(error)));
     return { error: downgradeFailureMessage(error) };
   }
-}
-
-async function readScheduleStatus(organizationId: string): Promise<string | null> {
-  const admin = createAdminClient();
-  const { data } = await admin
-    .from("organization_subscriptions")
-    .select("schedule_status")
-    .eq("organization_id", organizationId)
-    .in("status", [...CURRENT_SUBSCRIPTION_STATUSES])
-    .order("started_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  return typeof data?.schedule_status === "string" ? data.schedule_status : null;
 }
 
 async function loadLocalDowngradeSubscription(organizationId: string) {

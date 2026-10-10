@@ -654,6 +654,12 @@ export async function scheduleChurchSubscriptionCancellation(params: {
     };
   }
 
+  if ((existing.billing_subscription_id ?? "").trim()) {
+    throw new Error(
+      "Paid Stripe subscriptions must be canceled through Stripe period-end cancellation.",
+    );
+  }
+
   const { data, error } = await admin
     .from("organization_subscriptions")
     .update({

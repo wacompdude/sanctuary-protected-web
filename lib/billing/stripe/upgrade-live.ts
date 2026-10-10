@@ -52,6 +52,7 @@ async function retrieveUpgradeSubscription(
     customerId,
     status: subscription.status,
     scheduleId,
+    cancelAtPeriodEnd: subscription.cancel_at_period_end === true,
     items,
   };
 }

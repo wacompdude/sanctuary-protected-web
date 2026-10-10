@@ -31,6 +31,10 @@ function mapSubRow(
         : null,
     paymentStatus:
       typeof row.payment_status === "string" ? row.payment_status : null,
+    cancelAtPeriodEnd:
+      typeof row.cancel_at_period_end === "boolean"
+        ? row.cancel_at_period_end
+        : undefined,
   };
 }
 
@@ -135,7 +139,7 @@ export function createAdminWebhookSyncStore(): WebhookSyncStore {
       const { data } = await admin
         .from("organization_subscriptions")
         .select(
-          "id, organization_id, plan_id, status, billing_subscription_id, payment_status",
+          "id, organization_id, plan_id, status, billing_subscription_id, payment_status, cancel_at_period_end",
         )
         .eq("billing_provider", "stripe")
         .eq("billing_subscription_id", providerSubscriptionId)
@@ -158,7 +162,7 @@ export function createAdminWebhookSyncStore(): WebhookSyncStore {
       const { data } = await admin
         .from("organization_subscriptions")
         .select(
-          "id, organization_id, plan_id, status, billing_subscription_id, payment_status",
+          "id, organization_id, plan_id, status, billing_subscription_id, payment_status, cancel_at_period_end",
         )
         .eq("organization_id", organizationId)
         .in("status", [
@@ -211,7 +215,7 @@ export function createAdminWebhookSyncStore(): WebhookSyncStore {
             provider_latest_invoice_id: input.providerLatestInvoiceId ?? null,
           })
           .select(
-            "id, organization_id, plan_id, status, billing_subscription_id, payment_status",
+            "id, organization_id, plan_id, status, billing_subscription_id, payment_status, cancel_at_period_end",
           )
           .single();
         if (error || !data) {
@@ -258,7 +262,7 @@ export function createAdminWebhookSyncStore(): WebhookSyncStore {
         })
         .eq("id", current.id)
         .select(
-          "id, organization_id, plan_id, status, billing_subscription_id, payment_status",
+          "id, organization_id, plan_id, status, billing_subscription_id, payment_status, cancel_at_period_end",
         )
         .single();
       if (error || !data) {
@@ -290,13 +294,25 @@ export function createAdminWebhookSyncStore(): WebhookSyncStore {
       });
     },
 
-    async hasChangeHistoryForProviderEvent(providerEventId) {
+    async hasChangeHistoryForProviderEvent(providerEventId, changeType) {
       const eventId = providerEventId.trim();
       if (!eventId) return false;
+      let query = admin
+        .from("subscription_change_history")
+        .select("id")
+        .contains("metadata", { stripe_event_id: eventId });
+      if (changeType) query = query.eq("change_type", changeType);
+      const { data } = await query.limit(1).maybeSingle();
+      return Boolean(data?.id);
+    },
+
+    async hasCancellationTransition(transitionKey) {
+      const key = transitionKey.trim();
+      if (!key) return false;
       const { data } = await admin
         .from("subscription_change_history")
         .select("id")
-        .contains("metadata", { stripe_event_id: eventId })
+        .contains("metadata", { cancellation_transition: key })
         .limit(1)
         .maybeSingle();
       return Boolean(data?.id);

@@ -59,6 +59,7 @@ export {
   listPlanFeatureAssignments,
   listPlanFeatureMatrix,
   getChurchSubscription,
+  getLatestChurchSubscription,
 } from "@/lib/subscriptions/queries";
 
 export {

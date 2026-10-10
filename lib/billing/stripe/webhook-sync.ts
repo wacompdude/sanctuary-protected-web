@@ -24,6 +24,10 @@ import type { StripeWebhookObjectSummary } from "@/lib/billing/stripe/webhook-ve
 import type { ChurchSubscriptionStatus } from "@/lib/subscriptions/types";
 import { isPlanKey, type PlanKey } from "@/lib/subscriptions/plan-keys";
 import { subscriptionGrantsAccess } from "@/lib/subscriptions/status";
+import {
+  cancellationHistoryChange,
+  cancellationTransitionKey,
+} from "@/lib/billing/stripe/cancellation";
 
 export type OrgCustomerMapping = {
   organizationId: string;
@@ -46,6 +50,8 @@ export type SyncedSubscriptionSnapshot = {
   scheduledPlanId?: string | null;
   scheduledPlanKey?: string | null;
   scheduledEffectiveAt?: string | null;
+  /** Loaded when the subscription row select includes the column. */
+  cancelAtPeriodEnd?: boolean;
 };
 
 export type TrialActivationResult = "activated" | "noop" | "unchanged";
@@ -96,7 +102,10 @@ export type WebhookSyncStore = {
   /** App-level history idempotency keyed by Stripe event id (no migration). */
   hasChangeHistoryForProviderEvent(
     providerEventId: string,
+    changeType?: string,
   ): Promise<boolean>;
+  /** Idempotency for cancellation_scheduled / cancellation_reversed. */
+  hasCancellationTransition?(transitionKey: string): Promise<boolean>;
   upsertInvoice(input: {
     organizationId: string;
     providerInvoiceId: string;
@@ -332,6 +341,10 @@ export async function handleSubscriptionLifecycle(
   }
 
   const status = mapStripeSubscriptionStatus(object.status);
+  // cancelled_at is when this app records final cancellation. Stripe
+  // canceled_at can instead be the earlier period-end request time.
+  // Pending cancellation stays on cancel_at_period_end until status is
+  // cancelled. The paid-through date remains current_period_end.
   const cancelledAt =
     status === "cancelled" ? new Date().toISOString() : null;
 
@@ -384,7 +397,8 @@ export async function handleSubscriptionLifecycle(
         newPlanId: existingByProvider.planId,
         oldStatus: result.previousStatus,
         newStatus: status,
-        changeType,
+        changeType:
+          status === "cancelled" ? "subscription_cancelled" : changeType,
         planKey: existingByProvider.planKey,
         object,
       });
@@ -445,8 +459,22 @@ export async function handleSubscriptionLifecycle(
     newPlanId: planId,
     oldStatus: result.previousStatus,
     newStatus: status,
-    changeType,
+    changeType: status === "cancelled" ? "subscription_cancelled" : changeType,
     planKey,
+    object,
+  });
+  await maybeWriteCancellationFlagHistory(store, {
+    providerEventId: options.providerEventId,
+    organizationId: org.organizationId,
+    subscriptionId: result.subscription.id,
+    planId,
+    previousStatus: result.previousStatus,
+    nextStatus: status,
+    planKey,
+    previousCancelAtPeriodEnd: existingByProvider?.cancelAtPeriodEnd,
+    nextCancelAtPeriodEnd: Boolean(object.cancelAtPeriodEnd),
+    periodEndIso: periodEnd,
+    stripeCanceledAt: object.canceledAt ?? null,
     object,
   });
 
@@ -543,6 +571,77 @@ async function releaseScheduleAfterLivePlanSync(input: {
     providerScheduleId: decision.scheduleId,
     scheduleStatus: "completed",
     scheduleReleasedAt: (input.options.now ?? new Date()).toISOString(),
+  });
+}
+
+function periodEndUnix(iso: string | null | undefined): number | null {
+  if (!iso) return null;
+  const ms = Date.parse(iso);
+  return Number.isNaN(ms) ? null : Math.floor(ms / 1000);
+}
+
+async function maybeWriteCancellationFlagHistory(
+  store: WebhookSyncStore,
+  input: {
+    providerEventId?: string | null;
+    organizationId: string;
+    subscriptionId: string;
+    planId: string;
+    previousStatus: ChurchSubscriptionStatus | null;
+    nextStatus: ChurchSubscriptionStatus;
+    planKey: string;
+    previousCancelAtPeriodEnd: boolean | undefined;
+    nextCancelAtPeriodEnd: boolean;
+    periodEndIso: string | null;
+    stripeCanceledAt: number | null;
+    object: StripeWebhookObjectSummary;
+  },
+): Promise<void> {
+  const changeType = cancellationHistoryChange({
+    previousCancelAtPeriodEnd: input.previousCancelAtPeriodEnd,
+    nextCancelAtPeriodEnd: input.nextCancelAtPeriodEnd,
+    nextStatus: input.nextStatus,
+  });
+  if (!changeType) return;
+  const transition = cancellationTransitionKey({
+    subscriptionId: input.object.subscriptionId ?? "",
+    kind: changeType,
+    periodEndUnix: periodEndUnix(input.periodEndIso),
+    stripeCanceledAt: input.stripeCanceledAt,
+  });
+  if (
+    store.hasCancellationTransition &&
+    (await store.hasCancellationTransition(transition))
+  ) {
+    return;
+  }
+  const eventId = input.providerEventId?.trim() || "";
+  if (
+    eventId &&
+    (await store.hasChangeHistoryForProviderEvent(eventId, changeType))
+  ) {
+    return;
+  }
+  await store.writeChangeHistory({
+    organizationId: input.organizationId,
+    subscriptionId: input.subscriptionId,
+    oldPlanId: input.planId,
+    newPlanId: input.planId,
+    oldStatus: input.previousStatus,
+    newStatus: input.nextStatus,
+    changeType,
+    reason:
+      changeType === "cancellation_scheduled"
+        ? "Cancellation scheduled at period end"
+        : "Subscription kept",
+    metadata: {
+      stripe_subscription_id: input.object.subscriptionId,
+      stripe_customer_id: input.object.customerId,
+      plan_key: input.planKey,
+      cancel_at_period_end: input.nextCancelAtPeriodEnd,
+      cancellation_transition: transition,
+      ...(eventId ? { stripe_event_id: eventId } : {}),
+    },
   });
 }
 

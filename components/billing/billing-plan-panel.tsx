@@ -12,6 +12,7 @@ import {
   requestCancellationAction,
   scheduleSubscriptionDowngradeAction,
   cancelScheduledDowngradeAction,
+  keepSubscriptionAction,
   startCheckoutAction,
 } from "@/app/(app)/settings/billing/actions";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ import {
   initialSamePlanCheckoutSummary,
 } from "@/lib/billing/checkout-eligibility";
 import type { SubscriptionUpgradePreview } from "@/lib/billing/stripe/upgrade";
+import { PENDING_CANCELLATION_PLAN_CHANGE_MESSAGE, pendingCancellationCopy, TRIAL_CANCELLATION_MESSAGE } from "@/lib/billing/stripe/cancellation";
 import type { DowngradeImpactReport } from "@/lib/billing/types";
 import { isPlanDowngrade, isPlanUpgrade } from "@/lib/subscriptions/status";
 import type { SubscriptionPlanRecord } from "@/lib/subscriptions/types";
@@ -34,6 +36,9 @@ export function BillingPlanPanel({
   providerReady,
   providerMessage,
   cancelAtPeriodEnd,
+  paidThroughIso = null,
+  currentPlanName = null,
+  cancellationMode = "trial",
   canManageBilling = true,
   scheduledDowngrade = null,
 }: {
@@ -44,6 +49,10 @@ export function BillingPlanPanel({
   providerReady: boolean;
   providerMessage: string;
   cancelAtPeriodEnd: boolean;
+  paidThroughIso?: string | null;
+  currentPlanName?: string | null;
+  /** paid: Stripe subscription. trial: no Stripe subscription. cancelled: final, checkout again. */
+  cancellationMode?: "paid" | "trial" | "cancelled";
   canManageBilling?: boolean;
   scheduledDowngrade?: {
     currentPlanName: string;
@@ -135,6 +144,10 @@ export function BillingPlanPanel({
       );
       return;
     }
+    if (cancelAtPeriodEnd) {
+      setError(PENDING_CANCELLATION_PLAN_CHANGE_MESSAGE);
+      return;
+    }
     setError(null);
     setMessage(null);
     startTransition(async () => {
@@ -163,6 +176,10 @@ export function BillingPlanPanel({
   }
 
   function scheduleDowngrade() {
+    if (cancelAtPeriodEnd) {
+      setError(PENDING_CANCELLATION_PLAN_CHANGE_MESSAGE);
+      return;
+    }
     setError(null);
     setMessage(null);
     startTransition(async () => {
@@ -188,6 +205,20 @@ export function BillingPlanPanel({
         return;
       }
       setMessage(result.message ?? "Scheduled downgrade canceled.");
+      router.refresh();
+    });
+  }
+
+  function keepSubscription() {
+    setError(null);
+    setMessage(null);
+    startTransition(async () => {
+      const result = await keepSubscriptionAction();
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      setMessage(result.message ?? "Subscription kept.");
       router.refresh();
     });
   }
@@ -249,6 +280,14 @@ export function BillingPlanPanel({
         : impact?.isSamePlan && !hasProviderSubscription && providerReady
           ? initialSamePlanCheckoutSummary()
           : impact?.summary;
+
+  const pendingCopy =
+    cancelAtPeriodEnd && cancellationMode === "paid"
+      ? pendingCancellationCopy({
+          planDisplayName: currentPlanName ?? "current",
+          paidThroughIso: paidThroughIso ?? "",
+        })
+      : null;
 
   return (
     <div className="space-y-6">
@@ -530,8 +569,29 @@ export function BillingPlanPanel({
           <p className="text-sm text-muted-foreground">
             Only owners and co-owners can schedule cancellation.
           </p>
+        ) : cancellationMode === "cancelled" ? (
+          <p className="text-sm">
+            This subscription has ended. Organization data is kept. Choose a
+            plan above to start a new subscription.
+          </p>
+        ) : cancellationMode !== "paid" ? (
+          <p className="text-sm text-muted-foreground">
+            {TRIAL_CANCELLATION_MESSAGE}
+          </p>
         ) : cancelAtPeriodEnd ? (
-          <p className="text-sm">Cancellation is already scheduled for this period.</p>
+          <div className="space-y-2 text-sm">
+            <p className="font-medium">{pendingCopy?.title}</p>
+            <p>{pendingCopy?.through}</p>
+            <p>{pendingCopy?.access}</p>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={pending}
+              onClick={keepSubscription}
+            >
+              {pending ? "Working…" : "Keep subscription"}
+            </Button>
+          </div>
         ) : scheduledDowngrade ? (
           <p className="text-sm">
             Cancel the scheduled plan downgrade before canceling the subscription.

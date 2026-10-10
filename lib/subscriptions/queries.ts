@@ -220,8 +220,24 @@ export async function getChurchSubscription(
   organizationId: string,
   client?: SupabaseClient,
 ): Promise<ChurchSubscriptionRecord | null> {
+  return loadChurchSubscriptionRow(organizationId, client, true);
+}
+
+/** Latest subscription row, including cancelled. Not treated as a current paid plan. */
+export async function getLatestChurchSubscription(
+  organizationId: string,
+  client?: SupabaseClient,
+): Promise<ChurchSubscriptionRecord | null> {
+  return loadChurchSubscriptionRow(organizationId, client, false);
+}
+
+async function loadChurchSubscriptionRow(
+  organizationId: string,
+  client: SupabaseClient | undefined,
+  currentOnly: boolean,
+): Promise<ChurchSubscriptionRecord | null> {
   const supabase = client ?? (await createClient());
-  const { data, error } = await supabase
+  let query = supabase
     .from("organization_subscriptions")
     .select(
       `
@@ -254,10 +270,12 @@ export async function getChurchSubscription(
     `,
     )
     .eq("organization_id", organizationId)
-    .in("status", [...CURRENT_SUBSCRIPTION_STATUSES])
     .order("started_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(1);
+  if (currentOnly) {
+    query = query.in("status", [...CURRENT_SUBSCRIPTION_STATUSES]);
+  }
+  const { data, error } = await query.maybeSingle();
 
   if (error) {
     if (isMissingRelation(error.message)) return null;

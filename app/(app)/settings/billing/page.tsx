@@ -117,8 +117,9 @@ async function BillingContent() {
           </div>
           <CardTitle>Current subscription</CardTitle>
           <CardDescription>
-            Entitlements are enforced by feature keys. Checkout stays disabled
-            until a billing provider adapter is connected.
+            Your current plan determines available features, user limits, and
+            monthly application SMS allowances. Plan changes and billing are
+            securely processed through Stripe.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

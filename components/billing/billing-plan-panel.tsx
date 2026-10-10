@@ -279,8 +279,8 @@ export function BillingPlanPanel({
         </div>
       ) : null}
       <p className="text-sm text-muted-foreground">
-        Plan prices, billing frequency, automatic renewal (when a payment
-        processor is connected), cancellation, and refunds are described in our{" "}
+        Plan prices, billing frequency, automatic renewal, cancellation, and
+        refunds are described in our{" "}
         <Link href="/billing" className="underline underline-offset-4">
           Billing &amp; Subscription Policy
         </Link>

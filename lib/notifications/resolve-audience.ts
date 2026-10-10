@@ -17,8 +17,6 @@ import {
   resolveUsersByChurchRole,
   resolveUsersByIds,
 } from "@/lib/notifications/resolve-recipients";
-import { FEATURE_KEYS } from "@/lib/subscriptions/feature-keys";
-import { hasFeature } from "@/lib/subscriptions/resolver";
 import {
   evaluateSmsEligibility,
   suppressionReasonFromSmsEligibility,
@@ -532,16 +530,6 @@ export async function resolveNotificationAudience(params: {
     return { members: [], deliveries: [], usedGroups };
   }
 
-  const smsFeatureAllowed = channels.includes("sms")
-    ? (
-        await hasFeature({
-          organizationId,
-          featureKey: FEATURE_KEYS.SMS,
-          client: supabase,
-        }).catch(() => ({ allowed: false }))
-      ).allowed
-    : false;
-
   const userIds = members.map((member) => member.userId);
 
   const [{ data: profiles }, { data: endpoints }, { data: rules }, { data: legacyPrefs }] =
@@ -803,19 +791,17 @@ export async function resolveNotificationAudience(params: {
 
       if (channel === "sms") {
         const endpoint = selectEndpoint(endpointRows, member.userId, "sms");
-        const eligibility = !smsFeatureAllowed
-          ? { allowed: false as const, reason: "ORGANIZATION_SMS_TIER_UNAVAILABLE" as const }
-          : evaluateSmsEligibility({
-              organizationId,
-              userId: member.userId,
-              phoneNumber: endpoint?.normalized_destination ?? null,
-              organizationSmsEnabled: settings.sms_notifications_enabled !== false,
-              userSmsPreferenceEnabled: decision.enabled,
-              consentStatus: endpoint?.consent_status,
-              endpointStatus: endpoint?.status,
-              isVerified: endpoint?.is_verified,
-              suppressed: Boolean(endpoint?.suppressed_at),
-            });
+        const eligibility = evaluateSmsEligibility({
+          organizationId,
+          userId: member.userId,
+          phoneNumber: endpoint?.normalized_destination ?? null,
+          organizationSmsEnabled: settings.sms_notifications_enabled !== false,
+          userSmsPreferenceEnabled: decision.enabled,
+          consentStatus: endpoint?.consent_status,
+          endpointStatus: endpoint?.status,
+          isVerified: endpoint?.is_verified,
+          suppressed: Boolean(endpoint?.suppressed_at),
+        });
 
         if (!decision.enabled || !eligibility.allowed || !endpoint) {
           deliveries.push({

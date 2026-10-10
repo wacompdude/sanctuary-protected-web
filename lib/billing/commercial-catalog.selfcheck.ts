@@ -148,6 +148,10 @@ assert(
   "MFA SMS must not call recordSmsSegmentsConsumed",
 );
 assert(
+  !mfaSms.includes("reserveApplicationSmsSegments"),
+  "MFA SMS must not reserve application SMS capacity",
+);
+assert(
   !mfaSms.includes("subscription_usage"),
   "MFA SMS must not touch subscription_usage",
 );
@@ -164,8 +168,14 @@ const dispatch = readFileSync(
   "utf8",
 );
 assert(
-  dispatch.includes("recordSmsSegmentsConsumed"),
-  "application SMS dispatch still records segment usage",
+  dispatch.includes("reserveApplicationSmsSegments") &&
+    dispatch.includes("commitApplicationSmsSegments") &&
+    dispatch.includes("releaseApplicationSmsSegments"),
+  "application SMS dispatch reserves, commits, and releases capacity",
+);
+assert(
+  !dispatch.includes("recordSmsSegmentsConsumed"),
+  "application SMS dispatch does not debit outside the reservation",
 );
 
 console.log("billing commercial catalog selfcheck passed");

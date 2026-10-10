@@ -26,6 +26,7 @@ import {
 import { loadHiddenPlatformOperatorUserIds } from "@/lib/platform/hidden-from-church";
 import { FEATURE_KEYS } from "@/lib/subscriptions/feature-keys";
 import { getChurchSubscription } from "@/lib/subscriptions/queries";
+import { subscriptionGrantsAccess } from "@/lib/subscriptions/status";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export type MobileComposeGroup = {
@@ -145,6 +146,9 @@ async function organizationAllowsFeature(
 ): Promise<boolean> {
   const admin = createAdminClient();
   const subscription = await getChurchSubscription(organizationId, admin);
+  if (subscription && !subscriptionGrantsAccess(subscription.status)) {
+    return false;
+  }
   let planId = subscription?.plan_id ?? null;
 
   if (!planId) {

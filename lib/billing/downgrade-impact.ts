@@ -174,12 +174,12 @@ export async function buildDowngradeImpactReport(params: {
     FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT,
   );
   if (!smsLimit.unlimited && smsLimit.limit !== null) {
-    if (smsMeter.quantityCommitted > smsLimit.limit) {
+    if (smsMeter.quantityUsed > smsLimit.limit) {
       items.push({
         kind: "limit_exceeded",
         featureKey: FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT,
         label: labelFor(FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT),
-        detail: `This period has ${smsMeter.quantityCommitted} SMS already used; ${toPlanDisplayName} allows ${smsLimit.limit}. Further text messages will be blocked until the next period or an upgrade.`,
+        detail: `This period has ${smsMeter.quantityUsed} SMS already used; ${toPlanDisplayName} allows ${smsLimit.limit}. Further text messages will be blocked until the next period or an upgrade.`,
       });
     }
   }

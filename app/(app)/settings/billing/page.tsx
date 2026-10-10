@@ -26,6 +26,7 @@ import {
   getSeatUsageMeter,
   getSmsSegmentUsageMeter,
   listSubscriptionPlans,
+  usageWarningLevel,
 } from "@/lib/subscriptions";
 import type { UsageMeter, UsageWarningLevel } from "@/lib/subscriptions";
 
@@ -42,33 +43,40 @@ function warningLabel(level: UsageWarningLevel): string {
   }
 }
 
-function formatMeterValue(meter: UsageMeter): string {
+function formatMeterValue(meter: UsageMeter, consumedOnly = false): string {
+  const quantity = consumedOnly ? meter.quantityUsed : meter.quantityCommitted;
   if (meter.unlimited || meter.limit === null) {
-    return `${meter.quantityCommitted} used · Unlimited`;
+    return `${quantity} used · Unlimited`;
   }
-  return `${meter.quantityCommitted} / ${meter.limit} used`;
+  return `${quantity} / ${meter.limit} used`;
 }
 
 function UsageMeterRow({
   label,
   meter,
   note,
+  consumedOnly = false,
 }: {
   label: string;
   meter: UsageMeter;
   note?: string;
+  /** SMS reservations are not consumed until Bird accepts the message. */
+  consumedOnly?: boolean;
 }) {
+  const warning = consumedOnly
+    ? usageWarningLevel(meter.quantityUsed, meter.limit, meter.unlimited)
+    : meter.warningLevel;
   return (
     <div className="rounded-md border border-border px-3 py-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <dt className="text-xs uppercase tracking-wide text-muted-foreground">
           {label}
         </dt>
-        <dd className="text-xs text-muted-foreground">
-          {warningLabel(meter.warningLevel)}
-        </dd>
+        <dd className="text-xs text-muted-foreground">{warningLabel(warning)}</dd>
       </div>
-      <p className="mt-1 text-sm font-medium">{formatMeterValue(meter)}</p>
+      <p className="mt-1 text-sm font-medium">
+        {formatMeterValue(meter, consumedOnly)}
+      </p>
       {meter.periodStart && meter.periodEnd ? (
         <p className="mt-1 text-xs text-muted-foreground">
           Period {new Date(meter.periodStart).toLocaleDateString()} –{" "}
@@ -198,6 +206,7 @@ async function BillingContent() {
               <UsageMeterRow
                 label="Monthly SMS segments"
                 meter={smsMeter}
+                consumedOnly
                 note="Application SMS usage is measured in carrier SMS segments. Long messages may use more than one segment per recipient. MFA/security texts do not use this allowance."
               />
             </dl>

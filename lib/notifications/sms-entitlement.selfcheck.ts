@@ -171,16 +171,18 @@ async function main() {
   const resolver = readRepo("lib/subscriptions/resolver.ts");
   const eligibility = readRepo("lib/sms/eligibility.ts");
   const dispatch = readRepo("lib/notifications/dispatch-notification.ts");
+  assert(
+    !eligibility.includes("getSmsSegmentUsageMeter"),
+    "2 zero included allowance is not a consent-time SMS block",
+  );
 
   assert(
-    audience.includes("client: supabase"),
-    "2 audience SMS entitlement uses the trusted notification client",
+    !audience.includes("FEATURE_KEYS.SMS"),
+    "2 audience does not treat a zero SMS feature flag as a billing block",
   );
   assert(
-    !audience.includes(
-      `await hasFeature({\n          organizationId,\n          featureKey: FEATURE_KEYS.SMS,\n        })`,
-    ),
-    "2 audience SMS check is not cookie-only",
+    audience.includes("evaluateSmsEligibility"),
+    "2 audience still applies consent and STOP checks",
   );
   assert(
     resolver.includes("params.client") &&
@@ -188,9 +190,9 @@ async function main() {
     "2 hasFeature uses the supplied server client",
   );
   assert(
-    eligibility.includes("client: input.client") &&
+    dispatch.includes("reserveApplicationSmsSegments") &&
       dispatch.includes("client: admin"),
-    "2 send-time SMS entitlement uses the dispatcher admin client",
+    "2 send-time SMS capacity uses the dispatcher admin client",
   );
 
   assert(
@@ -262,8 +264,8 @@ async function main() {
     "7 email, push, and in-app branches remain",
   );
   assert(
-    (audience.match(/hasFeature\(/g) ?? []).length === 1,
-    "7 only the SMS entitlement lookup was retargeted",
+    (audience.match(/hasFeature\(/g) ?? []).length === 0,
+    "7 audience no longer uses the SMS feature flag as a send block",
   );
 
   const trusted = trustedClient({ sms: true });

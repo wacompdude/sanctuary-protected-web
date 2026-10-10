@@ -1,16 +1,27 @@
+import { subscriptionGrantsAccess } from "@/lib/subscriptions/status";
+
 /**
  * How feature entitlements are chosen for an organization.
- * A current subscription (including one scheduled to cancel) uses that plan.
- * A finally cancelled subscription is not a free/default plan and not a
- * lingering paid plan. No subscription row at all still uses the default plan.
+ * A current access-granting subscription, including one scheduled to cancel,
+ * uses that plan. A current row that does not grant access, and a final
+ * non-granting status, grant nothing. No subscription row at all still uses
+ * the default plan so invite acceptance is not blocked by hidden RLS.
  */
 export type ChurchEntitlementSource = "current" | "none" | "default";
 
 export function resolveChurchEntitlementSource(input: {
   hasCurrentSubscription: boolean;
+  /** Status of the current lookup row. Omitted only by callers that already know it grants access. */
+  currentStatus?: string | null;
   latestStatus: string | null;
 }): ChurchEntitlementSource {
-  if (input.hasCurrentSubscription) return "current";
-  if ((input.latestStatus ?? "").trim() === "cancelled") return "none";
+  if (input.hasCurrentSubscription) {
+    const status = (input.currentStatus ?? "").trim();
+    if (status && !subscriptionGrantsAccess(status)) return "none";
+    return "current";
+  }
+
+  const latest = (input.latestStatus ?? "").trim();
+  if (latest && !subscriptionGrantsAccess(latest)) return "none";
   return "default";
 }

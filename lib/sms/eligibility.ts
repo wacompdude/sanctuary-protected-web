@@ -1,6 +1,3 @@
-import { FEATURE_KEYS } from "@/lib/subscriptions/feature-keys";
-import { hasFeature, getFeatureLimit } from "@/lib/subscriptions/resolver";
-import { getSmsSegmentUsageMeter } from "@/lib/subscriptions/usage";
 import { inspectMobileNumber } from "@/lib/sms/phone";
 import type { ConsentStatus, EndpointStatus } from "@/lib/notifications/endpoints/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -130,48 +127,13 @@ export function suppressionReasonFromSmsEligibility(
 }
 
 /**
- * Fail-closed check used before every application SMS send.
+ * Non-billing eligibility used before every application SMS send.
  * A stored mobile number is never enough by itself.
+ * Included allowance and purchased credits are decided later by the
+ * atomic reservation RPC, which also rejects a cancelled subscription.
  */
 export async function canSendSms(
   input: SmsEligibilityInput,
 ): Promise<SmsEligibilityResult> {
-  const local = evaluateSmsEligibility(input);
-  if (!local.allowed) return local;
-
-  const feature = await hasFeature({
-    organizationId: input.organizationId,
-    featureKey: FEATURE_KEYS.SMS,
-    client: input.client,
-  }).catch(() => ({ allowed: false }));
-  if (!feature.allowed) {
-    return { allowed: false, reason: "ORGANIZATION_SMS_TIER_UNAVAILABLE" };
-  }
-
-  try {
-    const limit = await getFeatureLimit({
-      organizationId: input.organizationId,
-      featureKey: FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT,
-      client: input.client,
-    });
-    if (!limit.unlimited && (limit.limit ?? 0) <= 0) {
-      return { allowed: false, reason: "ORGANIZATION_SMS_TIER_UNAVAILABLE" };
-    }
-    const meter = await getSmsSegmentUsageMeter(
-      input.organizationId,
-      input.client,
-    );
-    if (
-      !meter.unlimited &&
-      meter.limit !== null &&
-      meter.quantityCommitted >= meter.limit
-    ) {
-      return { allowed: false, reason: "MONTHLY_SMS_LIMIT_REACHED" };
-    }
-  } catch {
-    // If usage tables are missing, fail closed for sends.
-    return { allowed: false, reason: "ORGANIZATION_SMS_TIER_UNAVAILABLE" };
-  }
-
-  return { allowed: true, reason: "ALLOWED" };
+  return evaluateSmsEligibility(input);
 }

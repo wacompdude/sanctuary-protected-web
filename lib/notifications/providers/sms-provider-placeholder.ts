@@ -6,9 +6,8 @@ import type {
 
 /**
  * Placeholder until Text/SMS consent + provider are configured.
- * When a real provider succeeds, call
- * `recordSmsSegmentsConsumed({ organizationId, deliveryId, segments })`
- * from the dispatch path (idempotent by delivery id).
+ * Bird sends reserve capacity before the provider call and commit only
+ * after Bird accepts. This placeholder does not send or consume credits.
  */
 export class SmsProviderPlaceholder implements NotificationProvider {
   channel = "sms" as const;

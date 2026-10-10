@@ -247,40 +247,6 @@ export async function sendComposedNotificationAction(
         featureKey: FEATURE_KEYS.EMAIL,
       });
     }
-    if (requestedChannels.includes("sms")) {
-      await requireFeature({
-        organizationId: church.id,
-        featureKey: FEATURE_KEYS.SMS,
-      });
-      const settings = await getChurchNotificationSettings(supabase, church.id);
-      const audience = await resolveNotificationAudience({
-        supabase,
-        organizationId: church.id,
-        notificationType,
-        severity: severityRaw,
-        settings,
-        channels: ["sms"],
-        targets,
-      });
-      const { estimateSmsSegmentsForRecipients } = await import(
-        "@/lib/subscriptions/sms-segments"
-      );
-      const { requireSmsSegmentCapacity } = await import(
-        "@/lib/subscriptions/usage"
-      );
-      const estimatedSegments = estimateSmsSegmentsForRecipients({
-        body,
-        recipientCount: audience.deliveries.filter(
-          (row) => row.channel === "sms" && row.status === "pending",
-        ).length,
-      });
-      if (estimatedSegments > 0) {
-        await requireSmsSegmentCapacity({
-          organizationId: church.id,
-          estimatedSegments,
-        });
-      }
-    }
     if (targets.groupIds?.length) {
       await requireFeature({
         organizationId: church.id,

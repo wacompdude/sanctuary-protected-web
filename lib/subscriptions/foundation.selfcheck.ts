@@ -45,6 +45,8 @@ assert(subscriptionGrantsAccess("past_due"), "past_due grants access");
 assert(subscriptionGrantsAccess("grace_period"), "grace_period grants access");
 assert(!subscriptionGrantsAccess("incomplete"), "incomplete does not grant access");
 assert(!subscriptionGrantsAccess("cancelled"), "cancelled does not grant access");
+assert(!subscriptionGrantsAccess("expired"), "expired does not grant access");
+assert(!subscriptionGrantsAccess("suspended"), "suspended does not grant access");
 
 const window = buildPeriodWindow(30, new Date("2026-01-01T00:00:00.000Z"));
 assert(

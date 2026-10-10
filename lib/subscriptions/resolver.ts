@@ -33,6 +33,7 @@ import {
   listPlanFeatureAssignments,
 } from "@/lib/subscriptions/queries";
 import { resolveChurchEntitlementSource } from "@/lib/subscriptions/entitlement-resolution";
+import { subscriptionGrantsAccess } from "@/lib/subscriptions/status";
 import type {
   ChurchEntitlements,
   FeatureAccessResult,
@@ -84,10 +85,11 @@ export async function getPlanEntitlements(params: {
 
 /**
  * Resolve entitlements for a church.
- * A current subscription, including one with cancel_at_period_end, uses that
- * plan until Stripe marks it cancelled. A cancelled subscription does not
- * fall back to the default plan and does not keep the historical plan's
- * features. No subscription row at all still uses the default plan.
+ * An access-granting subscription, including one with cancel_at_period_end,
+ * uses that plan. A current row whose status does not grant access, and a
+ * cancelled, expired, or suspended subscription, grant no plan features and
+ * do not fall back to the default plan. No subscription row at all still
+ * uses the default plan.
  *
  * Pass a service-role client when the caller is not yet a member (invite
  * accept). Member-scoped RLS hides organization_subscriptions from invitees,
@@ -109,7 +111,7 @@ export async function loadChurchEntitlements(
   }
 
   const subscription = await getChurchSubscription(trimmed, client);
-  if (subscription) {
+  if (subscription && subscriptionGrantsAccess(subscription.status)) {
     const plan = await getSubscriptionPlanByKey(
       String(subscription.plan_key),
       client,
@@ -146,7 +148,8 @@ export async function loadChurchEntitlements(
   const latest = await getLatestChurchSubscription(trimmed, client);
   if (
     resolveChurchEntitlementSource({
-      hasCurrentSubscription: false,
+      hasCurrentSubscription: Boolean(subscription),
+      currentStatus: subscription?.status ?? null,
       latestStatus: latest?.status ?? null,
     }) === "none"
   ) {

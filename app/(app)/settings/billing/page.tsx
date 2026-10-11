@@ -427,12 +427,13 @@ async function BillingContent({
 }
 
 async function BillingWrapper({
-  smsPurchase,
+  searchParams,
 }: {
-  smsPurchase?: string;
+  searchParams: Promise<{ sms_purchase?: string }>;
 }) {
+  const params = await searchParams;
   try {
-    return <BillingContent smsPurchase={smsPurchase} />;
+    return <BillingContent smsPurchase={params.sms_purchase} />;
   } catch (error) {
     rethrowOrRedirectForChurchAccess(error);
     return (
@@ -449,12 +450,11 @@ async function BillingWrapper({
   }
 }
 
-export default async function BillingPage({
+export default function BillingPage({
   searchParams,
 }: {
   searchParams: Promise<{ sms_purchase?: string }>;
 }) {
-  const params = await searchParams;
   return (
     <div className="space-y-8">
       <Suspense
@@ -466,7 +466,7 @@ export default async function BillingPage({
           </Card>
         }
       >
-        <BillingWrapper smsPurchase={params.sms_purchase} />
+        <BillingWrapper searchParams={searchParams} />
       </Suspense>
     </div>
   );

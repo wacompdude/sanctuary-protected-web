@@ -25,7 +25,7 @@
     "selfcheck:timezones": "npx --yes tsx lib/datetime/timezones.selfcheck.ts",
     "selfcheck:mfa": "npx --yes tsx lib/mfa/foundation.selfcheck.ts && npx --yes tsx lib/mfa/trusted-devices.selfcheck.ts && npx --yes tsx lib/mfa/effective-policy.selfcheck.ts && npx --yes tsx lib/mfa/mobile-gate.selfcheck.ts",
     "selfcheck:legal": "npx --yes tsx lib/legal/foundation.selfcheck.ts",
-    "selfcheck:sms": "npx --yes tsx lib/sms/consent.selfcheck.ts",
+    "selfcheck:sms": "npx --yes tsx lib/sms/consent.selfcheck.ts && npx --yes tsx lib/sms/sms-preference.selfcheck.ts",
     "test:e2e": "playwright test",
     "test:e2e:compat": "playwright test e2e/compatibility.spec.ts"
   },

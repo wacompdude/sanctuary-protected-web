@@ -120,7 +120,7 @@ export function suppressionReasonFromSmsEligibility(
       return "other";
     case "CATEGORY_DISABLED":
     case "USER_PREFERENCE_DISABLED":
-      return "user_opted_out";
+      return "channel_disabled";
     default:
       return "provider_unavailable";
   }
@@ -136,4 +136,14 @@ export async function canSendSms(
   input: SmsEligibilityInput,
 ): Promise<SmsEligibilityResult> {
   return evaluateSmsEligibility(input);
+}
+
+/**
+ * A missing or disabled SMS notification preference is not a STOP or
+ * consent opt-out. Other channels keep the historical preference reason.
+ */
+export function deliverySuppressionForDisabledPreference(
+  channel: "email" | "sms" | "push" | "in_app",
+): "channel_disabled" | "user_opted_out" {
+  return channel === "sms" ? "channel_disabled" : "user_opted_out";
 }

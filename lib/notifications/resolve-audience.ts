@@ -18,6 +18,7 @@ import {
   resolveUsersByIds,
 } from "@/lib/notifications/resolve-recipients";
 import {
+  deliverySuppressionForDisabledPreference,
   evaluateSmsEligibility,
   suppressionReasonFromSmsEligibility,
 } from "@/lib/sms/eligibility";
@@ -263,7 +264,7 @@ function evaluateChannel(params: {
           enabled: false,
           preferenceRuleApplied: "group_channel_preference",
           overrideApplied: false,
-          suppressionReason: "user_opted_out",
+          suppressionReason: deliverySuppressionForDisabledPreference(channel),
         };
   }
 
@@ -290,7 +291,9 @@ function evaluateChannel(params: {
       enabled,
       preferenceRuleApplied: "type_channel_preference",
       overrideApplied: false,
-      suppressionReason: enabled ? undefined : "user_opted_out",
+      suppressionReason: enabled
+        ? undefined
+        : deliverySuppressionForDisabledPreference(channel),
     };
   }
 
@@ -347,7 +350,9 @@ function evaluateChannel(params: {
     enabled,
     preferenceRuleApplied: "church_wide_member_preference",
     overrideApplied: false,
-    suppressionReason: enabled ? undefined : "user_opted_out",
+    suppressionReason: enabled
+      ? undefined
+      : deliverySuppressionForDisabledPreference(channel),
   };
 }
 

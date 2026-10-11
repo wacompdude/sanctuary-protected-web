@@ -24,6 +24,7 @@ import {
   verifiedEnrollmentPatch,
 } from "@/lib/sms/phone-replacement";
 import { inspectMobileNumber } from "@/lib/sms/phone";
+import { enableSmsPreferenceAfterExplicitEnrollment } from "@/lib/sms/sms-preference";
 import {
   findOpenSmsEnrollmentChallenge,
   sendSmsEnrollmentCode,
@@ -278,7 +279,22 @@ export async function verifySmsEnrollmentAction(
     });
 
     await sendSmsEnrollmentConfirmation(phoneE164);
+    const preference = await enableSmsPreferenceAfterExplicitEnrollment({
+      supabase,
+      organizationId: church.id,
+      userId: user.id,
+      consentGranted: true,
+      phoneVerified: true,
+      endpointActive: true,
+      providerSuppressed: false,
+    });
     revalidateSms();
+    if (preference.error) {
+      return {
+        error:
+          "SMS enrollment was verified, but Text/SMS notifications could not be enabled. Enable Text/SMS under Notification preferences.",
+      };
+    }
     return { success: true };
   } catch (error) {
     return {

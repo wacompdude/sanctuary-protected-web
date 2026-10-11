@@ -30,6 +30,7 @@ import {
   normalizeNanpNationalInput,
   phoneEntryMode,
 } from "@/lib/sms/phone-entry";
+import { enableSmsPreferenceAfterExplicitEnrollment } from "@/lib/sms/sms-preference";
 import {
   CARRIER_STOP_MESSAGE,
   SAME_MOBILE_NUMBER_MESSAGE,
@@ -490,6 +491,25 @@ export async function verifyMobileSmsEnrollment(input: {
     },
   });
   await sendSmsEnrollmentConfirmation(phoneE164);
+  const preference = await enableSmsPreferenceAfterExplicitEnrollment({
+    supabase: admin,
+    organizationId: input.organizationId,
+    userId: gate.ctx.userId,
+    consentGranted: true,
+    phoneVerified: true,
+    endpointActive: true,
+    providerSuppressed: false,
+  });
+  if (preference.error) {
+    return {
+      status: 500,
+      body: {
+        status: "error",
+        error:
+          "SMS enrollment was verified, but Text/SMS notifications could not be enabled. Enable Text/SMS under Notification preferences.",
+      },
+    };
+  }
 
   return {
     status: 200,

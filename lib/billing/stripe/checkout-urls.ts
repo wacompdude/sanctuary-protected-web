@@ -35,6 +35,33 @@ export function buildBillingCheckoutUrls(origin: string): {
   };
 }
 
+/** SMS package returns stay distinct from subscription Checkout returns. */
+export function buildSmsPackageCheckoutUrls(origin: string): {
+  successUrl: string;
+  cancelUrl: string;
+} {
+  const base = origin.replace(/\/$/, "");
+  return {
+    successUrl: `${base}${BILLING_CHECKOUT_PATH}?sms_purchase=success`,
+    cancelUrl: `${base}${BILLING_CHECKOUT_PATH}?sms_purchase=cancelled`,
+  };
+}
+
+export const SMS_PURCHASE_SUCCESS_MESSAGE =
+  "Payment received. Your SMS credits will appear after payment confirmation.";
+
+export const SMS_PURCHASE_CANCELLED_MESSAGE =
+  "SMS credit purchase was cancelled. No credits were added.";
+
+/** Informational only. Returning from Checkout never grants SMS credits. */
+export function smsPurchaseReturnMessage(
+  state: string | null | undefined,
+): string | null {
+  if (state === "success") return SMS_PURCHASE_SUCCESS_MESSAGE;
+  if (state === "cancelled") return SMS_PURCHASE_CANCELLED_MESSAGE;
+  return null;
+}
+
 /**
  * Ensure success/cancel URLs stay on a shared origin and billing path.
  * When `expectedOrigin` is provided (e.g. NEXT_PUBLIC_APP_URL), both URLs

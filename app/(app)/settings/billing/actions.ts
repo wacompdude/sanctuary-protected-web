@@ -1,5 +1,6 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import {
@@ -21,14 +22,17 @@ import {
 } from "@/lib/billing/stripe/checkout";
 import {
   buildBillingCheckoutUrls,
+  buildSmsPackageCheckoutUrls,
   resolveAppOrigin,
 } from "@/lib/billing/stripe/checkout-urls";
+import { requireStripeSecretKey, readStripeSecretKey } from "@/lib/billing/stripe/config";
+import { assertNoSmsCheckoutClientOverrides } from "@/lib/billing/stripe/sms-checkout";
+import { createLiveSmsPackageCheckoutSession } from "@/lib/billing/stripe/sms-checkout-live";
 import { isPlanKey } from "@/lib/subscriptions/plan-keys";
 import {
   changeChurchSubscriptionPlan,
 } from "@/lib/subscriptions/mutations";
 import { getChurchSubscription } from "@/lib/subscriptions/queries";
-import { requireStripeSecretKey } from "@/lib/billing/stripe/config";
 import { createStripeUpgradeDeps } from "@/lib/billing/stripe/upgrade-live";
 import { createStripeDowngradeDeps } from "@/lib/billing/stripe/downgrade-live";
 import { createStripeCancellationDeps } from "@/lib/billing/stripe/cancellation-live";
@@ -167,6 +171,75 @@ export async function startCheckoutAction(
     return {
       error:
         error instanceof Error ? error.message : "Unable to start checkout.",
+    };
+  }
+}
+
+export async function startSmsPackageCheckoutAction(
+  formData: FormData,
+): Promise<BillingActionState> {
+  try {
+    const { church, user } = await requireBillingManageAccess();
+    assertNoSmsCheckoutClientOverrides({
+      priceId: String(formData.get("price_id") ?? "") || null,
+      productId: String(formData.get("product_id") ?? "") || null,
+      amount: String(formData.get("amount") ?? "") || null,
+      currency: String(formData.get("currency") ?? "") || null,
+      lookupKey: String(formData.get("lookup_key") ?? "") || null,
+      planKey: String(formData.get("plan_key") ?? "") || null,
+      segments: String(formData.get("segments") ?? "") || null,
+    });
+
+    const provider = getBillingProvider();
+    if (!provider.isConfigured() || !provider.capabilities().checkout) {
+      return {
+        error:
+          "Checkout is not available yet. A billing provider adapter must be connected first.",
+      };
+    }
+    if (!isServiceRoleConfigured()) {
+      return {
+        error:
+          "Server is missing SUPABASE_SERVICE_ROLE_KEY required for Checkout customer mapping.",
+      };
+    }
+
+    const subscription = await getChurchSubscription(church.id);
+    const headerStore = await headers();
+    const origin = resolveAppOrigin({
+      appUrl: process.env.NEXT_PUBLIC_APP_URL,
+      forwardedHost: headerStore.get("x-forwarded-host"),
+      host: headerStore.get("host"),
+      forwardedProto: headerStore.get("x-forwarded-proto"),
+    });
+    const { successUrl, cancelUrl } = buildSmsPackageCheckoutUrls(origin);
+    const session = await createLiveSmsPackageCheckoutSession({
+      organizationId: church.id,
+      subscriptionStatus: subscription?.status,
+      planKey: subscription?.plan_key,
+      origin,
+      successUrl,
+      cancelUrl,
+      fallbackEmail: user.email,
+      attemptToken: randomUUID(),
+      stripeSecretKey: requireStripeSecretKey(readStripeSecretKey()),
+    });
+
+    return { success: true, url: session.url };
+  } catch (error) {
+    if (
+      error instanceof BillingProviderNotConfiguredError ||
+      error instanceof BillingCheckoutPlanError ||
+      error instanceof BillingCheckoutUrlError ||
+      error instanceof BillingConfigurationError
+    ) {
+      return { error: error.message };
+    }
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unable to start the SMS credit purchase.",
     };
   }
 }

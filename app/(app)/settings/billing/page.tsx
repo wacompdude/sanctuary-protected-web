@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CreditCard } from "lucide-react";
 import { Suspense } from "react";
 import { BillingPlanPanel } from "@/components/billing/billing-plan-panel";
+import { SmsPackagePurchaseButton } from "@/components/billing/sms-package-panel";
 import {
   Card,
   CardContent,
@@ -15,7 +16,11 @@ import {
   isBillingProviderReady,
   listBillingHistory,
   requireBillingViewAccess,
+  smsPackageForPlan,
 } from "@/lib/billing";
+import { summarizeApplicationSmsCapacity } from "@/lib/billing/sms-capacity-summary";
+import { smsPurchaseReturnMessage } from "@/lib/billing/stripe/checkout-urls";
+import { subscriptionGrantsAccess } from "@/lib/subscriptions/status";
 import { organizationHasProviderSubscription } from "@/lib/billing/checkout-eligibility";
 import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
 import { ChurchAccessError } from "@/lib/organization/errors";
@@ -90,7 +95,11 @@ function UsageMeterRow({
   );
 }
 
-async function BillingContent() {
+async function BillingContent({
+  smsPurchase,
+}: {
+  smsPurchase?: string;
+}) {
   const { supabase, church, canManageBilling } = await requireBillingViewAccess();
   const { data } = await supabase
     .from("organizations")
@@ -118,9 +127,32 @@ async function BillingContent() {
   const publicPlans = plans.filter(
     (plan) => plan.is_public && plan.status === "active",
   );
+  const smsReturnMessage = smsPurchaseReturnMessage(smsPurchase);
+  const grantingPlanKey =
+    subscription && subscriptionGrantsAccess(subscription.status)
+      ? String(subscription.plan_key)
+      : null;
+  const smsPackage = grantingPlanKey ? smsPackageForPlan(grantingPlanKey) : undefined;
+  const { data: purchasedCredits } = await supabase
+    .from("organization_sms_credit_balances")
+    .select("balance, reserved")
+    .eq("organization_id", church.id)
+    .maybeSingle();
+  const smsCapacity = summarizeApplicationSmsCapacity({
+    includedLimit: smsMeter.limit,
+    includedUsed: smsMeter.quantityUsed,
+    includedReserved: smsMeter.quantityReserved,
+    purchasedBalance: purchasedCredits?.balance ?? null,
+    purchasedReserved: purchasedCredits?.reserved ?? null,
+  });
 
   return (
     <>
+      {smsReturnMessage ? (
+        <p className="rounded-md border border-border px-3 py-2 text-sm">
+          {smsReturnMessage}
+        </p>
+      ) : null}
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Billing</h1>
         <p className="mt-1 text-muted-foreground">
@@ -211,6 +243,89 @@ async function BillingContent() {
               />
             </dl>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Application SMS</CardTitle>
+          <CardDescription>
+            Application text messages use included monthly SMS first, then
+            purchased SMS credits. MFA and security texts do not use this
+            allowance.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <dl className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+                Included this month
+              </dt>
+              <dd className="mt-1 text-sm">{smsCapacity.includedLimit}</dd>
+            </div>
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+                Used this month
+              </dt>
+              <dd className="mt-1 text-sm">{smsCapacity.includedUsed}</dd>
+            </div>
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+                Remaining included
+              </dt>
+              <dd className="mt-1 text-sm">{smsCapacity.remainingIncluded}</dd>
+            </div>
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+                Purchased balance
+              </dt>
+              <dd className="mt-1 text-sm">{smsCapacity.purchasedBalance}</dd>
+            </div>
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+                Purchased reserved
+              </dt>
+              <dd className="mt-1 text-sm">{smsCapacity.purchasedReserved}</dd>
+            </div>
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+                Purchased available
+              </dt>
+              <dd className="mt-1 text-sm">{smsCapacity.purchasedAvailable}</dd>
+            </div>
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+                Total available
+              </dt>
+              <dd className="mt-1 text-sm">{smsCapacity.totalAvailable}</dd>
+            </div>
+          </dl>
+          {smsPackage?.monthlySmsSegmentLimit === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Servant Standard does not include monthly application SMS credits.
+              You can purchase SMS credit blocks whenever your organization
+              needs to send application text messages.
+            </p>
+          ) : null}
+          {smsPackage && canManageBilling ? (
+            <SmsPackagePurchaseButton
+              credits={smsPackage.smsPackageCredits}
+              priceCents={smsPackage.smsPackagePriceCents}
+              providerReady={isBillingProviderReady()}
+              providerMessage={billingProviderStatusMessage()}
+            />
+          ) : null}
+          {smsPackage && !canManageBilling ? (
+            <p className="text-sm text-muted-foreground">
+              Only an owner or co-owner can purchase SMS credits.
+            </p>
+          ) : null}
+          {!smsPackage ? (
+            <p className="text-sm text-muted-foreground">
+              SMS credit purchases are available while the organization has an
+              active subscription.
+            </p>
+          ) : null}
         </CardContent>
       </Card>
 
@@ -311,9 +426,13 @@ async function BillingContent() {
   );
 }
 
-async function BillingWrapper() {
+async function BillingWrapper({
+  smsPurchase,
+}: {
+  smsPurchase?: string;
+}) {
   try {
-    return <BillingContent />;
+    return <BillingContent smsPurchase={smsPurchase} />;
   } catch (error) {
     rethrowOrRedirectForChurchAccess(error);
     return (
@@ -330,7 +449,12 @@ async function BillingWrapper() {
   }
 }
 
-export default function BillingPage() {
+export default async function BillingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ sms_purchase?: string }>;
+}) {
+  const params = await searchParams;
   return (
     <div className="space-y-8">
       <Suspense
@@ -342,7 +466,7 @@ export default function BillingPage() {
           </Card>
         }
       >
-        <BillingWrapper />
+        <BillingWrapper smsPurchase={params.sms_purchase} />
       </Suspense>
     </div>
   );

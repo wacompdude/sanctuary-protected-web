@@ -19,6 +19,10 @@ import { auditNotificationTestEmailSent, auditEmailSenderTestFailed, auditEmailS
 import { writeAuditLog } from "@/lib/audit/log";
 import { AuditAction, AuditEntityType } from "@/lib/audit/actions";
 import { isValidIanaTimeZone } from "@/lib/datetime/timezones";
+import {
+  churchWidePreferenceWrite,
+  preferenceSaveOutcome,
+} from "@/lib/notifications/preference-save";
 
 function readCheckbox(formData: FormData, name: string): boolean {
   return (
@@ -211,27 +215,28 @@ export async function updateMyNotificationPreferencesAction(
       return { fieldErrors: { timezone: "Select a valid time zone." } };
     }
 
-    const payload = {
-      organization_id: church.id,
-      user_id: user.id,
-      notification_type: notificationType,
-      email_enabled: readCheckbox(formData, "email_enabled"),
-      sms_enabled: readCheckbox(formData, "sms_enabled"),
-      push_enabled: readCheckbox(formData, "push_enabled"),
-      in_app_enabled: readCheckbox(formData, "in_app_enabled"),
-      minimum_severity: minimumSeverity,
-      quiet_hours_enabled: readCheckbox(formData, "quiet_hours_enabled"),
-      quiet_hours_start:
+    const write = churchWidePreferenceWrite({
+      organizationId: church.id,
+      userId: user.id,
+      notificationType,
+      emailEnabled: readCheckbox(formData, "email_enabled"),
+      smsEnabled: readCheckbox(formData, "sms_enabled"),
+      pushEnabled: readCheckbox(formData, "push_enabled"),
+      inAppEnabled: readCheckbox(formData, "in_app_enabled"),
+      minimumSeverity,
+      quietHoursEnabled: readCheckbox(formData, "quiet_hours_enabled"),
+      quietHoursStart:
         String(formData.get("quiet_hours_start") ?? "").trim() || null,
-      quiet_hours_end: String(formData.get("quiet_hours_end") ?? "").trim() || null,
+      quietHoursEnd: String(formData.get("quiet_hours_end") ?? "").trim() || null,
       timezone,
-      digest_frequency: digestFrequency,
-    };
+      digestFrequency,
+    });
 
     const { error } = await supabase
       .from("notification_preferences")
-      .upsert(payload, { onConflict: "organization_id,user_id,notification_type" });
-    if (error) return { error: error.message };
+      .upsert(write.row, { onConflict: write.onConflict });
+    const outcome = preferenceSaveOutcome(error?.message ?? null);
+    if ("error" in outcome) return outcome;
 
     await writeAuditLog(supabase, {
       organizationId: church.id,

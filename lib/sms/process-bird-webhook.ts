@@ -7,6 +7,9 @@ import { inspectMobileNumber, maskMobileE164, normalizeMobileE164 } from "@/lib/
 import { getBirdSmsFromNumber } from "@/lib/sms/bird-send";
 import { sendSmsHelpReply } from "@/lib/sms/verify";
 import {
+  mayAdvanceDeliveryStatus,
+} from "@/lib/notifications/delivery-status";
+import {
   birdWebhookDeliveryId,
   classifyInboundSmsKeyword,
   extractBirdWebhookEvent,
@@ -43,39 +46,6 @@ const LIFECYCLE_STATUS: Record<string, string> = {
   "sms.expired": "expired",
   "sms.rejected": "rejected",
 };
-
-const TERMINAL_STATUSES = new Set([
-  "delivered",
-  "failed",
-  "rejected",
-  "expired",
-  "bounced",
-  "cancelled",
-  "suppressed",
-]);
-
-function deliveryStatusRank(status: string): number {
-  switch (status) {
-    case "pending":
-      return 0;
-    case "queued":
-      return 1;
-    case "processing":
-      return 2;
-    case "sent":
-      return 3;
-    case "delivered":
-    case "failed":
-    case "rejected":
-    case "expired":
-    case "bounced":
-    case "cancelled":
-    case "suppressed":
-      return 4;
-    default:
-      return 0;
-  }
-}
 
 function sameE164(left: string | null | undefined, right: string | null | undefined): boolean {
   const a = left ? normalizeMobileE164(left) : null;
@@ -302,15 +272,9 @@ async function handleSmsLifecycle(
     ).slice(0, 1000);
     console.info("Bird delivery status updated");
   } else if (nextStatus) {
-    if (TERMINAL_STATUSES.has(current) && nextStatus !== current) {
-      return;
-    }
-    if (current === "delivered" && nextStatus !== "delivered") {
-      return;
-    }
     // Bird may send sms.accepted after the API already stored status=sent.
     // Never regress sent → queued or the dispatcher would resend.
-    if (deliveryStatusRank(nextStatus) < deliveryStatusRank(current)) {
+    if (!mayAdvanceDeliveryStatus(current, nextStatus)) {
       return;
     }
     patch.status = nextStatus;

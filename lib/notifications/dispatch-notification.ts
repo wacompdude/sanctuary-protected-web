@@ -23,6 +23,14 @@ import {
 } from "@/lib/sms/sms-capacity-rpc";
 import { estimateSmsSegments } from "@/lib/subscriptions/sms-segments";
 import { createAdminClient, isServiceRoleConfigured } from "@/lib/supabase/admin";
+import type { SmsCapacityResult } from "@/lib/sms/sms-capacity";
+import {
+  finalizeAcceptedDeliveryPatch,
+  providerAcceptancePatch,
+  reconciliationPatch,
+  smsCommitSucceeded,
+  unknownAcceptancePatch,
+} from "@/lib/notifications/sms-acceptance-settlement";
 
 type DeliveryRow = {
   id: string;
@@ -63,6 +71,101 @@ const BACKOFF_MINUTES = [1, 5, 15];
 
 function nextBackoffMinutes(attemptNumber: number): number {
   return BACKOFF_MINUTES[Math.min(attemptNumber, BACKOFF_MINUTES.length - 1)] ?? 15;
+}
+
+const DELIVERY_COLUMNS =
+  "id, organization_id, notification_id, recipient_id, channel, provider, status, attempt_number, max_attempts, scheduled_for, endpoint_id, normalized_destination, provider_message_id";
+
+async function deliveryStatus(
+  admin: SupabaseClient,
+  deliveryId: string,
+): Promise<string> {
+  const { data } = await admin
+    .from("notification_deliveries")
+    .select("status")
+    .eq("id", deliveryId)
+    .maybeSingle();
+  return String((data as { status?: string } | null)?.status ?? "processing");
+}
+
+async function commitAcceptedSms(
+  admin: SupabaseClient,
+  delivery: DeliveryRow,
+): Promise<"sent" | "failed"> {
+  const nowIso = new Date().toISOString();
+  let committed: SmsCapacityResult;
+  try {
+    committed = await commitApplicationSmsSegments(admin, {
+      organizationId: delivery.organization_id,
+      deliveryId: delivery.id,
+    });
+  } catch (error) {
+    console.error(
+      "SMS credit commit failed:",
+      error instanceof Error ? error.message : "unknown error",
+    );
+    await updateDeliveryRow(
+      admin,
+      delivery.id,
+      reconciliationPatch(await deliveryStatus(admin, delivery.id), nowIso),
+    );
+    return "failed";
+  }
+  if (!smsCommitSucceeded(committed)) {
+    await updateDeliveryRow(
+      admin,
+      delivery.id,
+      reconciliationPatch(await deliveryStatus(admin, delivery.id), nowIso),
+    );
+    return "failed";
+  }
+  await updateDeliveryRow(
+    admin,
+    delivery.id,
+    finalizeAcceptedDeliveryPatch(await deliveryStatus(admin, delivery.id), nowIso),
+  );
+  return "sent";
+}
+
+async function loadAcceptedSmsAwaitingCommit(
+  admin: SupabaseClient,
+  limit: number,
+): Promise<DeliveryRow[]> {
+  const { data: allocations, error } = await admin
+    .from("organization_sms_segment_allocations")
+    .select("organization_id, delivery_id")
+    .eq("state", "reserved")
+    .not("send_started_at", "is", null)
+    .limit(limit);
+  if (error || !allocations?.length) return [];
+  const pairs = new Set(
+    (allocations as Array<{ organization_id?: string; delivery_id?: string }>)
+      .map((row) => {
+        const organizationId = String(row.organization_id ?? "");
+        const deliveryId = String(row.delivery_id ?? "");
+        return organizationId && deliveryId ? `${organizationId}:${deliveryId}` : "";
+      })
+      .filter(Boolean),
+  );
+  const ids = [
+    ...new Set(
+      [...pairs].map((pair) => pair.slice(pair.indexOf(":") + 1)),
+    ),
+  ];
+  if (ids.length === 0) return [];
+  const { data: deliveries, error: deliveryError } = await admin
+    .from("notification_deliveries")
+    .select(DELIVERY_COLUMNS)
+    .in("id", ids)
+    .eq("channel", "sms")
+    .not("provider_message_id", "is", null)
+    .limit(limit);
+  if (deliveryError || !deliveries) return [];
+  return (deliveries as DeliveryRow[]).filter((row) => {
+    if ((row.provider_message_id ?? "").trim().length === 0) return false;
+    if (row.channel !== "sms") return false;
+    return pairs.has(`${row.organization_id}:${row.id}`);
+  });
 }
 
 async function updateDeliveryRow(
@@ -121,9 +224,7 @@ export async function dispatchPendingDeliveries(options?: {
 
   let query = admin
     .from("notification_deliveries")
-    .select(
-      "id, organization_id, notification_id, recipient_id, channel, provider, status, attempt_number, max_attempts, scheduled_for, endpoint_id, normalized_destination, provider_message_id",
-    )
+    .select(DELIVERY_COLUMNS)
     .in("status", ["pending", "queued"])
     .in("channel", ["email", "push", "sms"])
     .order("scheduled_for", { ascending: true, nullsFirst: true })
@@ -148,6 +249,13 @@ export async function dispatchPendingDeliveries(options?: {
     if (!delivery.scheduled_for) return true;
     return delivery.scheduled_for <= nowIso;
   });
+  const awaitingCommit = await loadAcceptedSmsAwaitingCommit(admin, limit);
+  const seen = new Set(due.map((delivery) => delivery.id));
+  for (const delivery of awaitingCommit) {
+    if (seen.has(delivery.id)) continue;
+    seen.add(delivery.id);
+    due.push(delivery);
+  }
 
   let sent = 0;
   let failed = 0;
@@ -787,28 +895,7 @@ export async function sendSmsDelivery(
       }
 
       if (delivery.provider_message_id) {
-        const committed = await commitApplicationSmsSegments(admin, {
-          organizationId: delivery.organization_id,
-          deliveryId: delivery.id,
-        });
-        if (!committed.ok) {
-          await updateDeliveryRow(admin, delivery.id, {
-            status: "failed",
-            failed_at: new Date().toISOString(),
-            last_error_code: "sms_reservation_pending_reconciliation",
-            last_error_message:
-              "Bird accepted this SMS, but the credit commit still needs reconciliation.",
-            updated_at: new Date().toISOString(),
-          });
-          return "failed";
-        }
-        await updateDeliveryRow(admin, delivery.id, {
-          status: "sent",
-          provider: "bird",
-          sent_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        });
-        return "sent";
+        return commitAcceptedSms(admin, delivery);
       }
 
       const reserved = await reserveApplicationSmsSegments(admin, {
@@ -839,11 +926,14 @@ export async function sendSmsDelivery(
         return "failed";
       }
       if (reserved.outcome === "committed") {
-        await updateDeliveryRow(admin, delivery.id, {
-          status: "sent",
-          provider: "bird",
-          updated_at: new Date().toISOString(),
-        });
+        await updateDeliveryRow(
+          admin,
+          delivery.id,
+          finalizeAcceptedDeliveryPatch(
+            await deliveryStatus(admin, delivery.id),
+            new Date().toISOString(),
+          ),
+        );
         return "sent";
       }
 
@@ -880,29 +970,51 @@ export async function sendSmsDelivery(
     });
 
     if (sendResult.ok) {
-      // Bird acceptance is "sent", never "delivered". Webhooks advance later.
-      const status =
-        sendResult.status === "delivered" ? "sent" : sendResult.status;
-      await updateDeliveryRow(admin, delivery.id, {
-        status: status === "sent" || status === "queued" ? status : "sent",
-        provider: provider.name,
-        provider_message_id: sendResult.providerMessageId ?? null,
-        sent_at: new Date().toISOString(),
-        delivered_at: null,
-        provider_response: sendResult.providerResponse ?? {},
-        last_error_code: null,
-        last_error_message: null,
-        updated_at: new Date().toISOString(),
-      });
-      if (provider.name === "bird") {
-        console.info("Bird SMS delivery record created");
-        await commitApplicationSmsSegments(admin, {
-          organizationId: delivery.organization_id,
-          deliveryId: delivery.id,
+      if (provider.name !== "bird") {
+        const status =
+          sendResult.status === "delivered" ? "sent" : sendResult.status;
+        await updateDeliveryRow(admin, delivery.id, {
+          status: status === "sent" || status === "queued" ? status : "sent",
+          provider: provider.name,
+          provider_message_id: sendResult.providerMessageId ?? null,
+          sent_at: new Date().toISOString(),
+          delivered_at: null,
+          provider_response: sendResult.providerResponse ?? {},
+          last_error_code: null,
+          last_error_message: null,
+          updated_at: new Date().toISOString(),
         });
-        smsHold = "none";
+        return "sent";
       }
-      return "sent";
+
+      const messageId = sendResult.providerMessageId?.trim() ?? "";
+      const nowIso = new Date().toISOString();
+      if (!messageId) {
+        smsHold = "sending";
+        await updateDeliveryRow(admin, delivery.id, unknownAcceptancePatch(nowIso));
+        return "failed";
+      }
+
+      smsHold = "sending";
+      await updateDeliveryRow(
+        admin,
+        delivery.id,
+        {
+          ...providerAcceptancePatch(
+            await deliveryStatus(admin, delivery.id),
+            messageId,
+            nowIso,
+          ),
+          provider_response: sendResult.providerResponse ?? {},
+        },
+      );
+      console.info("Bird SMS delivery record created");
+      const settled = await commitAcceptedSms(admin, {
+        ...delivery,
+        provider_message_id: messageId,
+      });
+      if (settled === "sent") smsHold = "none";
+      return settled;
     }
 
     if (provider.name === "bird") {
@@ -1012,9 +1124,7 @@ export async function retryFailedDelivery(params: {
   const admin = createAdminClient();
   const { data: delivery, error } = await admin
     .from("notification_deliveries")
-    .select(
-      "id, organization_id, notification_id, recipient_id, channel, provider, status, attempt_number, max_attempts, scheduled_for, endpoint_id, normalized_destination, provider_message_id",
-    )
+    .select(DELIVERY_COLUMNS)
     .eq("id", params.deliveryId)
     .eq("organization_id", params.organizationId)
     .maybeSingle();

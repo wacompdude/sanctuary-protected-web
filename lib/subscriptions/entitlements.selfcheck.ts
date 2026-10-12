@@ -81,6 +81,15 @@ for (const planKey of PLAN_KEY_LIST) {
         10,
       "Servant Standard user limit is 10",
     );
+    assert(
+      readBooleanEntitlement(values, FEATURE_KEYS.SMS) === true,
+      "Servant Standard can use application SMS",
+    );
+    assert(
+      readIntegerEntitlement(values, FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT)
+        .limit === 0,
+      "Servant Standard included SMS limit is 0",
+    );
   }
 
   if (planKey === PLAN_KEYS.STEWARD_PRO) {

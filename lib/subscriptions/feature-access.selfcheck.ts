@@ -42,6 +42,24 @@ assert(
     PLAN_KEYS.SERVANT_STANDARD,
   "incident logging is on Servant Standard",
 );
+assert(
+  minimumPlanFromExpectedMatrix(FEATURE_KEYS.SMS)?.planKey ===
+    PLAN_KEYS.SERVANT_STANDARD,
+  "Text/SMS is available on Servant Standard",
+);
+assert(
+  minimumPlanFromExpectedMatrix(FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT)
+    ?.planKey === PLAN_KEYS.STEWARD_PRO,
+  "included monthly SMS segments start at Steward Pro",
+);
+assert(
+  !upgradeMessageForFeature(
+    FEATURE_KEYS.SMS,
+    "Servant Standard",
+    minimumPlanFromExpectedMatrix(FEATURE_KEYS.SMS)?.displayName,
+  ).includes("Steward"),
+  "Servant is not told Text/SMS requires Steward",
+);
 
 const copy = buildUpgradeCopy({
   featureKey: FEATURE_KEYS.TRAINING_MANAGEMENT,

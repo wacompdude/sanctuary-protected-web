@@ -2,7 +2,8 @@ import { FEATURE_KEYS, type FeatureKey } from "@/lib/subscriptions/feature-keys"
 import { PLAN_KEYS, type PlanKey } from "@/lib/subscriptions/plan-keys";
 
 /**
- * Expected effective matrix matching migration 042 + 047 + 048 seed data.
+ * Expected effective matrix matching migration 042 + 047 + 048 seed data,
+ * with Servant application SMS enabled by migration 109.
  * Used by self-checks only — runtime resolution always reads the database.
  */
 export type ExpectedPlanMatrix = Record<
@@ -24,7 +25,7 @@ export const EXPECTED_PLAN_ENTITLEMENTS: ExpectedPlanMatrix = {
     [FEATURE_KEYS.SAFETY_CONCERN_PROFILE_LIMIT]: 0,
     [FEATURE_KEYS.GROUP_EMAIL]: true,
     [FEATURE_KEYS.EMAIL]: true,
-    [FEATURE_KEYS.SMS]: false,
+    [FEATURE_KEYS.SMS]: true,
     [FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT]: 0,
     [FEATURE_KEYS.TEAM_SCHEDULING]: true,
     [FEATURE_KEYS.MEDICAL_INVENTORY]: false,

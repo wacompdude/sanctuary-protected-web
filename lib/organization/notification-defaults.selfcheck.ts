@@ -153,4 +153,25 @@ assert(
   "14 mobile channel selection is still explicit",
 );
 
+const servantSms = readRepo(
+  "supabase/migrations/109_servant_application_sms_enabled.sql",
+);
+assert(
+  servantSms.includes("p.plan_key = 'servant_standard'") &&
+    servantSms.includes("f.feature_key = 'messaging.sms.enabled'") &&
+    servantSms.includes("boolean_value = true"),
+  "15 Servant application SMS is enabled without a new plan row",
+);
+assert(
+  servantSms.includes("messaging.sms.monthly_segment_limit") &&
+    servantSms.includes("IS DISTINCT FROM 0"),
+  "15 Servant included SMS limit must remain 0",
+);
+assert(
+  !servantSms.includes("sms_notifications_enabled") &&
+    !servantSms.includes("organization_sms_credit") &&
+    !servantSms.includes("notification_endpoints"),
+  "15 migration 109 does not touch settings, balances, or consent",
+);
+
 console.log("notification defaults selfcheck passed");

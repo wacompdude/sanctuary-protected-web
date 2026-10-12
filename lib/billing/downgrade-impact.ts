@@ -22,7 +22,6 @@ import {
   planRank,
 } from "@/lib/subscriptions/status";
 import { commercialPlanByKey } from "@/lib/billing/commercial-catalog";
-import { getSmsSegmentUsageMeter } from "@/lib/subscriptions/usage";
 import type {
   DowngradeImpactItem,
   DowngradeImpactReport,
@@ -45,6 +44,13 @@ const COMPARE_BOOLEAN_KEYS: FeatureKey[] = [
   FEATURE_KEYS.SENSOR_ALARMS,
   FEATURE_KEYS.TEAM_SCHEDULING,
 ];
+
+export function smsIncludedAllowanceChangeDetail(
+  fromLimit: number,
+  toLimit: number,
+): string {
+  return `Included monthly application SMS changes from ${fromLimit} to ${toLimit}. Purchased SMS credits remain available and are not removed.`;
+}
 
 function labelFor(featureKey: string): string {
   if (featureKey in FEATURE_DISPLAY_NAMES) {
@@ -120,10 +126,9 @@ export async function buildDowngradeImpactReport(params: {
     }
   }
 
-  const [activeSeats, activeCampuses, smsMeter] = await Promise.all([
+  const [activeSeats, activeCampuses] = await Promise.all([
     countActiveChurchMembers(organizationId),
     countActiveCampuses(organizationId),
-    getSmsSegmentUsageMeter(organizationId),
   ]);
 
   const seatLimit = readIntegerEntitlement(
@@ -169,19 +174,28 @@ export async function buildDowngradeImpactReport(params: {
     });
   }
 
+  const currentSmsLimit = readIntegerEntitlement(
+    current.values,
+    FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT,
+  );
   const smsLimit = readIntegerEntitlement(
     target.values,
     FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT,
   );
-  if (!smsLimit.unlimited && smsLimit.limit !== null) {
-    if (smsMeter.quantityUsed > smsLimit.limit) {
-      items.push({
-        kind: "limit_exceeded",
-        featureKey: FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT,
-        label: labelFor(FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT),
-        detail: `This period has ${smsMeter.quantityUsed} SMS already used; ${toPlanDisplayName} allows ${smsLimit.limit}. Further text messages will be blocked until the next period or an upgrade.`,
-      });
-    }
+  if (
+    currentSmsLimit.limit !== null &&
+    smsLimit.limit !== null &&
+    smsLimit.limit < currentSmsLimit.limit
+  ) {
+    items.push({
+      kind: "info",
+      featureKey: FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT,
+      label: labelFor(FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT),
+      detail: smsIncludedAllowanceChangeDetail(
+        currentSmsLimit.limit,
+        smsLimit.limit,
+      ),
+    });
   }
 
   const photoCount = readIntegerEntitlement(
@@ -223,10 +237,6 @@ export async function buildDowngradeImpactReport(params: {
   const currentSeatLimit = readIntegerEntitlement(
     current.values,
     FEATURE_KEYS.USERS_ACTIVE_LIMIT,
-  );
-  const currentSmsLimit = readIntegerEntitlement(
-    current.values,
-    FEATURE_KEYS.SMS_MONTHLY_SEGMENT_LIMIT,
   );
   const catalogTarget = commercialPlanByKey(toPlanKey);
 

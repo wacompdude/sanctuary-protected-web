@@ -433,7 +433,10 @@ function main() {
   assert(dispatcher.includes("formatApplicationNotificationSms"), "dispatcher formats SMS");
   assert(dispatcher.includes("canSendSms"), "dispatcher re-checks SMS eligibility");
   const webhookProcessor = readRepo("lib/sms/process-bird-webhook.ts");
-  assert(webhookProcessor.includes("deliveryStatusRank"), "webhook does not regress sent to queued");
+  assert(
+    webhookProcessor.includes("mayAdvanceDeliveryStatus"),
+    "webhook does not regress sent to queued",
+  );
   assert(
     webhookProcessor.includes('.eq("provider", "bird")'),
     "webhook correlates by provider bird",

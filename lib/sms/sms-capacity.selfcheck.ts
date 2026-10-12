@@ -323,9 +323,13 @@ async function main() {
   const sendFn = dispatch.slice(dispatch.indexOf("export async function sendSmsDelivery"));
   const reserveAt = sendFn.indexOf("await reserveApplicationSmsSegments");
   const sendAt = sendFn.indexOf("await provider.send");
-  const commitAt = sendFn.lastIndexOf("await commitApplicationSmsSegments");
-  assert(reserveAt > 0 && reserveAt < sendAt && commitAt > sendAt, "order");
+  const settleAt = sendFn.lastIndexOf("await commitAcceptedSms");
+  assert(reserveAt > 0 && reserveAt < sendAt && settleAt > sendAt, "order");
   assert(sendFn.indexOf("await canSendSms") < reserveAt, "consent before reserve");
+  assert(
+    dispatch.includes("await commitApplicationSmsSegments"),
+    "commit still uses the capacity RPC",
+  );
 
   const beforeBird = createSmsCapacityBooks({ includedLimit: 250 });
   reserveApplicationSms(beforeBird, "crash-a", 1);

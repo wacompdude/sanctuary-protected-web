@@ -1,6 +1,22 @@
 import { createClient } from "@/lib/supabase/server";
 import type { BillingHistoryItem } from "@/lib/billing/types";
 
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+/** Presentation label for a billing_events row. Does not grant credits. */
+export function billingHistoryEventTitle(input: {
+  eventType: string;
+  metadata?: unknown;
+}): string {
+  const handler = asRecord(asRecord(input.metadata).handler);
+  if (handler.sms_package_purchase === true) return "SMS Credit Purchase";
+  return input.eventType || "billing event";
+}
+
 export async function listBillingHistory(
   organizationId: string,
   limit = 25,
@@ -20,7 +36,7 @@ export async function listBillingHistory(
     supabase
       .from("billing_events")
       .select(
-        "id, event_type, processing_status, created_at, billing_provider, error_message",
+        "id, event_type, processing_status, created_at, billing_provider, error_message, metadata",
       )
       .eq("organization_id", organizationId)
       .order("created_at", { ascending: false })
@@ -48,7 +64,10 @@ export async function listBillingHistory(
       id: `bill:${row.id}`,
       kind: "billing_event",
       occurredAt: String(row.created_at),
-      title: String(row.event_type ?? "billing event"),
+      title: billingHistoryEventTitle({
+        eventType: String(row.event_type ?? "billing event"),
+        metadata: row.metadata,
+      }),
       detail:
         (row.error_message as string | null) ??
         `Provider ${row.billing_provider ?? "unknown"}`,

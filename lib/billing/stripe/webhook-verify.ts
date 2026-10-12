@@ -58,6 +58,17 @@ export type StripeWebhookObjectSummary = {
   canceledAt?: number | null;
   metadataOrganizationId: string | null;
   metadataPlanKey: string | null;
+  /** Checkout metadata marker. Absent on older summaries. Not financial authority. */
+  metadataSanctuaryCheckout?: string | null;
+  metadataPackageKey?: string | null;
+  metadataLookupKey?: string | null;
+  metadataSmsSegments?: string | null;
+  /** Checkout Session money fields. Absent on older summaries. */
+  amountSubtotal?: number | null;
+  amountTotal?: number | null;
+  amountTax?: number | null;
+  amountDiscount?: number | null;
+  paymentIntentId?: string | null;
   /**
    * Attached schedule on a subscription object.
    * Not present for schedule events; those use id.
@@ -264,6 +275,7 @@ export function summarizeStripeEventObject(
   const objectType = str(obj.object) ?? "unknown";
   const priceItems = extractWebhookPriceItems(obj);
   const metadata = asRecord(obj.metadata) ?? {};
+  const totalDetails = asRecord(obj.total_details);
 
   let invoiceId = objectType === "invoice" ? str(obj.id) : str(obj.invoice);
   let subscriptionId =
@@ -330,6 +342,15 @@ export function summarizeStripeEventObject(
     canceledAt: num(obj.canceled_at),
     metadataOrganizationId: str(metadata.organization_id),
     metadataPlanKey: str(metadata.plan_key),
+    metadataSanctuaryCheckout: str(metadata.sanctuary_checkout),
+    metadataPackageKey: str(metadata.package_key),
+    metadataLookupKey: str(metadata.lookup_key),
+    metadataSmsSegments: str(metadata.sms_segments),
+    amountSubtotal: num(obj.amount_subtotal),
+    amountTotal: num(obj.amount_total),
+    amountTax: num(totalDetails?.amount_tax),
+    amountDiscount: num(totalDetails?.amount_discount),
+    paymentIntentId: str(obj.payment_intent),
     scheduleId: objectType === "subscription" ? str(obj.schedule) : null,
     ...(schedulePhases ? { schedulePhases } : {}),
   };

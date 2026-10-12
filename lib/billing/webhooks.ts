@@ -15,6 +15,9 @@ import { getBillingProvider } from "@/lib/billing/provider";
 import type { BillingWebhookReceiveResult } from "@/lib/billing/types";
 import { BillingConfigurationError } from "@/lib/billing/errors";
 import { createStripePriceByIdRetriever } from "@/lib/billing/stripe/catalog-stripe";
+import { createStripeCheckoutLineItemLister } from "@/lib/billing/stripe/sms-checkout-line-items";
+import type { SmsPurchaseHandlerDeps } from "@/lib/billing/stripe/sms-purchase-webhook";
+import { recordPaidApplicationSmsPackage } from "@/lib/billing/sms-paid-purchase";
 import { readStripeSecretKey } from "@/lib/billing/stripe/config";
 import { createStripeScheduleCleanupDeps } from "@/lib/billing/stripe/downgrade-live";
 import { dispatchStripeWebhookEvent } from "@/lib/billing/stripe/webhook-dispatch";
@@ -68,7 +71,7 @@ export type BillingEventClaimStore = {
   finalize(input: {
     id: string;
     organizationId: string | null;
-    processingStatus: "processed" | "ignored" | "failed";
+    processingStatus: "processed" | "ignored" | "rejected" | "failed";
     detail: string | null;
     metadata: Record<string, unknown>;
   }): Promise<void>;
@@ -80,6 +83,8 @@ export type ProcessBillingWebhookDeps = {
   createClaimStore?: () => BillingEventClaimStore;
   createSyncStore?: () => WebhookSyncStore;
   getPriceById?: GetStripePriceById;
+  listCheckoutLineItems?: SmsPurchaseHandlerDeps["listCheckoutLineItems"];
+  recordPaidSmsPackage?: SmsPurchaseHandlerDeps["recordPaidSmsPackage"];
   /** Injectable clock for stale-received tests. */
   nowMs?: () => number;
   now?: Date;
@@ -153,7 +158,10 @@ function createAdminBillingEventClaimStore(): BillingEventClaimStore {
           processing_status: input.processingStatus,
           processed_at: new Date().toISOString(),
           error_message:
-            input.processingStatus === "failed" ? input.detail : null,
+            input.processingStatus === "failed" ||
+            input.processingStatus === "rejected"
+              ? input.detail
+              : null,
           safe_error_summary: input.detail?.slice(0, 240) ?? null,
           metadata: input.metadata,
         })
@@ -268,6 +276,7 @@ export async function processBillingWebhook(
         };
       }
 
+      // rejected is terminal: durable evidence, no automatic retry.
       if (status === "failed" || isStaleReceived(existing, nowMs)) {
         const claim = await claimStore.tryClaimForRetry({
           id: existing.id,
@@ -396,6 +405,11 @@ export async function processBillingWebhook(
     claimStore,
     createSyncStore: deps.createSyncStore,
     getPriceById,
+    listCheckoutLineItems:
+      deps.listCheckoutLineItems ?? createStripeCheckoutLineItemLister(),
+    recordPaidSmsPackage:
+      deps.recordPaidSmsPackage ??
+      ((params) => recordPaidApplicationSmsPackage(createAdminClient(), params)),
     now: deps.now,
     releaseCompletedSchedule:
       deps.releaseCompletedSchedule ?? scheduleCleanup?.releaseCompletedSchedule,
@@ -415,6 +429,8 @@ async function finalizeStripeOrGeneric(input: {
   claimStore: BillingEventClaimStore;
   createSyncStore?: () => WebhookSyncStore;
   getPriceById?: GetStripePriceById;
+  listCheckoutLineItems?: SmsPurchaseHandlerDeps["listCheckoutLineItems"];
+  recordPaidSmsPackage?: SmsPurchaseHandlerDeps["recordPaidSmsPackage"];
   now?: Date;
   releaseCompletedSchedule?: SubscriptionLifecycleOptions["releaseCompletedSchedule"];
   confirmScheduleStatus?: SubscriptionLifecycleOptions["confirmScheduleStatus"];
@@ -473,6 +489,8 @@ async function finalizeStripeOrGeneric(input: {
       store,
       providerEventId: input.providerEventId,
       getPriceById: input.getPriceById,
+      listCheckoutLineItems: input.listCheckoutLineItems,
+      recordPaidSmsPackage: input.recordPaidSmsPackage,
       now: input.now,
       releaseCompletedSchedule: input.releaseCompletedSchedule,
       confirmScheduleStatus: input.confirmScheduleStatus,
@@ -488,7 +506,12 @@ async function finalizeStripeOrGeneric(input: {
     await input.claimStore.finalize({
       id: input.eventRowId,
       organizationId: result.organizationId,
-      processingStatus: result.outcome === "processed" ? "processed" : "ignored",
+      processingStatus:
+        result.outcome === "processed"
+          ? "processed"
+          : result.outcome === "rejected"
+            ? "rejected"
+            : "ignored",
       detail: result.detail,
       metadata: mergedMetadata,
     });

@@ -126,6 +126,41 @@ export function createAdminWebhookSyncStore(): WebhookSyncStore {
       };
     },
 
+    async organizationExists(organizationId) {
+      const { data } = await admin
+        .from("organizations")
+        .select("id")
+        .eq("id", organizationId)
+        .maybeSingle();
+      return Boolean(data?.id);
+    },
+
+    async getMappedStripeCustomerId(organizationId) {
+      const { data: profile } = await admin
+        .from("organization_billing_profiles")
+        .select("provider_customer_id")
+        .eq("organization_id", organizationId)
+        .eq("billing_provider", "stripe")
+        .maybeSingle();
+      const fromProfile =
+        typeof profile?.provider_customer_id === "string"
+          ? profile.provider_customer_id.trim()
+          : "";
+      if (fromProfile) return fromProfile;
+
+      const { data: legacy } = await admin
+        .from("billing_customers")
+        .select("provider_customer_id")
+        .eq("organization_id", organizationId)
+        .eq("billing_provider", "stripe")
+        .maybeSingle();
+      const fromLegacy =
+        typeof legacy?.provider_customer_id === "string"
+          ? legacy.provider_customer_id.trim()
+          : "";
+      return fromLegacy || null;
+    },
+
     async getPlanIdByKey(planKey: PlanKey) {
       const { data } = await admin
         .from("subscription_plans")

@@ -20,6 +20,11 @@ import {
   evaluatePostEffectiveScheduleRelease,
   scheduleMirrorStatusAfterStripeRelease,
 } from "@/lib/billing/stripe/downgrade";
+import {
+  handlePaidSmsPackageCheckout,
+  isSmsPackageCheckoutCandidate,
+  type SmsPurchaseHandlerDeps,
+} from "@/lib/billing/stripe/sms-purchase-webhook";
 import type { StripeWebhookObjectSummary } from "@/lib/billing/stripe/webhook-verify";
 import type { ChurchSubscriptionStatus } from "@/lib/subscriptions/types";
 import { isPlanKey, type PlanKey } from "@/lib/subscriptions/plan-keys";
@@ -60,6 +65,9 @@ export type WebhookSyncStore = {
   findOrganizationByStripeCustomerId(
     customerId: string,
   ): Promise<OrgCustomerMapping | null>;
+  /** Present for paid SMS Checkout. Does not create a customer. */
+  organizationExists?(organizationId: string): Promise<boolean>;
+  getMappedStripeCustomerId?(organizationId: string): Promise<string | null>;
   getPlanIdByKey(planKey: PlanKey): Promise<string | null>;
   getSubscriptionByProviderId(
     providerSubscriptionId: string,
@@ -171,7 +179,7 @@ export type WebhookSyncStore = {
 };
 
 export type WebhookHandlerResult = {
-  outcome: "processed" | "ignored";
+  outcome: "processed" | "ignored" | "rejected";
   detail: string;
   organizationId: string | null;
   metadata: Record<string, unknown>;
@@ -261,7 +269,11 @@ function ignoreCorrelation(
 export async function handleCheckoutSessionCompleted(
   store: WebhookSyncStore,
   object: StripeWebhookObjectSummary,
+  deps: SmsPurchaseHandlerDeps = {},
 ): Promise<WebhookHandlerResult> {
+  if (isSmsPackageCheckoutCandidate(object)) {
+    return handlePaidSmsPackageCheckout(store, object, deps);
+  }
   let org: OrgCustomerMapping;
   try {
     org = await resolveOrganizationForStripeObject(store, object);

@@ -3,6 +3,7 @@
  */
 
 import type { GetStripePriceById } from "@/lib/billing/stripe/plan-correlation";
+import type { SmsPurchaseHandlerDeps } from "@/lib/billing/stripe/sms-purchase-webhook";
 import type { StripeWebhookObjectSummary } from "@/lib/billing/stripe/webhook-verify";
 import {
   handleCheckoutSessionCompleted,
@@ -44,6 +45,8 @@ export async function dispatchStripeWebhookEvent(input: {
   store: WebhookSyncStore;
   providerEventId?: string | null;
   getPriceById?: GetStripePriceById;
+  listCheckoutLineItems?: SmsPurchaseHandlerDeps["listCheckoutLineItems"];
+  recordPaidSmsPackage?: SmsPurchaseHandlerDeps["recordPaidSmsPackage"];
   now?: Date;
   releaseCompletedSchedule?: SubscriptionLifecycleOptions["releaseCompletedSchedule"];
   confirmScheduleStatus?: SubscriptionLifecycleOptions["confirmScheduleStatus"];
@@ -60,7 +63,11 @@ export async function dispatchStripeWebhookEvent(input: {
 
   switch (input.eventType) {
     case "checkout.session.completed":
-      return handleCheckoutSessionCompleted(input.store, input.object);
+      return handleCheckoutSessionCompleted(input.store, input.object, {
+        listCheckoutLineItems: input.listCheckoutLineItems,
+        recordPaidSmsPackage: input.recordPaidSmsPackage,
+        getPriceById: input.getPriceById,
+      });
     case "customer.subscription.created":
       return handleSubscriptionLifecycle(
         input.store,

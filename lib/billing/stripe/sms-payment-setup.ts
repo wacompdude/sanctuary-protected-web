@@ -80,7 +80,7 @@ export function smsPaymentSetupCreateParams(input: {
 }): {
   customer: string;
   usage: "off_session";
-  payment_method_types: ["card"];
+  allowed_payment_method_types: ["card"];
   metadata: {
     sanctuary_purpose: typeof SMS_PAYMENT_SETUP_PURPOSE;
     organization_id: string;
@@ -89,7 +89,7 @@ export function smsPaymentSetupCreateParams(input: {
   return {
     customer: input.customerId,
     usage: "off_session",
-    payment_method_types: ["card"],
+    allowed_payment_method_types: ["card"],
     metadata: {
       sanctuary_purpose: SMS_PAYMENT_SETUP_PURPOSE,
       organization_id: input.organizationId,

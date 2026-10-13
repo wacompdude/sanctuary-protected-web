@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { BillingConfigurationError } from "@/lib/billing/errors";
 import { requireBillingManageAccess } from "@/lib/billing/access";
 import { requireStripePublishableKey } from "@/lib/billing/stripe/config";
+import { logStripeBillingError } from "@/lib/billing/stripe/safe-error-log";
 import { resolveAppOrigin } from "@/lib/billing/stripe/checkout-urls";
 import {
   readSetupIntentIdFromClient,
@@ -108,7 +109,11 @@ export async function startSmsPaymentSetupAction(): Promise<SmsPaymentSetupActio
       returnUrl: `${origin}/settings/billing`,
     };
   } catch (error) {
-    return { error: failureMessage(error) };
+    logStripeBillingError("sms_payment_setup_create", error);
+    if (error instanceof ChurchAccessError || error instanceof BillingConfigurationError) {
+      return { error: error.message };
+    }
+    return { error: "Unable to set up the automatic SMS payment method." };
   }
 }
 

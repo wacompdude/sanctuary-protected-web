@@ -68,7 +68,7 @@ Phase 5C is the off-session Stripe setup, PaymentIntent, and webhook. Phase 5B d
 
 Phase 5C-1 saves a payment method with a SetupIntent. It does not create a PaymentIntent or enable replenishment.
 
-The server creates the SetupIntent for the canonical Stripe customer in `organization_billing_profiles.provider_customer_id`, with `usage` set to `off_session` and `payment_method_types` limited to `card`. Stripe’s Payment Element shows Apple Pay and Google Pay when card payments are enabled and the browser qualifies. Those wallets produce a PaymentMethod whose type remains `card`, so they can be saved. Bank debit, Cash App, Klarna, Amazon Pay, and other non-card types are rejected.
+The server creates the SetupIntent for the canonical Stripe customer in `organization_billing_profiles.provider_customer_id`, with `usage` set to `off_session` and `allowed_payment_method_types` limited to `card`. Stripe’s Payment Element shows Apple Pay and Google Pay when card payments are enabled and the browser qualifies. Those wallets produce a PaymentMethod whose type remains `card`, so they can be saved. Bank debit, Cash App, Klarna, Amazon Pay, and other non-card types are rejected.
 
 The browser may return only the SetupIntent id. The server retrieves the SetupIntent and PaymentMethod from Stripe and checks the customer, organization metadata, purpose `sms_auto_replenishment_payment_setup`, succeeded status, off-session usage, and card type. Only `pm_…` is stored. Brand, last4, and expiration are read from Stripe for display and are not written to the database. No full card number, CVC, or raw Stripe object is stored.
 

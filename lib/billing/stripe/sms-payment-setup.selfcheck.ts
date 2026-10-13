@@ -87,10 +87,31 @@ const params = smsPaymentSetupCreateParams({
 });
 assert(params.customer === "cus_server", "server customer");
 assert(params.usage === "off_session", "off-session usage");
-assert(params.payment_method_types.length === 1 && params.payment_method_types[0] === "card", "card only");
+assert(
+  params.allowed_payment_method_types.length === 1 &&
+    params.allowed_payment_method_types[0] === "card",
+  "card only",
+);
+assert(!("payment_method_types" in params), "obsolete payment_method_types is absent");
+assert(
+  !/(?<!allowed_)payment_method_types/.test(setup),
+  "create helper does not send the obsolete parameter",
+);
 assert(params.metadata.sanctuary_purpose === SMS_PAYMENT_SETUP_PURPOSE, "purpose");
 assert(params.metadata.organization_id === "org_server", "server organization metadata");
 assert(!JSON.stringify(params).includes("sk_"), "create params have no secret");
+assert(!JSON.stringify(params).includes("client_secret"), "create params have no client secret");
+assert(actions.includes("logStripeBillingError"), "safe Stripe error log");
+assert(actions.includes("sms_payment_setup_create"), "setup operation name");
+assert(!actions.includes("client_secret"), "actions do not log a client secret");
+assert(!actions.includes("console.error(error"), "actions do not log the raw error");
+assert(setup.includes("setupIntent.customerId !== input.customerId"), "customer check remains");
+assert(setup.includes("setupIntent.organizationId !== input.organizationId"), "organization check remains");
+assert(setup.includes("setupIntent.purpose !== SMS_PAYMENT_SETUP_PURPOSE"), "purpose check remains");
+assert(setup.includes('setupIntent.status !== "succeeded"'), "succeeded check remains");
+assert(setup.includes('paymentMethod.type !== SMS_PAYMENT_SETUP_METHOD_TYPE'), "card type check remains");
+assert(!live.includes("bird") && !actions.includes("bird"), "setup does not call Bird");
+assert(!live.includes("billing_transactions"), "setup does not write a billing transaction");
 
 assert(
   smsPaymentSetupIdempotencyKey("org", null) === smsPaymentSetupIdempotencyKey("org", null),

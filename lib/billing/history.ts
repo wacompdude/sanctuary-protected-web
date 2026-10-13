@@ -14,6 +14,9 @@ export function billingHistoryEventTitle(input: {
 }): string {
   const handler = asRecord(asRecord(input.metadata).handler);
   if (handler.sms_package_purchase === true) return "SMS Credit Purchase";
+  if (handler.sms_auto_replenishment === true) {
+    return "Automatic SMS Credit Replenishment";
+  }
   return input.eventType || "billing event";
 }
 

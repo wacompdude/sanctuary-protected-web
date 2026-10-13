@@ -559,7 +559,7 @@ console.log(
 await bootstrap(client);
 const versions = await applyMigrations(client);
 const latest = versions.at(-1);
-assert(latest === "109", `expected migrations through 109, last file was ${latest}`);
+assert(versions.includes("109"), `expected migration 109 to be applied, last file was ${latest}`);
 for (const version of ["106", "107", "108", "109"]) {
   const found = await client.query(
     `SELECT 1 FROM supabase_migrations.schema_migrations WHERE version = $1`,
@@ -567,10 +567,10 @@ for (const version of ["106", "107", "108", "109"]) {
   );
   assert(found.rowCount === 1, `migration ${version} is not applied locally`);
 }
-const absent = await client.query(
+const replenishment = await client.query(
   `SELECT 1 FROM supabase_migrations.schema_migrations WHERE version = '110'`,
 );
-assert(absent.rowCount === 0, "migration 110 must not exist");
+assert(replenishment.rowCount === 1, "migration 110 is not applied locally");
 
 const rbc = await client.query(
   `SELECT count(*)::int AS n FROM public.organizations WHERE id = $1`,

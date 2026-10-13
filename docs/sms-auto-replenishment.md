@@ -1,0 +1,65 @@
+# Application SMS auto-replenishment
+
+Automatic replenishment buys the current plan’s existing SMS package when total available application SMS capacity is low. It is off unless an owner or co-owner explicitly authorizes it. Phase 5B stores that authorization, claims one attempt, and can record a paid grant. It does not call Stripe or Bird, and it does not send SMS.
+
+## Opt-in
+
+A missing configuration row means off. `disabled` means off. The legacy column `organization_sms_credit_balances.auto_replenish_enabled` was created with default `true`. That value is not consent. Migration 110 sets the default to false and sets every existing row to false. Application code must not charge because that column is true.
+
+`billing_extra_items.auto_purchase_allowed` means the catalog item can be used by a future automatic purchase. It is not organization consent.
+
+Only an active organization `owner` or `co_owner` may enable, disable, resume, change the threshold, change the spending cap, or re-authorize. An administrator can view billing and cannot manage replenishment.
+
+Enabling requires an active subscription, application SMS entitlement, a valid threshold, a spending cap that can buy at least one current package and is at most $500 in the subscription period, authorization text version `sms_auto_replenishment_v1`, and a Stripe payment-method id. Phase 5B does not create that payment method. No production organization is enabled by the migration.
+
+The authorization concept is: the owner or co-owner authorizes Sanctuary Protected LLC to charge the saved payment method for the current plan’s SMS package when total available application SMS capacity is at or below the selected threshold, up to the selected period cap. A package price increase requires a new authorization.
+
+## Capacity trigger
+
+Total available application SMS capacity is included available plus purchased available.
+
+Included available is `GREATEST(0, monthly limit - used - reserved)`. Purchased available is `balance - reserved`, or zero when the organization has no purchased-balance row. The claim reads these inside the database. It does not trust a caller-supplied balance.
+
+Steward with 200 included segments and no purchased credits does not qualify at a threshold of 20. Servant with 0 included and 9 purchased credits does qualify at a threshold of 10 when every other rule passes.
+
+The threshold is an integer from 1 through one less than the current package size. Catalog defaults are Servant 10, Steward 20, Shepherd 40, and Omni 100. Those defaults live in the commercial catalog, not in a second price list.
+
+## Package and price
+
+The package is the current plan’s default SMS block in `billing_plan_extra_items` and its current price. Servant is 50 segments / $5, Steward 100 / $10, Shepherd 200 / $20, and Omni 500 / $40.
+
+The configuration stores the package price that was authorized. If the current package price is higher, the claim moves the configuration to `authorization_review_required` and does not create an attempt. The same or a lower price stays authorized. A Steward authorization at $10 still covers a later Servant package at $5. A Servant authorization at $5 does not cover a later Steward package at $10 until the owner or co-owner re-authorizes.
+
+Purchased credits stay on the organization across plan changes. Included usage is unchanged by an automatic grant.
+
+## Spending cap
+
+The cap is `max_auto_spend_cents` for the current `organization_subscriptions` period. It applies only to succeeded automatic attempts in that period, counting package amount plus stored tax, plus any open attempt amount, plus the proposed package price. Landing exactly on the cap is allowed. The next package that would pass the cap is not claimed. The configuration stays `enabled`. The next subscription period can qualify again without a new enable.
+
+Manual SMS purchases use ledger reason `manual_purchase` and are not replenishment attempts, so they do not count. A manual purchase also does not resume automatic charging after a payment failure.
+
+## Single flight
+
+At most one attempt in `claimed`, `charging`, or `payment_pending` may exist for an organization. The claim takes `application_sms_capacity_lock` only for that short transaction. A later worker must call Stripe after the transaction commits. The database lock is not held during Stripe HTTP.
+
+The grant idempotency key is `sms:auto:{attemptId}`. The future Stripe idempotency key is stored as `sms_auto_pi_{attemptId}`.
+
+## Grant
+
+`record_automatic_application_sms_replenishment` runs only after a trusted payment success. It writes one `sms_block` transaction described as “Automatic SMS credit replenishment” and one ledger row with reason `auto_replenish`. Package amount and tax are stored separately. Tax may be zero. Stripe Tax is not implemented in Phase 5B. An exact replay does not credit again. A conflicting payment id or amount returns `idempotency_mismatch` or `reconciliation_required` and does not invent a repair.
+
+## Payment failure and subscription status
+
+Automatic charging is allowed only while the subscription status is `active`. Trialing, past due, grace period, incomplete, cancelled, expired, and suspended do not qualify. A trial cannot enable replenishment. This does not change who may send application SMS.
+
+A future failed payment adds no credits and moves configuration to `payment_attention_required`. Further claims stop until an owner or co-owner resumes. Returning to `active` after cancellation does not by itself resume charging.
+
+## Sends, consent, and later work
+
+If a message does not fit in current capacity, Phase 4 still blocks it before Bird. Version 1 does not hold that message for Stripe and does not retry it because replenishment finished.
+
+Recipient SMS consent is separate. Authorization to buy credits does not opt anyone into SMS. MFA and login SMS are not part of this capacity, threshold, or cap.
+
+Refunds and disputes are not handled here. Consumed automatic credits are not reversed automatically. That remains later policy and engineering work.
+
+Phase 5C is the off-session Stripe setup, PaymentIntent, and webhook. Phase 5B does not call Stripe or Bird.

@@ -3,6 +3,7 @@ import { CreditCard } from "lucide-react";
 import { Suspense } from "react";
 import { BillingPlanPanel } from "@/components/billing/billing-plan-panel";
 import { SmsPackagePurchaseButton } from "@/components/billing/sms-package-panel";
+import { SmsPaymentSetupPanel } from "@/components/billing/sms-payment-setup-panel";
 import {
   Card,
   CardContent,
@@ -20,6 +21,12 @@ import {
 } from "@/lib/billing";
 import { summarizeApplicationSmsCapacity } from "@/lib/billing/sms-capacity-summary";
 import { smsPurchaseReturnMessage } from "@/lib/billing/stripe/checkout-urls";
+import {
+  isStripeSecretConfigured,
+  readStripePublishableKey,
+} from "@/lib/billing/stripe/config";
+import { readSetupIntentIdFromClient } from "@/lib/billing/stripe/sms-payment-setup";
+import { readSafeCardDisplay } from "@/lib/billing/stripe/sms-payment-setup-live";
 import { subscriptionGrantsAccess } from "@/lib/subscriptions/status";
 import { organizationHasProviderSubscription } from "@/lib/billing/checkout-eligibility";
 import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
@@ -97,8 +104,10 @@ function UsageMeterRow({
 
 async function BillingContent({
   smsPurchase,
+  returnedSetupIntentId,
 }: {
   smsPurchase?: string;
+  returnedSetupIntentId: string | null;
 }) {
   const { supabase, church, canManageBilling } = await requireBillingViewAccess();
   const { data } = await supabase
@@ -145,6 +154,28 @@ async function BillingContent({
     purchasedBalance: purchasedCredits?.balance ?? null,
     purchasedReserved: purchasedCredits?.reserved ?? null,
   });
+  const { data: replenishment } = await supabase
+    .from("organization_sms_auto_replenishment")
+    .select("status, payment_method_id")
+    .eq("organization_id", church.id)
+    .maybeSingle();
+  const replenishmentPaymentMethodId =
+    typeof replenishment?.payment_method_id === "string"
+      ? replenishment.payment_method_id
+      : null;
+  const publishableKey = readStripePublishableKey();
+  const safePublishableKey =
+    publishableKey.startsWith("pk_test_") || publishableKey.startsWith("pk_live_")
+      ? publishableKey
+      : null;
+  let paymentMethodDisplay = null;
+  if (replenishmentPaymentMethodId && isStripeSecretConfigured()) {
+    try {
+      paymentMethodDisplay = await readSafeCardDisplay(replenishmentPaymentMethodId);
+    } catch {
+      paymentMethodDisplay = null;
+    }
+  }
 
   return (
     <>
@@ -326,6 +357,16 @@ async function BillingContent({
               active subscription.
             </p>
           ) : null}
+          <SmsPaymentSetupPanel
+            canManage={canManageBilling}
+            status={
+              typeof replenishment?.status === "string" ? replenishment.status : null
+            }
+            hasPaymentMethod={Boolean(replenishmentPaymentMethodId)}
+            display={paymentMethodDisplay}
+            publishableKey={canManageBilling ? safePublishableKey : null}
+            returnedSetupIntentId={canManageBilling ? returnedSetupIntentId : null}
+          />
         </CardContent>
       </Card>
 
@@ -429,11 +470,16 @@ async function BillingContent({
 async function BillingWrapper({
   searchParams,
 }: {
-  searchParams: Promise<{ sms_purchase?: string }>;
+  searchParams: Promise<{ sms_purchase?: string; setup_intent?: string }>;
 }) {
   const params = await searchParams;
   try {
-    return <BillingContent smsPurchase={params.sms_purchase} />;
+    return (
+      <BillingContent
+        smsPurchase={params.sms_purchase}
+        returnedSetupIntentId={readSetupIntentIdFromClient(params.setup_intent)}
+      />
+    );
   } catch (error) {
     rethrowOrRedirectForChurchAccess(error);
     return (
@@ -453,7 +499,7 @@ async function BillingWrapper({
 export default function BillingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ sms_purchase?: string }>;
+  searchParams: Promise<{ sms_purchase?: string; setup_intent?: string }>;
 }) {
   return (
     <div className="space-y-8">

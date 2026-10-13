@@ -990,10 +990,93 @@ await run("cross-organization claim and grant stay isolated", async () => {
   assert(Number((await balanceOf(client, b.organizationId)).balance) === 7, "b");
 });
 
+await run("payment method reference stays disabled and does not grant credits", async () => {
+  const fx = await createOrg(client, {
+    name: "Phase 5B payment setup",
+    planKey: "servant_standard",
+    balance: 49,
+  });
+  const saved = await rpc(client, "record_application_sms_replenishment_payment_method", [
+    fx.organizationId,
+    fx.userId,
+    "pm_phase5b_setup",
+  ]);
+  assert(saved.outcome === "payment_method_changed", saved.outcome);
+  assert(saved.status === "disabled", saved.status);
+  assert(saved.enabled === false, "enabled");
+  const config = await client.query(
+    `SELECT status, payment_method_id FROM public.organization_sms_auto_replenishment WHERE organization_id = $1`,
+    [fx.organizationId],
+  );
+  assert(config.rows[0].status === "disabled", "row status");
+  assert(config.rows[0].payment_method_id === "pm_phase5b_setup", "payment method");
+  const events = await client.query(
+    `SELECT action FROM public.organization_sms_auto_replenishment_events WHERE organization_id = $1`,
+    [fx.organizationId],
+  );
+  assert(events.rows.length === 1 && events.rows[0].action === "payment_method_changed", "event");
+  const attempts = await client.query(
+    `SELECT count(*)::integer AS n FROM public.organization_sms_replenishment_attempts WHERE organization_id = $1`,
+    [fx.organizationId],
+  );
+  assert(attempts.rows[0].n === 0, "attempts");
+  const txns = await client.query(
+    `SELECT count(*)::integer AS n FROM public.billing_transactions WHERE organization_id = $1`,
+    [fx.organizationId],
+  );
+  assert(txns.rows[0].n === 0, "transactions");
+  const ledger = await client.query(
+    `SELECT count(*)::integer AS n FROM public.organization_sms_credit_ledger WHERE organization_id = $1`,
+    [fx.organizationId],
+  );
+  assert(ledger.rows[0].n === 0, "ledger");
+  assert(Number((await balanceOf(client, fx.organizationId)).balance) === 49, "balance");
+  const replaced = await rpc(client, "record_application_sms_replenishment_payment_method", [
+    fx.organizationId,
+    fx.userId,
+    "pm_phase5b_replaced",
+  ]);
+  assert(replaced.status === "disabled", "replace status");
+  const admin = await createOrg(client, {
+    name: "Phase 5B payment setup admin",
+    planKey: "servant_standard",
+    role: "administrator",
+  });
+  const denied = await rpc(client, "record_application_sms_replenishment_payment_method", [
+    admin.organizationId,
+    admin.userId,
+    "pm_phase5b_admin",
+  ]);
+  assert(denied.outcome === "forbidden", denied.outcome);
+});
+
+await run("removing an enabled payment method reference stops charging", async () => {
+  const fx = await createOrg(client, {
+    name: "Phase 5B payment removal",
+    planKey: "servant_standard",
+    balance: 9,
+  });
+  assert((await enable(client, fx)).outcome === "enabled", "enable");
+  const removed = await rpc(client, "record_application_sms_replenishment_payment_method", [
+    fx.organizationId,
+    fx.userId,
+    null,
+  ]);
+  assert(removed.status === "payment_attention_required", removed.status);
+  const config = await client.query(
+    `SELECT status, payment_method_id FROM public.organization_sms_auto_replenishment WHERE organization_id = $1`,
+    [fx.organizationId],
+  );
+  assert(config.rows[0].payment_method_id === null, "cleared");
+  assert(Number((await balanceOf(client, fx.organizationId)).balance) === 9, "balance");
+  assert((await claim(client, fx.organizationId)).outcome === "payment_attention_required", "claim");
+});
+
 await run("rpc privileges are service role only", async () => {
   const functions = [
     "claim_application_sms_replenishment(uuid)",
     "record_automatic_application_sms_replenishment(uuid, text, integer, integer, jsonb)",
+    "record_application_sms_replenishment_payment_method(uuid, uuid, text)",
   ];
   for (const signature of functions) {
     const { rows } = await client.query(

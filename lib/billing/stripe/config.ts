@@ -64,6 +64,25 @@ export function readStripeSecretKey(): string {
   return readEnv("STRIPE_SECRET_KEY");
 }
 
+/**
+ * Browser-safe publishable key. The local and production name is
+ * STRIPE_PUBLISHABLE_KEY. The documented public alias is accepted when the
+ * server name is empty. Never returns a secret key.
+ */
+export function readStripePublishableKey(): string {
+  return readEnv("STRIPE_PUBLISHABLE_KEY") || readEnv("NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY");
+}
+
+export function requireStripePublishableKey(
+  publishableKey: string | null | undefined = readStripePublishableKey(),
+): string {
+  const key = (publishableKey ?? "").trim();
+  if (!key.startsWith("pk_test_") && !key.startsWith("pk_live_")) {
+    throw new BillingConfigurationError("Stripe publishable key is not configured.");
+  }
+  return key;
+}
+
 export function readStripeWebhookSecret(): string {
   return readEnv("STRIPE_WEBHOOK_SECRET");
 }

@@ -63,3 +63,15 @@ Recipient SMS consent is separate. Authorization to buy credits does not opt any
 Refunds and disputes are not handled here. Consumed automatic credits are not reversed automatically. That remains later policy and engineering work.
 
 Phase 5C is the off-session Stripe setup, PaymentIntent, and webhook. Phase 5B does not call Stripe or Bird.
+
+## Payment-method setup
+
+Phase 5C-1 saves a payment method with a SetupIntent. It does not create a PaymentIntent or enable replenishment.
+
+The server creates the SetupIntent for the canonical Stripe customer in `organization_billing_profiles.provider_customer_id`, with `usage` set to `off_session` and `payment_method_types` limited to `card`. Stripe’s Payment Element shows Apple Pay and Google Pay when card payments are enabled and the browser qualifies. Those wallets produce a PaymentMethod whose type remains `card`, so they can be saved. Bank debit, Cash App, Klarna, Amazon Pay, and other non-card types are rejected.
+
+The browser may return only the SetupIntent id. The server retrieves the SetupIntent and PaymentMethod from Stripe and checks the customer, organization metadata, purpose `sms_auto_replenishment_payment_setup`, succeeded status, off-session usage, and card type. Only `pm_…` is stored. Brand, last4, and expiration are read from Stripe for display and are not written to the database. No full card number, CVC, or raw Stripe object is stored.
+
+The idempotency key is `sms_auto_pm_setup_v1_{organizationId}_{currentPaymentMethodId or none}`. A repeated click reuses that SetupIntent. Saving a different method changes the key. No `setup_intent.succeeded` webhook is required: completion calls the server, which retrieves the SetupIntent. If the browser closes first, the same key returns the succeeded SetupIntent and the server can verify it then.
+
+`record_application_sms_replenishment_payment_method` writes a disabled configuration when none exists and appends `payment_method_changed`. It does not enable charging. Removing the reference clears `payment_method_id` and does not detach the Stripe PaymentMethod. If the configuration was enabled, removal moves it to `payment_attention_required`.

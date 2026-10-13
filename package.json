@@ -29,6 +29,7 @@
     "selfcheck:sms:postgres": "node scripts/sms-capacity-phase4b.local.mjs",
     "selfcheck:sms:auto-replenishment": "npx --yes tsx lib/billing/sms-auto-replenishment.selfcheck.ts",
     "selfcheck:sms:auto-replenishment:postgres": "node scripts/sms-auto-replenishment-phase5b.local.mjs",
+    "selfcheck:sms:payment-setup": "npx --yes tsx lib/billing/stripe/sms-payment-setup.selfcheck.ts",
     "test:e2e": "playwright test",
     "test:e2e:compat": "playwright test e2e/compatibility.spec.ts"
   },
@@ -38,6 +39,8 @@
     "@radix-ui/react-dropdown-menu": "^2.1.14",
     "@radix-ui/react-label": "^2.1.6",
     "@radix-ui/react-slot": "^1.2.2",
+    "@stripe/react-stripe-js": "^7.0.0",
+    "@stripe/stripe-js": "^10.0.0",
     "@supabase/ssr": "latest",
     "@supabase/supabase-js": "latest",
     "class-variance-authority": "^0.7.1",

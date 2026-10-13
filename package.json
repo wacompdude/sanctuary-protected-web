@@ -26,6 +26,7 @@
     "selfcheck:mfa": "npx --yes tsx lib/mfa/foundation.selfcheck.ts && npx --yes tsx lib/mfa/trusted-devices.selfcheck.ts && npx --yes tsx lib/mfa/effective-policy.selfcheck.ts && npx --yes tsx lib/mfa/mobile-gate.selfcheck.ts",
     "selfcheck:legal": "npx --yes tsx lib/legal/foundation.selfcheck.ts",
     "selfcheck:sms": "npx --yes tsx lib/sms/consent.selfcheck.ts && npx --yes tsx lib/sms/sms-preference.selfcheck.ts && npx --yes tsx lib/notifications/preference-save.selfcheck.ts && npx --yes tsx lib/sms/sms-credit-purchase.selfcheck.ts && npx --yes tsx lib/notifications/sms-acceptance-settlement.selfcheck.ts",
+    "selfcheck:sms:postgres": "node scripts/sms-capacity-phase4b.local.mjs",
     "test:e2e": "playwright test",
     "test:e2e:compat": "playwright test e2e/compatibility.spec.ts"
   },

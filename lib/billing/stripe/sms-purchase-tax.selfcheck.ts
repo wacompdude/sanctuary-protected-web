@@ -32,6 +32,7 @@ assert(readSmsBillingAddress({ country: "US", postal_code: "98101" }) === null, 
 assert(readSmsBillingAddress({ country: "GB", line1: "1", city: "London", state: "L", postal_code: "SW1" }) === null, "outside initial countries");
 assert(readSmsBillingAddress({
   country: "us",
+  business_name: "Sanctuary Protected",
   line1: address.line1,
   city: address.city,
   state: address.state,

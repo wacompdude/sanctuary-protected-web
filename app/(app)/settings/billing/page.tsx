@@ -3,8 +3,9 @@ import { CreditCard } from "lucide-react";
 import { Suspense } from "react";
 import { BillingPlanPanel } from "@/components/billing/billing-plan-panel";
 import { SmsPackagePurchaseButton } from "@/components/billing/sms-package-panel";
+import { BillingAddressForm } from "@/components/billing/billing-address-form";
 import { SmsPaymentSetupPanel } from "@/components/billing/sms-payment-setup-panel";
-import { readSmsBillingAddress } from "@/lib/billing/stripe/sms-purchase-tax";
+import { readOrganizationBillingAddress } from "@/lib/billing/organization-billing-address";
 import {
   Card,
   CardContent,
@@ -160,7 +161,7 @@ async function BillingContent({
     .select("billing_address")
     .eq("organization_id", church.id)
     .maybeSingle();
-  const billingAddressReady = readSmsBillingAddress(billingProfile?.billing_address) !== null;
+  const billingAddress = readOrganizationBillingAddress(billingProfile?.billing_address);
   const { data: replenishment } = await supabase
     .from("organization_sms_auto_replenishment")
     .select("status, payment_method_id")
@@ -286,6 +287,18 @@ async function BillingContent({
 
       <Card>
         <CardHeader>
+          <CardTitle>Billing &amp; Tax Address</CardTitle>
+          <CardDescription>
+            This address is used for billing and to determine applicable taxes.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <BillingAddressForm canManage={canManageBilling} address={billingAddress} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Application SMS</CardTitle>
           <CardDescription>
             Application text messages use included monthly SMS first, then
@@ -362,13 +375,6 @@ async function BillingContent({
             <p className="text-sm text-muted-foreground">
               SMS credit purchases are available while the organization has an
               active subscription.
-            </p>
-          ) : null}
-          {!billingAddressReady ? (
-            <p className="text-sm text-muted-foreground">
-              Automatic SMS replenishment needs an organization billing address
-              before tax can be calculated. No address is stored yet, so no
-              automatic charge can start.
             </p>
           ) : null}
           <SmsPaymentSetupPanel

@@ -9,7 +9,8 @@ export type StripeBillingOperation =
   | "customer_ensure"
   | "checkout_session_create"
   | "sms_payment_setup_create"
-  | "sms_replenishment_payment_create";
+  | "sms_replenishment_payment_create"
+  | "billing_address_customer_sync";
 
 export const STRIPE_API_HOSTNAME = "api.stripe.com";
 

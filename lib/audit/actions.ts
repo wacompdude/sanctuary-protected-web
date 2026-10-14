@@ -11,6 +11,7 @@ export const AuditAction = {
   CHURCH_CONTACT_UPDATED: "church.contact_updated",
   CHURCH_CONTACT_REMOVED: "church.contact_removed",
   CHURCH_SETTINGS_ADDRESS_UPDATED: "church.settings.address_updated",
+  BILLING_ADDRESS_UPDATED: "billing.address_updated",
   CHURCH_SETTINGS_BRANDING_UPDATED: "church.settings.branding_updated",
   CHURCH_SETTINGS_SECURITY_UPDATED: "church.settings.security_updated",
   CHURCH_SETTINGS_PREFERENCES_UPDATED: "church.settings.preferences_updated",

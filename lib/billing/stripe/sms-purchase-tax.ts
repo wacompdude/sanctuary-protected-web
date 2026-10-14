@@ -8,6 +8,8 @@ export const SMS_PURCHASE_TAX_COLLECTION_ENV = "STRIPE_SMS_TAX_COLLECTION";
 
 const CALCULATION_ID = /^taxcalc_[A-Za-z0-9_]{1,248}$/;
 
+import { readOrganizationBillingAddress } from "@/lib/billing/organization-billing-address";
+
 export type SmsBillingAddress = {
   line1: string;
   city: string;
@@ -23,19 +25,15 @@ export function smsPurchaseTaxCollectionAuthorized(
 }
 
 export function readSmsBillingAddress(value: unknown): SmsBillingAddress | null {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  const row = value as Record<string, unknown>;
-  const country = String(row.country ?? "").trim().toUpperCase();
-  const line1 = String(row.line1 ?? "").trim();
-  const city = String(row.city ?? "").trim();
-  const state = String(row.state ?? "").trim();
-  const postalCode = String(row.postal_code ?? row.postal ?? row.postalCode ?? "").trim();
-  if (country !== "US" && country !== "CA") return null;
-  if (!line1 || !city || !state || !postalCode) return null;
-  if (line1.length > 200 || city.length > 100 || state.length > 100 || postalCode.length > 32) {
-    return null;
-  }
-  return { line1, city, state, postalCode, country };
+  const address = readOrganizationBillingAddress(value);
+  if (!address) return null;
+  return {
+    line1: address.line1,
+    city: address.city,
+    state: address.state,
+    postalCode: address.postalCode,
+    country: "US",
+  };
 }
 
 export function smsPurchaseTaxCalculationParams(input: {

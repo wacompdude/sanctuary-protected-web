@@ -522,9 +522,10 @@ Env var names (secrets not committed):
 - `BILLING_PROVIDER`
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
-- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
+- `STRIPE_PUBLISHABLE_KEY` (preferred; server passes it to Stripe.js)
+- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (fallback only when `STRIPE_PUBLISHABLE_KEY` is empty)
 
-Never expose secret keys via `NEXT_PUBLIC_*`.
+Never expose secret keys via `NEXT_PUBLIC_*`. The publishable key may use the server name above; it is not a secret key.
 
 ---
 

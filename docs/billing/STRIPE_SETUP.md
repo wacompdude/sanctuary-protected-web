@@ -35,8 +35,10 @@ BILLING_PROVIDER=stripe
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
 
-# Browser-safe publishable key
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
+# Browser-safe publishable key. The server reads STRIPE_PUBLISHABLE_KEY.
+# NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is only a fallback when the server name is empty.
+STRIPE_PUBLISHABLE_KEY=
+# NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
 ```
 
 Optional later:

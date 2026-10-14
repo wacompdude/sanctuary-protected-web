@@ -75,3 +75,13 @@ The browser may return only the SetupIntent id. The server retrieves the SetupIn
 The idempotency key is `sms_auto_pm_setup_v1_{organizationId}_{currentPaymentMethodId or none}`. A repeated click reuses that SetupIntent. Saving a different method changes the key. No `setup_intent.succeeded` webhook is required: completion calls the server, which retrieves the SetupIntent. If the browser closes first, the same key returns the succeeded SetupIntent and the server can verify it then.
 
 `record_application_sms_replenishment_payment_method` writes a disabled configuration when none exists and appends `payment_method_changed`. It does not enable charging. Removing the reference clears `payment_method_id` and does not detach the Stripe PaymentMethod. If the configuration was enabled, removal moves it to `payment_attention_required`.
+
+## Off-session payment
+
+Phase 5C-2 can create one off-session PaymentIntent for an attempt that is already `claimed`. It does not claim from the SMS send path and it does not enable replenishment.
+
+`begin_application_sms_replenishment_charge` rechecks the active subscription, enabled configuration, saved card, catalog amount, authorization price, and spending cap. It snapshots `pm_…` and moves the attempt to `charging`. A disabled configuration cancels a still-claimed attempt. The Stripe idempotency key is the attempt’s existing `provider_idempotency_key`, `sms_auto_pi_{attempt id}`.
+
+The PaymentIntent uses the snapshotted amount, `usd`, the canonical customer, that card, `off_session`, and `confirm`. `allowed_payment_method_types` is `card`. A synchronous `succeeded` response only stores the PaymentIntent id and leaves the attempt `payment_pending`. Credits are granted only by a signature-verified `payment_intent.succeeded` webhook calling `record_automatic_application_sms_replenishment`. A declined card or a PaymentIntent that needs the customer marks the attempt failed and, when the configuration is still enabled, moves it to `payment_attention_required`. A timeout leaves the attempt `charging` so the same idempotency key can be retried. No production tax calculation is attached to this PaymentIntent yet, so a live automatic charge is not authorized.
+
+The existing webhook destination must include `payment_intent.succeeded` and `payment_intent.payment_failed`. Other PaymentIntents, including manual SMS Checkout, are ignored unless `sanctuary_purpose` is `sms_auto_replenishment`. A paid attempt can still be granted if the organization disables replenishment after the PaymentIntent exists.

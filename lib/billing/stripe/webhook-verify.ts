@@ -69,6 +69,12 @@ export type StripeWebhookObjectSummary = {
   amountTax?: number | null;
   amountDiscount?: number | null;
   paymentIntentId?: string | null;
+  /** PaymentIntent amount in the smallest currency unit. Not present for other objects. */
+  amount?: number | null;
+  /** PaymentIntent payment method id. Not a card number. */
+  paymentMethodId?: string | null;
+  metadataSanctuaryPurpose?: string | null;
+  metadataReplenishmentAttemptId?: string | null;
   /**
    * Attached schedule on a subscription object.
    * Not present for schedule events; those use id.
@@ -350,7 +356,12 @@ export function summarizeStripeEventObject(
     amountTotal: num(obj.amount_total),
     amountTax: num(totalDetails?.amount_tax),
     amountDiscount: num(totalDetails?.amount_discount),
-    paymentIntentId: str(obj.payment_intent),
+    paymentIntentId:
+      objectType === "payment_intent" ? str(obj.id) : str(obj.payment_intent),
+    amount: objectType === "payment_intent" ? num(obj.amount) : null,
+    paymentMethodId: objectType === "payment_intent" ? str(obj.payment_method) : null,
+    metadataSanctuaryPurpose: str(metadata.sanctuary_purpose),
+    metadataReplenishmentAttemptId: str(metadata.replenishment_attempt_id),
     scheduleId: objectType === "subscription" ? str(obj.schedule) : null,
     ...(schedulePhases ? { schedulePhases } : {}),
   };

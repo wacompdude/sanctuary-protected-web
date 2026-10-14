@@ -20,6 +20,8 @@ import type { SmsPurchaseHandlerDeps } from "@/lib/billing/stripe/sms-purchase-w
 import { recordPaidApplicationSmsPackage } from "@/lib/billing/sms-paid-purchase";
 import { readStripeSecretKey } from "@/lib/billing/stripe/config";
 import { createStripeScheduleCleanupDeps } from "@/lib/billing/stripe/downgrade-live";
+import { createSmsReplenishmentSettlementStore } from "@/lib/billing/stripe/sms-replenishment-store";
+import type { SmsReplenishmentSettlementStore } from "@/lib/billing/stripe/sms-replenishment-webhook";
 import { dispatchStripeWebhookEvent } from "@/lib/billing/stripe/webhook-dispatch";
 import { createAdminWebhookSyncStore } from "@/lib/billing/stripe/webhook-store";
 import type { GetStripePriceById } from "@/lib/billing/stripe/plan-correlation";
@@ -91,6 +93,7 @@ export type ProcessBillingWebhookDeps = {
   releaseCompletedSchedule?: SubscriptionLifecycleOptions["releaseCompletedSchedule"];
   confirmScheduleStatus?: SubscriptionLifecycleOptions["confirmScheduleStatus"];
   readLiveApprovedPlanKey?: SubscriptionLifecycleOptions["readLiveApprovedPlanKey"];
+  settleSmsReplenishment?: SmsReplenishmentSettlementStore;
 };
 
 function createAdminBillingEventClaimStore(): BillingEventClaimStore {
@@ -417,6 +420,8 @@ export async function processBillingWebhook(
       deps.confirmScheduleStatus ?? scheduleCleanup?.confirmScheduleStatus,
     readLiveApprovedPlanKey:
       deps.readLiveApprovedPlanKey ?? scheduleCleanup?.readLiveApprovedPlanKey,
+    settleSmsReplenishment:
+      deps.settleSmsReplenishment ?? createSmsReplenishmentSettlementStore(),
     providerId: provider.id,
     providerEventId,
     eventRowId,
@@ -435,6 +440,7 @@ async function finalizeStripeOrGeneric(input: {
   releaseCompletedSchedule?: SubscriptionLifecycleOptions["releaseCompletedSchedule"];
   confirmScheduleStatus?: SubscriptionLifecycleOptions["confirmScheduleStatus"];
   readLiveApprovedPlanKey?: SubscriptionLifecycleOptions["readLiveApprovedPlanKey"];
+  settleSmsReplenishment?: SmsReplenishmentSettlementStore;
   providerId: string;
   providerEventId: string | null;
   eventRowId: string;
@@ -495,6 +501,7 @@ async function finalizeStripeOrGeneric(input: {
       releaseCompletedSchedule: input.releaseCompletedSchedule,
       confirmScheduleStatus: input.confirmScheduleStatus,
       readLiveApprovedPlanKey: input.readLiveApprovedPlanKey,
+      settleSmsReplenishment: input.settleSmsReplenishment,
     });
 
     const mergedMetadata = sanitizeAuditMetadata({

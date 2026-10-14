@@ -1072,11 +1072,153 @@ await run("removing an enabled payment method reference stops charging", async (
   assert((await claim(client, fx.organizationId)).outcome === "payment_attention_required", "claim");
 });
 
+await run("charge start snapshots the payment method and does not grant", async () => {
+  const fx = await createOrg(client, {
+    name: "Phase 5B charge start",
+    planKey: "servant_standard",
+    balance: 1,
+  });
+  assert((await enable(client, fx)).outcome === "enabled", "enable");
+  const claimed = await claim(client, fx.organizationId);
+  assert(claimed.outcome === "claimed", claimed.outcome);
+  const started = await rpc(client, "begin_application_sms_replenishment_charge", [claimed.attempt_id]);
+  assert(started.outcome === "charging", started.outcome);
+  assert(started.payment_method_id === PAYMENT_METHOD, "snapshot");
+  assert(started.provider_idempotency_key === `sms_auto_pi_${claimed.attempt_id}`, "idempotency");
+  assert(Number((await balanceOf(client, fx.organizationId)).balance) === 1, "no grant");
+  const pending = await rpc(client, "record_application_sms_replenishment_provider_payment", [
+    claimed.attempt_id,
+    "pi_phase5c2_local",
+  ]);
+  assert(pending.outcome === "payment_pending", pending.outcome);
+  const replay = await rpc(client, "record_application_sms_replenishment_provider_payment", [
+    claimed.attempt_id,
+    "pi_phase5c2_local",
+  ]);
+  assert(replay.outcome === "duplicate", replay.outcome);
+  assert(Number((await balanceOf(client, fx.organizationId)).balance) === 1, "still no grant");
+});
+
+await run("disabled configuration cancels a claimed attempt before charge", async () => {
+  const fx = await createOrg(client, {
+    name: "Phase 5B charge disabled",
+    planKey: "servant_standard",
+    balance: 1,
+  });
+  assert((await enable(client, fx)).outcome === "enabled", "enable");
+  const claimed = await claim(client, fx.organizationId);
+  await rpc(client, "configure_application_sms_auto_replenishment", [
+    fx.organizationId,
+    fx.userId,
+    "disable",
+    null,
+    null,
+    null,
+    null,
+  ]);
+  const started = await rpc(client, "begin_application_sms_replenishment_charge", [claimed.attempt_id]);
+  assert(started.outcome === "configuration_disabled", started.outcome);
+  assert(started.status === "canceled", started.status);
+});
+
+await run("failed payment requires attention and grants nothing", async () => {
+  const fx = await createOrg(client, {
+    name: "Phase 5B charge failed",
+    planKey: "servant_standard",
+    balance: 1,
+  });
+  assert((await enable(client, fx)).outcome === "enabled", "enable");
+  const claimed = await claim(client, fx.organizationId);
+  assert((await rpc(client, "begin_application_sms_replenishment_charge", [claimed.attempt_id])).outcome === "charging", "start");
+  const failed = await rpc(client, "fail_application_sms_replenishment_payment", [
+    claimed.attempt_id,
+    "card_declined",
+  ]);
+  assert(failed.outcome === "failed", failed.outcome);
+  const again = await rpc(client, "fail_application_sms_replenishment_payment", [
+    claimed.attempt_id,
+    "card_declined",
+  ]);
+  assert(again.outcome === "duplicate", again.outcome);
+  const config = await client.query(
+    `SELECT status, payment_method_id, low_balance_threshold_segments, max_auto_spend_cents
+     FROM public.organization_sms_auto_replenishment WHERE organization_id = $1`,
+    [fx.organizationId],
+  );
+  assert(config.rows[0].status === "payment_attention_required", "attention");
+  assert(config.rows[0].payment_method_id === PAYMENT_METHOD, "method kept");
+  assert(Number(config.rows[0].low_balance_threshold_segments) === 10, "threshold kept");
+  assert(Number((await balanceOf(client, fx.organizationId)).balance) === 1, "balance");
+});
+
+await run("paid attempt settles after replenishment is disabled", async () => {
+  const fx = await createOrg(client, {
+    name: "Phase 5B settle after disable",
+    planKey: "servant_standard",
+    balance: 1,
+  });
+  assert((await enable(client, fx)).outcome === "enabled", "enable");
+  const claimed = await claim(client, fx.organizationId);
+  assert((await rpc(client, "begin_application_sms_replenishment_charge", [claimed.attempt_id])).outcome === "charging", "start");
+  assert((await rpc(client, "record_application_sms_replenishment_provider_payment", [
+    claimed.attempt_id,
+    "pi_phase5c2_settle",
+  ])).outcome === "payment_pending", "pending");
+  await rpc(client, "configure_application_sms_auto_replenishment", [
+    fx.organizationId,
+    fx.userId,
+    "disable",
+    null,
+    null,
+    null,
+    null,
+  ]);
+  const recorded = await grant(client, claimed.attempt_id, "pi_phase5c2_settle", 500, 0);
+  assert(recorded.outcome === "recorded", recorded.outcome);
+  assert(Number((await balanceOf(client, fx.organizationId)).balance) === 51, "credited once");
+  const config = await client.query(
+    `SELECT status FROM public.organization_sms_auto_replenishment WHERE organization_id = $1`,
+    [fx.organizationId],
+  );
+  assert(config.rows[0].status === "disabled", "stays disabled");
+});
+
+await run("duplicate provider payment id is rejected", async () => {
+  const first = await createOrg(client, {
+    name: "Phase 5B provider id first",
+    planKey: "servant_standard",
+    balance: 1,
+  });
+  const second = await createOrg(client, {
+    name: "Phase 5B provider id second",
+    planKey: "servant_standard",
+    balance: 1,
+  });
+  await enable(client, first);
+  await enable(client, second);
+  const left = await claim(client, first.organizationId);
+  const right = await claim(client, second.organizationId);
+  await rpc(client, "begin_application_sms_replenishment_charge", [left.attempt_id]);
+  await rpc(client, "begin_application_sms_replenishment_charge", [right.attempt_id]);
+  assert((await rpc(client, "record_application_sms_replenishment_provider_payment", [
+    left.attempt_id,
+    "pi_phase5c2_shared",
+  ])).outcome === "payment_pending", "first");
+  const conflict = await rpc(client, "record_application_sms_replenishment_provider_payment", [
+    right.attempt_id,
+    "pi_phase5c2_shared",
+  ]);
+  assert(conflict.outcome === "idempotency_mismatch", conflict.outcome);
+});
+
 await run("rpc privileges are service role only", async () => {
   const functions = [
     "claim_application_sms_replenishment(uuid)",
     "record_automatic_application_sms_replenishment(uuid, text, integer, integer, jsonb)",
     "record_application_sms_replenishment_payment_method(uuid, uuid, text)",
+    "begin_application_sms_replenishment_charge(uuid)",
+    "record_application_sms_replenishment_provider_payment(uuid, text)",
+    "fail_application_sms_replenishment_payment(uuid, text)",
   ];
   for (const signature of functions) {
     const { rows } = await client.query(

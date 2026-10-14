@@ -4,6 +4,11 @@
 
 import type { GetStripePriceById } from "@/lib/billing/stripe/plan-correlation";
 import type { SmsPurchaseHandlerDeps } from "@/lib/billing/stripe/sms-purchase-webhook";
+import {
+  isSmsReplenishmentPaymentEvent,
+  settleSmsReplenishmentPaymentEvent,
+  type SmsReplenishmentSettlementStore,
+} from "@/lib/billing/stripe/sms-replenishment-webhook";
 import type { StripeWebhookObjectSummary } from "@/lib/billing/stripe/webhook-verify";
 import {
   handleCheckoutSessionCompleted,
@@ -29,6 +34,8 @@ export const STRIPE_WEBHOOK_EVENT_TYPES = [
   "subscription_schedule.canceled",
   "subscription_schedule.completed",
   "subscription_schedule.aborted",
+  "payment_intent.succeeded",
+  "payment_intent.payment_failed",
 ] as const;
 
 export type StripeWebhookEventType = (typeof STRIPE_WEBHOOK_EVENT_TYPES)[number];
@@ -51,6 +58,7 @@ export async function dispatchStripeWebhookEvent(input: {
   releaseCompletedSchedule?: SubscriptionLifecycleOptions["releaseCompletedSchedule"];
   confirmScheduleStatus?: SubscriptionLifecycleOptions["confirmScheduleStatus"];
   readLiveApprovedPlanKey?: SubscriptionLifecycleOptions["readLiveApprovedPlanKey"];
+  settleSmsReplenishment?: SmsReplenishmentSettlementStore;
 }): Promise<WebhookHandlerResult> {
   const lifecycleOptions = {
     providerEventId: input.providerEventId,
@@ -111,6 +119,29 @@ export async function dispatchStripeWebhookEvent(input: {
         input.object,
         lifecycleOptions,
       );
+    case "payment_intent.succeeded":
+    case "payment_intent.payment_failed":
+      if (!isSmsReplenishmentPaymentEvent(input.eventType, input.object)) {
+        return {
+          outcome: "ignored",
+          detail: "PaymentIntent is not an automatic SMS replenishment.",
+          organizationId: null,
+          metadata: {},
+        };
+      }
+      if (!input.settleSmsReplenishment) {
+        return {
+          outcome: "rejected",
+          detail: "Automatic SMS replenishment settlement is not configured.",
+          organizationId: input.object.metadataOrganizationId,
+          metadata: { sms_auto_replenishment: true },
+        };
+      }
+      return settleSmsReplenishmentPaymentEvent({
+        eventType: input.eventType,
+        object: input.object,
+        store: input.settleSmsReplenishment,
+      });
     default:
       return {
         outcome: "ignored",

@@ -6,6 +6,7 @@
 import { createStripeCatalogPriceLister } from "@/lib/billing/stripe/catalog-stripe";
 import { createAdminBillingCustomerStore } from "@/lib/billing/stripe/customers";
 import { getStripeClient } from "@/lib/billing/stripe/sdk";
+import { smsCheckoutAutomaticTaxFields, smsPurchaseTaxCollectionAuthorized } from "@/lib/billing/stripe/sms-purchase-tax";
 import {
   createSmsPackageCheckoutSession,
   type CreateSmsPackageCheckoutInput,
@@ -33,6 +34,7 @@ export async function createLiveSmsPackageCheckoutSession(
     },
     stripeCheckout: {
       async createSmsPackageCheckoutSession(sessionInput) {
+        const taxFields = smsCheckoutAutomaticTaxFields(smsPurchaseTaxCollectionAuthorized());
         const session = await stripe.checkout.sessions.create(
           {
             mode: "payment",
@@ -47,6 +49,7 @@ export async function createLiveSmsPackageCheckoutSession(
             cancel_url: sessionInput.cancelUrl,
             client_reference_id: sessionInput.organizationId,
             metadata: sessionInput.metadata,
+            ...(taxFields ?? {}),
           },
           { idempotencyKey: sessionInput.idempotencyKey },
         );

@@ -154,6 +154,7 @@ Use a Portal Configuration ID env var if multiple configs are needed.
 - Collect billing address at Checkout.  
 - Do not hard-code tax percentages in app code.  
 - Persist tax amounts from invoice webhooks onto local invoice/transaction mirrors.
+- SMS purchases use the same subtotal, tax, and total split for Checkout and automatic replenishment. Collection is off until `STRIPE_SMS_TAX_COLLECTION=authorized`. That authorization also requires a reviewed product tax code and confirmed tax registrations. Stripe Tax does not replace legal or accounting advice.
 
 Timing: see open decision in requirements (enable at first Checkout vs Phase 11).
 

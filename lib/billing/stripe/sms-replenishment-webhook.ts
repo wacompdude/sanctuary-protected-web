@@ -15,6 +15,7 @@ export type SmsReplenishmentAttemptRecord = {
   currency: string;
   providerPaymentId: string | null;
   packageSegments: number;
+  taxCents: number;
 };
 
 export type SmsReplenishmentSettlementStore = {
@@ -97,7 +98,7 @@ export async function settleSmsReplenishmentPaymentEvent(input: {
   if (input.object.currency !== "usd" || attempt.currency.toUpperCase() !== "USD") {
     return rejected("Automatic SMS replenishment currency does not match.", organizationId);
   }
-  if (input.object.amount !== attempt.expectedAmountCents) {
+  if (input.object.amount !== attempt.expectedAmountCents + attempt.taxCents) {
     return rejected("Automatic SMS replenishment amount does not match.", organizationId);
   }
 
@@ -124,7 +125,7 @@ export async function settleSmsReplenishmentPaymentEvent(input: {
     attemptId,
     providerPaymentId,
     amountCents: attempt.expectedAmountCents,
-    taxCents: 0,
+    taxCents: attempt.taxCents,
   });
   if (!granted.ok) {
     if (granted.outcome === "invalid_state" || granted.outcome === "idempotency_mismatch" || granted.outcome === "reconciliation_required") {

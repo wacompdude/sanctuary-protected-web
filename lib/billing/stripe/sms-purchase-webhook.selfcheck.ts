@@ -525,6 +525,23 @@ async function main() {
     "41 reconciliation fails closed",
   );
 
+  const taxedCheckout = harness({
+    lines: [paidLine({ amountTax: 80, amountTotal: 1080 })],
+  });
+  const taxedCheckoutResult = await run(
+    taxedCheckout,
+    paidObject({
+      id: "cs_tax",
+      checkoutSessionId: "cs_tax",
+      amountTax: 80,
+      amountTotal: 1080,
+    }),
+  );
+  assert(taxedCheckoutResult.outcome === "processed", "checkout tax recorded");
+  assert(taxedCheckout.calls[0]?.taxCents === 80, "checkout tax separate");
+  assert(taxedCheckout.calls[0]?.amountCents === 1000, "checkout subtotal");
+  assert(taxedCheckout.calls[0]?.segments === 100, "checkout quantity ignores tax");
+
   const sameSession = harness();
   await run(sameSession, paidObject({ id: "cs_same" }));
   const secondEvent = await run(sameSession, paidObject({ id: "cs_same" }));

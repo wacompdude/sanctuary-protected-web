@@ -26,7 +26,7 @@ export function createSmsReplenishmentSettlementStore(): SmsReplenishmentSettlem
       const { data, error } = await admin
         .from("organization_sms_replenishment_attempts")
         .select(
-          "id, organization_id, status, expected_amount_cents, currency, provider_payment_id, package_segments",
+          "id, organization_id, status, expected_amount_cents, tax_cents, currency, provider_payment_id, package_segments",
         )
         .eq("id", attemptId)
         .maybeSingle();
@@ -36,6 +36,7 @@ export function createSmsReplenishmentSettlementStore(): SmsReplenishmentSettlem
         organizationId: String(data.organization_id),
         status: String(data.status),
         expectedAmountCents: Number(data.expected_amount_cents),
+        taxCents: Number(data.tax_cents),
         currency: String(data.currency),
         providerPaymentId:
           typeof data.provider_payment_id === "string" ? data.provider_payment_id : null,

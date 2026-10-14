@@ -98,6 +98,7 @@ const baseAttempt: SmsReplenishmentAttemptRecord = {
   currency: "USD",
   providerPaymentId: "pi_phase5c2_webhook",
   packageSegments: 50,
+  taxCents: 0,
 };
 
 async function main() {
@@ -216,6 +217,21 @@ const secondFailure = await settleSmsReplenishmentPaymentEvent({
 });
 assert(firstFailure.outcome === "processed" && failed.fails() === 1, "failure");
 assert(secondFailure.outcome === "processed" && failed.fails() === 1 && failed.grants() === 0, "duplicate failure grants nothing");
+
+const taxedAttempt = memory({ ...baseAttempt, taxCents: 43, providerPaymentId: "pi_phase5c3_tax" });
+const taxed = await settleSmsReplenishmentPaymentEvent({
+  eventType: "payment_intent.succeeded",
+  object: summary({ amount: 543, id: "pi_phase5c3_tax", paymentIntentId: "pi_phase5c3_tax" }),
+  store: taxedAttempt.store,
+});
+assert(taxed.outcome === "processed" && taxedAttempt.grants() === 1, "tax is excluded from credit quantity");
+const taxMismatch = memory({ ...baseAttempt, taxCents: 43 });
+const mismatchedTax = await settleSmsReplenishmentPaymentEvent({
+  eventType: "payment_intent.succeeded",
+  object: summary({ amount: 500 }),
+  store: taxMismatch.store,
+});
+assert(mismatchedTax.outcome === "rejected" && taxMismatch.grants() === 0, "webhook total must include tax");
 
 console.log("sms replenishment webhook selfcheck passed");
 }

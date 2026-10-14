@@ -22,6 +22,8 @@ export type SmsReplenishmentChargeSnapshot = {
   planKey: string;
   packageKey: string;
   providerIdempotencyKey: string;
+  taxCents: number;
+  taxCalculationId: string;
 };
 
 export type SmsReplenishmentPaymentIntentParams = {
@@ -38,6 +40,13 @@ export type SmsReplenishmentPaymentIntentParams = {
     replenishment_attempt_id: string;
     plan_key: string;
     sms_segments: string;
+  };
+  hooks?: {
+    inputs: {
+      tax: {
+        calculation: string;
+      };
+    };
   };
 };
 
@@ -98,6 +107,12 @@ export function smsAutoReplenishmentPaymentIntentParams(
   if (input.currency !== "USD") {
     throw new Error("SMS replenishment currency is invalid.");
   }
+  if (!Number.isInteger(input.taxCents) || input.taxCents < 0) {
+    throw new Error("SMS replenishment tax is invalid.");
+  }
+  if (!/^taxcalc_[A-Za-z0-9_]+$/.test(input.taxCalculationId)) {
+    throw new Error("SMS replenishment tax calculation is invalid.");
+  }
   const idempotencyKey = input.providerIdempotencyKey.trim();
   if (idempotencyKey !== smsAutoReplenishmentProviderIdempotencyKey(attemptId)) {
     throw new Error("SMS replenishment idempotency key does not match the attempt.");
@@ -108,7 +123,7 @@ export function smsAutoReplenishmentPaymentIntentParams(
   }
 
   return {
-    amount: input.expectedAmountCents,
+    amount: input.expectedAmountCents + input.taxCents,
     currency: SMS_REPLENISHMENT_CURRENCY,
     customer: customerId,
     payment_method: paymentMethodId,
@@ -121,6 +136,11 @@ export function smsAutoReplenishmentPaymentIntentParams(
       replenishment_attempt_id: attemptId,
       plan_key: planKey,
       sms_segments: String(input.packageSegments),
+    },
+    hooks: {
+      inputs: {
+        tax: { calculation: input.taxCalculationId },
+      },
     },
   };
 }

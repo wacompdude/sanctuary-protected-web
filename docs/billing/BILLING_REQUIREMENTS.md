@@ -292,6 +292,8 @@ Do **not** hard-code 9.8% (modeling only).
 
 Production tax must be jurisdiction-aware. Prefer **Stripe Tax**.
 
+SMS credit purchases, both manual Checkout and automatic replenishment, share one subtotal, tax, and total model. The application does not assume nexus, create registrations, or treat a missing address as zero tax. Stripe Tax does not replace legal or accounting advice. Subscription tax is a separate follow-up.
+
 Support: billing address, tax location, taxability, calculated tax amount, preserved tax history on transactions, future exemptions.
 
 ---

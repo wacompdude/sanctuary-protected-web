@@ -305,6 +305,21 @@ async function claim(client, organizationId) {
   return rpc(client, "claim_application_sms_replenishment", [organizationId]);
 }
 
+async function snapshotZeroTax(client, claimed) {
+  const amount = Number(claimed.expected_amount_cents);
+  const snap = await rpc(client, "record_application_sms_replenishment_tax_snapshot", [
+    claimed.attempt_id,
+    `taxcalc_phase5c3_${String(claimed.attempt_id).replaceAll("-", "").slice(0, 24)}`,
+    0,
+    amount,
+    new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+  ]);
+  if (snap.outcome !== "recorded" && snap.outcome !== "duplicate") {
+    throw new Error(`tax snapshot ${snap.outcome}`);
+  }
+  return snap;
+}
+
 async function markPending(client, attemptId) {
   await client.query(
     `
@@ -1081,6 +1096,7 @@ await run("charge start snapshots the payment method and does not grant", async 
   assert((await enable(client, fx)).outcome === "enabled", "enable");
   const claimed = await claim(client, fx.organizationId);
   assert(claimed.outcome === "claimed", claimed.outcome);
+  await snapshotZeroTax(client, claimed);
   const started = await rpc(client, "begin_application_sms_replenishment_charge", [claimed.attempt_id]);
   assert(started.outcome === "charging", started.outcome);
   assert(started.payment_method_id === PAYMENT_METHOD, "snapshot");
@@ -1129,6 +1145,7 @@ await run("failed payment requires attention and grants nothing", async () => {
   });
   assert((await enable(client, fx)).outcome === "enabled", "enable");
   const claimed = await claim(client, fx.organizationId);
+  await snapshotZeroTax(client, claimed);
   assert((await rpc(client, "begin_application_sms_replenishment_charge", [claimed.attempt_id])).outcome === "charging", "start");
   const failed = await rpc(client, "fail_application_sms_replenishment_payment", [
     claimed.attempt_id,
@@ -1159,6 +1176,7 @@ await run("paid attempt settles after replenishment is disabled", async () => {
   });
   assert((await enable(client, fx)).outcome === "enabled", "enable");
   const claimed = await claim(client, fx.organizationId);
+  await snapshotZeroTax(client, claimed);
   assert((await rpc(client, "begin_application_sms_replenishment_charge", [claimed.attempt_id])).outcome === "charging", "start");
   assert((await rpc(client, "record_application_sms_replenishment_provider_payment", [
     claimed.attempt_id,
@@ -1198,6 +1216,8 @@ await run("duplicate provider payment id is rejected", async () => {
   await enable(client, second);
   const left = await claim(client, first.organizationId);
   const right = await claim(client, second.organizationId);
+  await snapshotZeroTax(client, left);
+  await snapshotZeroTax(client, right);
   await rpc(client, "begin_application_sms_replenishment_charge", [left.attempt_id]);
   await rpc(client, "begin_application_sms_replenishment_charge", [right.attempt_id]);
   assert((await rpc(client, "record_application_sms_replenishment_provider_payment", [
@@ -1211,6 +1231,79 @@ await run("duplicate provider payment id is rejected", async () => {
   assert(conflict.outcome === "idempotency_mismatch", conflict.outcome);
 });
 
+await run("missing tax snapshot does not start a charge", async () => {
+  const fx = await createOrg(client, {
+    name: "Phase 5C3 tax missing",
+    planKey: "servant_standard",
+    balance: 1,
+  });
+  await enable(client, fx);
+  const claimed = await claim(client, fx.organizationId);
+  const started = await rpc(client, "begin_application_sms_replenishment_charge", [claimed.attempt_id]);
+  assert(started.outcome === "tax_not_ready", started.outcome);
+  assert(started.status === "claimed", started.status);
+});
+
+await run("tax can exhaust the spending cap without a charge", async () => {
+  const fx = await createOrg(client, {
+    name: "Phase 5C3 tax cap",
+    planKey: "servant_standard",
+    balance: 1,
+  });
+  await enable(client, fx, { cap: 500 });
+  const claimed = await claim(client, fx.organizationId);
+  const blocked = await rpc(client, "record_application_sms_replenishment_tax_snapshot", [
+    claimed.attempt_id,
+    "taxcalc_phase5c3_cap",
+    1,
+    501,
+    new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+  ]);
+  assert(blocked.outcome === "period_cap_reached", blocked.outcome);
+  const config = await client.query(
+    `SELECT status, payment_method_id, authorized_package_price_cents FROM public.organization_sms_auto_replenishment WHERE organization_id = $1`,
+    [fx.organizationId],
+  );
+  assert(config.rows[0].status === "enabled", "config stays enabled");
+  assert(Number(config.rows[0].authorized_package_price_cents) === 500, "package price unchanged");
+  assert(Number((await balanceOf(client, fx.organizationId)).balance) === 1, "no credit");
+});
+
+await run("tax attention is not a card failure", async () => {
+  const fx = await createOrg(client, {
+    name: "Phase 5C3 tax attention",
+    planKey: "servant_standard",
+    balance: 1,
+  });
+  await enable(client, fx);
+  const claimed = await claim(client, fx.organizationId);
+  const marked = await rpc(client, "mark_application_sms_replenishment_tax_attention", [
+    fx.organizationId,
+    "billing_address_required",
+  ]);
+  assert(marked.outcome === "tax_attention_required", marked.outcome);
+  const config = await client.query(
+    `SELECT status, payment_method_id, low_balance_threshold_segments FROM public.organization_sms_auto_replenishment WHERE organization_id = $1`,
+    [fx.organizationId],
+  );
+  assert(config.rows[0].payment_method_id === PAYMENT_METHOD, "method kept");
+  assert(Number(config.rows[0].low_balance_threshold_segments) === 10, "threshold kept");
+  assert((await claim(client, fx.organizationId)).outcome === "configuration_invalid", "claim stops");
+  const attempt = await client.query(
+    `SELECT status FROM public.organization_sms_replenishment_attempts WHERE id = $1`,
+    [claimed.attempt_id],
+  );
+  assert(attempt.rows[0].status === "canceled", "open claim canceled");
+  let enableBlocked = false;
+  try {
+    await enable(client, fx);
+  } catch (error) {
+    enableBlocked = String(error.message).includes("tax attention");
+  }
+  assert(enableBlocked, "enable does not clear tax attention");
+  assert((await rpc(client, "resolve_application_sms_replenishment_tax_attention", [fx.organizationId])).outcome === "enabled", "resolve");
+});
+
 await run("rpc privileges are service role only", async () => {
   const functions = [
     "claim_application_sms_replenishment(uuid)",
@@ -1219,6 +1312,9 @@ await run("rpc privileges are service role only", async () => {
     "begin_application_sms_replenishment_charge(uuid)",
     "record_application_sms_replenishment_provider_payment(uuid, text)",
     "fail_application_sms_replenishment_payment(uuid, text)",
+    "record_application_sms_replenishment_tax_snapshot(uuid, text, integer, integer, timestamptz)",
+    "mark_application_sms_replenishment_tax_attention(uuid, text)",
+    "resolve_application_sms_replenishment_tax_attention(uuid)",
   ];
   for (const signature of functions) {
     const { rows } = await client.query(

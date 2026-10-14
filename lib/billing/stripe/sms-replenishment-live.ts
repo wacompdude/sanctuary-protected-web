@@ -43,6 +43,8 @@ type BeginChargeRow = {
   package_key?: string;
   provider_idempotency_key?: string;
   provider_payment_id?: string | null;
+  tax_cents?: number;
+  tax_calculation_id?: string | null;
 };
 
 type RpcRow = { ok?: boolean; outcome?: string };
@@ -157,6 +159,8 @@ export async function executeAutomaticSmsReplenishmentAttempt(
     planKey: begun.plan_key ?? "",
     packageKey: begun.package_key ?? "",
     providerIdempotencyKey: begun.provider_idempotency_key ?? "",
+    taxCents: Number(begun.tax_cents),
+    taxCalculationId: begun.tax_calculation_id ?? "",
   };
 
   const stripe = getStripeClient();

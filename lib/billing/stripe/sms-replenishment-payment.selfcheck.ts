@@ -29,6 +29,8 @@ const snapshot: SmsReplenishmentChargeSnapshot = {
   planKey: "servant_standard",
   packageKey: "servant_standard_sms_50",
   providerIdempotencyKey: smsAutoReplenishmentProviderIdempotencyKey(attemptId),
+  taxCents: 0,
+  taxCalculationId: "taxcalc_phase5c2",
 };
 
 const params = smsAutoReplenishmentPaymentIntentParams(snapshot);
@@ -37,6 +39,14 @@ assert(params.confirm === true, "confirm");
 assert(params.customer === "cus_phase5c2", "customer");
 assert(params.payment_method === "pm_phase5c2_card", "payment method");
 assert(params.amount === 500, "amount");
+assert(params.hooks?.inputs.tax.calculation === "taxcalc_phase5c2", "tax calculation");
+const taxed = smsAutoReplenishmentPaymentIntentParams({
+  ...snapshot,
+  taxCents: 43,
+  taxCalculationId: "taxcalc_phase5c3",
+});
+assert(taxed.amount === 543, "total includes tax");
+assert(taxed.metadata.sms_segments === "50", "quantity ignores tax");
 assert(params.currency === "usd", "usd");
 assert(
   params.allowed_payment_method_types.length === 1 &&

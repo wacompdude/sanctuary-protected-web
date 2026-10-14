@@ -269,7 +269,9 @@ async function main() {
   assert(!live.includes('mode: "subscription"'), "12 not subscription mode");
   assert(live.includes("allowed_payment_method_types"), "26 card filter is applied");
   assert(live.includes("allowedPaymentMethodTypes"), "26 payment methods come from the helper");
-  assert(!live.includes("automatic_tax"), "no new tax");
+  assert(!live.includes("automatic_tax"), "checkout tax is gated outside live session text");
+  assert(live.includes("smsCheckoutAutomaticTaxFields"), "checkout tax fields are shared");
+  assert(live.includes("smsPurchaseTaxCollectionAuthorized"), "checkout tax requires authorization");
   assert(!live.includes("invoice_creation"), "no invoice creation");
   assert(!live.includes("us_bank_account"), "no bank debit");
   assert(!live.includes("customer_balance"), "no pay by bank balance");

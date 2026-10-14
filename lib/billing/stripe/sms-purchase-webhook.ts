@@ -343,22 +343,16 @@ async function recordPaidSmsPackageCheckout(
     );
   }
   if (
-    total !== entry.smsPackagePriceCents ||
-    line.amountTotal !== entry.smsPackagePriceCents ||
+    tax < 0 ||
+    line.amountTax !== tax ||
+    line.amountTotal !== subtotal + tax ||
+    total !== subtotal + tax ||
     discount !== 0 ||
     line.amountDiscount !== 0
   ) {
     reject(
-      "SMS Checkout total does not match the package.",
-      "sms_amount_mismatch",
-      true,
-      knownOrganizationId,
-    );
-  }
-  if (tax !== 0 || line.amountTax !== 0) {
-    reject(
-      "SMS Checkout tax does not match the package.",
-      "sms_tax_mismatch",
+      "SMS Checkout total does not match the package and tax.",
+      tax !== line.amountTax || total !== subtotal + tax ? "sms_tax_mismatch" : "sms_amount_mismatch",
       true,
       knownOrganizationId,
     );
@@ -428,7 +422,7 @@ async function recordPaidSmsPackageCheckout(
   const result = await deps.recordPaidSmsPackage({
     organizationId,
     segments: entry.smsPackageCredits,
-    amountCents: total,
+    amountCents: subtotal,
     taxCents: tax,
     idempotencyKey,
     providerPaymentId: object.paymentIntentId ?? null,

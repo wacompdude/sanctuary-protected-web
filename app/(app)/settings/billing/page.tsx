@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { BillingPlanPanel } from "@/components/billing/billing-plan-panel";
 import { SmsPackagePurchaseButton } from "@/components/billing/sms-package-panel";
 import { SmsPaymentSetupPanel } from "@/components/billing/sms-payment-setup-panel";
+import { readSmsBillingAddress } from "@/lib/billing/stripe/sms-purchase-tax";
 import {
   Card,
   CardContent,
@@ -154,6 +155,12 @@ async function BillingContent({
     purchasedBalance: purchasedCredits?.balance ?? null,
     purchasedReserved: purchasedCredits?.reserved ?? null,
   });
+  const { data: billingProfile } = await supabase
+    .from("organization_billing_profiles")
+    .select("billing_address")
+    .eq("organization_id", church.id)
+    .maybeSingle();
+  const billingAddressReady = readSmsBillingAddress(billingProfile?.billing_address) !== null;
   const { data: replenishment } = await supabase
     .from("organization_sms_auto_replenishment")
     .select("status, payment_method_id")
@@ -355,6 +362,13 @@ async function BillingContent({
             <p className="text-sm text-muted-foreground">
               SMS credit purchases are available while the organization has an
               active subscription.
+            </p>
+          ) : null}
+          {!billingAddressReady ? (
+            <p className="text-sm text-muted-foreground">
+              Automatic SMS replenishment needs an organization billing address
+              before tax can be calculated. No address is stored yet, so no
+              automatic charge can start.
             </p>
           ) : null}
           <SmsPaymentSetupPanel

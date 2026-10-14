@@ -98,6 +98,11 @@ export function validateOrganizationBillingAddress(
   };
 }
 
+/** The state string the billing form submits. The visible selector must use this same value. */
+export function submittedOrganizationBillingState(stateCode: string): string {
+  return stateCode;
+}
+
 export function isOrganizationBillingAddressComplete(
   address: OrganizationBillingAddress | null | undefined,
 ): boolean {

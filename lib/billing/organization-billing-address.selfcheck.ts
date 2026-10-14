@@ -12,6 +12,7 @@ import {
   normalizeBillingCountry,
   readOrganizationBillingAddress,
   stripeCustomerAddressUpdate,
+  submittedOrganizationBillingState,
   synchronizeOrganizationBillingAddress,
   validateOrganizationBillingAddress,
 } from "@/lib/billing/organization-billing-address";
@@ -130,6 +131,69 @@ assert(!live.includes("STRIPE_SMS_TAX_COLLECTION"), "tax gate unchanged");
 assert(live.includes("customers.update"), "customer update");
 assert(live.includes("ensureStripeCustomerForOrganization"), "reuses customer helper");
 assert(!live.includes("sk_live") && !live.includes("sk_test"), "no secret");
+
+const form = readFileSync(join(root, "components/billing/billing-address-form.tsx"), "utf8");
+const stateSelect = form.slice(form.indexOf('id="billing-state"'), form.indexOf('id="billing-postal"'));
+assert(form.includes('<input type="hidden" name="state" value={submittedState} />'), "submitted state is the controlled value");
+assert(!stateSelect.includes("name="), "visible state select does not submit a second value");
+assert(!stateSelect.includes("defaultValue"), "state select is not uncontrolled");
+assert(stateSelect.includes("value={submittedState}"), "visible state matches submitted state");
+assert(form.includes("useState(address?.state ?? \"\")"), "saved state initializes the selector");
+assert(form.includes('name="country"'), "country is submitted");
+assert(form.includes('value="US"'), "country stays US");
+assert(form.includes("fieldErrors.businessName"), "business name error is shown");
+assert(form.includes("fieldErrors.line1"), "line1 error is shown");
+assert(form.includes("fieldErrors.city"), "city error is shown");
+assert(form.includes("fieldErrors.state"), "state error is shown");
+assert(form.includes("fieldErrors.postalCode"), "postal error is shown");
+assert(form.includes("fieldErrors.country"), "country error is shown");
+assert(form.includes("aria-invalid"), "invalid fields are marked");
+assert(form.includes("aria-describedby"), "errors are described");
+assert(action.includes("fieldErrors: validated.fieldErrors"), "server returns field errors");
+assert(action.includes("requireBillingManageAccess"), "save stays authorized");
+
+function submittedFields(stateCode: string) {
+  const data = new FormData();
+  data.set("state", submittedOrganizationBillingState(stateCode));
+  data.set("country", "US");
+  data.set("businessName", "Sanctuary Protected Test");
+  data.set("line1", "1 Main St");
+  data.set("city", "Seattle");
+  data.set("postalCode", "98101");
+  return data;
+}
+
+const savedWa = submittedFields("WA");
+assert(savedWa.get("state") === "WA", "initialized WA submits WA");
+assert(savedWa.get("country") === "US", "country US remains US");
+const selectedWa = submittedFields(submittedOrganizationBillingState("WA"));
+assert(selectedWa.get("state") === "WA", "selecting WA submits WA");
+const selectedCa = submittedFields(submittedOrganizationBillingState("CA"));
+assert(selectedCa.get("state") === "CA", "selecting CA submits CA");
+const blankState = submittedFields("");
+assert(blankState.get("state") === "", "no selection submits blank");
+const rejected = validateOrganizationBillingAddress({
+  businessName: "Sanctuary Protected Test",
+  line1: "1 Main St",
+  city: "Seattle",
+  state: blankState.get("state"),
+  postalCode: "98101",
+  country: "US",
+});
+assert(rejected.ok === false && rejected.fieldErrors.state === "Select a U.S. state.", "blank state stays rejected");
+const zipError = validateOrganizationBillingAddress({ ...complete, postalCode: "" });
+assert(zipError.ok === false && zipError.fieldErrors.postalCode === "Enter a ZIP code.", "zip error text");
+const nameError = validateOrganizationBillingAddress({ ...complete, businessName: "" });
+assert(nameError.ok === false && nameError.fieldErrors.businessName === "Enter the billing business name.", "business name error text");
+const valid = validateOrganizationBillingAddress({
+  businessName: String(savedWa.get("businessName")),
+  line1: "1 Main St",
+  city: "Seattle",
+  state: savedWa.get("state"),
+  postalCode: "98101",
+  country: savedWa.get("country"),
+});
+assert(valid.ok === true && valid.address.state === "WA" && valid.address.country === "US", "complete address still passes");
 console.log("organization billing address self-check passed");
 }
 

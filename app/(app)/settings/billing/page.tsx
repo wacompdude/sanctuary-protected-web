@@ -5,6 +5,7 @@ import { BillingPlanPanel } from "@/components/billing/billing-plan-panel";
 import { SmsPackagePurchaseButton } from "@/components/billing/sms-package-panel";
 import { BillingAddressForm } from "@/components/billing/billing-address-form";
 import { SmsPaymentSetupPanel } from "@/components/billing/sms-payment-setup-panel";
+import { SubscriptionPaymentMethodPanel } from "@/components/billing/subscription-payment-method-panel";
 import { readOrganizationBillingAddress } from "@/lib/billing/organization-billing-address";
 import { formatSubscriptionInvoiceAmounts } from "@/lib/billing/stripe/subscription-tax";
 import {
@@ -30,6 +31,7 @@ import {
 } from "@/lib/billing/stripe/config";
 import { readSetupIntentIdFromClient } from "@/lib/billing/stripe/sms-payment-setup";
 import { readSafeCardDisplay } from "@/lib/billing/stripe/sms-payment-setup-live";
+import { readSubscriptionPaymentMethodView } from "@/lib/billing/stripe/subscription-payment-method-live";
 import { shouldDisplayTrialEnd, subscriptionGrantsAccess } from "@/lib/subscriptions/status";
 import { organizationHasProviderSubscription } from "@/lib/billing/checkout-eligibility";
 import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
@@ -108,9 +110,11 @@ function UsageMeterRow({
 async function BillingContent({
   smsPurchase,
   returnedSetupIntentId,
+  subscriptionSetupIntentId,
 }: {
   smsPurchase?: string;
   returnedSetupIntentId: string | null;
+  subscriptionSetupIntentId: string | null;
 }) {
   const { supabase, church, canManageBilling } = await requireBillingViewAccess();
   const { data } = await supabase
@@ -135,6 +139,7 @@ async function BillingContent({
   const hasProviderSubscription = organizationHasProviderSubscription(
     subscription?.billing_subscription_id,
   );
+  const subscriptionPaymentView = await readSubscriptionPaymentMethodView(church.id);
 
   const publicPlans = plans.filter(
     (plan) => plan.is_public && plan.status === "active",
@@ -294,6 +299,23 @@ async function BillingContent({
               />
             </dl>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Subscription payment method</CardTitle>
+          <CardDescription>
+            The card Stripe uses for the next organization subscription invoice.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <SubscriptionPaymentMethodPanel
+            canManage={canManageBilling}
+            view={subscriptionPaymentView}
+            publishableKey={readStripePublishableKey()}
+            returnedSetupIntentId={subscriptionSetupIntentId}
+          />
         </CardContent>
       </Card>
 
@@ -531,14 +553,21 @@ async function BillingContent({
 async function BillingWrapper({
   searchParams,
 }: {
-  searchParams: Promise<{ sms_purchase?: string; setup_intent?: string }>;
+  searchParams: Promise<{
+    sms_purchase?: string;
+    setup_intent?: string;
+    subscription_pm?: string;
+  }>;
 }) {
   const params = await searchParams;
+  const subscriptionReturn = params.subscription_pm === "1";
+  const setupIntentId = readSetupIntentIdFromClient(params.setup_intent);
   try {
     return (
       <BillingContent
         smsPurchase={params.sms_purchase}
-        returnedSetupIntentId={readSetupIntentIdFromClient(params.setup_intent)}
+        returnedSetupIntentId={subscriptionReturn ? null : setupIntentId}
+        subscriptionSetupIntentId={subscriptionReturn ? setupIntentId : null}
       />
     );
   } catch (error) {
@@ -560,7 +589,11 @@ async function BillingWrapper({
 export default function BillingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ sms_purchase?: string; setup_intent?: string }>;
+  searchParams: Promise<{
+    sms_purchase?: string;
+    setup_intent?: string;
+    subscription_pm?: string;
+  }>;
 }) {
   return (
     <div className="space-y-8">

@@ -10,7 +10,11 @@ export type StripeBillingOperation =
   | "checkout_session_create"
   | "sms_payment_setup_create"
   | "sms_replenishment_payment_create"
-  | "billing_address_customer_sync";
+  | "billing_address_customer_sync"
+  | "subscription_payment_method_read"
+  | "subscription_payment_method_setup_create"
+  | "subscription_payment_method_setup_finalize"
+  | "subscription_payment_method_tax_changed";
 
 export const STRIPE_API_HOSTNAME = "api.stripe.com";
 

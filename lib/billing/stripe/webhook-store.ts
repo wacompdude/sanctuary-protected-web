@@ -377,6 +377,12 @@ export function createAdminWebhookSyncStore(): WebhookSyncStore {
             total_cents: input.totalCents,
             amount_paid_cents: input.amountPaidCents,
             amount_due_cents: input.amountDueCents,
+            ...(input.taxDetermined
+              ? {
+                  subtotal_cents: input.subtotalCents,
+                  tax_cents: input.taxCents ?? 0,
+                }
+              : {}),
             ...periodPatch,
             hosted_invoice_url: input.hostedInvoiceUrl,
             metadata: input.metadata,
@@ -393,7 +399,8 @@ export function createAdminWebhookSyncStore(): WebhookSyncStore {
           provider_invoice_id: input.providerInvoiceId,
           status: input.status,
           currency: input.currency,
-          subtotal_cents: input.totalCents,
+          subtotal_cents: input.subtotalCents ?? input.totalCents,
+          tax_cents: input.taxCents ?? 0,
           total_cents: input.totalCents,
           amount_paid_cents: input.amountPaidCents,
           amount_due_cents: input.amountDueCents,
@@ -441,6 +448,7 @@ export function createAdminWebhookSyncStore(): WebhookSyncStore {
           status: input.status,
           currency: input.currency,
           amount_cents: input.amountCents,
+          tax_cents: input.taxCents ?? 0,
           billing_provider: "stripe",
           provider_invoice_id: input.providerInvoiceId,
           idempotency_key: input.idempotencyKey,

@@ -10,10 +10,11 @@
  */
 
 import { commercialExpectationByInternalKey } from "@/lib/billing/commercial-catalog";
+import { BillingCheckoutPlanError, BillingConfigurationError } from "@/lib/billing/errors";
 import {
-  BillingCheckoutPlanError,
-  BillingConfigurationError,
-} from "@/lib/billing/errors";
+  assertSubscriptionTaxCheckoutReady,
+  SUBSCRIPTION_TAX_SYNC_FAILED,
+} from "@/lib/billing/stripe/subscription-tax";
 import { isPlanKey, type PlanKey } from "@/lib/subscriptions/plan-keys";
 import {
   assertSafeBillingCheckoutUrls,
@@ -42,6 +43,7 @@ export type StripeCheckoutSessionCreateApi = {
     planKey: PlanKey;
     idempotencyKey: string;
     allowPromotionCodes: boolean;
+    automaticTax?: boolean;
   }): Promise<{ id: string; url: string | null }>;
 };
 
@@ -55,6 +57,8 @@ export type CreateSubscriptionCheckoutInput = {
   /** Server-generated attempt token (never accept from browser). */
   attemptToken: string;
   stripeSecretKey: string;
+  subscriptionTaxAuthorized?: boolean;
+  billingAddressComplete?: boolean;
 };
 
 export type CreateSubscriptionCheckoutDeps = {
@@ -62,6 +66,7 @@ export type CreateSubscriptionCheckoutDeps = {
   store: BillingCustomerMappingStore;
   stripeCustomers: StripeCustomerCreateApi;
   stripeCheckout: StripeCheckoutSessionCreateApi;
+  syncCustomerAddress?: (customerId: string) => Promise<void>;
 };
 
 /**
@@ -171,6 +176,10 @@ export async function createSubscriptionCheckoutSession(
   );
 
   const planKey = assertSubscriptionCheckoutPlanKey(input.planKey);
+  assertSubscriptionTaxCheckoutReady({
+    authorized: input.subscriptionTaxAuthorized === true,
+    billingAddressComplete: input.billingAddressComplete === true,
+  });
   assertSafeBillingCheckoutUrls({
     successUrl: input.successUrl,
     cancelUrl: input.cancelUrl,
@@ -195,6 +204,14 @@ export async function createSubscriptionCheckoutSession(
     }),
   );
 
+  if (input.subscriptionTaxAuthorized) {
+    try {
+      await deps.syncCustomerAddress?.(customer.providerCustomerId);
+    } catch {
+      throw new BillingCheckoutPlanError(SUBSCRIPTION_TAX_SYNC_FAILED);
+    }
+  }
+
   const session = await withStripeBillingErrorLog(
     "checkout_session_create",
     () =>
@@ -211,6 +228,7 @@ export async function createSubscriptionCheckoutSession(
           attemptToken: input.attemptToken,
         }),
         allowPromotionCodes: true,
+        automaticTax: input.subscriptionTaxAuthorized === true,
       }),
   );
 

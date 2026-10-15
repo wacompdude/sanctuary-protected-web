@@ -7,7 +7,7 @@
  */
 
 import { randomUUID } from "node:crypto";
-import { BillingNotImplementedError } from "@/lib/billing/errors";
+import { BillingCheckoutPlanError, BillingNotImplementedError } from "@/lib/billing/errors";
 import { COMMERCIAL_PLAN_CATALOG } from "@/lib/billing/commercial-catalog";
 import {
   getStripeBillingConfigStatus,
@@ -31,6 +31,17 @@ import {
   createAdminBillingCustomerStore,
 } from "@/lib/billing/stripe/customers";
 import { getStripeClient } from "@/lib/billing/stripe/sdk";
+import {
+  readOrganizationBillingAddress,
+  stripeCustomerAddressUpdate,
+} from "@/lib/billing/organization-billing-address";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { logStripeBillingError } from "@/lib/billing/stripe/safe-error-log";
+import {
+  SUBSCRIPTION_TAX_ADDRESS_REQUIRED,
+  subscriptionCheckoutAutomaticTaxFields,
+  subscriptionTaxCollectionAuthorized,
+} from "@/lib/billing/stripe/subscription-tax";
 import { verifyStripeWebhookSignature } from "@/lib/billing/stripe/webhook-verify";
 import type {
   BillingCheckoutRequest,
@@ -99,6 +110,25 @@ export class StripeBillingProvider implements BillingProvider {
     const stripe = getStripeClient(secretKey);
     const store = createAdminBillingCustomerStore();
     const listPrices = createStripeCatalogPriceLister(secretKey);
+    const subscriptionTaxAuthorized = subscriptionTaxCollectionAuthorized();
+    let billingAddressComplete = false;
+    let canonicalAddress: ReturnType<typeof readOrganizationBillingAddress> = null;
+    if (subscriptionTaxAuthorized) {
+      const admin = createAdminClient();
+      const { data: profile, error } = await admin
+        .from("organization_billing_profiles")
+        .select("billing_address")
+        .eq("organization_id", request.organizationId)
+        .eq("billing_provider", "stripe")
+        .maybeSingle();
+      canonicalAddress = error
+        ? null
+        : readOrganizationBillingAddress(profile?.billing_address);
+      billingAddressComplete = canonicalAddress !== null;
+      if (!billingAddressComplete) {
+        throw new BillingCheckoutPlanError(SUBSCRIPTION_TAX_ADDRESS_REQUIRED);
+      }
+    }
 
     const result = await createSubscriptionCheckoutSession(
       {
@@ -110,6 +140,8 @@ export class StripeBillingProvider implements BillingProvider {
         fallbackEmail: request.customerEmail,
         attemptToken: randomUUID(),
         stripeSecretKey: secretKey,
+        subscriptionTaxAuthorized,
+        billingAddressComplete,
       },
       {
         listPrices,
@@ -129,6 +161,9 @@ export class StripeBillingProvider implements BillingProvider {
         },
         stripeCheckout: {
           async createSubscriptionCheckoutSession(input) {
+            const taxFields = subscriptionCheckoutAutomaticTaxFields(
+              input.automaticTax === true,
+            );
             const session = await stripe.checkout.sessions.create(
               {
                 mode: "subscription",
@@ -149,11 +184,26 @@ export class StripeBillingProvider implements BillingProvider {
                     plan_key: input.planKey,
                   },
                 },
+                ...(taxFields ?? {}),
               },
               { idempotencyKey: input.idempotencyKey },
             );
             return { id: session.id, url: session.url };
           },
+        },
+        syncCustomerAddress: async (customerId) => {
+          if (!canonicalAddress) {
+            throw new BillingCheckoutPlanError(SUBSCRIPTION_TAX_ADDRESS_REQUIRED);
+          }
+          try {
+            await stripe.customers.update(
+              customerId,
+              stripeCustomerAddressUpdate(canonicalAddress),
+            );
+          } catch (stripeError) {
+            logStripeBillingError("billing_address_customer_sync", stripeError);
+            throw stripeError;
+          }
         },
       },
     );

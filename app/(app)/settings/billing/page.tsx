@@ -6,6 +6,7 @@ import { SmsPackagePurchaseButton } from "@/components/billing/sms-package-panel
 import { BillingAddressForm } from "@/components/billing/billing-address-form";
 import { SmsPaymentSetupPanel } from "@/components/billing/sms-payment-setup-panel";
 import { readOrganizationBillingAddress } from "@/lib/billing/organization-billing-address";
+import { formatSubscriptionInvoiceAmounts } from "@/lib/billing/stripe/subscription-tax";
 import {
   Card,
   CardContent,
@@ -161,6 +162,12 @@ async function BillingContent({
     .select("billing_address")
     .eq("organization_id", church.id)
     .maybeSingle();
+  const { data: invoiceRows } = await supabase
+    .from("billing_invoices")
+    .select("id, status, subtotal_cents, tax_cents, total_cents, created_at, metadata")
+    .eq("organization_id", church.id)
+    .order("created_at", { ascending: false })
+    .limit(8);
   const billingAddress = readOrganizationBillingAddress(billingProfile?.billing_address);
   const { data: replenishment } = await supabase
     .from("organization_sms_auto_replenishment")
@@ -446,6 +453,35 @@ async function BillingContent({
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {invoiceRows && invoiceRows.length > 0 ? (
+            <ul className="mb-4 space-y-2">
+              {invoiceRows.map((invoice) => {
+                const metadata =
+                  invoice.metadata &&
+                  typeof invoice.metadata === "object" &&
+                  !Array.isArray(invoice.metadata)
+                    ? (invoice.metadata as Record<string, unknown>)
+                    : {};
+                const taxDetermined = metadata.tax_determined === true;
+                return (
+                  <li
+                    key={invoice.id}
+                    className="rounded-md border border-border px-3 py-2"
+                  >
+                    <p className="text-sm font-medium capitalize">{invoice.status}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {formatSubscriptionInvoiceAmounts({
+                        subtotalCents: invoice.subtotal_cents,
+                        taxCents: invoice.tax_cents,
+                        totalCents: invoice.total_cents,
+                        taxDetermined,
+                      })}
+                    </p>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : null}
           {history.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               No billing or subscription history yet.

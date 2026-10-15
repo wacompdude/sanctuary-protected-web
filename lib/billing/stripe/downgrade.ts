@@ -11,6 +11,10 @@ import {
 } from "@/lib/billing/commercial-catalog";
 import { BillingDowngradeError } from "@/lib/billing/errors";
 import {
+  subscriptionScheduleAutomaticTax,
+  subscriptionTaxCollectionAuthorized,
+} from "@/lib/billing/stripe/subscription-tax";
+import {
   matchStripePriceToExpectation,
   type ListPricesByLookupKey,
 } from "@/lib/billing/stripe/catalog";
@@ -93,6 +97,7 @@ export type DowngradeScheduleUpdate = {
   end_behavior: typeof DOWNGRADE_END_BEHAVIOR;
   proration_behavior: typeof DOWNGRADE_PRORATION_BEHAVIOR;
   phases: [DowngradeSchedulePhase, DowngradeSchedulePhase];
+  default_settings?: { automatic_tax: { enabled: true } };
 };
 
 export type RetrievedDowngradeSchedule = {
@@ -395,6 +400,7 @@ export function buildDowngradeScheduleUpdate(input: {
   addons: { priceId: string; quantity: number }[];
   periodStart: number;
   periodEnd: number;
+  automaticTax?: boolean;
 }): DowngradeScheduleUpdate {
   if (!Number.isFinite(input.periodStart) || !Number.isFinite(input.periodEnd)) {
     throw new BillingDowngradeError("The live subscription is missing its renewal date.");
@@ -431,6 +437,7 @@ export function buildDowngradeScheduleUpdate(input: {
         proration_behavior: DOWNGRADE_PRORATION_BEHAVIOR,
       },
     ],
+    ...(subscriptionScheduleAutomaticTax(input.automaticTax === true) ?? {}),
   };
 }
 
@@ -514,6 +521,7 @@ export async function scheduleSubscriptionDowngrade(input: {
     addons: classified.addons,
     periodStart: baseItem.periodStart,
     periodEnd: baseItem.periodEnd,
+    automaticTax: subscriptionTaxCollectionAuthorized(),
   });
   const idempotencyKey = downgradeIdempotencyKey({
     subscriptionId: local.billingSubscriptionId,

@@ -26,6 +26,7 @@ import {
   type SmsPurchaseHandlerDeps,
 } from "@/lib/billing/stripe/sms-purchase-webhook";
 import type { StripeWebhookObjectSummary } from "@/lib/billing/stripe/webhook-verify";
+import { interpretSubscriptionInvoiceMoney } from "@/lib/billing/stripe/subscription-tax";
 import type { ChurchSubscriptionStatus } from "@/lib/subscriptions/types";
 import { isPlanKey, type PlanKey } from "@/lib/subscriptions/plan-keys";
 import { subscriptionGrantsAccess } from "@/lib/subscriptions/status";
@@ -126,6 +127,9 @@ export type WebhookSyncStore = {
     periodEnd: string | null;
     hostedInvoiceUrl: string | null;
     metadata: Record<string, unknown>;
+    subtotalCents?: number;
+    taxCents?: number;
+    taxDetermined?: boolean;
   }): Promise<{ id: string; created: boolean }>;
   insertTransaction(input: {
     organizationId: string;
@@ -134,6 +138,7 @@ export type WebhookSyncStore = {
     status: "succeeded" | "failed";
     currency: string;
     amountCents: number;
+    taxCents?: number;
     providerInvoiceId: string;
     idempotencyKey: string;
     description: string;
@@ -718,7 +723,13 @@ export async function handleInvoicePaid(
 
   const invoiceStatus = mapStripeInvoiceStatus(object.status ?? "paid");
   const currency = (object.currency ?? "usd").toUpperCase();
-  const total = Math.max(0, object.amountPaid ?? object.amountDue ?? 0);
+  const money = interpretSubscriptionInvoiceMoney({
+    amountSubtotal: object.amountSubtotal,
+    amountTax: object.amountTax,
+    amountTotal: object.amountTotal,
+    amountPaid: object.amountPaid,
+    amountDue: object.amountDue,
+  });
   const priceItems =
     object.priceItems?.length > 0
       ? object.priceItems
@@ -745,15 +756,19 @@ export async function handleInvoicePaid(
     providerInvoiceId: object.invoiceId,
     status: invoiceStatus,
     currency,
-    totalCents: total,
-    amountPaidCents: Math.max(0, object.amountPaid ?? total),
+    totalCents: money.totalCents,
+    amountPaidCents: Math.max(0, object.amountPaid ?? money.totalCents),
     amountDueCents: Math.max(0, object.amountDue ?? 0),
     periodStart,
     periodEnd,
     hostedInvoiceUrl: object.hostedInvoiceUrl,
+    subtotalCents: money.taxDetermined ? money.subtotalCents : undefined,
+    taxCents: money.taxDetermined ? money.taxCents : undefined,
+    taxDetermined: money.taxDetermined,
     metadata: {
       stripe_subscription_id: object.subscriptionId,
       stripe_customer_id: object.customerId,
+      tax_determined: money.taxDetermined,
     },
   });
 
@@ -763,13 +778,18 @@ export async function handleInvoicePaid(
     transactionType: "payment",
     status: "succeeded",
     currency,
-    amountCents: Math.max(0, object.amountPaid ?? total),
+    amountCents: Math.max(0, object.amountPaid ?? money.totalCents),
+    taxCents: money.taxDetermined ? money.taxCents : undefined,
     providerInvoiceId: object.invoiceId,
     idempotencyKey: `stripe_invoice_paid_${object.invoiceId}`,
     description: "Stripe invoice paid",
     metadata: {
       stripe_invoice_id: object.invoiceId,
       stripe_subscription_id: object.subscriptionId,
+      tax_determined: money.taxDetermined,
+      ...(money.taxDetermined
+        ? { subtotal_cents: money.subtotalCents, tax_cents: money.taxCents }
+        : {}),
     },
   });
 
@@ -784,7 +804,7 @@ export async function handleInvoicePaid(
     await store.notifyBillingCharge({
       organizationId: org.organizationId,
       providerInvoiceId: object.invoiceId,
-      amountCents: Math.max(0, object.amountPaid ?? total),
+      amountCents: Math.max(0, object.amountPaid ?? money.totalCents),
       currency,
     });
   }
@@ -836,7 +856,14 @@ export async function handleInvoicePaymentFailed(
   }
 
   const currency = (object.currency ?? "usd").toUpperCase();
-  const due = Math.max(0, object.amountDue ?? 0);
+  const money = interpretSubscriptionInvoiceMoney({
+    amountSubtotal: object.amountSubtotal,
+    amountTax: object.amountTax,
+    amountTotal: object.amountTotal,
+    amountPaid: object.amountPaid,
+    amountDue: object.amountDue,
+  });
+  const due = Math.max(0, object.amountDue ?? money.totalCents);
   const priceItems =
     object.priceItems?.length > 0
       ? object.priceItems
@@ -859,15 +886,19 @@ export async function handleInvoicePaymentFailed(
     providerInvoiceId: object.invoiceId,
     status: "open",
     currency,
-    totalCents: due,
+    totalCents: money.taxDetermined ? money.totalCents : due,
     amountPaidCents: Math.max(0, object.amountPaid ?? 0),
     amountDueCents: due,
     periodStart,
     periodEnd,
     hostedInvoiceUrl: object.hostedInvoiceUrl,
+    subtotalCents: money.taxDetermined ? money.subtotalCents : undefined,
+    taxCents: money.taxDetermined ? money.taxCents : undefined,
+    taxDetermined: money.taxDetermined,
     metadata: {
       stripe_subscription_id: object.subscriptionId,
       failure: true,
+      tax_determined: money.taxDetermined,
     },
   });
 
@@ -878,11 +909,13 @@ export async function handleInvoicePaymentFailed(
     status: "failed",
     currency,
     amountCents: due,
+    taxCents: money.taxDetermined ? money.taxCents : undefined,
     providerInvoiceId: object.invoiceId,
     idempotencyKey: `stripe_invoice_failed_${object.invoiceId}`,
     description: "Stripe invoice payment failed",
     metadata: {
       stripe_invoice_id: object.invoiceId,
+      tax_determined: money.taxDetermined,
     },
   });
 

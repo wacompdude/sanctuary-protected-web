@@ -9,6 +9,7 @@ import {
   type CommercialPriceExpectation,
 } from "@/lib/billing/commercial-catalog";
 import { BillingUpgradeError } from "@/lib/billing/errors";
+import { subscriptionTaxCollectionAuthorized, subscriptionUpgradeAutomaticTax } from "@/lib/billing/stripe/subscription-tax";
 import { matchStripePriceToExpectation } from "@/lib/billing/stripe/catalog";
 import type { ListPricesByLookupKey } from "@/lib/billing/stripe/catalog";
 import {
@@ -103,6 +104,7 @@ export type SubscriptionUpgradeUpdate = {
     proration_behavior: typeof UPGRADE_PRORATION_BEHAVIOR;
     payment_behavior: typeof UPGRADE_PAYMENT_BEHAVIOR;
     billing_cycle_anchor: typeof UPGRADE_BILLING_CYCLE_ANCHOR;
+    automatic_tax?: { enabled: true };
   };
 };
 
@@ -113,6 +115,7 @@ export type SubscriptionUpgradePreviewRequest = {
     items: [{ id: string; price: string; quantity: 1 }];
     proration_behavior: typeof UPGRADE_PRORATION_BEHAVIOR;
     billing_cycle_anchor: typeof UPGRADE_BILLING_CYCLE_ANCHOR;
+    automatic_tax?: { enabled: true };
   };
 };
 
@@ -197,6 +200,7 @@ export function buildSubscriptionUpgradeUpdate(input: {
   subscriptionId: string;
   baseItemId: string;
   targetPriceId: string;
+  automaticTax?: boolean;
 }): SubscriptionUpgradeUpdate {
   const subscriptionId = input.subscriptionId.trim();
   const baseItemId = input.baseItemId.trim();
@@ -211,6 +215,7 @@ export function buildSubscriptionUpgradeUpdate(input: {
       proration_behavior: UPGRADE_PRORATION_BEHAVIOR,
       payment_behavior: UPGRADE_PAYMENT_BEHAVIOR,
       billing_cycle_anchor: UPGRADE_BILLING_CYCLE_ANCHOR,
+      ...(subscriptionUpgradeAutomaticTax(input.automaticTax === true) ?? {}),
     },
   };
 }
@@ -345,10 +350,12 @@ export async function prepareSubscriptionUpgrade(input: {
     );
   }
 
+  const automaticTax = subscriptionTaxCollectionAuthorized();
   const update = buildSubscriptionUpgradeUpdate({
     subscriptionId: localSubscriptionId,
     baseItemId: base.itemId,
     targetPriceId: resolved.stripePriceId,
+    automaticTax,
   });
 
   return {
@@ -360,6 +367,9 @@ export async function prepareSubscriptionUpgrade(input: {
         items: update.params.items,
         proration_behavior: UPGRADE_PRORATION_BEHAVIOR,
         billing_cycle_anchor: UPGRADE_BILLING_CYCLE_ANCHOR,
+        ...(update.params.automatic_tax
+          ? { automatic_tax: update.params.automatic_tax }
+          : {}),
       },
     },
     currentPlanKey: input.local.planKey,

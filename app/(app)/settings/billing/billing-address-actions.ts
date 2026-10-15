@@ -15,6 +15,7 @@ export async function saveOrganizationBillingAddressAction(
   _previous: BillingAddressActionState,
   formData: FormData,
 ): Promise<BillingAddressActionState> {
+  let saved: Awaited<ReturnType<typeof persistOrganizationBillingAddress>>;
   try {
     const { church, user } = await requireBillingManageAccess();
     const validated = validateOrganizationBillingAddress({
@@ -30,21 +31,28 @@ export async function saveOrganizationBillingAddressAction(
       return { error: "Check the billing address.", fieldErrors: validated.fieldErrors };
     }
 
-    const saved = await persistOrganizationBillingAddress({
+    saved = await persistOrganizationBillingAddress({
       organizationId: church.id,
       actorUserId: user.id,
       address: validated.address,
     });
     if (!saved.ok) return { error: saved.error };
-
-    revalidatePath("/settings/billing");
-    if (saved.sync === "needs_attention") {
-      return {
-        message: "Billing address was saved, but Stripe synchronization needs attention.",
-      };
-    }
-    return { message: "Billing address saved." };
   } catch {
     return { error: "The billing address could not be saved." };
   }
+
+  try {
+    revalidatePath("/settings/billing");
+  } catch {
+    console.error("billing_address_save.revalidate_failed", {
+      path: "/settings/billing",
+    });
+  }
+
+  if (saved.sync === "needs_attention") {
+    return {
+      message: "Billing address was saved, but Stripe synchronization needs attention.",
+    };
+  }
+  return { message: "Billing address saved." };
 }

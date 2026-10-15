@@ -8,6 +8,10 @@ import {
   canViewOrganizationBilling,
 } from "@/lib/billing/access";
 import {
+  BILLING_ADDRESS_LOCAL_SAVE_ERROR,
+  orchestrateOrganizationBillingAddressSave,
+} from "@/lib/billing/organization-billing-address-save";
+import {
   isOrganizationBillingAddressComplete,
   normalizeBillingCountry,
   readOrganizationBillingAddress,
@@ -194,6 +198,92 @@ const valid = validateOrganizationBillingAddress({
   country: savedWa.get("country"),
 });
 assert(valid.ok === true && valid.address.state === "WA" && valid.address.country === "US", "complete address still passes");
+
+const STRIPE_ATTENTION = "Billing address was saved, but Stripe synchronization needs attention.";
+let stripeCalls = 0;
+const savedProfile = await orchestrateOrganizationBillingAddressSave({
+  ensureProfile: async () => ({ ok: true }),
+  updateAddress: async () => ({ ok: true, rowCount: 1 }),
+  audit: async () => ({ ok: true }),
+  syncStripe: async () => {
+    stripeCalls += 1;
+    return "synced";
+  },
+});
+assert(savedProfile.ok === true && savedProfile.sync === "synced" && stripeCalls === 1, "existing profile updates then syncs");
+
+stripeCalls = 0;
+const createdProfile = await orchestrateOrganizationBillingAddressSave({
+  ensureProfile: async () => ({ ok: true }),
+  updateAddress: async () => ({ ok: true, rowCount: 1 }),
+  audit: async () => ({ ok: true }),
+  syncStripe: async () => {
+    stripeCalls += 1;
+    return "synced";
+  },
+});
+assert(createdProfile.ok === true && stripeCalls === 1, "missing profile is ensured before update and sync");
+
+const ensureFailed = await orchestrateOrganizationBillingAddressSave({
+  ensureProfile: async () => ({ ok: false, code: "profile_missing" }),
+  updateAddress: async () => {
+    throw new Error("update after missing profile");
+  },
+  audit: async () => {
+    throw new Error("audit after missing profile");
+  },
+  syncStripe: async () => {
+    throw new Error("stripe after missing profile");
+  },
+});
+assert(ensureFailed.ok === false && ensureFailed.error === BILLING_ADDRESS_LOCAL_SAVE_ERROR, "missing profile stays a local failure");
+
+const updateFailed = await orchestrateOrganizationBillingAddressSave({
+  ensureProfile: async () => ({ ok: true }),
+  updateAddress: async () => ({ ok: false, code: "23514" }),
+  audit: async () => {
+    throw new Error("audit after database failure");
+  },
+  syncStripe: async () => {
+    throw new Error("stripe after database failure");
+  },
+});
+assert(updateFailed.ok === false && updateFailed.error === BILLING_ADDRESS_LOCAL_SAVE_ERROR, "database failure stays local");
+
+const zeroRows = await orchestrateOrganizationBillingAddressSave({
+  ensureProfile: async () => ({ ok: true }),
+  updateAddress: async () => ({ ok: true, rowCount: 0 }),
+  audit: async () => ({ ok: true }),
+  syncStripe: async () => "synced",
+});
+assert(zeroRows.ok === false, "zero updated rows do not claim success");
+
+stripeCalls = 0;
+const auditFailed = await orchestrateOrganizationBillingAddressSave({
+  ensureProfile: async () => ({ ok: true }),
+  updateAddress: async () => ({ ok: true, rowCount: 1 }),
+  audit: async () => ({ ok: false }),
+  syncStripe: async () => {
+    stripeCalls += 1;
+    return "synced";
+  },
+});
+assert(auditFailed.ok === true && auditFailed.sync === "synced" && stripeCalls === 1, "audit failure does not roll back the saved address");
+
+const stripeFailed = await orchestrateOrganizationBillingAddressSave({
+  ensureProfile: async () => ({ ok: true }),
+  updateAddress: async () => ({ ok: true, rowCount: 1 }),
+  audit: async () => ({ ok: true }),
+  syncStripe: async () => {
+    throw new Error("stripe unavailable");
+  },
+});
+assert(stripeFailed.ok === true && stripeFailed.sync === "needs_attention", "stripe failure follows a successful local save");
+assert(action.includes(STRIPE_ATTENTION), "action reports stripe attention separately");
+assert(action.includes("if (!saved.ok) return { error: saved.error }"), "local failure is returned before stripe messaging");
+assert(action.includes("church.id"), "organization comes from the session");
+assert(live.includes("ensure_organization_billing_profile"), "reuses the billing profile helper");
+assert(live.includes("billing.address_updated") || live.includes("BILLING_ADDRESS_UPDATED"), "audit action is billing.address_updated");
 console.log("organization billing address self-check passed");
 }
 

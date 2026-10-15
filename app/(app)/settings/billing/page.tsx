@@ -30,7 +30,7 @@ import {
 } from "@/lib/billing/stripe/config";
 import { readSetupIntentIdFromClient } from "@/lib/billing/stripe/sms-payment-setup";
 import { readSafeCardDisplay } from "@/lib/billing/stripe/sms-payment-setup-live";
-import { subscriptionGrantsAccess } from "@/lib/subscriptions/status";
+import { shouldDisplayTrialEnd, subscriptionGrantsAccess } from "@/lib/subscriptions/status";
 import { organizationHasProviderSubscription } from "@/lib/billing/checkout-eligibility";
 import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
 import { ChurchAccessError } from "@/lib/organization/errors";
@@ -236,6 +236,10 @@ async function BillingContent({
                 </Button>
               </dd>
             </div>
+            {shouldDisplayTrialEnd({
+              subscriptionStatus: subscription?.status ?? null,
+              organizationStatus: data?.status ?? church.status,
+            }) ? (
             <div>
               <dt className="text-xs uppercase tracking-wide text-muted-foreground">
                 Trial ends
@@ -251,6 +255,7 @@ async function BillingContent({
                   : "Not configured"}
               </dd>
             </div>
+            ) : null}
             <div>
               <dt className="text-xs uppercase tracking-wide text-muted-foreground">
                 Subscription status

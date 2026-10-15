@@ -15,6 +15,7 @@ import {
 } from "@/lib/organization/auth";
 import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
 import { formatChurchDateTime } from "@/lib/datetime/format";
+import { shouldDisplayTrialEnd } from "@/lib/subscriptions/status";
 
 async function AccountContent() {
   const { supabase, church } = await requireMinChurchRole("owner");
@@ -62,6 +63,7 @@ async function AccountContent() {
                 {data?.plan_name?.trim() || "Placeholder — not configured"}
               </dd>
             </div>
+            {shouldDisplayTrialEnd({ organizationStatus: data?.status ?? church.status }) ? (
             <div>
               <dt className="text-xs uppercase tracking-wide text-muted-foreground">
                 Trial ends
@@ -74,6 +76,7 @@ async function AccountContent() {
                   : "Placeholder — not configured"}
               </dd>
             </div>
+            ) : null}
             <div>
               <dt className="text-xs uppercase tracking-wide text-muted-foreground">
                 Church ID

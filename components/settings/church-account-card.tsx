@@ -6,6 +6,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { ChurchSettingsRecord } from "@/lib/organization/settings";
+import { shouldDisplayTrialEnd } from "@/lib/subscriptions/status";
 import { formatChurchDateTime } from "@/lib/datetime/format";
 
 function formatDate(value: string | null, timeZone?: string | null) {
@@ -67,6 +68,7 @@ export function ChurchAccountCard({
               {formatDate(church.updated_at, church.timezone)}
             </dd>
           </div>
+          {shouldDisplayTrialEnd({ organizationStatus: church.status }) ? (
           <div>
             <dt className="text-xs uppercase tracking-wide text-muted-foreground">
               Trial expiration
@@ -81,6 +83,7 @@ export function ChurchAccountCard({
               )}
             </dd>
           </div>
+          ) : null}
           <div>
             <dt className="text-xs uppercase tracking-wide text-muted-foreground">
               Church ID

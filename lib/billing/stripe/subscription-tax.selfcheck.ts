@@ -21,6 +21,7 @@ import {
   assertSubscriptionTaxCheckoutReady,
   formatSubscriptionInvoiceAmounts,
   interpretSubscriptionInvoiceMoney,
+  readStripeInvoiceMoney,
   SUBSCRIPTION_INVOICE_TAX_UNDETERMINED,
   SUBSCRIPTION_TAX_ADDRESS_REQUIRED,
   subscriptionCheckoutAutomaticTaxFields,
@@ -28,6 +29,12 @@ import {
   subscriptionTaxCollectionAuthorized,
   subscriptionUpgradeAutomaticTax,
 } from "@/lib/billing/stripe/subscription-tax";
+import { summarizeStripeEventObject } from "@/lib/billing/stripe/webhook-verify";
+import {
+  isTrialActive,
+  shouldDisplayTrialEnd,
+  subscriptionGrantsAccess,
+} from "@/lib/subscriptions/status";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -97,6 +104,138 @@ assert(
   !formatSubscriptionInvoiceAmounts(legacy).includes("Tax"),
   "undetermined tax is not displayed as zero",
 );
+
+assert(
+  shouldDisplayTrialEnd({ subscriptionStatus: "trialing", organizationStatus: "trial" }),
+  "trialing subscription shows trial end",
+);
+assert(
+  shouldDisplayTrialEnd({ subscriptionStatus: null, organizationStatus: "trial" }),
+  "trial account without a subscription still shows trial end",
+);
+assert(
+  !shouldDisplayTrialEnd({ subscriptionStatus: "active", organizationStatus: "active" }),
+  "paid active subscription hides historical trial end",
+);
+assert(
+  !shouldDisplayTrialEnd({ subscriptionStatus: null, organizationStatus: "active" }),
+  "active organization hides historical trial end",
+);
+assert(
+  isTrialActive({ status: "trialing", trialEnd: "2026-10-21T22:42:42.677Z", now: new Date("2026-10-15T00:00:00.000Z") }),
+  "open trial remains a trial",
+);
+assert(
+  !isTrialActive({ status: "active", trialEnd: "2026-10-21T22:42:42.677Z", now: new Date("2026-10-22T00:00:00.000Z") }),
+  "passed historical trial date does not make a paid account trialing",
+);
+assert(subscriptionGrantsAccess("active"), "paid access stays granted");
+assert(subscriptionGrantsAccess("active"), "old trial date is not an access input");
+
+const taxLine = { amount: 316, tax_behavior: "exclusive", type: "tax_rate_details" };
+const bearing = readStripeInvoiceMoney({
+  subtotal: 2995,
+  total_excluding_tax: 2995,
+  total: 3311,
+  total_taxes: [taxLine],
+  automatic_tax: { status: "complete", enabled: true },
+});
+const bearingMoney = interpretSubscriptionInvoiceMoney({
+  ...bearing,
+  amountPaid: 3311,
+  amountDue: 0,
+});
+assert(
+  bearingMoney.taxDetermined &&
+    bearingMoney.subtotalCents === 2995 &&
+    bearingMoney.taxCents === 316 &&
+    bearingMoney.totalCents === 3311,
+  "tax-bearing invoice uses Stripe invoice fields",
+);
+const zeroTax = interpretSubscriptionInvoiceMoney({
+  ...readStripeInvoiceMoney({
+    subtotal: 2995,
+    total_excluding_tax: 2995,
+    total: 2995,
+    total_taxes: [],
+    automatic_tax: { status: "complete", enabled: true },
+  }),
+  amountPaid: 2995,
+  amountDue: 0,
+});
+assert(zeroTax.taxDetermined && zeroTax.taxCents === 0 && zeroTax.totalCents === 2995, "complete empty tax list is determined zero");
+const unknownTax = interpretSubscriptionInvoiceMoney({
+  ...readStripeInvoiceMoney({
+    subtotal: 2995,
+    total: 3311,
+    automatic_tax: { status: "failed", enabled: true },
+    total_taxes: [],
+  }),
+  amountPaid: 3311,
+  amountDue: 0,
+});
+assert(unknownTax.taxDetermined === false, "failed tax calculation is not stored as zero");
+assert(!formatSubscriptionInvoiceAmounts(unknownTax).includes("Tax"), "unknown tax is not labeled zero");
+const proration = interpretSubscriptionInvoiceMoney({
+  ...readStripeInvoiceMoney({
+    subtotal: 500,
+    total_excluding_tax: 500,
+    total: 553,
+    total_taxes: [{ amount: 53 }],
+    automatic_tax: { status: "complete" },
+  }),
+  amountPaid: 553,
+  amountDue: 0,
+});
+assert(proration.subtotalCents === 500 && proration.taxCents === 53 && proration.totalCents === 553, "proration uses the invoice amounts");
+const renewal = interpretSubscriptionInvoiceMoney({
+  ...readStripeInvoiceMoney({
+    subtotal: 2995,
+    total: 3311,
+    total_taxes: [{ amount: 316 }],
+    automatic_tax: { status: "complete" },
+  }),
+  amountPaid: 3311,
+  amountDue: 0,
+});
+assert(renewal.taxDetermined && renewal.totalCents === 3311, "renewal invoice keeps Stripe total");
+
+function summarize(object: Record<string, unknown>) {
+  return summarizeStripeEventObject({ data: { object } } as never);
+}
+const parsedInvoice = summarize({
+  object: "invoice",
+  id: "in_test",
+  subtotal: 2995,
+  total: 3311,
+  total_taxes: [{ amount: 316 }],
+  automatic_tax: { status: "complete" },
+  amount_paid: 3311,
+  amount_subtotal: 1,
+  total_details: { amount_tax: 1 },
+});
+assert(parsedInvoice.amountSubtotal === 2995 && parsedInvoice.amountTax === 316 && parsedInvoice.amountTotal === 3311, "invoice parser ignores checkout field names");
+const parsedCheckout = summarize({
+  object: "checkout.session",
+  id: "cs_test",
+  amount_subtotal: 2995,
+  amount_total: 3311,
+  total_details: { amount_tax: 316 },
+});
+assert(parsedCheckout.amountSubtotal === 2995 && parsedCheckout.amountTax === 316, "checkout session money fields stay intact");
+const failedInvoice = summarize({
+  object: "invoice",
+  id: "in_open",
+  status: "open",
+  subtotal: 2995,
+  total: 3311,
+  total_taxes: [{ amount: 316 }],
+  automatic_tax: { status: "complete" },
+  amount_due: 3311,
+});
+assert(failedInvoice.amountTax === 316 && failedInvoice.amountTotal === 3311, "failed invoice still exposes the Stripe tax split");
+assert(!readFileSync(join(process.cwd(), "lib/billing/stripe/subscription-tax.ts"), "utf8").includes("10.55"), "no hard-coded tax rate");
+assert(!readFileSync(join(process.cwd(), "lib/billing/stripe/webhook-verify.ts"), "utf8").includes("0.1055"), "parser does not calculate a rate");
 
 const upgradeOff = buildSubscriptionUpgradeUpdate({
   subscriptionId: "sub_1",

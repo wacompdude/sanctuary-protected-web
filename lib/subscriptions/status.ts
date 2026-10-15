@@ -92,6 +92,19 @@ export function isWithinPeriod(
   return true;
 }
 
+/**
+ * Billing screens show a trial end only while the organization is still trialing.
+ * A paid active subscription keeps any stored historical trial date hidden.
+ */
+export function shouldDisplayTrialEnd(input: {
+  subscriptionStatus?: string | null;
+  organizationStatus?: string | null;
+}): boolean {
+  if (input.subscriptionStatus === "trialing") return true;
+  if (input.subscriptionStatus) return false;
+  return input.organizationStatus === "trial";
+}
+
 export function isTrialActive(params: {
   status: string;
   trialEnd?: string | Date | null;

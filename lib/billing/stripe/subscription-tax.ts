@@ -53,6 +53,57 @@ export function subscriptionScheduleAutomaticTax(authorized: boolean): {
   return { default_settings: { automatic_tax: { enabled: true } } };
 }
 
+function integerCents(value: unknown): number | null {
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 0) return null;
+  return value;
+}
+
+/**
+ * Stripe Invoice money for the installed stripe@23 Invoice type.
+ * Checkout Sessions keep amount_subtotal / total_details and are not read here.
+ * Tax comes from total_taxes. A failed automatic-tax status stays undetermined.
+ */
+export function readStripeInvoiceMoney(invoice: {
+  subtotal?: unknown;
+  total?: unknown;
+  total_excluding_tax?: unknown;
+  total_taxes?: unknown;
+  automatic_tax?: unknown;
+}): {
+  amountSubtotal: number | null;
+  amountTax: number | null;
+  amountTotal: number | null;
+} {
+  const automaticTax = asInvoiceRecord(invoice.automatic_tax);
+  const taxStatus =
+    typeof automaticTax?.status === "string" ? automaticTax.status : null;
+  const taxUndetermined =
+    taxStatus === "failed" || taxStatus === "requires_location_inputs";
+  let amountTax: number | null = null;
+  if (!taxUndetermined && Array.isArray(invoice.total_taxes)) {
+    amountTax = 0;
+    for (const entry of invoice.total_taxes) {
+      const row = asInvoiceRecord(entry);
+      const amount = integerCents(row?.amount);
+      if (amount == null) {
+        return { amountSubtotal: null, amountTax: null, amountTotal: null };
+      }
+      amountTax += amount;
+    }
+  }
+  const pretax = invoice.total_excluding_tax ?? invoice.subtotal;
+  return {
+    amountSubtotal: integerCents(pretax),
+    amountTax,
+    amountTotal: integerCents(invoice.total),
+  };
+}
+
+function asInvoiceRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return value as Record<string, unknown>;
+}
+
 function money(value: number | null | undefined): number | null {
   if (value == null) return null;
   if (!Number.isInteger(value) || value < 0) return Number.NaN;

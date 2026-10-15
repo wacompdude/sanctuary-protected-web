@@ -12,6 +12,7 @@ import {
   readStripeWebhookSecret,
 } from "@/lib/billing/stripe/config";
 import type { WebhookPriceItemRef } from "@/lib/billing/stripe/plan-correlation";
+import { readStripeInvoiceMoney } from "@/lib/billing/stripe/subscription-tax";
 
 export type StripeWebhookVerifyResult =
   | {
@@ -282,6 +283,8 @@ export function summarizeStripeEventObject(
   const priceItems = extractWebhookPriceItems(obj);
   const metadata = asRecord(obj.metadata) ?? {};
   const totalDetails = asRecord(obj.total_details);
+  const invoiceMoney =
+    objectType === "invoice" ? readStripeInvoiceMoney(obj) : null;
 
   let invoiceId = objectType === "invoice" ? str(obj.id) : str(obj.invoice);
   let subscriptionId =
@@ -352,9 +355,9 @@ export function summarizeStripeEventObject(
     metadataPackageKey: str(metadata.package_key),
     metadataLookupKey: str(metadata.lookup_key),
     metadataSmsSegments: str(metadata.sms_segments),
-    amountSubtotal: num(obj.amount_subtotal),
-    amountTotal: num(obj.amount_total),
-    amountTax: num(totalDetails?.amount_tax),
+    amountSubtotal: invoiceMoney?.amountSubtotal ?? num(obj.amount_subtotal),
+    amountTotal: invoiceMoney?.amountTotal ?? num(obj.amount_total),
+    amountTax: invoiceMoney?.amountTax ?? num(totalDetails?.amount_tax),
     amountDiscount: num(totalDetails?.amount_discount),
     paymentIntentId:
       objectType === "payment_intent" ? str(obj.id) : str(obj.payment_intent),

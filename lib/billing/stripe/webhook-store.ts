@@ -578,7 +578,7 @@ export function createAdminWebhookSyncStore(): WebhookSyncStore {
     async notifySubscriptionDunning(input) {
       const { data: organization } = await admin
         .from("organizations")
-        .select("name, display_name")
+        .select("name, display_name, timezone")
         .eq("id", input.organizationId)
         .maybeSingle();
       const organizationName =
@@ -604,6 +604,7 @@ export function createAdminWebhookSyncStore(): WebhookSyncStore {
                 amountDueCents: input.amountCents,
                 currency: input.currency,
                 nextPaymentAttemptUnix: input.nextPaymentAttemptUnix,
+                timeZone: typeof organization?.timezone === "string" ? organization.timezone : null,
               }),
               deduplicationKey: subscriptionFailureDedupKey(input.invoiceId),
               severity: "medium" as const,

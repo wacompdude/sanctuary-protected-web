@@ -85,8 +85,47 @@ assert(storeSource.includes('channels: [...SUBSCRIPTION_DUNNING_CHANNELS]'), "12
 assert(!storeSource.includes('channel: "sms"') && !storeSource.includes('channel: "push"'), "14-15 no sms or push");
 
 const retryUnix = Date.parse("2026-10-18T00:00:00.000Z") / 1000;
-assert(formatStripeRetryDate(retryUnix) === "October 18, 2026", "16-18 retry date");
-assert(formatStripeRetryDate(null) === null, "17 missing retry is not invented");
+assert(formatStripeRetryDate(retryUnix, "UTC") === "October 18, 2026 at 12:00 AM UTC", "16-18 retry date");
+assert(formatStripeRetryDate(null, "America/Los_Angeles") === null, "17 missing retry is not invented");
+assert(formatStripeRetryDate(1.5, "America/Los_Angeles") === null, "invalid retry is not invented");
+const validationUnix = Date.parse("2026-11-18T04:18:19.000Z") / 1000;
+assert(
+  formatStripeRetryDate(validationUnix, "America/Los_Angeles") === "November 17, 2026 at 8:18 PM PST",
+  "pacific local date crosses the UTC calendar day",
+);
+assert(
+  formatStripeRetryDate(validationUnix, "America/New_York") === "November 17, 2026 at 11:18 PM EST",
+  "eastern local time",
+);
+assert(
+  formatStripeRetryDate(validationUnix, "America/Chicago") === "November 17, 2026 at 10:18 PM CST",
+  "central local time",
+);
+assert(
+  formatStripeRetryDate(validationUnix, "America/Denver") === "November 17, 2026 at 9:18 PM MST",
+  "mountain local time",
+);
+assert(
+  formatStripeRetryDate(Date.parse("2026-11-18T18:00:00.000Z") / 1000, "America/New_York") ===
+    "November 18, 2026 at 1:00 PM EST",
+  "same local and UTC calendar date",
+);
+assert(
+  formatStripeRetryDate(Date.parse("2026-07-18T04:18:19.000Z") / 1000, "America/Los_Angeles") ===
+    "July 17, 2026 at 9:18 PM PDT",
+  "daylight saving abbreviation",
+);
+assert(
+  formatStripeRetryDate(validationUnix, "Not/AZone") === "November 17, 2026 at 8:18 PM PST",
+  "invalid timezone uses the existing organization fallback",
+);
+assert(
+  formatStripeRetryDate(validationUnix, "America/Los_Angeles") !==
+    new Intl.DateTimeFormat("en-US", { timeZone: "UTC", month: "long", day: "numeric", year: "numeric" }).format(
+      new Date(validationUnix * 1000),
+    ),
+  "organization zone is not the UTC calendar date",
+);
 const failureCopy = subscriptionFailureNotice({
   organizationName: "Sanctuary Protected Test",
   amountDueCents: 3311,
@@ -121,9 +160,13 @@ const openBanner = subscriptionPaymentAttention({
   invoiceStatus: "open",
   failure: true,
   nextPaymentAttemptUnix: retryUnix,
+  timeZone: "America/Los_Angeles",
   subscriptionStatus: "past_due",
 });
-assert(openBanner.show && openBanner.retryLabel?.includes("October 18, 2026"), "31 banner before recovery");
+assert(
+  openBanner.show && openBanner.retryLabel === "Next automatic payment attempt: October 17, 2026 at 5:00 PM PDT",
+  "31 banner before recovery",
+);
 const cleared = subscriptionPaymentAttention({
   invoiceStatus: "paid",
   failure: true,
@@ -173,6 +216,7 @@ assert(page.includes('href="#subscription-payment-method"'), "53 change payment 
 assert(page.includes('id="subscription-payment-method"'), "53 payment method section");
 assert(!page.includes("createCustomerPortalSession"), "54 banner does not add Customer Portal");
 assert(page.includes("subscriptionPaymentAttention"), "55 page uses current invoice state");
+assert(page.includes("timeZone: church.timezone"), "retry date uses the organization timezone");
 
 for (const forbidden of [
   "paymentIntents.create",

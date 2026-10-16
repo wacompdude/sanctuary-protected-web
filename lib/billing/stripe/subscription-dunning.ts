@@ -7,6 +7,7 @@
  * back to failed by an older failure event.
  */
 
+import { resolveChurchTimeZone } from "@/lib/datetime/format";
 import {
   SUBSCRIPTION_CARD_EXPIRATION_CHANNELS,
   SUBSCRIPTION_CARD_EXPIRATION_ROLES,
@@ -44,15 +45,21 @@ export function isBaseSubscriptionDunningInvoice(input: {
   return SUBSCRIPTION_BILLING_REASONS.has(input.billingReason ?? "");
 }
 
-export function formatStripeRetryDate(unixSeconds: number | null | undefined): string | null {
+export function formatStripeRetryDate(
+  unixSeconds: number | null | undefined,
+  timeZone?: string | null,
+): string | null {
   if (unixSeconds == null || !Number.isInteger(unixSeconds) || unixSeconds <= 0) return null;
   const date = new Date(unixSeconds * 1000);
   if (Number.isNaN(date.getTime())) return null;
   return new Intl.DateTimeFormat("en-US", {
-    timeZone: "UTC",
+    timeZone: resolveChurchTimeZone(timeZone),
     month: "long",
     day: "numeric",
     year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short",
   }).format(date);
 }
 
@@ -124,12 +131,13 @@ export function subscriptionFailureNotice(input: {
   amountDueCents?: number | null;
   currency?: string | null;
   nextPaymentAttemptUnix?: number | null;
+  timeZone?: string | null;
   cardBrand?: string | null;
   cardLast4?: string | null;
 }): { title: string; body: string; notificationType: "billing.subscription_payment_failed" } {
   const organization = input.organizationName.trim() || "your organization";
   const amount = formatInvoiceAmount(input.amountDueCents, input.currency);
-  const retry = formatStripeRetryDate(input.nextPaymentAttemptUnix);
+  const retry = formatStripeRetryDate(input.nextPaymentAttemptUnix, input.timeZone);
   const card =
     input.cardBrand && input.cardLast4
       ? ` using ${input.cardBrand} ending in ${input.cardLast4}`
@@ -187,6 +195,7 @@ export function subscriptionPaymentAttention(input: {
   failure?: boolean;
   recovered?: boolean;
   nextPaymentAttemptUnix?: number | null;
+  timeZone?: string | null;
   subscriptionStatus?: string | null;
 }): SubscriptionPaymentAttention {
   if (!input.failure || input.recovered) return { show: false };
@@ -202,7 +211,7 @@ export function subscriptionPaymentAttention(input: {
       retryLabel: null,
     };
   }
-  const retry = formatStripeRetryDate(input.nextPaymentAttemptUnix);
+  const retry = formatStripeRetryDate(input.nextPaymentAttemptUnix, input.timeZone);
   return {
     show: true,
     title: "Payment issue",

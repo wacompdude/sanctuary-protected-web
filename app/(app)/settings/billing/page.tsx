@@ -173,6 +173,7 @@ async function BillingContent({
       typeof failureMetadata?.next_payment_attempt === "number"
         ? failureMetadata.next_payment_attempt
         : null,
+    timeZone: church.timezone,
     subscriptionStatus: subscription?.status ?? null,
   });
 

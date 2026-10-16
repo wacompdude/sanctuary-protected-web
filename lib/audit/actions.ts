@@ -16,6 +16,10 @@ export const AuditAction = {
     "billing.subscription_payment_method_updated",
   BILLING_PAYMENT_METHOD_EXPIRATION_WARNING_CREATED:
     "billing.payment_method_expiration_warning_created",
+  BILLING_SUBSCRIPTION_PAYMENT_FAILED: "billing.subscription_payment_failed",
+  BILLING_SUBSCRIPTION_PAYMENT_RECOVERED: "billing.subscription_payment_recovered",
+  BILLING_SUBSCRIPTION_PAYMENT_FINAL_FAILURE:
+    "billing.subscription_payment_final_failure",
   CHURCH_SETTINGS_BRANDING_UPDATED: "church.settings.branding_updated",
   CHURCH_SETTINGS_SECURITY_UPDATED: "church.settings.security_updated",
   CHURCH_SETTINGS_PREFERENCES_UPDATED: "church.settings.preferences_updated",

@@ -32,6 +32,7 @@ import {
 import { readSetupIntentIdFromClient } from "@/lib/billing/stripe/sms-payment-setup";
 import { readSafeCardDisplay } from "@/lib/billing/stripe/sms-payment-setup-live";
 import { readSubscriptionPaymentMethodView } from "@/lib/billing/stripe/subscription-payment-method-live";
+import { subscriptionPaymentAttention } from "@/lib/billing/stripe/subscription-dunning";
 import { shouldDisplayTrialEnd, subscriptionGrantsAccess } from "@/lib/subscriptions/status";
 import { organizationHasProviderSubscription } from "@/lib/billing/checkout-eligibility";
 import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
@@ -140,6 +141,40 @@ async function BillingContent({
     subscription?.billing_subscription_id,
   );
   const subscriptionPaymentView = await readSubscriptionPaymentMethodView(church.id);
+  const { data: recentInvoices } = await supabase
+    .from("billing_invoices")
+    .select("status, metadata")
+    .eq("organization_id", church.id)
+    .order("updated_at", { ascending: false })
+    .limit(8);
+  const latestFailure = (recentInvoices ?? []).find((row) => {
+    const metadata = row.metadata;
+    return Boolean(
+      metadata &&
+        typeof metadata === "object" &&
+        !Array.isArray(metadata) &&
+        (metadata as { failure?: unknown }).failure === true,
+    );
+  });
+  const failureMetadata =
+    latestFailure?.metadata &&
+    typeof latestFailure.metadata === "object" &&
+    !Array.isArray(latestFailure.metadata)
+      ? (latestFailure.metadata as {
+          recovered?: unknown;
+          next_payment_attempt?: unknown;
+        })
+      : null;
+  const paymentAttention = subscriptionPaymentAttention({
+    invoiceStatus: latestFailure?.status ?? null,
+    failure: Boolean(latestFailure),
+    recovered: failureMetadata?.recovered === true,
+    nextPaymentAttemptUnix:
+      typeof failureMetadata?.next_payment_attempt === "number"
+        ? failureMetadata.next_payment_attempt
+        : null,
+    subscriptionStatus: subscription?.status ?? null,
+  });
 
   const publicPlans = plans.filter(
     (plan) => plan.is_public && plan.status === "active",
@@ -302,14 +337,28 @@ async function BillingContent({
         </CardContent>
       </Card>
 
-      <Card>
+      <Card id="subscription-payment-method">
         <CardHeader>
           <CardTitle>Subscription payment method</CardTitle>
           <CardDescription>
             The card Stripe uses for the next organization subscription invoice.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {paymentAttention.show ? (
+            <div className="rounded-md border border-border px-3 py-3">
+              <p className="text-sm font-medium">{paymentAttention.title}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{paymentAttention.body}</p>
+              {paymentAttention.retryLabel ? (
+                <p className="mt-1 text-sm">{paymentAttention.retryLabel}</p>
+              ) : null}
+              {canManageBilling ? (
+                <p className="mt-2 text-sm">
+                  <a href="#subscription-payment-method">Change payment method</a>
+                </p>
+              ) : null}
+            </div>
+          ) : null}
           <SubscriptionPaymentMethodPanel
             canManage={canManageBilling}
             view={subscriptionPaymentView}

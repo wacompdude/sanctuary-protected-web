@@ -555,9 +555,120 @@ export function createAdminWebhookSyncStore(): WebhookSyncStore {
       }
     },
 
+    async getInvoiceByProviderId(providerInvoiceId) {
+      const { data } = await admin
+        .from("billing_invoices")
+        .select("id, status, metadata")
+        .eq("billing_provider", "stripe")
+        .eq("provider_invoice_id", providerInvoiceId)
+        .maybeSingle();
+      if (!data?.id) return null;
+      const metadata =
+        data.metadata && typeof data.metadata === "object" && !Array.isArray(data.metadata)
+          ? (data.metadata as Record<string, unknown>)
+          : {};
+      return { id: String(data.id), status: String(data.status), metadata };
+    },
+
     async notifyBillingCharge() {
       // Resend billing transaction notices hook in later phase.
       // Intentionally no-op until EMAIL_FROM_BILLING wiring is authorized.
+    },
+
+    async notifySubscriptionDunning(input) {
+      const { data: organization } = await admin
+        .from("organizations")
+        .select("name, display_name")
+        .eq("id", input.organizationId)
+        .maybeSingle();
+      const organizationName =
+        (typeof organization?.display_name === "string" && organization.display_name.trim()) ||
+        (typeof organization?.name === "string" && organization.name.trim()) ||
+        "your organization";
+      const { createNotification } = await import("@/lib/notifications/create-notification");
+      const {
+        SUBSCRIPTION_DUNNING_CHANNELS,
+        SUBSCRIPTION_DUNNING_ROLES,
+        subscriptionFailureDedupKey,
+        subscriptionFailureNotice,
+        subscriptionFinalFailureDedupKey,
+        subscriptionFinalFailureNotice,
+        subscriptionRecoveryDedupKey,
+        subscriptionRecoveryNotice,
+      } = await import("@/lib/billing/stripe/subscription-dunning");
+      const notice =
+        input.kind === "payment_failed" && input.invoiceId
+          ? {
+              ...subscriptionFailureNotice({
+                organizationName,
+                amountDueCents: input.amountCents,
+                currency: input.currency,
+                nextPaymentAttemptUnix: input.nextPaymentAttemptUnix,
+              }),
+              deduplicationKey: subscriptionFailureDedupKey(input.invoiceId),
+              severity: "medium" as const,
+            }
+          : input.kind === "payment_recovered" && input.invoiceId
+            ? {
+                ...subscriptionRecoveryNotice({
+                  organizationName,
+                  amountPaidCents: input.amountCents,
+                  currency: input.currency,
+                }),
+                deduplicationKey: subscriptionRecoveryDedupKey(input.invoiceId),
+                severity: "informational" as const,
+              }
+            : input.kind === "final_failure" && input.subscriptionId
+              ? (() => {
+                  const finalNotice = subscriptionFinalFailureNotice({
+                    organizationName,
+                    stripeStatus: input.stripeStatus,
+                  });
+                  if (!finalNotice) return null;
+                  return {
+                    ...finalNotice,
+                    deduplicationKey: subscriptionFinalFailureDedupKey(input.subscriptionId),
+                    severity: "high" as const,
+                  };
+                })()
+              : null;
+      if (!notice) return;
+      const created = await createNotification(
+        {
+          organizationId: input.organizationId,
+          notificationType: notice.notificationType,
+          severity: notice.severity,
+          title: notice.title,
+          body: notice.body,
+          actionUrl: "/settings/billing",
+          deduplicationKey: notice.deduplicationKey,
+          recipientRoles: [...SUBSCRIPTION_DUNNING_ROLES],
+          channels: [...SUBSCRIPTION_DUNNING_CHANNELS],
+          requestedSenderCategory: "billing",
+          metadata: { kind: input.kind },
+        },
+        { dispatchNow: false },
+      );
+      if (created.status !== "queued") return;
+      const { AuditAction } = await import("@/lib/audit/actions");
+      const { writeAuditLog } = await import("@/lib/audit/log");
+      const action =
+        input.kind === "payment_recovered"
+          ? AuditAction.BILLING_SUBSCRIPTION_PAYMENT_RECOVERED
+          : input.kind === "final_failure"
+            ? AuditAction.BILLING_SUBSCRIPTION_PAYMENT_FINAL_FAILURE
+            : AuditAction.BILLING_SUBSCRIPTION_PAYMENT_FAILED;
+      await writeAuditLog(admin, {
+        organizationId: input.organizationId,
+        action,
+        entityType: "organization",
+        entityId: input.organizationId,
+        metadata: {
+          organization_id: input.organizationId,
+          kind: input.kind,
+          recipient_count: created.recipientCount,
+        },
+      });
     },
   };
 }

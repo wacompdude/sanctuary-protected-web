@@ -27,6 +27,12 @@ import {
 } from "@/lib/billing/stripe/sms-purchase-webhook";
 import type { StripeWebhookObjectSummary } from "@/lib/billing/stripe/webhook-verify";
 import { interpretSubscriptionInvoiceMoney } from "@/lib/billing/stripe/subscription-tax";
+import {
+  isBaseSubscriptionDunningInvoice,
+  subscriptionFinalFailureEffect,
+  subscriptionPaymentFailureEffect,
+  subscriptionPaymentRecoveryEffect,
+} from "@/lib/billing/stripe/subscription-dunning";
 import type { ChurchSubscriptionStatus } from "@/lib/subscriptions/types";
 import { isPlanKey, type PlanKey } from "@/lib/subscriptions/plan-keys";
 import { subscriptionGrantsAccess } from "@/lib/subscriptions/status";
@@ -180,6 +186,21 @@ export type WebhookSyncStore = {
     providerInvoiceId: string;
     amountCents: number;
     currency: string;
+  }): Promise<void>;
+  getInvoiceByProviderId?(providerInvoiceId: string): Promise<{
+    id: string;
+    status: string;
+    metadata: Record<string, unknown>;
+  } | null>;
+  notifySubscriptionDunning?(input: {
+    organizationId: string;
+    kind: "payment_failed" | "payment_recovered" | "final_failure";
+    invoiceId: string | null;
+    subscriptionId: string | null;
+    amountCents: number | null;
+    currency: string | null;
+    nextPaymentAttemptUnix: number | null;
+    stripeStatus: string | null;
   }): Promise<void>;
 };
 
@@ -419,6 +440,12 @@ export async function handleSubscriptionLifecycle(
         planKey: existingByProvider.planKey,
         object,
       });
+      await maybeNotifyFinalSubscriptionFailure(store, {
+        organizationId: org.organizationId,
+        subscriptionId: object.subscriptionId,
+        stripeStatus: object.status,
+        paymentStatus: existingByProvider.paymentStatus,
+      });
       return {
         outcome: "processed",
         detail: `Subscription cancelled (plan unchanged; price correlation: ${planResolution.code}).`,
@@ -510,6 +537,15 @@ export async function handleSubscriptionLifecycle(
     });
   }
 
+  if (status === "cancelled") {
+    await maybeNotifyFinalSubscriptionFailure(store, {
+      organizationId: org.organizationId,
+      subscriptionId: object.subscriptionId,
+      stripeStatus: object.status,
+      paymentStatus: existingByProvider?.paymentStatus ?? null,
+    });
+  }
+
   return {
     outcome: "processed",
     detail: `Subscription synchronized (${status}/${planKey}).`,
@@ -588,6 +624,33 @@ async function releaseScheduleAfterLivePlanSync(input: {
     providerScheduleId: decision.scheduleId,
     scheduleStatus: "completed",
     scheduleReleasedAt: (input.options.now ?? new Date()).toISOString(),
+  });
+}
+
+async function maybeNotifyFinalSubscriptionFailure(
+  store: WebhookSyncStore,
+  input: {
+    organizationId: string;
+    subscriptionId: string | null;
+    stripeStatus: string | null;
+    paymentStatus: string | null;
+  },
+): Promise<void> {
+  if (!store.notifySubscriptionDunning || !input.subscriptionId) return;
+  const effect = subscriptionFinalFailureEffect({
+    stripeStatus: input.stripeStatus,
+    paymentStatus: input.paymentStatus,
+  });
+  if (!effect.notify) return;
+  await store.notifySubscriptionDunning({
+    organizationId: input.organizationId,
+    kind: "final_failure",
+    invoiceId: null,
+    subscriptionId: input.subscriptionId,
+    amountCents: null,
+    currency: null,
+    nextPaymentAttemptUnix: null,
+    stripeStatus: input.stripeStatus,
   });
 }
 
@@ -750,6 +813,22 @@ export async function handleInvoicePaid(
   );
   const periodStart = unixToIso(sharedPeriod?.periodStart ?? null);
   const periodEnd = unixToIso(sharedPeriod?.periodEnd ?? null);
+  const existingPaid = await store.getInvoiceByProviderId?.(object.invoiceId);
+  const previouslyFailed = existingPaid?.metadata.failure === true;
+  const recovery = isBaseSubscriptionDunningInvoice({
+    subscriptionId: object.subscriptionId,
+    billingReason: object.billingReason,
+    sanctuaryPurpose: object.metadataSanctuaryPurpose,
+    sanctuaryCheckout: object.metadataSanctuaryCheckout,
+    packageKey: object.metadataPackageKey,
+    planResolved: planResolution.ok,
+    planResolutionCode: planResolution.ok ? null : planResolution.code,
+  })
+    ? subscriptionPaymentRecoveryEffect({
+        existingFailure: previouslyFailed,
+        existingRecovered: existingPaid?.metadata.recovered === true,
+      })
+    : { notify: false };
 
   const invoice = await store.upsertInvoice({
     organizationId: org.organizationId,
@@ -769,6 +848,7 @@ export async function handleInvoicePaid(
       stripe_subscription_id: object.subscriptionId,
       stripe_customer_id: object.customerId,
       tax_determined: money.taxDetermined,
+      ...(previouslyFailed ? { failure: true, recovered: true } : {}),
     },
   });
 
@@ -806,6 +886,19 @@ export async function handleInvoicePaid(
       providerInvoiceId: object.invoiceId,
       amountCents: Math.max(0, object.amountPaid ?? money.totalCents),
       currency,
+    });
+  }
+
+  if (recovery.notify && store.notifySubscriptionDunning) {
+    await store.notifySubscriptionDunning({
+      organizationId: org.organizationId,
+      kind: "payment_recovered",
+      invoiceId: object.invoiceId,
+      subscriptionId: object.subscriptionId,
+      amountCents: Math.max(0, object.amountPaid ?? money.totalCents),
+      currency,
+      nextPaymentAttemptUnix: null,
+      stripeStatus: null,
     });
   }
 
@@ -874,6 +967,44 @@ export async function handleInvoicePaymentFailed(
             productName: null,
           },
         ];
+  const planResolution = await resolveApprovedSubscriptionPlanFromItems(
+    priceItems,
+    { getPriceById: options.getPriceById },
+  );
+  if (
+    !isBaseSubscriptionDunningInvoice({
+      subscriptionId: object.subscriptionId,
+      billingReason: object.billingReason,
+      sanctuaryPurpose: object.metadataSanctuaryPurpose,
+      sanctuaryCheckout: object.metadataSanctuaryCheckout,
+      packageKey: object.metadataPackageKey,
+      planResolved: planResolution.ok,
+      planResolutionCode: planResolution.ok ? null : planResolution.code,
+    })
+  ) {
+    return {
+      outcome: "ignored",
+      detail: "Invoice is not a base-subscription payment.",
+      organizationId: org.organizationId,
+      metadata: { stripe_invoice_id: object.invoiceId },
+    };
+  }
+  const existing = await store.getInvoiceByProviderId?.(object.invoiceId);
+  const failureEffect = subscriptionPaymentFailureEffect({
+    existingStatus: existing?.status ?? null,
+    existingRecovered: existing?.metadata.recovered === true,
+  });
+  if (failureEffect.action === "ignore_stale") {
+    return {
+      outcome: "processed",
+      detail: "Stale subscription payment failure ignored.",
+      organizationId: org.organizationId,
+      metadata: {
+        stripe_invoice_id: object.invoiceId,
+        stale_failure_ignored: true,
+      },
+    };
+  }
   const sharedPeriod = await servicePeriodForApprovedSubscriptionLines(
     priceItems,
     options.getPriceById,
@@ -898,6 +1029,10 @@ export async function handleInvoicePaymentFailed(
     metadata: {
       stripe_subscription_id: object.subscriptionId,
       failure: true,
+      recovered: false,
+      attempt_count: object.attemptCount ?? null,
+      next_payment_attempt: object.nextPaymentAttempt ?? null,
+      billing_reason: object.billingReason ?? null,
       tax_determined: money.taxDetermined,
     },
   });
@@ -925,6 +1060,19 @@ export async function handleInvoicePaymentFailed(
     paymentStatus: "failed",
     providerLatestInvoiceId: object.invoiceId,
   });
+
+  if (store.notifySubscriptionDunning) {
+    await store.notifySubscriptionDunning({
+      organizationId: org.organizationId,
+      kind: "payment_failed",
+      invoiceId: object.invoiceId,
+      subscriptionId: object.subscriptionId,
+      amountCents: due,
+      currency,
+      nextPaymentAttemptUnix: object.nextPaymentAttempt ?? null,
+      stripeStatus: null,
+    });
+  }
 
   return {
     outcome: "processed",

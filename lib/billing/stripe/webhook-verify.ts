@@ -76,6 +76,12 @@ export type StripeWebhookObjectSummary = {
   paymentMethodId?: string | null;
   metadataSanctuaryPurpose?: string | null;
   metadataReplenishmentAttemptId?: string | null;
+  /** Invoice next_payment_attempt unix seconds. Absent means Stripe did not supply one. */
+  nextPaymentAttempt?: number | null;
+  /** Invoice attempt_count. Not a Sanctuary Protected retry counter. */
+  attemptCount?: number | null;
+  /** Invoice billing_reason. Used to recognize subscription invoices. */
+  billingReason?: string | null;
   /**
    * Attached schedule on a subscription object.
    * Not present for schedule events; those use id.
@@ -365,6 +371,9 @@ export function summarizeStripeEventObject(
     paymentMethodId: objectType === "payment_intent" ? str(obj.payment_method) : null,
     metadataSanctuaryPurpose: str(metadata.sanctuary_purpose),
     metadataReplenishmentAttemptId: str(metadata.replenishment_attempt_id),
+    nextPaymentAttempt: objectType === "invoice" ? num(obj.next_payment_attempt) : null,
+    attemptCount: objectType === "invoice" ? num(obj.attempt_count) : null,
+    billingReason: objectType === "invoice" ? str(obj.billing_reason) : null,
     scheduleId: objectType === "subscription" ? str(obj.schedule) : null,
     ...(schedulePhases ? { schedulePhases } : {}),
   };

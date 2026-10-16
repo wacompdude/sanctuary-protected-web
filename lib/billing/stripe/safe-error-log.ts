@@ -14,7 +14,8 @@ export type StripeBillingOperation =
   | "subscription_payment_method_read"
   | "subscription_payment_method_setup_create"
   | "subscription_payment_method_setup_finalize"
-  | "subscription_payment_method_tax_changed";
+  | "subscription_payment_method_tax_changed"
+  | "subscription_card_expiration_read";
 
 export const STRIPE_API_HOSTNAME = "api.stripe.com";
 

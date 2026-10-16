@@ -15,6 +15,10 @@
     {
       "path": "/api/notifications/dispatch",
       "schedule": "15 9 * * *"
+    },
+    {
+      "path": "/api/notifications/billing/card-expiration",
+      "schedule": "45 8 * * *"
     }
   ]
 }

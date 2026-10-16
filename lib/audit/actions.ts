@@ -14,6 +14,8 @@ export const AuditAction = {
   BILLING_ADDRESS_UPDATED: "billing.address_updated",
   BILLING_SUBSCRIPTION_PAYMENT_METHOD_UPDATED:
     "billing.subscription_payment_method_updated",
+  BILLING_PAYMENT_METHOD_EXPIRATION_WARNING_CREATED:
+    "billing.payment_method_expiration_warning_created",
   CHURCH_SETTINGS_BRANDING_UPDATED: "church.settings.branding_updated",
   CHURCH_SETTINGS_SECURITY_UPDATED: "church.settings.security_updated",
   CHURCH_SETTINGS_PREFERENCES_UPDATED: "church.settings.preferences_updated",

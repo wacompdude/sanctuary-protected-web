@@ -74,6 +74,8 @@ export const NOTIFICATION_SENDER_CATEGORY_MAP: Record<string, EmailSenderCategor
     "billing.subscription_cancelled": "billing",
     "billing.payment_succeeded": "billing",
     "billing.payment_failed": "billing",
+    "billing.payment_method_expiring": "billing",
+    "billing.payment_method_expired": "billing",
     "billing.invoice_available": "billing",
     "billing.trial_ending": "billing",
     "billing.account_suspended": "billing",

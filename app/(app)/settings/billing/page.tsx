@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CreditCard } from "lucide-react";
+import { AlertTriangle, CreditCard } from "lucide-react";
 import { Suspense } from "react";
 import { BillingPlanPanel } from "@/components/billing/billing-plan-panel";
 import { SmsPackagePurchaseButton } from "@/components/billing/sms-package-panel";
@@ -346,17 +346,28 @@ async function BillingContent({
         </CardHeader>
         <CardContent className="space-y-4">
           {paymentAttention.show ? (
-            <div className="rounded-md border border-border px-3 py-3">
-              <p className="text-sm font-medium">{paymentAttention.title}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{paymentAttention.body}</p>
-              {paymentAttention.retryLabel ? (
-                <p className="mt-1 text-sm">{paymentAttention.retryLabel}</p>
-              ) : null}
-              {canManageBilling ? (
-                <p className="mt-2 text-sm">
-                  <a href="#subscription-payment-method">Change payment method</a>
+            <div
+              role="status"
+              className="flex items-start gap-3 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-3 text-sm text-foreground"
+            >
+              <AlertTriangle
+                className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-300"
+                aria-hidden
+              />
+              <div className="min-w-0 space-y-2">
+                <p className="font-semibold text-amber-950 dark:text-amber-100">
+                  {paymentAttention.title}
                 </p>
-              ) : null}
+                <p>{paymentAttention.body}</p>
+                {paymentAttention.retryLabel ? (
+                  <p className="font-medium">{paymentAttention.retryLabel}</p>
+                ) : null}
+                {canManageBilling ? (
+                  <Button variant="outline" size="sm" asChild>
+                    <a href="#subscription-payment-method">Change payment method</a>
+                  </Button>
+                ) : null}
+              </div>
             </div>
           ) : null}
           <SubscriptionPaymentMethodPanel

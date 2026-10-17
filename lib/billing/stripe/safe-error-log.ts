@@ -10,6 +10,7 @@ export type StripeBillingOperation =
   | "checkout_session_create"
   | "sms_payment_setup_create"
   | "sms_replenishment_payment_create"
+  | "sms_replenishment_tax_calculation"
   | "billing_address_customer_sync"
   | "subscription_payment_method_read"
   | "subscription_payment_method_setup_create"

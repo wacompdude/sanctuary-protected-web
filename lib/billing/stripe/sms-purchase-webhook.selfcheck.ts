@@ -5,7 +5,7 @@
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { billingHistoryEventTitle } from "@/lib/billing/history";
+import { billingHistoryEventTitle, smsCreditPurchaseHistoryDetail } from "@/lib/billing/history";
 import {
   recordPaidSmsPackageInMemory,
   type SmsPaidPackageBooks,
@@ -434,6 +434,24 @@ async function main() {
     "27 email not retained",
   );
   assert(expanded.paymentIntentId === "pi_expanded", "30 expanded payment intent");
+  const taxedSummary = summarizeStripeEventObject({
+    id: "evt_tax",
+    object: "event",
+    type: "checkout.session.completed",
+    data: {
+      object: {
+        object: "checkout.session",
+        id: "cs_tax_summary",
+        customer: "cus_1",
+        automatic_tax: { enabled: true, status: "complete" },
+      },
+    },
+  } as unknown as Stripe.Event);
+  assert(
+    taxedSummary.checkoutAutomaticTax?.enabled === true &&
+      taxedSummary.checkoutAutomaticTax.status === "complete",
+    "automatic tax status is retained",
+  );
 
   const plain = summarizeStripeEventObject({
     id: "evt_2",
@@ -541,6 +559,75 @@ async function main() {
   assert(taxedCheckout.calls[0]?.taxCents === 80, "checkout tax separate");
   assert(taxedCheckout.calls[0]?.amountCents === 1000, "checkout subtotal");
   assert(taxedCheckout.calls[0]?.segments === 100, "checkout quantity ignores tax");
+  assert(taxedCheckout.calls[0]?.metadata.tax_determined !== true, "untaxed session is not labeled determined");
+
+  const determinedTax = harness({
+    lines: [paidLine({ amountTax: 53, amountTotal: 1053 })],
+  });
+  const determinedTaxResult = await run(
+    determinedTax,
+    paidObject({
+      id: "cs_determined",
+      checkoutSessionId: "cs_determined",
+      amountTax: 53,
+      amountTotal: 1053,
+      checkoutAutomaticTax: { enabled: true, status: "complete" },
+    }),
+  );
+  assert(determinedTaxResult.outcome === "processed", "determined tax recorded");
+  assert(determinedTax.calls[0]?.metadata.tax_determined === true, "determined tax marker");
+  assert(determinedTax.calls[0]?.amountCents === 1000, "determined subtotal stays the package price");
+  assert(determinedTax.calls[0]?.taxCents === 53, "determined tax is separate");
+  assert(
+    smsCreditPurchaseHistoryDetail({
+      amountCents: 1000,
+      taxCents: 53,
+      taxDetermined: true,
+    }) === "Subtotal: $10.00\nTax: $0.53\nTotal: $10.53",
+    "determined tax history",
+  );
+
+  const determinedZero = harness({
+    lines: [paidLine()],
+  });
+  const determinedZeroResult = await run(
+    determinedZero,
+    paidObject({
+      id: "cs_zero_tax",
+      checkoutSessionId: "cs_zero_tax",
+      checkoutAutomaticTax: { enabled: true, status: "complete" },
+    }),
+  );
+  assert(determinedZeroResult.outcome === "processed", "determined zero tax recorded");
+  assert(determinedZero.calls[0]?.taxCents === 0, "determined zero tax amount");
+  assert(determinedZero.calls[0]?.metadata.tax_determined === true, "zero tax remains determined");
+  assert(
+    smsCreditPurchaseHistoryDetail({ amountCents: 500, taxCents: 0, taxDetermined: true }) ===
+      "Subtotal: $5.00\nTax: $0.00\nTotal: $5.00",
+    "determined zero tax history",
+  );
+  assert(
+    smsCreditPurchaseHistoryDetail({ amountCents: 500, taxCents: 0, taxDetermined: false }) === null,
+    "historical zero tax is not labeled calculated",
+  );
+
+  const undetermined = harness({
+    lines: [paidLine()],
+  });
+  const undeterminedResult = await run(
+    undetermined,
+    paidObject({
+      id: "cs_undetermined",
+      checkoutSessionId: "cs_undetermined",
+      checkoutAutomaticTax: { enabled: true, status: "requires_location_inputs" },
+    }),
+  );
+  assert(
+    undeterminedResult.outcome === "rejected" &&
+      undeterminedResult.metadata.sms_validation_code === "sms_tax_undetermined" &&
+      undetermined.calls.length === 0,
+    "undetermined tax does not grant credits",
+  );
 
   const sameSession = harness();
   await run(sameSession, paidObject({ id: "cs_same" }));

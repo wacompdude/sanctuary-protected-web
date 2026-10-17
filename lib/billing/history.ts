@@ -1,3 +1,4 @@
+import { formatBillingPlanPrice } from "@/lib/billing/checkout-eligibility";
 import { createClient } from "@/lib/supabase/server";
 import type { BillingHistoryItem } from "@/lib/billing/types";
 
@@ -20,6 +21,26 @@ export function billingHistoryEventTitle(input: {
   return input.eventType || "billing event";
 }
 
+/**
+ * Customer-facing money lines for an SMS purchase whose stored transaction
+ * says Stripe determined the tax. Historical rows without that marker stay unlabeled.
+ */
+export function smsCreditPurchaseHistoryDetail(input: {
+  amountCents: number;
+  taxCents: number;
+  taxDetermined: boolean;
+}): string | null {
+  if (input.taxDetermined !== true) return null;
+  if (!Number.isInteger(input.amountCents) || input.amountCents < 0) return null;
+  if (!Number.isInteger(input.taxCents) || input.taxCents < 0) return null;
+  const usd = (cents: number) => formatBillingPlanPrice(cents);
+  return [
+    `Subtotal: ${usd(input.amountCents)}`,
+    `Tax: ${usd(input.taxCents)}`,
+    `Total: ${usd(input.amountCents + input.taxCents)}`,
+  ].join("\n");
+}
+
 export async function listBillingHistory(
   organizationId: string,
   limit = 25,
@@ -27,7 +48,7 @@ export async function listBillingHistory(
   const supabase = await createClient();
   const take = Math.min(Math.max(limit, 1), 100);
 
-  const [changes, events] = await Promise.all([
+  const [changes, events, smsPurchases] = await Promise.all([
     supabase
       .from("subscription_change_history")
       .select(
@@ -44,7 +65,30 @@ export async function listBillingHistory(
       .eq("organization_id", organizationId)
       .order("created_at", { ascending: false })
       .limit(take),
+    supabase
+      .from("billing_transactions")
+      .select("idempotency_key, amount_cents, tax_cents, metadata")
+      .eq("organization_id", organizationId)
+      .eq("transaction_type", "sms_block")
+      .eq("status", "succeeded")
+      .order("created_at", { ascending: false })
+      .limit(take),
   ]);
+
+  const smsPurchaseByKey = new Map<
+    string,
+    { amountCents: number; taxCents: number; taxDetermined: boolean }
+  >();
+  for (const row of smsPurchases.data ?? []) {
+    const key = typeof row.idempotency_key === "string" ? row.idempotency_key : "";
+    const metadata = asRecord(row.metadata);
+    if (!key) continue;
+    smsPurchaseByKey.set(key, {
+      amountCents: Number(row.amount_cents),
+      taxCents: Number(row.tax_cents),
+      taxDetermined: metadata.tax_determined === true,
+    });
+  }
 
   const items: BillingHistoryItem[] = [];
 
@@ -71,7 +115,7 @@ export async function listBillingHistory(
         eventType: String(row.event_type ?? "billing event"),
         metadata: row.metadata,
       }),
-      detail:
+      detail: smsPurchaseDetail(row.metadata, smsPurchaseByKey) ??
         (row.error_message as string | null) ??
         `Provider ${row.billing_provider ?? "unknown"}`,
       status: (row.processing_status as string | null) ?? null,
@@ -84,4 +128,19 @@ export async function listBillingHistory(
   );
 
   return items.slice(0, take);
+}
+
+function smsPurchaseDetail(
+  metadata: unknown,
+  purchases: Map<string, { amountCents: number; taxCents: number; taxDetermined: boolean }>,
+): string | null {
+  const handler = asRecord(asRecord(metadata).handler);
+  if (handler.sms_package_purchase !== true) return null;
+  const key =
+    typeof handler.purchase_idempotency_key === "string"
+      ? handler.purchase_idempotency_key
+      : "";
+  const purchase = key ? purchases.get(key) : undefined;
+  if (!purchase) return null;
+  return smsCreditPurchaseHistoryDetail(purchase);
 }

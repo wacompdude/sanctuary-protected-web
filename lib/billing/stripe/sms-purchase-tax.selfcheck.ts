@@ -1,9 +1,12 @@
 /**
  * SMS purchase tax rules. No Stripe, database, or credit grants.
  */
+import { BillingCheckoutPlanError } from "@/lib/billing/errors";
 import {
+  assertSmsPurchaseTaxCheckoutReady,
   interpretSmsPurchaseTaxCalculation,
   readSmsBillingAddress,
+  SMS_PURCHASE_TAX_ADDRESS_REQUIRED,
   smsCheckoutAutomaticTaxFields,
   smsPackagePriceAuthorizationHolds,
   smsPurchaseTaxCalculationParams,
@@ -102,8 +105,17 @@ assert(params.customer_details.address_source === "billing", "billing address");
 assert(smsCheckoutAutomaticTaxFields(false) === null, "checkout tax stays off");
 const checkout = smsCheckoutAutomaticTaxFields(true);
 assert(checkout?.automatic_tax.enabled === true, "checkout automatic tax");
-assert(checkout?.billing_address_collection === "required", "checkout address");
-assert(checkout?.customer_update.address === "auto", "customer address update");
+assert(checkout != null && !("billing_address_collection" in checkout), "checkout does not collect an address");
+assert(checkout != null && !("customer_update" in checkout), "checkout does not replace the customer address");
+assertSmsPurchaseTaxCheckoutReady({ authorized: false, billingAddressComplete: false });
+assertSmsPurchaseTaxCheckoutReady({ authorized: true, billingAddressComplete: true });
+let addressRejected = false;
+try {
+  assertSmsPurchaseTaxCheckoutReady({ authorized: true, billingAddressComplete: false });
+} catch (error) {
+  addressRejected = error instanceof BillingCheckoutPlanError && error.message === SMS_PURCHASE_TAX_ADDRESS_REQUIRED;
+}
+assert(addressRejected, "authorized checkout requires the canonical address");
 assert(smsReplenishmentChargeFitsCap({ spentCents: 0, subtotalCents: 500, taxCents: 0, capCents: 500 }), "cap allows exact subtotal");
 assert(!smsReplenishmentChargeFitsCap({ spentCents: 0, subtotalCents: 500, taxCents: 1, capCents: 500 }), "tax can exceed cap");
 assert(smsPackagePriceAuthorizationHolds(500, 500), "same package price");

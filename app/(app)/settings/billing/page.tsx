@@ -590,7 +590,7 @@ async function BillingContent({
                     </p>
                   </div>
                   {item.detail ? (
-                    <p className="mt-1 text-xs text-muted-foreground">
+                    <p className="mt-1 whitespace-pre-line text-xs text-muted-foreground">
                       {item.detail}
                     </p>
                   ) : null}

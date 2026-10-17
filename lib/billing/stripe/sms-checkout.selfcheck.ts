@@ -8,6 +8,8 @@ import { join } from "node:path";
 import { canManageOrganizationBilling } from "@/lib/billing/access";
 import { commercialExpectationByLookupKey } from "@/lib/billing/commercial-catalog";
 import { BillingCheckoutPlanError } from "@/lib/billing/errors";
+import { readOrganizationBillingAddress } from "@/lib/billing/organization-billing-address";
+import { SMS_PURCHASE_TAX_ADDRESS_REQUIRED } from "@/lib/billing/stripe/sms-purchase-tax";
 import { summarizeApplicationSmsCapacity } from "@/lib/billing/sms-capacity-summary";
 import {
   assertSubscriptionCheckoutPlanKey,
@@ -114,6 +116,7 @@ async function expectPackage(
             "card only",
           );
           assert(input.priceId === "price_sms_mock", "server price id");
+          assert(input.automaticTax === false, "tax stays off unless authorized");
           assert(input.metadata.sanctuary_checkout === "sms_package", "metadata kind");
           assert(input.metadata.organization_id === ORG, "metadata org");
           assert(input.metadata.plan_key === planKey, "metadata plan");
@@ -272,6 +275,11 @@ async function main() {
   assert(!live.includes("automatic_tax"), "checkout tax is gated outside live session text");
   assert(live.includes("smsCheckoutAutomaticTaxFields"), "checkout tax fields are shared");
   assert(live.includes("smsPurchaseTaxCollectionAuthorized"), "checkout tax requires authorization");
+  assert(live.includes("readOrganizationBillingAddress"), "canonical address is loaded");
+  assert(live.includes("stripeCustomerAddressUpdate"), "canonical address is synchronized");
+  assert(!live.includes("billing_address_collection"), "checkout does not collect an address");
+  assert(!live.includes("customer_update"), "checkout does not replace the customer address");
+  assert(!live.includes("STRIPE_SUBSCRIPTION_TAX_COLLECTION"), "sms tax does not use the subscription gate");
   assert(!live.includes("invoice_creation"), "no invoice creation");
   assert(!live.includes("us_bank_account"), "no bank debit");
   assert(!live.includes("customer_balance"), "no pay by bank balance");
@@ -316,6 +324,153 @@ async function main() {
   const panel = readRepo("components/billing/sms-package-panel.tsx");
   assert(panel.includes("purchase_current_sms_package"), "intent only");
   assert(!panel.includes("price_id"), "button does not send a price id");
+
+  const incompleteAddress = {
+    country: "US",
+    line1: "1 Main St",
+  };
+  const nonUsAddress = {
+    business_name: "Sanctuary",
+    line1: "1 Main St",
+    city: "Toronto",
+    state: "ON",
+    postal_code: "M5V 2T6",
+    country: "CA",
+  };
+  assert(readOrganizationBillingAddress(null) === null, "missing address");
+  assert(readOrganizationBillingAddress(incompleteAddress) === null, "incomplete address");
+  assert(readOrganizationBillingAddress({ country: "US", line1: "bad" }) === null, "invalid address");
+  assert(readOrganizationBillingAddress(nonUsAddress) === null, "non-US address");
+
+  async function expectAddressRefusal(label: string) {
+    let created = false;
+    try {
+      await createSmsPackageCheckoutSession(
+        {
+          organizationId: ORG,
+          subscriptionStatus: "active",
+          planKey: PLAN_KEYS.SERVANT_STANDARD,
+          origin: "https://app.example.test",
+          successUrl: "https://app.example.test/settings/billing?sms_purchase=success",
+          cancelUrl: "https://app.example.test/settings/billing?sms_purchase=cancelled",
+          attemptToken: `address-${label}`,
+          stripeSecretKey: SECRET,
+          smsTaxAuthorized: true,
+          billingAddressComplete: false,
+        },
+        {
+          listPrices: async () => {
+            created = true;
+            return [];
+          },
+          store: memoryStore("cus_existing"),
+          stripeCustomers: {
+            async createCustomer() {
+              created = true;
+              return { id: "cus_new" };
+            },
+          },
+          stripeCheckout: {
+            async createSmsPackageCheckoutSession() {
+              created = true;
+              return { id: "cs_should_not", url: "https://app.example.test/pay" };
+            },
+          },
+        },
+      );
+      assert(false, `${label} must not create checkout`);
+    } catch (error) {
+      if (!(error instanceof BillingCheckoutPlanError)) throw error;
+      assert(error.message === SMS_PURCHASE_TAX_ADDRESS_REQUIRED, `${label} address message`);
+      assert(!created, `${label} does not create a session`);
+    }
+  }
+  await expectAddressRefusal("missing");
+  await expectAddressRefusal("incomplete");
+  await expectAddressRefusal("invalid");
+  await expectAddressRefusal("non-us");
+
+  let syncedCustomer = "";
+  let sessionStarted = false;
+  const taxed = await createSmsPackageCheckoutSession(
+    {
+      organizationId: ORG,
+      subscriptionStatus: "active",
+      planKey: PLAN_KEYS.SERVANT_STANDARD,
+      origin: "https://app.example.test",
+      successUrl: "https://app.example.test/settings/billing?sms_purchase=success",
+      cancelUrl: "https://app.example.test/settings/billing?sms_purchase=cancelled",
+      attemptToken: "tax-authorized",
+      stripeSecretKey: SECRET,
+      smsTaxAuthorized: true,
+      billingAddressComplete: true,
+    },
+    {
+      listPrices: async (key) => [priceFor(key)],
+      store: memoryStore("cus_existing"),
+      stripeCustomers: {
+        async createCustomer() {
+          throw new Error("existing customer must be reused");
+        },
+      },
+      syncCustomerAddress: async (customerId) => {
+        assert(!sessionStarted, "address sync happens before checkout");
+        syncedCustomer = customerId;
+      },
+      stripeCheckout: {
+        async createSmsPackageCheckoutSession(input) {
+          sessionStarted = true;
+          assert(input.customerId === "cus_existing", "authorized checkout uses the canonical customer");
+          assert(input.automaticTax === true, "authorized checkout enables automatic tax");
+          assert(input.quantity === 1, "authorized quantity stays 1");
+          return { id: "cs_tax", url: "https://checkout.stripe.test/sms" };
+        },
+      },
+    },
+  );
+  assert(syncedCustomer === "cus_existing", "canonical customer synchronized");
+  assert(taxed.providerCustomerId === "cus_existing", "returned customer is canonical");
+
+  let syncFailedCreated = false;
+  try {
+    await createSmsPackageCheckoutSession(
+      {
+        organizationId: ORG,
+        subscriptionStatus: "active",
+        planKey: PLAN_KEYS.SERVANT_STANDARD,
+        origin: "https://app.example.test",
+        successUrl: "https://app.example.test/settings/billing?sms_purchase=success",
+        cancelUrl: "https://app.example.test/settings/billing?sms_purchase=cancelled",
+        attemptToken: "tax-sync-failed",
+        stripeSecretKey: SECRET,
+        smsTaxAuthorized: true,
+        billingAddressComplete: true,
+      },
+      {
+        listPrices: async (key) => [priceFor(key)],
+        store: memoryStore("cus_existing"),
+        stripeCustomers: {
+          async createCustomer() {
+            throw new Error("existing customer must be reused");
+          },
+        },
+        syncCustomerAddress: async () => {
+          throw new Error("stripe customer update failed");
+        },
+        stripeCheckout: {
+          async createSmsPackageCheckoutSession() {
+            syncFailedCreated = true;
+            return { id: "cs_no", url: "https://checkout.stripe.test/sms" };
+          },
+        },
+      },
+    );
+    assert(false, "sync failure must not create checkout");
+  } catch (error) {
+    if (!(error instanceof BillingCheckoutPlanError)) throw error;
+    assert(!error.message.includes("stripe customer update failed"), "stripe error is not exposed");
+    assert(!syncFailedCreated, "sync failure does not create a session");
+  }
 
   console.log("sms package checkout self-check passed");
 }

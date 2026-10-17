@@ -83,6 +83,11 @@ export type StripeWebhookObjectSummary = {
   /** Invoice billing_reason. Used to recognize subscription invoices. */
   billingReason?: string | null;
   /**
+   * Checkout Session automatic tax status.
+   * Absent means this object did not report Stripe automatic tax.
+   */
+  checkoutAutomaticTax?: { enabled: boolean; status: string | null } | null;
+  /**
    * Attached schedule on a subscription object.
    * Not present for schedule events; those use id.
    */
@@ -254,6 +259,18 @@ export function extractWebhookPriceItems(
   return items;
 }
 
+function readCheckoutAutomaticTax(obj: Record<string, unknown>): {
+  enabled: boolean;
+  status: string | null;
+} | null {
+  const automaticTax = asRecord(obj.automatic_tax);
+  if (!automaticTax) return null;
+  return {
+    enabled: automaticTax.enabled === true,
+    status: str(automaticTax.status),
+  };
+}
+
 function extractSchedulePhases(obj: Record<string, unknown>): {
   startDate: number | null;
   endDate: number | null;
@@ -374,6 +391,8 @@ export function summarizeStripeEventObject(
     nextPaymentAttempt: objectType === "invoice" ? num(obj.next_payment_attempt) : null,
     attemptCount: objectType === "invoice" ? num(obj.attempt_count) : null,
     billingReason: objectType === "invoice" ? str(obj.billing_reason) : null,
+    checkoutAutomaticTax:
+      objectType === "checkout.session" ? readCheckoutAutomaticTax(obj) : null,
     scheduleId: objectType === "subscription" ? str(obj.schedule) : null,
     ...(schedulePhases ? { schedulePhases } : {}),
   };

@@ -5,9 +5,14 @@
 
 export const SMS_PURCHASE_TAX_CODE_CANDIDATE = "txcd_10103001";
 export const SMS_PURCHASE_TAX_COLLECTION_ENV = "STRIPE_SMS_TAX_COLLECTION";
+export const SMS_PURCHASE_TAX_ADDRESS_REQUIRED =
+  "Add a complete billing address in Settings → Billing → Billing address before purchasing SMS credits.";
+export const SMS_PURCHASE_TAX_SYNC_FAILED =
+  "The billing address could not be synchronized. The SMS purchase was not started.";
 
 const CALCULATION_ID = /^taxcalc_[A-Za-z0-9_]{1,248}$/;
 
+import { BillingCheckoutPlanError } from "@/lib/billing/errors";
 import { readOrganizationBillingAddress } from "@/lib/billing/organization-billing-address";
 
 export type SmsBillingAddress = {
@@ -129,13 +134,21 @@ export function interpretSmsPurchaseTaxCalculation(input: {
   };
 }
 
-export function smsCheckoutAutomaticTaxFields(authorized: boolean) {
+/** Checkout fields when SMS tax is deliberately authorized. No address collection. */
+export function smsCheckoutAutomaticTaxFields(authorized: boolean): {
+  automatic_tax: { enabled: true };
+} | null {
   if (!authorized) return null;
-  return {
-    automatic_tax: { enabled: true as const },
-    billing_address_collection: "required" as const,
-    customer_update: { address: "auto" as const },
-  };
+  return { automatic_tax: { enabled: true } };
+}
+
+export function assertSmsPurchaseTaxCheckoutReady(input: {
+  authorized: boolean;
+  billingAddressComplete: boolean;
+}): void {
+  if (input.authorized && !input.billingAddressComplete) {
+    throw new BillingCheckoutPlanError(SMS_PURCHASE_TAX_ADDRESS_REQUIRED);
+  }
 }
 
 export function smsReplenishmentChargeFitsCap(input: {

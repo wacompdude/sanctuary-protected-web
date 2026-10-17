@@ -413,11 +413,23 @@ async function recordPaidSmsPackageCheckout(
   }
 
   const idempotencyKey = smsPurchaseIdempotencyKey(sessionId);
+  const taxDetermined =
+    object.checkoutAutomaticTax?.enabled === true &&
+    object.checkoutAutomaticTax.status === "complete";
+  if (object.checkoutAutomaticTax?.enabled === true && !taxDetermined) {
+    reject(
+      "SMS Checkout tax could not be determined.",
+      "sms_tax_undetermined",
+      true,
+      knownOrganizationId,
+    );
+  }
   const metadata = {
     stripe_checkout_session_id: sessionId,
     package_key: entry.smsExtraItemKey,
     lookup_key: entry.smsPackageLookupKey,
     plan_key_at_checkout: entry.planKey,
+    ...(taxDetermined ? { tax_determined: true } : {}),
   };
   const result = await deps.recordPaidSmsPackage({
     organizationId,

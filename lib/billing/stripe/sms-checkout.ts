@@ -26,6 +26,10 @@ import {
   type StripeCustomerCreateApi,
 } from "@/lib/billing/stripe/customers";
 import { withStripeBillingErrorLog } from "@/lib/billing/stripe/safe-error-log";
+import {
+  assertSmsPurchaseTaxCheckoutReady,
+  SMS_PURCHASE_TAX_SYNC_FAILED,
+} from "@/lib/billing/stripe/sms-purchase-tax";
 import { subscriptionGrantsAccess } from "@/lib/subscriptions/status";
 import type { PlanKey } from "@/lib/subscriptions/plan-keys";
 
@@ -56,6 +60,10 @@ export type CreateSmsPackageCheckoutInput = {
   /** Server-generated attempt token. Never accept one from the browser. */
   attemptToken: string;
   stripeSecretKey: string;
+  /** Exact SMS tax authorization. Never inferred from the subscription tax gate. */
+  smsTaxAuthorized?: boolean;
+  /** True only when the canonical organization billing address is complete. */
+  billingAddressComplete?: boolean;
 };
 
 export type StripeSmsCheckoutSessionCreateApi = {
@@ -69,6 +77,7 @@ export type StripeSmsCheckoutSessionCreateApi = {
     allowedPaymentMethodTypes: readonly ["card"];
     metadata: SmsPackageCheckoutMetadata;
     idempotencyKey: string;
+    automaticTax: boolean;
   }): Promise<{ id: string; url: string | null }>;
 };
 
@@ -77,6 +86,8 @@ export type CreateSmsPackageCheckoutDeps = {
   store: BillingCustomerMappingStore;
   stripeCustomers: StripeCustomerCreateApi;
   stripeCheckout: StripeSmsCheckoutSessionCreateApi;
+  /** Sync the canonical address onto the existing Customer. Required when SMS tax is authorized. */
+  syncCustomerAddress?: (customerId: string) => Promise<void>;
 };
 
 export function assertNoSmsCheckoutClientOverrides(input: {
@@ -194,6 +205,10 @@ export async function createSmsPackageCheckoutSession(
   metadata: SmsPackageCheckoutMetadata;
 }> {
   assertSandboxCatalogValidationMode(input.stripeSecretKey, "SMS package Checkout");
+  assertSmsPurchaseTaxCheckoutReady({
+    authorized: input.smsTaxAuthorized === true,
+    billingAddressComplete: input.billingAddressComplete === true,
+  });
   const entry = resolveTrustedSmsPackage({
     subscriptionStatus: input.subscriptionStatus,
     planKey: input.planKey,
@@ -222,6 +237,18 @@ export async function createSmsPackageCheckoutSession(
     }),
   );
 
+  if (input.smsTaxAuthorized === true) {
+    if (!deps.syncCustomerAddress) {
+      throw new BillingCheckoutPlanError(SMS_PURCHASE_TAX_SYNC_FAILED);
+    }
+    try {
+      await deps.syncCustomerAddress(customer.providerCustomerId);
+    } catch (error) {
+      if (error instanceof BillingCheckoutPlanError) throw error;
+      throw new BillingCheckoutPlanError(SMS_PURCHASE_TAX_SYNC_FAILED);
+    }
+  }
+
   const metadata = smsPackageCheckoutMetadata(input.organizationId, entry);
   const session = await withStripeBillingErrorLog(
     "checkout_session_create",
@@ -235,6 +262,7 @@ export async function createSmsPackageCheckoutSession(
         quantity: 1,
         allowedPaymentMethodTypes: SMS_PACKAGE_ALLOWED_PAYMENT_METHOD_TYPES,
         metadata,
+        automaticTax: input.smsTaxAuthorized === true,
         idempotencyKey: stripeSmsCheckoutIdempotencyKey({
           organizationId: input.organizationId,
           packageKey: entry.smsExtraItemKey,

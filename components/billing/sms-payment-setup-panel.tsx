@@ -9,7 +9,10 @@ import {
   startSmsPaymentSetupAction,
 } from "@/app/(app)/settings/billing/sms-payment-setup-actions";
 import { Button } from "@/components/ui/button";
-import type { SafeCardDisplay } from "@/lib/billing/stripe/sms-payment-setup";
+import {
+  SMS_PAYMENT_METHOD_SAVED_NOTICE,
+  type SafeCardDisplay,
+} from "@/lib/billing/stripe/sms-payment-setup";
 
 function brandLabel(brand: string): string {
   return brand.charAt(0).toUpperCase() + brand.slice(1);
@@ -31,7 +34,7 @@ function SetupForm({
   onSaved,
 }: {
   returnUrl: string;
-  onSaved: (message: string) => void;
+  onSaved: () => void;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -61,7 +64,7 @@ function SetupForm({
         setError(saved.error);
         return;
       }
-      onSaved("Payment method saved. Automatic replenishment is not enabled.");
+      onSaved();
     });
   }
 
@@ -131,6 +134,12 @@ export function SmsPaymentSetupPanel({
     });
   }
 
+  function notePaymentMethodSaved() {
+    setClientSecret(null);
+    setReturnUrl(null);
+    setNotice(SMS_PAYMENT_METHOD_SAVED_NOTICE);
+  }
+
   function finishReturnedSetup() {
     if (!returnedSetupIntentId) return;
     setError(null);
@@ -140,7 +149,7 @@ export function SmsPaymentSetupPanel({
         setError(saved.error);
         return;
       }
-      setNotice("Payment method saved. Automatic replenishment is not enabled.");
+      notePaymentMethodSaved();
     });
   }
 
@@ -191,7 +200,7 @@ export function SmsPaymentSetupPanel({
       )}
       {clientSecret && stripePromise && returnUrl ? (
         <Elements stripe={stripePromise} options={{ clientSecret }}>
-          <SetupForm returnUrl={returnUrl} onSaved={setNotice} />
+          <SetupForm returnUrl={returnUrl} onSaved={notePaymentMethodSaved} />
         </Elements>
       ) : null}
       {notice ? <p className="text-sm">{notice}</p> : null}

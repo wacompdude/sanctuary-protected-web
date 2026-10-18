@@ -6,6 +6,10 @@
 export const SMS_PAYMENT_SETUP_PURPOSE = "sms_auto_replenishment_payment_setup";
 export const SMS_PAYMENT_SETUP_METHOD_TYPE = "card";
 
+/** Neutral save feedback. It does not describe the replenishment status. */
+export const SMS_PAYMENT_METHOD_SAVED_NOTICE =
+  "Payment method saved. Saving or changing this card does not change your automatic replenishment setting or charge the card.";
+
 const PAYMENT_METHOD_ID = /^pm_[A-Za-z0-9_]{1,252}$/;
 const SETUP_INTENT_ID = /^seti_[A-Za-z0-9_]+$/;
 const LAST4 = /^\d{4}$/;

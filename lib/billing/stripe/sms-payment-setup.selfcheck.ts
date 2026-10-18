@@ -12,6 +12,7 @@ import {
   safeCardDisplay,
   smsPaymentSetupCreateParams,
   smsPaymentSetupIdempotencyKey,
+  SMS_PAYMENT_METHOD_SAVED_NOTICE,
   SMS_PAYMENT_SETUP_PURPOSE,
   verifySmsPaymentSetup,
   type PaymentMethodVerificationSnapshot,
@@ -72,7 +73,34 @@ assert(!migration.includes("organization_sms_replenishment_attempts"), "no reple
 assert(migration.includes("payment_attention_required"), "enabled removal is non-chargeable");
 assert(!migration.includes("api.stripe.com"), "migration does not call Stripe");
 assert(panel.includes("does not enable Auto-Replenishment"), "setup copy");
-assert(panel.includes("Automatic replenishment is not enabled."), "disabled message");
+assert(panel.includes("Automatic replenishment is not enabled."), "disabled status remains separate");
+assert(panel.includes("SMS_PAYMENT_METHOD_SAVED_NOTICE"), "A saved notice is shared");
+assert(panel.includes("notePaymentMethodSaved"), "save uses the neutral notice");
+assert(
+  SMS_PAYMENT_METHOD_SAVED_NOTICE ===
+    "Payment method saved. Saving or changing this card does not change your automatic replenishment setting or charge the card.",
+  "A exact success message",
+);
+assert(
+  !SMS_PAYMENT_METHOD_SAVED_NOTICE.includes("Automatic replenishment is not enabled"),
+  "B success message does not claim replenishment is off",
+);
+assert(!panel.includes("Payment method saved. Automatic replenishment is not enabled."), "B old success text is gone");
+assert(panel.includes("setClientSecret(null)"), "C successful save clears the setup form");
+assert(panel.includes("function CardSummary"), "D saved-card summary remains");
+assert(panel.includes("Replace payment method"), "E replace reopens setup");
+assert(panel.includes("startSmsPaymentSetupAction"), "E replace uses the existing setup action");
+assert(panel.includes("Remove auto-replenishment payment method"), "F remove control remains");
+assert(panel.includes("removeSmsPaymentSetupAction"), "F remove action remains");
+assert(panel.includes("Automatic SMS payment method removed. No card was charged."), "F remove notice remains");
+assert(migration.includes("WHEN v_found THEN v_cfg.status"), "G J replacement keeps status");
+assert(
+  migration.includes("v_payment IS NULL AND v_cfg.status = 'enabled'"),
+  "J only removing an enabled card requires payment attention",
+);
+assert(!panel.includes("sms-replenishment-orchestrator"), "H panel does not call replenishment execution");
+assert(!actions.includes("sms-replenishment-orchestrator"), "H actions do not call replenishment execution");
+assert(!actions.includes("paymentIntents.create"), "I actions do not charge");
 assert(!panel.includes("Enable Auto-Replenishment"), "no enable control");
 
 assert(canManageSmsAutoReplenishment("owner"), "owner allowed");

@@ -10,6 +10,14 @@ import { commercialPlanByKey } from "@/lib/billing/commercial-catalog";
 
 export const SMS_AUTO_REPLENISHMENT_TEXT_VERSION = "sms_auto_replenishment_v1";
 
+export const SMS_AUTO_REPLENISHMENT_AUTHORIZATION_TEXT =
+  "I authorize Sanctuary Protected LLC to charge the saved automatic SMS payment method when the application text credits available to this organization reach the selected threshold. Each charge buys this plan's SMS credit package at its current package price. Sales tax is added. Automatic charges in a subscription billing period stop when they reach the spending limit I selected. I can turn automatic replenishment off. These purchases are for Application SMS only. MFA and security verification texts are not included.";
+
+/** Selectable automatic spending limits. $5 is intentionally absent. */
+export const SMS_AUTO_REPLENISHMENT_SPEND_CHOICES_CENTS = [
+  1_000, 2_500, 5_000, 10_000, 25_000, 50_000,
+] as const;
+
 /** $500 per subscription period. */
 export const SMS_AUTO_REPLENISHMENT_MAX_SPEND_CENTS = 50_000;
 
@@ -17,6 +25,55 @@ const MANAGE_ROLES = new Set(["owner", "co_owner"]);
 
 export function canManageSmsAutoReplenishment(role: string): boolean {
   return MANAGE_ROLES.has(role);
+}
+
+export function customerSmsAutoReplenishmentStatus(
+  status: string | null | undefined,
+): string {
+  switch (status) {
+    case "enabled":
+      return "Automatic replenishment is on";
+    case "payment_attention_required":
+      return "Automatic replenishment is paused until the payment method is updated";
+    case "authorization_review_required":
+      return "Review and reauthorize automatic replenishment";
+    case "tax_attention_required":
+      return "Billing address or tax information needs attention";
+    default:
+      return "Automatic replenishment is off";
+  }
+}
+
+export type SmsAutoReplenishmentDecision =
+  | { ok: true }
+  | { ok: false; reason: string };
+
+/** Customer-controlled enablement checks. Package price and size come from the server. */
+export function evaluateSmsAutoReplenishmentEnable(input: {
+  role: string;
+  authorizationAccepted: boolean;
+  threshold: number;
+  capCents: number;
+  packageSegments: number;
+  packagePriceCents: number;
+  hasPaymentMethod: boolean;
+}): SmsAutoReplenishmentDecision {
+  if (!canManageSmsAutoReplenishment(input.role)) {
+    return { ok: false, reason: "forbidden" };
+  }
+  if (input.authorizationAccepted !== true) {
+    return { ok: false, reason: "authorization_required" };
+  }
+  if (!input.hasPaymentMethod) {
+    return { ok: false, reason: "payment_method_missing" };
+  }
+  if (!thresholdIsValid(input.packageSegments, input.threshold)) {
+    return { ok: false, reason: "threshold_invalid" };
+  }
+  if (!spendChoiceIsOffered(input.capCents) || !spendCapIsValid(input.packagePriceCents, input.capCents)) {
+    return { ok: false, reason: "spending_cap_invalid" };
+  }
+  return { ok: true };
 }
 
 export function defaultSmsAutoReplenishmentThreshold(
@@ -35,6 +92,12 @@ export function thresholdIsValid(
     Number.isInteger(threshold) &&
     threshold >= 1 &&
     threshold < packageSegments
+  );
+}
+
+export function spendChoiceIsOffered(capCents: number): boolean {
+  return (SMS_AUTO_REPLENISHMENT_SPEND_CHOICES_CENTS as readonly number[]).includes(
+    capCents,
   );
 }
 

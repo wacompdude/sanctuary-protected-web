@@ -271,6 +271,7 @@ function sourceDoesNotCallOrchestrator() {
     join(root, "lib/billing/stripe/sms-replenishment-orchestrator.ts"),
     join(root, "lib/billing/stripe/sms-replenishment-orchestrator-live.ts"),
     join(root, "lib/billing/stripe/sms-replenishment-orchestrator.selfcheck.ts"),
+    join(root, "lib/billing/stripe/sms-replenishment-controls.selfcheck.ts"),
   ]);
   const hits: string[] = [];
   function walk(dir: string) {

@@ -139,7 +139,8 @@ export function SubscriptionPaymentMethodPanel({
       <div>
         <h2 className="text-sm font-medium">Subscription payment method</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          This card is used for the organization subscription invoice.
+          This card pays the subscription invoice. It is not used for
+          automatic SMS credits.
         </p>
       </div>
       {view.state === "no_subscription" ? (

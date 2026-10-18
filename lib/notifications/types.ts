@@ -116,7 +116,12 @@ export type NotificationType =
   | "schedule.open_shift_available"
   | "schedule.unfilled_shift_warning"
   | "schedule.conflict_override"
-  | "schedule.custom_message";
+  | "schedule.custom_message"
+  | "billing.sms_auto_replenishment_succeeded"
+  | "billing.sms_auto_replenishment_payment_attention"
+  | "billing.sms_auto_replenishment_authorization_review"
+  | "billing.sms_auto_replenishment_tax_attention"
+  | "billing.sms_auto_replenishment_spending_cap";
 
 export type ChurchNotificationSettings = {
   id: string;

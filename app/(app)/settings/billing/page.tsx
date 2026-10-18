@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { BillingPlanPanel } from "@/components/billing/billing-plan-panel";
 import { SmsPackagePurchaseButton } from "@/components/billing/sms-package-panel";
 import { BillingAddressForm } from "@/components/billing/billing-address-form";
+import { SmsAutoReplenishmentPanel } from "@/components/billing/sms-auto-replenishment-panel";
 import { SmsPaymentSetupPanel } from "@/components/billing/sms-payment-setup-panel";
 import { SubscriptionPaymentMethodPanel } from "@/components/billing/subscription-payment-method-panel";
 import { readOrganizationBillingAddress } from "@/lib/billing/organization-billing-address";
@@ -212,7 +213,7 @@ async function BillingContent({
   const billingAddress = readOrganizationBillingAddress(billingProfile?.billing_address);
   const { data: replenishment } = await supabase
     .from("organization_sms_auto_replenishment")
-    .select("status, payment_method_id")
+    .select("status, payment_method_id, low_balance_threshold_segments, max_auto_spend_cents")
     .eq("organization_id", church.id)
     .maybeSingle();
   const replenishmentPaymentMethodId =
@@ -380,7 +381,7 @@ async function BillingContent({
         </CardContent>
       </Card>
 
-      <Card>
+      <Card id="billing-address">
         <CardHeader>
           <CardTitle>Billing &amp; Tax Address</CardTitle>
           <CardDescription>
@@ -472,6 +473,25 @@ async function BillingContent({
               active subscription.
             </p>
           ) : null}
+          <SmsAutoReplenishmentPanel
+            canManage={canManageBilling}
+            status={
+              typeof replenishment?.status === "string" ? replenishment.status : null
+            }
+            threshold={
+              typeof replenishment?.low_balance_threshold_segments === "number"
+                ? replenishment.low_balance_threshold_segments
+                : null
+            }
+            capCents={
+              typeof replenishment?.max_auto_spend_cents === "number"
+                ? replenishment.max_auto_spend_cents
+                : null
+            }
+            packageCredits={smsPackage?.smsPackageCredits ?? null}
+            packagePriceCents={smsPackage?.smsPackagePriceCents ?? null}
+            suggestedThreshold={smsPackage?.suggestedLowBalanceThreshold ?? null}
+          />
           <SmsPaymentSetupPanel
             canManage={canManageBilling}
             status={

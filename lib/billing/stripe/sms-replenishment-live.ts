@@ -23,6 +23,7 @@ import {
   isStripeSdkError,
   logStripeBillingError,
 } from "@/lib/billing/stripe/safe-error-log";
+import { notifySmsReplenishmentPaymentAttentionForAttempt } from "@/lib/billing/stripe/sms-replenishment-notices-live";
 
 export type SmsReplenishmentExecutionResult = {
   outcome: string;
@@ -90,6 +91,16 @@ async function failAttempt(attemptId: string, safeFailureCode: string): Promise<
   })) as RpcRow;
   if (row.ok !== true && row.outcome !== "duplicate" && row.outcome !== "already_settled") {
     throw new Error("SMS replenishment failure could not be recorded.");
+  }
+  if (row.outcome !== "already_settled") {
+    try {
+      await notifySmsReplenishmentPaymentAttentionForAttempt(attemptId);
+    } catch (error) {
+      console.error(
+        "sms replenishment notice was not created",
+        error instanceof Error ? error.name : "Error",
+      );
+    }
   }
 }
 

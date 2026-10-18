@@ -4,6 +4,7 @@
  */
 
 import { SMS_REPLENISHMENT_PURPOSE } from "@/lib/billing/stripe/sms-replenishment-payment";
+import { smsReplenishmentPurchaseIdempotencyKey } from "@/lib/billing/stripe/sms-replenishment-notices";
 import type { StripeWebhookObjectSummary } from "@/lib/billing/stripe/webhook-verify";
 import type { WebhookHandlerResult } from "@/lib/billing/stripe/webhook-sync";
 
@@ -31,6 +32,8 @@ export type SmsReplenishmentSettlementStore = {
     attemptId: string;
     safeFailureCode: string;
   }): Promise<{ ok: boolean; outcome: string }>;
+  notifySuccess?(attempt: SmsReplenishmentAttemptRecord): Promise<void>;
+  notifyPaymentAttention?(attempt: SmsReplenishmentAttemptRecord): Promise<void>;
 };
 
 function ignored(detail: string): WebhookHandlerResult {
@@ -50,12 +53,18 @@ function processed(
   detail: string,
   organizationId: string,
   outcome: string,
+  attemptId: string,
 ): WebhookHandlerResult {
   return {
     outcome: "processed",
     detail,
     organizationId,
-    metadata: { sms_auto_replenishment: true, settlement: outcome },
+    metadata: {
+      sms_auto_replenishment: true,
+      settlement: outcome,
+      replenishment_attempt_id: attemptId,
+      purchase_idempotency_key: smsReplenishmentPurchaseIdempotencyKey(attemptId),
+    },
   };
 }
 
@@ -118,7 +127,13 @@ export async function settleSmsReplenishmentPaymentEvent(input: {
     if (failed.outcome === "already_settled") {
       return rejected("Automatic SMS replenishment was already settled.", organizationId);
     }
-    return processed("Automatic SMS replenishment payment failed.", organizationId, failed.outcome);
+    await input.store.notifyPaymentAttention?.(attempt);
+    return processed(
+      "Automatic SMS replenishment payment failed.",
+      organizationId,
+      failed.outcome,
+      attemptId,
+    );
   }
 
   const granted = await input.store.grant({
@@ -133,5 +148,11 @@ export async function settleSmsReplenishmentPaymentEvent(input: {
     }
     throw new Error("Automatic SMS replenishment grant was not recorded.");
   }
-  return processed("Automatic SMS replenishment payment settled.", organizationId, granted.outcome);
+  await input.store.notifySuccess?.(attempt);
+  return processed(
+    "Automatic SMS replenishment payment settled.",
+    organizationId,
+    granted.outcome,
+    attemptId,
+  );
 }

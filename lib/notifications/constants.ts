@@ -151,6 +151,15 @@ export function labelForNotificationType(type: string): string {
     "schedule.conflict_override": "Schedule conflict override",
     "schedule.custom_message": "Custom schedule message",
     "schedule.shift_cancelled": "Shift cancelled",
+    "billing.sms_auto_replenishment_succeeded": "Automatic SMS credits purchased",
+    "billing.sms_auto_replenishment_payment_attention":
+      "Automatic SMS replenishment paused",
+    "billing.sms_auto_replenishment_authorization_review":
+      "Review automatic SMS replenishment",
+    "billing.sms_auto_replenishment_tax_attention":
+      "Automatic SMS replenishment needs a billing address",
+    "billing.sms_auto_replenishment_spending_cap":
+      "Automatic SMS spending limit reached",
   };
   return labels[type] ?? type;
 }

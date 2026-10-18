@@ -151,9 +151,9 @@ export function SmsPaymentSetupPanel({
       <div>
         <h2 className="text-sm font-medium">Payment method for automatic SMS credits</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Add a payment method that can be used for automatic SMS credit purchases
-          if you choose to enable Auto-Replenishment later. Adding a payment method
-          does not enable Auto-Replenishment and does not charge your card.
+          This card is used only for automatic Application SMS purchases.
+          Changing it does not change the subscription card. Adding a payment
+          method does not enable Auto-Replenishment and does not charge your card.
         </p>
       </div>
       {replenishmentOff ? (

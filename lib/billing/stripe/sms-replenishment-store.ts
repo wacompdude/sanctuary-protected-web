@@ -72,5 +72,26 @@ export function createSmsReplenishmentSettlementStore(): SmsReplenishmentSettlem
       });
       return { ok: row.ok === true, outcome: String(row.outcome ?? "unknown") };
     },
+    async notifySuccess(attempt) {
+      const { notifySmsReplenishmentSuccess } = await import(
+        "@/lib/billing/stripe/sms-replenishment-notices-live"
+      );
+      await notifySmsReplenishmentSuccess({
+        organizationId: attempt.organizationId,
+        attemptId: attempt.id,
+        credits: attempt.packageSegments,
+        subtotalCents: attempt.expectedAmountCents,
+        taxCents: attempt.taxCents,
+      });
+    },
+    async notifyPaymentAttention(attempt) {
+      const { notifySmsReplenishmentPaymentAttention } = await import(
+        "@/lib/billing/stripe/sms-replenishment-notices-live"
+      );
+      await notifySmsReplenishmentPaymentAttention({
+        organizationId: attempt.organizationId,
+        attemptId: attempt.id,
+      });
+    },
   };
 }

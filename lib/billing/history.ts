@@ -77,7 +77,12 @@ export async function listBillingHistory(
 
   const smsPurchaseByKey = new Map<
     string,
-    { amountCents: number; taxCents: number; taxDetermined: boolean }
+    {
+      amountCents: number;
+      taxCents: number;
+      taxDetermined: boolean;
+      autoReplenishment: boolean;
+    }
   >();
   for (const row of smsPurchases.data ?? []) {
     const key = typeof row.idempotency_key === "string" ? row.idempotency_key : "";
@@ -87,6 +92,7 @@ export async function listBillingHistory(
       amountCents: Number(row.amount_cents),
       taxCents: Number(row.tax_cents),
       taxDetermined: metadata.tax_determined === true,
+      autoReplenishment: metadata.sms_auto_replenishment === true,
     });
   }
 
@@ -132,15 +138,31 @@ export async function listBillingHistory(
 
 function smsPurchaseDetail(
   metadata: unknown,
-  purchases: Map<string, { amountCents: number; taxCents: number; taxDetermined: boolean }>,
+  purchases: Map<
+    string,
+    {
+      amountCents: number;
+      taxCents: number;
+      taxDetermined: boolean;
+      autoReplenishment: boolean;
+    }
+  >,
 ): string | null {
   const handler = asRecord(asRecord(metadata).handler);
-  if (handler.sms_package_purchase !== true) return null;
   const key =
     typeof handler.purchase_idempotency_key === "string"
       ? handler.purchase_idempotency_key
       : "";
   const purchase = key ? purchases.get(key) : undefined;
   if (!purchase) return null;
+  if (handler.sms_auto_replenishment === true) {
+    if (!purchase.autoReplenishment && !purchase.taxDetermined) return null;
+    return smsCreditPurchaseHistoryDetail({
+      amountCents: purchase.amountCents,
+      taxCents: purchase.taxCents,
+      taxDetermined: true,
+    });
+  }
+  if (handler.sms_package_purchase !== true) return null;
   return smsCreditPurchaseHistoryDetail(purchase);
 }

@@ -27,6 +27,7 @@ import {
   smsReplenishmentRpc,
 } from "@/lib/billing/stripe/sms-replenishment-store";
 import { smsPurchaseTaxCollectionAuthorized } from "@/lib/billing/stripe/sms-purchase-tax";
+import { notifySmsReplenishmentOrchestrationResult } from "@/lib/billing/stripe/sms-replenishment-notices-live";
 
 function lineAmount(calculation: Stripe.Tax.Calculation): number | null {
   const line = calculation.line_items?.data?.[0];
@@ -89,7 +90,7 @@ export async function orchestrateAutomaticSmsReplenishment(
   const stripe = getStripeClient();
   const store = createSmsReplenishmentSettlementStore();
   const listPackagePrices = createStripeCatalogPriceLister();
-  return runAutomaticSmsReplenishmentOrchestration(organizationId, {
+  const result = await runAutomaticSmsReplenishmentOrchestration(organizationId, {
     claim: (id) =>
       smsReplenishmentRpc("claim_application_sms_replenishment", {
         p_organization_id: id,
@@ -137,4 +138,19 @@ export async function orchestrateAutomaticSmsReplenishment(
     taxCollectionAuthorized: smsPurchaseTaxCollectionAuthorized(),
     nowSeconds: Math.floor(Date.now() / 1000),
   });
+  if (
+    result.outcome === "authorization_review_required" ||
+    result.outcome === "tax_attention_required" ||
+    result.outcome === "period_cap_reached"
+  ) {
+    try {
+      await notifySmsReplenishmentOrchestrationResult(organizationId, result);
+    } catch (error) {
+      console.error(
+        "sms replenishment notice was not created",
+        error instanceof Error ? error.name : "Error",
+      );
+    }
+  }
+  return result;
 }

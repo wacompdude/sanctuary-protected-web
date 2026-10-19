@@ -102,6 +102,12 @@ function harness(input: {
       assert(params.line_items[0]?.tax_behavior === "exclusive", "exclusive tax");
       assert(params.line_items[0]?.product === "prod_sms_50", "tax product");
       assert(!("tax_code" in (params.line_items[0] ?? {})), "product supplies the tax code");
+      assert(
+        Array.isArray(params.expand) &&
+          params.expand.length === 1 &&
+          params.expand[0] === "line_items",
+        "tax calculation expands line_items",
+      );
       if (input.tax instanceof Error) throw input.tax;
       return input.tax ?? calculation(53);
     },
@@ -191,6 +197,23 @@ async function invalidTax() {
   assert(result.outcome === "tax_attention_required", "invalid tax");
   assert(calls.attention.includes("total_mismatch"), "invalid tax code");
   assert(calls.snapshot === 0 && calls.execute === 0, "invalid tax does not charge");
+}
+
+async function invalidLineAmount() {
+  for (const [label, lineAmountCents] of [
+    ["missing", null],
+    ["mismatched", 499],
+  ] as const) {
+    const { calls, deps } = harness({
+      claim: claimed(),
+      tax: calculation(53, { lineAmountCents }),
+    });
+    const result = await runAutomaticSmsReplenishmentOrchestration(organizationId, deps);
+    assert(result.outcome === "tax_attention_required", `${label} line amount`);
+    assert(calls.attention.includes("calculation_invalid"), `${label} line amount code`);
+    assert(calls.snapshot === 0 && calls.execute === 0, `${label} line amount does not charge`);
+    assert(result.grantsCredits === false, `${label} line amount does not grant`);
+  }
 }
 
 async function capExceeded() {
@@ -329,12 +352,17 @@ function sourceDoesNotCallOrchestrator() {
   assert(live.includes("claim_application_sms_replenishment"), "live claims through the database");
   assert(live.includes("record_application_sms_replenishment_tax_snapshot"), "live stores the tax snapshot");
   assert(live.includes("executeAutomaticSmsReplenishmentAttempt"), "live uses the payment executor");
+  assert(live.includes("smsPurchaseTaxLineAmountCents"), "live maps expanded line amounts");
+  assert(!live.includes("listLineItems"), "live does not fetch line items separately");
   assert(!live.includes("record_automatic_application_sms_replenishment"), "live does not grant");
   assert(!sequence.includes("record_automatic_application_sms_replenishment"), "sequence does not grant");
+  assert(sequence.includes("lineAmountCents !== attempt.expectedAmountCents"), "subtotal validator remains");
   assert(!sequence.includes("checkout.sessions"), "abandoned checkouts are not read");
   assert(!claimSql.includes("checkout.sessions"), "claim does not read checkouts");
   assert(!vercel.includes("replenish"), "no replenishment cron");
   assert(sequence.includes("grantsCredits: false"), "result cannot grant");
+  const tax = readFileSync(join(root, "lib/billing/stripe/sms-purchase-tax.ts"), "utf8");
+  assert(tax.includes('expand: ["line_items"]'), "tax create expands line_items");
 }
 
 async function main() {
@@ -344,6 +372,7 @@ async function main() {
   await missingAddress();
   await unavailableTax();
   await invalidTax();
+  await invalidLineAmount();
   await capExceeded();
   await priceIncrease();
   await paymentResults();

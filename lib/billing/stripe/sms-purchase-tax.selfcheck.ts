@@ -11,6 +11,7 @@ import {
   smsPackagePriceAuthorizationHolds,
   smsPurchaseTaxCalculationParams,
   smsPurchaseTaxCollectionAuthorized,
+  smsPurchaseTaxLineAmountCents,
   smsReplenishmentChargeFitsCap,
 } from "@/lib/billing/stripe/sms-purchase-tax";
 
@@ -110,6 +111,32 @@ assert(params.line_items[0].tax_behavior === "exclusive", "exclusive");
 assert(params.line_items[0].product === "prod_sms", "product");
 assert(!("tax_code" in params.line_items[0]), "tax code is not chosen here");
 assert(params.customer_details.address_source === "billing", "billing address");
+assert(
+  Array.isArray(params.expand) &&
+    params.expand.length === 1 &&
+    params.expand[0] === "line_items",
+  "create expands line_items",
+);
+assert(
+  smsPurchaseTaxLineAmountCents({
+    line_items: { data: [{ amount: 500 }] },
+  }) === 500,
+  "expanded line amount maps",
+);
+assert(smsPurchaseTaxLineAmountCents({}) === null, "missing line_items fails closed");
+assert(smsPurchaseTaxLineAmountCents({ line_items: null }) === null, "null line_items fails closed");
+assert(
+  smsPurchaseTaxLineAmountCents({ line_items: { data: [] } }) === null,
+  "empty line_items fails closed",
+);
+assert(
+  smsPurchaseTaxLineAmountCents({ line_items: { data: [{}] } }) === null,
+  "missing amount fails closed",
+);
+assert(
+  smsPurchaseTaxLineAmountCents({ line_items: { data: [{ amount: 500.5 }] } }) === null,
+  "non-integer amount fails closed",
+);
 assert(smsCheckoutAutomaticTaxFields(false) === null, "checkout tax stays off");
 const checkout = smsCheckoutAutomaticTaxFields(true);
 assert(checkout?.automatic_tax.enabled === true, "checkout automatic tax");

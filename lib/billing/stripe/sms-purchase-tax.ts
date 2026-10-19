@@ -71,7 +71,19 @@ export function smsPurchaseTaxCalculationParams(input: {
         ...(productId ? { product: productId } : {}),
       },
     ],
+    expand: ["line_items"],
   };
+}
+
+/**
+ * Reads the first Tax Calculation line amount after create expands line_items.
+ * Returns null when the includable collection is absent or unusable.
+ */
+export function smsPurchaseTaxLineAmountCents(calculation: {
+  line_items?: { data?: Array<{ amount?: unknown }> | null } | null;
+}): number | null {
+  const line = calculation.line_items?.data?.[0];
+  return line && Number.isInteger(line.amount) ? (line.amount as number) : null;
 }
 
 export type SmsPurchaseTaxCalculationResult = {

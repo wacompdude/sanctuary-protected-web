@@ -26,13 +26,11 @@ import {
   createSmsReplenishmentSettlementStore,
   smsReplenishmentRpc,
 } from "@/lib/billing/stripe/sms-replenishment-store";
-import { smsPurchaseTaxCollectionAuthorized } from "@/lib/billing/stripe/sms-purchase-tax";
+import {
+  smsPurchaseTaxCollectionAuthorized,
+  smsPurchaseTaxLineAmountCents,
+} from "@/lib/billing/stripe/sms-purchase-tax";
 import { notifySmsReplenishmentOrchestrationResult } from "@/lib/billing/stripe/sms-replenishment-notices-live";
-
-function lineAmount(calculation: Stripe.Tax.Calculation): number | null {
-  const line = calculation.line_items?.data?.[0];
-  return line && Number.isInteger(line.amount) ? line.amount : null;
-}
 
 function calculationCustomerId(calculation: Stripe.Tax.Calculation): string | null {
   return typeof calculation.customer === "string" ? calculation.customer : null;
@@ -48,7 +46,7 @@ function viewFromCalculation(
     taxAmountExclusive: calculation.tax_amount_exclusive,
     taxAmountInclusive: calculation.tax_amount_inclusive,
     expiresAt: calculation.expires_at,
-    lineAmountCents: lineAmount(calculation),
+    lineAmountCents: smsPurchaseTaxLineAmountCents(calculation),
     customerId: calculationCustomerId(calculation),
   };
 }

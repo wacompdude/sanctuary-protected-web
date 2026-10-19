@@ -1,6 +1,8 @@
 /**
  * Server-only entry for automatic SMS replenishment orchestration.
- * No route, cron, SMS send, or Billing action imports this module.
+ * The only caller is the temporary controlled billing retest route.
+ * Remove that route immediately after the authorized retest.
+ * No cron, SMS send, or Billing action imports this module.
  * Calling it creates a Stripe Tax Calculation and may create a PaymentIntent.
  * It does not grant SMS credits.
  */

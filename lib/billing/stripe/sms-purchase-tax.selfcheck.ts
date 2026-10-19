@@ -92,14 +92,22 @@ assert(interpretSmsPurchaseTaxCalculation({
 }).ok === false, "total mismatch");
 
 const params = smsPurchaseTaxCalculationParams({
-  customerId: "cus_tax",
   subtotalCents: 500,
   address,
   productId: "prod_sms",
 });
+assert(!("customer" in params), "customer and customer_details are not both sent");
+assert(params.customer_details.address.line1 === address.line1, "canonical line1");
+assert(params.customer_details.address.city === address.city, "canonical city");
+assert(params.customer_details.address.state === address.state, "canonical state");
+assert(params.customer_details.address.postal_code === address.postalCode, "canonical postal code");
+assert(params.customer_details.address.country === address.country, "canonical country");
 assert(params.currency === "usd", "currency");
 assert(params.line_items[0].amount === 500, "subtotal");
+assert(params.line_items[0].quantity === 1, "one package");
+assert(params.line_items[0].reference === "application_sms_package", "line reference");
 assert(params.line_items[0].tax_behavior === "exclusive", "exclusive");
+assert(params.line_items[0].product === "prod_sms", "product");
 assert(!("tax_code" in params.line_items[0]), "tax code is not chosen here");
 assert(params.customer_details.address_source === "billing", "billing address");
 assert(smsCheckoutAutomaticTaxFields(false) === null, "checkout tax stays off");

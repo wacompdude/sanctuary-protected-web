@@ -37,7 +37,8 @@ const params = smsAutoReplenishmentPaymentIntentParams(snapshot);
 assert(params.off_session === true, "off session");
 assert(params.confirm === true, "confirm");
 assert(params.customer === "cus_phase5c2", "customer");
-assert(params.payment_method === "pm_phase5c2_card", "payment method");
+assert(params.payment_method === snapshot.paymentMethodId, "dedicated automatic SMS payment method");
+assert(!("subscription" in params), "subscription payment method is not substituted");
 assert(params.amount === 500, "amount");
 assert(params.hooks?.inputs.tax.calculation === "taxcalc_phase5c2", "tax calculation");
 const taxed = smsAutoReplenishmentPaymentIntentParams({

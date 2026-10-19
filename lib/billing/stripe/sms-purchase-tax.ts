@@ -42,21 +42,16 @@ export function readSmsBillingAddress(value: unknown): SmsBillingAddress | null 
 }
 
 export function smsPurchaseTaxCalculationParams(input: {
-  customerId: string;
   subtotalCents: number;
   address: SmsBillingAddress;
   productId?: string | null;
 }) {
-  if (!input.customerId.startsWith("cus_")) {
-    throw new Error("SMS purchase tax calculation requires the organization customer.");
-  }
   if (!Number.isInteger(input.subtotalCents) || input.subtotalCents <= 0) {
     throw new Error("SMS purchase tax calculation requires the package subtotal.");
   }
   const productId = input.productId?.trim() || null;
   return {
     currency: "usd" as const,
-    customer: input.customerId,
     customer_details: {
       address: {
         line1: input.address.line1,

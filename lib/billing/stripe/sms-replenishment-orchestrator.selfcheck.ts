@@ -94,10 +94,14 @@ function harness(input: {
     createTaxCalculation: async ({ params }) => {
       calls.tax += 1;
       assert(params.currency === "usd", "tax currency");
-      assert(params.customer === "cus_sms", "tax customer");
-      assert(params.line_items[0]?.amount === 500, "tax subtotal");
-      assert(params.line_items[0]?.product === "prod_sms_50", "tax product");
+      assert(!("customer" in params), "tax calculation omits customer");
+      assert(params.customer_details.address_source === "billing", "billing address source");
       assert(params.customer_details.address.line1 === "1 Main St", "tax address");
+      assert(params.line_items[0]?.amount === 500, "tax subtotal");
+      assert(params.line_items[0]?.quantity === 1, "one package");
+      assert(params.line_items[0]?.tax_behavior === "exclusive", "exclusive tax");
+      assert(params.line_items[0]?.product === "prod_sms_50", "tax product");
+      assert(!("tax_code" in (params.line_items[0] ?? {})), "product supplies the tax code");
       if (input.tax instanceof Error) throw input.tax;
       return input.tax ?? calculation(53);
     },
@@ -164,6 +168,18 @@ async function missingAddress() {
   assert(result.outcome === "tax_attention_required", "missing address");
   assert(calls.attention.includes("address_required"), "address code");
   assert(calls.tax === 0 && calls.execute === 0, "missing address does not charge");
+}
+
+async function unavailableTax() {
+  const { calls, deps } = harness({
+    claim: claimed(),
+    tax: new Error("stripe rejected the calculation"),
+  });
+  const result = await runAutomaticSmsReplenishmentOrchestration(organizationId, deps);
+  assert(result.outcome === "tax_attention_required", "unavailable tax");
+  assert(calls.attention.includes("tax_calculation_unavailable"), "unavailable code");
+  assert(result.grantsCredits === false, "unavailable tax does not grant");
+  assert(calls.snapshot === 0 && calls.execute === 0, "unavailable tax does not charge");
 }
 
 async function invalidTax() {
@@ -326,6 +342,7 @@ async function main() {
   await taxedAttempt();
   await zeroTax();
   await missingAddress();
+  await unavailableTax();
   await invalidTax();
   await capExceeded();
   await priceIncrease();

@@ -198,7 +198,6 @@ async function prepareTaxAndCharge(
     calculation = await deps.createTaxCalculation({
       attemptId: attempt.id,
       params: smsPurchaseTaxCalculationParams({
-        customerId,
         subtotalCents: attempt.expectedAmountCents,
         address,
         productId: product.productId,

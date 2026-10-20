@@ -32,6 +32,7 @@
     "selfcheck:sms:payment-setup": "npx --yes tsx lib/billing/stripe/sms-payment-setup.selfcheck.ts",
     "selfcheck:sms:replenishment-trigger": "npx --yes tsx lib/billing/stripe/sms-replenishment-trigger.selfcheck.ts",
     "selfcheck:sms:replenishment-reconciliation": "npx --yes tsx lib/billing/stripe/sms-replenishment-reconciliation.selfcheck.ts",
+    "selfcheck:sms:admin-adjustment": "npx --yes tsx lib/sms/sms-credit-admin-adjustment.selfcheck.ts",
     "selfcheck:sms:replenishment-payment": "npx --yes tsx lib/billing/stripe/sms-replenishment-payment.selfcheck.ts && npx --yes tsx lib/billing/stripe/sms-replenishment-webhook.selfcheck.ts && npx --yes tsx lib/billing/stripe/sms-purchase-tax.selfcheck.ts && npx --yes tsx lib/billing/stripe/sms-replenishment-orchestrator.selfcheck.ts && npx --yes tsx lib/billing/stripe/sms-replenishment-controls.selfcheck.ts && npx --yes tsx lib/billing/stripe/sms-replenishment-trigger.selfcheck.ts && npx --yes tsx lib/billing/stripe/sms-replenishment-reconciliation.selfcheck.ts",
     "test:e2e": "playwright test",
     "test:e2e:compat": "playwright test e2e/compatibility.spec.ts"

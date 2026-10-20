@@ -311,8 +311,6 @@ function sourceDoesNotCallOrchestrator() {
     join(root, "lib/billing/stripe/sms-replenishment-orchestrator-live.ts"),
     join(root, "lib/billing/stripe/sms-replenishment-orchestrator.selfcheck.ts"),
     join(root, "lib/billing/stripe/sms-replenishment-controls.selfcheck.ts"),
-    join(root, "app/api/internal/testing/sms-auto-replenishment/route.ts"),
-    join(root, "lib/billing/stripe/sms-replenishment-test-invocation.selfcheck.ts"),
   ]);
   const hits: string[] = [];
   function walk(dir: string) {
@@ -335,19 +333,7 @@ function sourceDoesNotCallOrchestrator() {
   }
   walk(join(root, "app"));
   walk(join(root, "lib"));
-  assert(hits.length === 0, `orchestrator has an unexpected caller: ${hits.join(", ")}`);
-  const temporaryRoute = readFileSync(
-    join(root, "app/api/internal/testing/sms-auto-replenishment/route.ts"),
-    "utf8",
-  );
-  assert(
-    temporaryRoute.includes("TEMPORARY CONTROLLED BILLING TEST ROUTE"),
-    "temporary route is the only added caller",
-  );
-  assert(
-    temporaryRoute.includes("orchestrateAutomaticSmsReplenishment"),
-    "temporary route calls the live entry",
-  );
+  assert(hits.length === 0, `orchestrator is not wired: ${hits.join(", ")}`);
 
   const live = readFileSync(
     join(root, "lib/billing/stripe/sms-replenishment-orchestrator-live.ts"),

@@ -214,7 +214,13 @@ function sourceWiring() {
   assert(!verify.includes("scheduleAutomaticSmsReplenishmentAfterCommit"), "22 OTP/HELP isolated");
 
   assert(create.includes('from "next/server"') && create.includes("after("), "R create uses after");
-  assert(!vercel.includes("replenish"), "31 no replenishment cron");
+  assert(
+    vercel.includes('"/api/internal/cron/sms-replenishment"') &&
+      vercel.includes('"*/10 * * * *"'),
+    "31 reconciliation cron present; temporary test route absent",
+  );
+  assert(!vercel.includes("sms-auto-replenishment"), "31 no temporary test route schedule");
+
   assert(
     orchestratorLive.includes("post-commit Application SMS trigger"),
     "permanent caller documented",

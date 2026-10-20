@@ -1,7 +1,9 @@
 /**
  * Server-only entry for automatic SMS replenishment orchestration.
- * The permanent production caller is the post-commit Application SMS trigger.
- * No public route, cron, Billing action, or SMS send path calls this directly.
+ * Permanent production callers: post-commit Application SMS trigger and
+ * reconciliation cron. No public route, Billing action, or SMS send path
+ * calls this directly.
+
  * Calling it creates a Stripe Tax Calculation and may create a PaymentIntent.
  * It does not grant SMS credits.
  */

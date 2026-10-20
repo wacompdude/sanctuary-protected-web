@@ -4,7 +4,7 @@
  * Claim, tax calculation, tax snapshot, and PaymentIntent execution stay in
  * their existing functions. This module does not grant credits, import Stripe,
  * or start a charge by itself. The server-only entry point supplies those
- * boundaries. The permanent production caller is the post-commit trigger.
+ * boundaries. Permanent callers: post-commit trigger and reconciliation cron.
  */
 
 import { commercialPlanByKey } from "@/lib/billing/commercial-catalog";

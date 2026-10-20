@@ -390,9 +390,8 @@ function sourceDoesNotCallOrchestrator() {
   assert(!sequence.includes("checkout.sessions"), "abandoned checkouts are not read");
   assert(!claimSql.includes("checkout.sessions"), "claim does not read checkouts");
   assert(
-    vercel.includes('"/api/internal/cron/sms-replenishment"') &&
-      vercel.includes('"*/10 * * * *"'),
-    "reconciliation cron every 10 minutes",
+    !vercel.includes("sms-replenishment"),
+    "reconciliation schedule deferred until Pro supports */10",
   );
   const reconciliationLive = readFileSync(
     join(root, "lib/billing/stripe/sms-replenishment-reconciliation-live.ts"),
@@ -400,8 +399,16 @@ function sourceDoesNotCallOrchestrator() {
   );
   assert(
     reconciliationLive.includes("orchestrateAutomaticSmsReplenishment"),
-    "reconciliation cron calls live entry",
+    "reconciliation module calls live entry",
   );
+  assert(
+    readFileSync(
+      join(root, "app/api/internal/cron/sms-replenishment/route.ts"),
+      "utf8",
+    ).includes("reconcileAutomaticSmsReplenishment"),
+    "reconciliation route exists",
+  );
+
 
   assert(sequence.includes("grantsCredits: false"), "result cannot grant");
   const tax = readFileSync(join(root, "lib/billing/stripe/sms-purchase-tax.ts"), "utf8");

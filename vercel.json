@@ -19,10 +19,6 @@
     {
       "path": "/api/notifications/billing/card-expiration",
       "schedule": "45 8 * * *"
-    },
-    {
-      "path": "/api/internal/cron/sms-replenishment",
-      "schedule": "*/10 * * * *"
     }
   ]
 }

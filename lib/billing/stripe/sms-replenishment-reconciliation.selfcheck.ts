@@ -168,8 +168,17 @@ function sourceWiring() {
   assert(route.includes("candidateCount") && route.includes("outcomes"), "safe summary");
   assert(!route.includes("payment_method") && !route.includes("customer"), "safe fields");
 
-  assert(vercel.includes('"/api/internal/cron/sms-replenishment"'), "29 schedule path");
-  assert(vercel.includes('"*/10 * * * *"'), "29 every 10 minutes");
+  assert(
+    !vercel.includes("sms-replenishment"),
+    "29 schedule deferred: Hobby plan rejects */10 cadence",
+  );
+  assert(
+    readRepo("app/api/internal/cron/sms-replenishment/route.ts").includes(
+      "reconcileAutomaticSmsReplenishment",
+    ),
+    "29 reconciliation route ready for Pro schedule",
+  );
+
   assert(vercel.includes('"/api/notifications/dispatch"'), "28 dispatch preserved");
   assert(vercel.includes('"/api/notifications/certifications/scan"'), "28 certs preserved");
   assert(vercel.includes('"/api/notifications/safety-concerns/scan"'), "28 safety preserved");
@@ -178,6 +187,7 @@ function sourceWiring() {
     vercel.includes('"/api/notifications/billing/card-expiration"'),
     "28 card-expiration preserved",
   );
+
 
   assert(
     dispatch.includes("scheduleAutomaticSmsReplenishmentAfterCommit"),

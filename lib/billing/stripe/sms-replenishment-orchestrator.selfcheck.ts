@@ -311,7 +311,11 @@ function sourceDoesNotCallOrchestrator() {
     join(root, "lib/billing/stripe/sms-replenishment-orchestrator-live.ts"),
     join(root, "lib/billing/stripe/sms-replenishment-orchestrator.selfcheck.ts"),
     join(root, "lib/billing/stripe/sms-replenishment-controls.selfcheck.ts"),
+    join(root, "lib/billing/stripe/sms-replenishment-trigger.ts"),
+    join(root, "lib/billing/stripe/sms-replenishment-trigger-live.ts"),
+    join(root, "lib/billing/stripe/sms-replenishment-trigger.selfcheck.ts"),
   ]);
+
   const hits: string[] = [];
   function walk(dir: string) {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -333,7 +337,29 @@ function sourceDoesNotCallOrchestrator() {
   }
   walk(join(root, "app"));
   walk(join(root, "lib"));
-  assert(hits.length === 0, `orchestrator is not wired: ${hits.join(", ")}`);
+  assert(hits.length === 0, `unexpected orchestrator caller: ${hits.join(", ")}`);
+  const triggerLive = readFileSync(
+    join(root, "lib/billing/stripe/sms-replenishment-trigger-live.ts"),
+    "utf8",
+  );
+  const dispatch = readFileSync(
+    join(root, "lib/notifications/dispatch-notification.ts"),
+    "utf8",
+  );
+  assert(
+    triggerLive.includes("orchestrateAutomaticSmsReplenishment"),
+    "post-commit trigger calls live entry",
+  );
+  assert(triggerLive.includes("after("), "post-commit trigger uses after()");
+  assert(
+    dispatch.includes("scheduleAutomaticSmsReplenishmentAfterCommit"),
+    "dispatch schedules post-commit trigger",
+  );
+  assert(
+    dispatch.includes("sms-replenishment-trigger-live"),
+    "dispatch uses server-only trigger binder",
+  );
+  assert(!dispatch.includes("orchestrateAutomaticSmsReplenishment"), "dispatch does not call orchestrator directly");
 
   const live = readFileSync(
     join(root, "lib/billing/stripe/sms-replenishment-orchestrator-live.ts"),

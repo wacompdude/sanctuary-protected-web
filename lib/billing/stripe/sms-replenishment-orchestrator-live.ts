@@ -1,6 +1,7 @@
 /**
  * Server-only entry for automatic SMS replenishment orchestration.
- * No route, cron, SMS send, or Billing action imports this module.
+ * The permanent production caller is the post-commit Application SMS trigger.
+ * No public route, cron, Billing action, or SMS send path calls this directly.
  * Calling it creates a Stripe Tax Calculation and may create a PaymentIntent.
  * It does not grant SMS credits.
  */

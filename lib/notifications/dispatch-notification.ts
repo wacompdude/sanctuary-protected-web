@@ -31,6 +31,7 @@ import {
   smsCommitSucceeded,
   unknownAcceptancePatch,
 } from "@/lib/notifications/sms-acceptance-settlement";
+import { scheduleAutomaticSmsReplenishmentAfterCommit } from "@/lib/billing/stripe/sms-replenishment-trigger-live";
 
 type DeliveryRow = {
   id: string;
@@ -124,6 +125,8 @@ async function commitAcceptedSms(
     delivery.id,
     finalizeAcceptedDeliveryPatch(await deliveryStatus(admin, delivery.id), nowIso),
   );
+  // Isolated from SMS success: claim-gated orchestrator decides whether work is required.
+  scheduleAutomaticSmsReplenishmentAfterCommit(delivery.organization_id);
   return "sent";
 }
 

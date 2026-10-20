@@ -262,10 +262,26 @@ assert(
 );
 assert(dispatch.includes('.eq("channel", "sms")'), "40 reconciliation is SMS only");
 assert(dispatch.includes("commitAcceptedSms"), "41 commit-only helper");
+assert(
+  dispatch.includes("scheduleAutomaticSmsReplenishmentAfterCommit"),
+  "41 post-commit replenishment trigger scheduled only after commit",
+);
+const commitHelper = dispatch.slice(dispatch.indexOf("async function commitAcceptedSms"));
+assert(
+  commitHelper.indexOf("commitApplicationSmsSegments") <
+    commitHelper.indexOf("scheduleAutomaticSmsReplenishmentAfterCommit"),
+  "41 trigger follows successful commit",
+);
 const sendFn = dispatch.slice(dispatch.indexOf("export async function sendSmsDelivery"));
 assert(sendFn.indexOf("unknownAcceptancePatch") < sendFn.indexOf("await provider.send") === false || sendFn.includes("unknownAcceptancePatch"), "28 unknown patch used");
 assert(sendFn.includes("await releaseApplicationSmsSegments"), "30 rejection still releases");
 assert(sendFn.indexOf("await releaseApplicationSmsSegments") > sendFn.indexOf("if (!sendResult.ok)") || sendFn.includes("if (provider.name === \"bird\")"), "30 release stays on provider failure");
+assert(
+  !sendFn
+    .slice(sendFn.indexOf("if (!sendResult.ok)"), sendFn.indexOf("const permanent"))
+    .includes("scheduleAutomaticSmsReplenishmentAfterCommit"),
+  "30 Bird failure does not schedule replenishment",
+);
 
 const migration = readRepo("supabase/migrations/109_servant_application_sms_enabled.sql");
 assert(migration.includes("boolean_value = true"), "migration enables sms");

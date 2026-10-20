@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { after } from "next/server";
 import type { MembershipRole } from "@/lib/organization/types";
 import {
   getNotificationAppOrigin,
@@ -500,16 +501,23 @@ export async function createNotification(
       .eq("id", notificationId);
 
     if (options?.dispatchNow !== false && isServiceRoleConfigured()) {
-      // Fire-and-forget; failures are recorded on delivery rows.
-      void import("@/lib/notifications/dispatch-notification").then(
-        ({ dispatchPendingDeliveries }) =>
-          dispatchPendingDeliveries({
-            limit: 25,
-            notificationId,
-          }).catch((error) => {
-            console.error("dispatchPendingDeliveries failed:", error);
-          }),
-      );
+      // Keep request scope alive so post-commit replenishment after() can run.
+      const dispatchWork = () =>
+        import("@/lib/notifications/dispatch-notification").then(
+          ({ dispatchPendingDeliveries }) =>
+            dispatchPendingDeliveries({
+              limit: 25,
+              notificationId,
+            }).catch((error) => {
+              console.error("dispatchPendingDeliveries failed:", error);
+            }),
+        );
+      try {
+        after(dispatchWork);
+      } catch {
+        // Outside a request scope (rare): preserve best-effort dispatch.
+        void dispatchWork();
+      }
     }
 
     return {

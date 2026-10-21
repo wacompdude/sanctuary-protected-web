@@ -117,8 +117,7 @@ function main() {
     assert(billingText.includes(name), `billing names plan ${name}`);
   }
 
-  // Phase 5C-3E-1 pre-live policy lock (approved owner decisions).
-  assert(POLICY_VERSIONS.billing === "1.1.0", "billing policy version locked at 1.1.0");
+  // Phase 5C-3E-1 / 5C-3E-2 pre-live policy lock (approved owner decisions).
   assert(
     MAILING_ADDRESS ===
       "522 W Riverside Ave Ste N\nSpokane, WA 99201-0581\nUnited States",
@@ -129,7 +128,7 @@ function main() {
       mailingAddressDisplay().includes("Spokane, WA 99201-0581"),
     "mailing address display uses approved address",
   );
-  assert(GOVERNING_STATE === null, "governing state remains unresolved (D-11)");
+  assert(GOVERNING_STATE === "Washington", "governing state is Washington (D-11)");
   assert(BUSINESS_ORIGIN_STATE === "Washington", "business origin documented");
   assert(
     !billingText.includes("[BUSINESS/LEGAL DECISION REQUIRED — REFUND POLICY]") &&
@@ -157,11 +156,13 @@ function main() {
     "dunning policy matches D-06",
   );
   assert(
-    billingText.includes("billing address and location") &&
-      billingText.includes("country, state or province, and postal or ZIP") &&
-      billingText.includes("Registration and remittance obligations are determined outside"),
-    "tax policy matches D-07 without claiming universal collection",
+    billingText.includes("billing or service location") &&
+      billingText.includes("jurisdictions in which we are required to collect tax") &&
+      billingText.includes("do not claim to collect tax in every jurisdiction"),
+    "tax policy matches D-07/D-09 without claiming universal collection",
   );
+  assert(POLICY_VERSIONS.terms === "1.4.0", "terms version locked at 1.4.0");
+  assert(POLICY_VERSIONS.billing === "1.1.1", "billing policy version locked at 1.1.1");
   assert(
     billingText.includes("500 on Shepherd Plus") &&
       billingText.includes("1,000 on Omni Enterprise") &&
@@ -188,17 +189,53 @@ function main() {
     "billing policy upgrade/downgrade wording matches Stripe always_invoice / period-end schedule",
   );
   assert(
-    termsText.includes("specific state governing law and exclusive venue have not been designated"),
-    "Terms keep governing law unresolved without broken null text",
+    termsText.includes("laws of the State of Washington") &&
+      termsText.includes("without regard to its conflict-of-laws principles") &&
+      termsText.includes("do not designate an exclusive county or court venue"),
+    "Terms governing law is Washington without exclusive venue (D-11)",
+  );
+  assert(
+    !termsText.includes("have not been designated") &&
+      !termsText.toLowerCase().includes("to be determined") &&
+      !publicText.includes("GOVERNING_STATE") &&
+      !billingText.includes("null"),
+    "no unresolved governing-state placeholders in public copy",
+  );
+  assert(
+    !termsText.includes("Spokane County") &&
+      !termsText.includes("King County") &&
+      !termsText.includes("Snohomish County"),
+    "Terms do not invent an exclusive county venue",
   );
 
   const taxReadiness = readRepo("docs/billing/TAX_READINESS.md");
   assert(taxReadiness.includes("txcd_10103001"), "tax readiness documents candidate tax code");
   assert(
-    taxReadiness.includes("ACCOUNTING/TAX EXTERNAL ACTION REQUIRED"),
-    "D-09 external action documented",
+    taxReadiness.includes("BUSINESS TAX POLICY APPROVED") &&
+      taxReadiness.includes("ONGOING TAX/NEXUS COMPLIANCE REQUIRED"),
+    "D-09 status distinguishes approved policy from ongoing compliance",
+  );
+  assert(
+    taxReadiness.includes("must **not** automatically be charged") ||
+      taxReadiness.includes("must not automatically be charged"),
+    "out-of-state customers not auto-charged WA tax solely for seller location",
+  );
+  assert(
+    taxReadiness.includes("Do **not** hard-code a universal national economic-nexus") ||
+      taxReadiness.includes("Do not hard-code a universal national economic-nexus"),
+    "tax readiness forbids encoding a universal nexus threshold",
+  );
+  assert(
+    !readRepo("lib/billing/stripe/sms-purchase-tax.ts").includes("economic nexus") &&
+      !readRepo("lib/billing/stripe/subscription-tax.ts").includes("economic nexus"),
+    "tax modules do not encode economic-nexus decision logic",
   );
   assert(taxReadiness.includes("Washington"), "tax readiness notes Washington origin");
+  assert(
+    taxReadiness.includes("Stripe Tax monitoring/capability") &&
+      taxReadiness.includes("registration/collection authorization"),
+    "Phase 3F principle: Tax capability ≠ registration",
+  );
 
   const disputeRunbook = readRepo("docs/billing/DISPUTE_RUNBOOK.md");
   assert(

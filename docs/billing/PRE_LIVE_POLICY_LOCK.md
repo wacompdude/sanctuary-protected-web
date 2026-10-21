@@ -1,7 +1,7 @@
-# Pre-Live Billing Policy Lock (Phase 5C-3E-1)
+# Pre-Live Billing Policy Lock (Phases 5C-3E-1 / 5C-3E-2)
 
-Owner-approved decisions recorded for Live preparation. This document is
-internal. Customer-facing language lives in `/billing` (Billing Policy).
+Owner-approved decisions recorded for Live preparation. Customer-facing
+language lives in `/billing` and `/terms`.
 
 | ID | Topic | Status |
 |----|-------|--------|
@@ -13,9 +13,9 @@ internal. Customer-facing language lives in `/billing` (Billing Policy).
 | D-06 | Stripe is retry authority; past_due keeps entitlement; terminal unpaid/canceled may restrict | Approved — copy aligned |
 | D-07 | Collect applicable tax via Stripe Tax + billing location (application intent) | Approved — copy aligned |
 | D-08 | Candidate tax code `txcd_10103001` (not legally certified) | Approved — documented |
-| D-09 | Nexus / registration / remittance | **ACCOUNTING/TAX EXTERNAL ACTION REQUIRED** |
+| D-09 | Tax operating / nexus policy | **BUSINESS TAX POLICY APPROVED — ONGOING TAX/NEXUS COMPLIANCE REQUIRED** |
 | D-10 | Public mailing address (Spokane WA) | Approved — configured |
-| D-11 | Governing state / venue | **LEGAL REVIEW REQUIRED** (still null) |
+| D-11 | Governing state | **Approved — Washington** (exclusive venue intentionally unspecified) |
 | D-12 | Block/package SMS only; no open-ended overage | Approved — copy aligned |
 | D-13 | Monthly-only Live launch; annual deferred | Approved — copy aligned |
 | D-14 | Customer Portal not enabled for initial Live | Approved — documented |
@@ -23,8 +23,11 @@ internal. Customer-facing language lives in `/billing` (Billing Policy).
 
 ## Distinctions
 
-- **Business origin (Washington)** is not governing law.
+- **Business origin (Washington)** and **governing law (Washington)** are
+  separate decisions; exclusive court venue is **not** set.
 - **Tax calculation** is not tax registration.
+- **Resolved business tax policy** is not permanent completion of nexus
+  compliance.
 - **Safe to create Live Stripe catalog/webhook/key** does not mean safe to
   install Production Live credentials or accept the first real payment.
 

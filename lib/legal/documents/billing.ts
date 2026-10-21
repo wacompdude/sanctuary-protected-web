@@ -107,7 +107,7 @@ export const BILLING_DOCUMENT: LegalDocument = {
       blocks: [
         {
           type: "p",
-          text: "Applicable sales or use tax may be calculated and added to subscription and Application SMS package charges based on your Organization’s billing address and location information (including country, state or province, and postal or ZIP code) as used by our payment processor’s tax tools. Tax calculation is separate from whether a business is registered or legally required to collect tax in a given jurisdiction. Registration and remittance obligations are determined outside this Policy.",
+          text: "Applicable taxes may be calculated and added based on your billing or service location and the jurisdictions in which we are required to collect tax. Location information may include country, state or province, and postal or ZIP code as used by our payment processor’s tax tools. Tax calculation is separate from tax registration. We do not charge tax in a jurisdiction merely because our business is operated from Washington, and we do not claim to collect tax in every jurisdiction.",
         },
       ],
     },

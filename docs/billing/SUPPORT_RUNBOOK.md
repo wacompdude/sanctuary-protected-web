@@ -12,7 +12,7 @@ Customer-facing rules: `/billing`. Refunds follow D-02–D-05.
 | Manual SMS refund request | Email billing@ | Apply D-03; generally no after grant | Refund only if exception | Do not silent reverse consumed credits | PI / Checkout + ledger | Consumed credits dispute |
 | Automatic SMS refund request | Email billing@ | Apply D-04 | Same | Same; check attempt row | Attempt + PI + ledger | Cap / tax confusion |
 | Invoice request | Settings → Billing history or email | Share hosted invoice URL | Open invoice / PDF | Local billing_transactions | Invoice URL | Missing webhook sync |
-| Tax question | Email billing@ | Explain tax may apply by billing location; not legal advice | Tax on invoice / calculation | Address UI; tax attention states | Address + tax amounts | Nexus / registration (D-09) |
+| Tax question | Email billing@ | Explain tax may apply by billing/service location where we are required to collect; not legal advice | Tax on invoice / calculation | Address UI; tax attention states | Address + tax amounts | Ongoing nexus/registration compliance (D-09) |
 | Card replacement | Settings → Billing (sub and/or SMS PM) | Confirm which PM (subscription vs auto SMS) | Verify attached PM | SetupIntent flows | SetupIntent / PM ids | Wrong PM charged |
 | Cancellation | Owner: Cancel at period end | Confirm period-end access | cancel_at_period_end | Local cancel flag via webhook | Period end date | Immediate cancel demand |
 | Upgrade | Owner confirms prorated preview | Explain always_invoice preview | Subscription update | Webhook plan sync | Preview + invoice | Preview vs charged mismatch |

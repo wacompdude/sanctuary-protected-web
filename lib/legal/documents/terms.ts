@@ -8,6 +8,7 @@ import {
   PUBLIC_SITE_HOST,
   SUPPORT_EMAIL,
   brandIdentityLine,
+  governingLawDisplay,
   mailingAddressDisplay,
   operatorLabel,
 } from "@/lib/legal/config";
@@ -386,11 +387,11 @@ export const TERMS_DOCUMENT: LegalDocument = {
     {
       id: "governing-law",
       title: "26. Governing Law",
-      attorneyReview: "governing law and venue",
+      attorneyReview: "exclusive venue / forum selection (governing state approved Washington)",
       blocks: [
         {
           type: "p",
-          text: "These Terms are intended to be interpreted under the laws of the United States. A specific state governing law and exclusive venue have not been designated in this version. Until an updated version names a state and forum, the parties will use good-faith informal resolution, and any court action will be brought in a court of competent jurisdiction in the United States, subject to applicable consumer-protection laws that cannot be waived.",
+          text: governingLawDisplay(),
         },
       ],
     },

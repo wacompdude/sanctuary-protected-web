@@ -6,7 +6,7 @@
  *
  * Update versions and dates here — not in page components.
  *
- * @legal-review governing law (GOVERNING_STATE), dedicated legal/privacy mailboxes
+ * @legal-review dedicated legal/privacy mailboxes; exclusive venue remains unspecified
  */
 
 /** Customer-facing product and legal business name. */
@@ -36,15 +36,14 @@ export const MAILING_ADDRESS: string | null =
   "522 W Riverside Ave Ste N\nSpokane, WA 99201-0581\nUnited States";
 
 /**
- * Governing state / venue.
- * LEGAL REVIEW REQUIRED — do not infer from Washington business origin
- * or the public mailing address (Phase 5C-3E-1 / D-11).
+ * Governing state for Terms (Phase 5C-3E-2 / D-11).
+ * Owner-approved: Washington. Exclusive county/court venue is NOT set here.
  */
-export const GOVERNING_STATE: string | null = null;
+export const GOVERNING_STATE: string | null = "Washington";
 
 /**
  * Application / business operations origin (tax readiness documentation).
- * Not the same as governing law.
+ * Not the same as governing law (though both are Washington).
  */
 export const BUSINESS_ORIGIN_STATE = "Washington";
 
@@ -63,15 +62,15 @@ export const LEGAL_NAV_ITEMS = [
 ] as const;
 
 export const POLICY_VERSIONS = {
-  terms: "1.3.0",
+  terms: "1.4.0",
   privacy: "1.2.0",
-  billing: "1.1.0",
+  billing: "1.1.1",
 } as const;
 
 /** ISO calendar dates (UTC). */
 export const POLICY_DATES = {
   termsEffective: "2026-09-07",
-  termsUpdated: "2026-09-19",
+  termsUpdated: "2026-10-21",
   privacyEffective: "2026-09-07",
   privacyUpdated: "2026-09-19",
   billingEffective: "2026-09-07",
@@ -114,4 +113,16 @@ export function mailingAddressDisplay(): string {
     MAILING_ADDRESS ??
     "A physical mailing address has not been published in this version. Use the email contacts listed in these policies."
   );
+}
+
+/**
+ * Customer-facing governing-law sentence for Terms.
+ * Uses GOVERNING_STATE; does not assert an exclusive court venue.
+ */
+export function governingLawDisplay(): string {
+  const state = GOVERNING_STATE?.trim();
+  if (!state) {
+    return "These Terms are intended to be interpreted under the laws of the United States. A specific state governing law has not been designated in this version. Subject to applicable consumer-protection laws that cannot be waived.";
+  }
+  return `These Terms are governed by the laws of the State of ${state}, without regard to its conflict-of-laws principles, except where applicable law requires otherwise. These Terms do not designate an exclusive county or court venue.`;
 }

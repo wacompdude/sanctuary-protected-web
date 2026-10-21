@@ -13,9 +13,12 @@ import {
 } from "@/lib/auth/routes";
 import {
   BUSINESS_NAME,
+  BUSINESS_ORIGIN_STATE,
+  GOVERNING_STATE,
   LEGAL_ENTITY_NAME,
   LEGAL_NAV_ITEMS,
   LEGAL_ROUTES,
+  MAILING_ADDRESS,
   POLICY_DATES,
   POLICY_VERSIONS,
   PRODUCT_NAME,
@@ -23,6 +26,7 @@ import {
   brandIdentityLine,
   copyrightYear,
   formatPolicyDate,
+  mailingAddressDisplay,
 } from "@/lib/legal/config";
 import { BILLING_DOCUMENT } from "@/lib/legal/documents/billing";
 import { PRIVACY_DOCUMENT } from "@/lib/legal/documents/privacy";
@@ -113,13 +117,50 @@ function main() {
     assert(billingText.includes(name), `billing names plan ${name}`);
   }
 
+  // Phase 5C-3E-1 pre-live policy lock (approved owner decisions).
+  assert(POLICY_VERSIONS.billing === "1.1.0", "billing policy version locked at 1.1.0");
   assert(
-    billingText.includes("[BUSINESS/LEGAL DECISION REQUIRED — REFUND POLICY]"),
-    "refund decision is flagged on the billing policy",
+    MAILING_ADDRESS ===
+      "522 W Riverside Ave Ste N\nSpokane, WA 99201-0581\nUnited States",
+    "approved public mailing address (D-10)",
   );
   assert(
-    billingText.includes("[BUSINESS DECISION REQUIRED — SMS OVERAGES]"),
-    "SMS overage decision is flagged",
+    mailingAddressDisplay().includes("522 W Riverside Ave Ste N") &&
+      mailingAddressDisplay().includes("Spokane, WA 99201-0581"),
+    "mailing address display uses approved address",
+  );
+  assert(GOVERNING_STATE === null, "governing state remains unresolved (D-11)");
+  assert(BUSINESS_ORIGIN_STATE === "Washington", "business origin documented");
+  assert(
+    !billingText.includes("[BUSINESS/LEGAL DECISION REQUIRED — REFUND POLICY]") &&
+      !billingText.includes("[BUSINESS DECISION REQUIRED — SMS OVERAGES]"),
+    "resolved refund and SMS overage placeholders removed",
+  );
+  assert(
+    billingText.includes("7-day trial") &&
+      billingText.includes("without providing a credit or debit card") &&
+      billingText.includes("does not automatically convert") &&
+      billingText.includes("does not automatically charge"),
+    "trial policy matches D-01",
+  );
+  assert(
+    billingText.includes("Except where required by applicable law") &&
+      billingText.includes("generally non-refundable once billed") &&
+      billingText.includes("duplicate charges") &&
+      billingText.includes("no cash redemption value"),
+    "refund policy matches D-02–D-05",
+  );
+  assert(
+    billingText.includes("past due") &&
+      billingText.includes("payment-recovery settings") &&
+      billingText.includes("terminal unpaid or canceled"),
+    "dunning policy matches D-06",
+  );
+  assert(
+    billingText.includes("billing address and location") &&
+      billingText.includes("country, state or province, and postal or ZIP") &&
+      billingText.includes("Registration and remittance obligations are determined outside"),
+    "tax policy matches D-07 without claiming universal collection",
   );
   assert(
     billingText.includes("500 on Shepherd Plus") &&
@@ -128,9 +169,59 @@ function main() {
     "billing policy Shepherd SMS matches commercial catalog (500), not Omni (1,000)",
   );
   assert(
+    billingText.includes("do not use open-ended, per-message metered SMS overage") &&
+      billingText.includes("defined credit packages"),
+    "SMS package-only model matches D-12",
+  );
+  assert(
+    billingText.includes("monthly plan pricing only") &&
+      billingText.includes("Annual billing is not offered"),
+    "monthly-only launch matches D-13",
+  );
+  assert(
+    billingText.includes("do not currently offer a third-party customer billing portal"),
+    "Customer Portal remains disabled in policy (D-14)",
+  );
+  assert(
     billingText.includes("prorated amount due today") &&
       billingText.includes("scheduled for the next renewal"),
     "billing policy upgrade/downgrade wording matches Stripe always_invoice / period-end schedule",
+  );
+  assert(
+    termsText.includes("specific state governing law and exclusive venue have not been designated"),
+    "Terms keep governing law unresolved without broken null text",
+  );
+
+  const taxReadiness = readRepo("docs/billing/TAX_READINESS.md");
+  assert(taxReadiness.includes("txcd_10103001"), "tax readiness documents candidate tax code");
+  assert(
+    taxReadiness.includes("ACCOUNTING/TAX EXTERNAL ACTION REQUIRED"),
+    "D-09 external action documented",
+  );
+  assert(taxReadiness.includes("Washington"), "tax readiness notes Washington origin");
+
+  const disputeRunbook = readRepo("docs/billing/DISPUTE_RUNBOOK.md");
+  assert(
+    disputeRunbook.includes("must **not** automatically") ||
+      disputeRunbook.includes("must not automatically"),
+    "dispute runbook forbids automatic revoke/delete",
+  );
+  assert(disputeRunbook.includes("Dashboard"), "dispute runbook uses Dashboard");
+
+  const portalSource = readRepo("lib/billing/stripe/provider.ts");
+  assert(
+    portalSource.includes("customerPortal: false"),
+    "Stripe Customer Portal remains unimplemented (D-14)",
+  );
+
+  const checkoutSource = readRepo("lib/billing/stripe/checkout.ts");
+  assert(
+    !checkoutSource.includes("trial_period_days"),
+    "Checkout does not set Stripe trial_period_days (local trial only)",
+  );
+  assert(
+    !checkoutSource.includes('"year"') && !checkoutSource.includes("'year'"),
+    "subscription Checkout remains monthly-only",
   );
 
   const forbiddenPublicFlags = [

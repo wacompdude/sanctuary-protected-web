@@ -32,7 +32,7 @@ export const BILLING_DOCUMENT: LegalDocument = {
       blocks: [
         {
           type: "p",
-          text: `Certain ${PRODUCT_NAME} features require a Subscription plan assigned to the Organization. Plan entitlements (which modules and limits apply) operate even when a card processor is not connected. Checkout, customer portal, and automatic card charges are available only if we have connected a payment provider for your Organization.`,
+          text: `Certain ${PRODUCT_NAME} features require a Subscription plan assigned to the Organization. Plan entitlements (which modules and limits apply) operate even when a card processor is not connected. When a payment processor is connected, Owners use Settings → Billing in ${PRODUCT_NAME} to manage checkout, payment methods, plan changes, and cancellation. We do not currently offer a third-party customer billing portal for the initial Live launch.`,
         },
       ],
     },
@@ -48,11 +48,11 @@ export const BILLING_DOCUMENT: LegalDocument = {
     },
     {
       id: "intervals",
-      title: "3. Monthly and Annual Billing",
+      title: "3. Monthly Billing",
       blocks: [
         {
           type: "p",
-          text: "The product catalog currently presents monthly plan pricing. The billing system can store a yearly interval, but annual checkout is not generally offered in the current billing screens. If we enable annual billing, the price, term, and renewal date will be shown before you pay.",
+          text: "Initial Live subscription checkout offers monthly plan pricing only. Annual billing is not offered at this time. If we later enable annual billing, the price, term, and renewal date will be shown before you pay.",
         },
       ],
     },
@@ -63,7 +63,7 @@ export const BILLING_DOCUMENT: LegalDocument = {
       blocks: [
         {
           type: "p",
-          text: "When a payment processor is connected and you complete checkout, you authorize recurring charges to the payment method on file for each renewal period until you cancel. Renewal terms, including the amount and period, will be presented at checkout. If no processor is connected, plan changes are applied in-product without charging a card through the Service.",
+          text: "When a payment processor is connected and you complete checkout for a paid Subscription, you authorize recurring monthly charges to the payment method on file for each renewal period until you cancel. Renewal terms, including the amount and period, will be presented at checkout. If no processor is connected, plan changes are applied in-product without charging a card through the Service.",
         },
       ],
     },
@@ -73,7 +73,7 @@ export const BILLING_DOCUMENT: LegalDocument = {
       blocks: [
         {
           type: "p",
-          text: `${operator} does not store credit-card numbers in the ${PRODUCT_NAME} application. If checkout is enabled, a third-party processor will collect payment details on its pages. Accepted methods are those the processor displays. Until a processor is connected, Owners may still assign plans in billing settings without card capture.`,
+          text: `${operator} does not store credit-card numbers in the ${PRODUCT_NAME} application. If checkout is enabled, a third-party processor will collect payment details on its pages. Accepted methods are those the processor displays. Subscription billing and optional automatic Application SMS replenishment use separate payment-method authorizations in Settings → Billing.`,
         },
       ],
     },
@@ -83,7 +83,11 @@ export const BILLING_DOCUMENT: LegalDocument = {
       blocks: [
         {
           type: "p",
-          text: "The application can record subscription statuses that include past due and grace period when a processor reports them. Retry schedules, emails, and the length of any grace period are not published as fixed product rules while checkout is unconfigured. If payment fails after a processor is connected, we may notify billing contacts, retry according to the processor, restrict paid features, or cancel after unsuccessful collection. We do not invent a specific number of retry days in this Policy.",
+          text: "If a paid Subscription renewal payment fails after a processor is connected, we notify billing contacts (owners and co-owners) and you may update the subscription payment method in Settings → Billing. The payment processor may automatically retry the charge according to its configured payment-recovery settings. Exact retry timing depends on those settings and is not a fixed number of days published in this Policy.",
+        },
+        {
+          type: "p",
+          text: "While the processor reports the Subscription as past due, paid plan entitlements generally continue. If the outstanding payment cannot be recovered and the processor reaches a terminal unpaid or canceled state, paid access may be restricted or the Subscription may be canceled. Restoration may require bringing the account current and completing a new paid checkout where required.",
         },
       ],
     },
@@ -103,7 +107,7 @@ export const BILLING_DOCUMENT: LegalDocument = {
       blocks: [
         {
           type: "p",
-          text: "Applicable taxes may be added where required. Tax calculation, if any, will be performed by us or the payment processor at checkout or on the invoice.",
+          text: "Applicable sales or use tax may be calculated and added to subscription and Application SMS package charges based on your Organization’s billing address and location information (including country, state or province, and postal or ZIP code) as used by our payment processor’s tax tools. Tax calculation is separate from whether a business is registered or legally required to collect tax in a given jurisdiction. Registration and remittance obligations are determined outside this Policy.",
         },
       ],
     },
@@ -133,7 +137,7 @@ export const BILLING_DOCUMENT: LegalDocument = {
       blocks: [
         {
           type: "p",
-          text: "Organization owners can request cancellation from Settings → Billing using “Cancel at period end.” That request is designed to stop renewal while leaving church data, campuses, inventory, and history in place. Access to paid features continues until the end of the current paid period when a period end exists; if there is no processor period, follow the confirmation message shown in the product. Other roles cannot cancel Subscriptions in the current billing UI.",
+          text: "Organization owners can request cancellation from Settings → Billing using “Cancel at period end.” That request is designed to stop renewal while leaving Organization data, campuses, inventory, and history in place. Access to paid features continues until the end of the current paid period when a period end exists; if there is no processor period, follow the confirmation message shown in the product. Other roles cannot cancel Subscriptions in the current billing UI. Cancellation does not itself create a refund.",
         },
       ],
     },
@@ -144,15 +148,19 @@ export const BILLING_DOCUMENT: LegalDocument = {
       blocks: [
         {
           type: "p",
-          text: "A final refund schedule has not been adopted as a published company policy.",
-        },
-        {
-          type: "placeholder",
-          text: "[BUSINESS/LEGAL DECISION REQUIRED — REFUND POLICY]",
+          text: "Except where required by applicable law, subscription fees are generally non-refundable once billed. We will also correct duplicate charges and confirmed billing or processing errors.",
         },
         {
           type: "p",
-          text: "Until that decision is published, we will honor refunds required by applicable law. For other requests, email the billing contact below. Chargebacks are addressed in Section 19.",
+          text: "Except where required by applicable law, manual Application SMS credit package purchases are generally non-refundable after credits have been granted. The same rule applies to automatic Application SMS replenishment purchases after credits have been granted. Exceptions include duplicate charges and confirmed billing or processing errors. Consumed SMS credits are not silently reversed when a refund is considered.",
+        },
+        {
+          type: "p",
+          text: "Purchased Application SMS credits have no cash redemption value and are not normally refundable merely because they remain unused. Purchased credits generally survive normal subscription cancellation while the Organization account and data remain retained under applicable account and data-retention rules. Treatment upon permanent Organization deletion or final data deletion follows those retention rules and is not a cash refund.",
+        },
+        {
+          type: "p",
+          text: `To request review of a charge, email ${BILLING_CONTACT_EMAIL} (or ${SUPPORT_EMAIL}) with your Organization name and the date of the charge. Initial refunds, when approved under this Policy, may be processed operationally through the payment processor. Card-issuer chargebacks are addressed in Section 19.`,
         },
       ],
     },
@@ -162,7 +170,11 @@ export const BILLING_DOCUMENT: LegalDocument = {
       blocks: [
         {
           type: "p",
-          text: "The billing data model can record a trialing status, but the public product does not currently advertise a self-serve trial with a stated duration. If we grant your Organization a trial, the length, conversion to a paid plan, and any payment timing will be described when the trial is offered. If you are not on a trial, this section does not apply.",
+          text: `New Organizations may receive a 7-day trial of plan entitlements without providing a credit or debit card. This trial is recorded in ${PRODUCT_NAME}; it is not a payment-processor subscription trial and does not create a paid processor subscription by itself.`,
+        },
+        {
+          type: "p",
+          text: "The trial does not automatically convert to a paid Subscription and does not automatically charge a card when the trial ends. To continue with paid service after the trial, an Owner must explicitly select a paid plan and complete checkout with the payment processor. Recurring paid billing begins only after that explicit checkout authorization.",
         },
       ],
     },
@@ -178,19 +190,19 @@ export const BILLING_DOCUMENT: LegalDocument = {
     },
     {
       id: "sms",
-      title: "15. Text/SMS Usage and Overages",
+      title: "15. Text/SMS Usage and Additional Credits",
       blocks: [
         {
           type: "p",
-          text: "Text/SMS for operational notifications is plan-gated. Included monthly Application SMS recipient allowances in the current commercial catalog and entitlement matrix are: none on Servant Standard, 250 on Steward Pro, 500 on Shepherd Plus, and 1,000 on Omni Enterprise. Each recipient of a text counts as one SMS toward that allowance. Organizations may also purchase additional Application SMS credit packages for their plan. When included and purchased credits are exhausted, additional Application SMS sending is blocked rather than billed as an automatic overage. Login verification texts, when used, follow Account security settings and are separate from Organization Application SMS allowances.",
-        },
-        {
-          type: "placeholder",
-          text: "[BUSINESS DECISION REQUIRED — SMS OVERAGES]",
+          text: "Text/SMS for operational notifications is plan-gated. Included monthly Application SMS recipient allowances in the current commercial catalog and entitlement matrix are: none on Servant Standard, 250 on Steward Pro, 500 on Shepherd Plus, and 1,000 on Omni Enterprise. Each recipient of a text counts as one SMS toward that allowance.",
         },
         {
           type: "p",
-          text: "Whether unused included SMS allowance resets each subscription period, how purchased SMS credits expire or survive cancellation, whether overages will later be billed, and how carrier pass-through fees are handled have not been published as final business rules beyond the product behavior described above.",
+          text: "We do not use open-ended, per-message metered SMS overage billing. Additional Application SMS capacity is purchased only through defined credit packages for your plan (for example, Servant Standard: 50 credits for $5; Steward Pro: 100 for $10; Shepherd Plus: 200 for $20; Omni Enterprise: 500 for $40), plus applicable tax. Optional automatic replenishment, when an Owner or co-owner enables it, purchases those same defined packages according to the selected threshold, spending cap, and tax rules—not an open-ended per-message rate.",
+        },
+        {
+          type: "p",
+          text: "When included and purchased credits are exhausted, additional Application SMS sending is blocked until more credits are available. Login verification texts, when used, follow Account security settings and are separate from Organization Application SMS allowances.",
         },
       ],
     },
@@ -200,7 +212,7 @@ export const BILLING_DOCUMENT: LegalDocument = {
       blocks: [
         {
           type: "p",
-          text: "If a paid Subscription is past due after a processor is connected, we may suspend paid features. Suspension is intended to restrict use, not to wipe Organization records. Restoration may require bringing the account current.",
+          text: "While a paid Subscription is past due and the payment processor is still attempting recovery, paid entitlements generally continue. If payment cannot be recovered and the processor reports a terminal unpaid or canceled state, we may restrict paid features. Restriction is intended to limit use, not to wipe Organization records. Restoration may require bringing the account current.",
         },
       ],
     },
@@ -210,7 +222,7 @@ export const BILLING_DOCUMENT: LegalDocument = {
       blocks: [
         {
           type: "p",
-          text: "Cancellation at period end is designed to preserve Customer Content. We do not promise indefinite retention after an Organization is closed or a relationship ends. Export options in the product are limited; do not assume a full data dump is available. The Privacy Policy describes deletion and retention in more detail.",
+          text: "Cancellation at period end is designed to preserve Customer Content, including purchased Application SMS credit balances while the Organization remains retained. We do not promise indefinite retention after an Organization is closed or a relationship ends. Export options in the product are limited; do not assume a full data dump is available. The Privacy Policy describes deletion and retention in more detail.",
         },
       ],
     },
@@ -234,7 +246,7 @@ export const BILLING_DOCUMENT: LegalDocument = {
       blocks: [
         {
           type: "p",
-          text: "If you dispute a charge with your card issuer, we (or the processor) may share information reasonably needed to respond. Please contact us first so we can try to resolve the issue. Repeated chargebacks after valid use of the Service may result in suspension. This section is not a threat; it describes a normal commercial process.",
+          text: "If you dispute a charge with your card issuer, we (or the processor) may share information reasonably needed to respond. Please contact us first so we can try to resolve the issue. A chargeback is not the same as a refund request under Section 12. Repeated chargebacks after valid use of the Service may result in suspension. This section is not a threat; it describes a normal commercial process.",
         },
       ],
     },

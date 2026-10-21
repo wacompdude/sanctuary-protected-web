@@ -6,7 +6,7 @@
  *
  * Update versions and dates here — not in page components.
  *
- * @legal-review governing law, mailing address, dedicated legal/privacy mailboxes
+ * @legal-review governing law (GOVERNING_STATE), dedicated legal/privacy mailboxes
  */
 
 /** Customer-facing product and legal business name. */
@@ -28,9 +28,25 @@ export const LEGAL_CONTACT_EMAIL = SUPPORT_EMAIL;
 export const PRIVACY_CONTACT_EMAIL = SUPPORT_EMAIL;
 export const BILLING_CONTACT_EMAIL = "billing@sanctuaryprotected.com";
 
-export const MAILING_ADDRESS: string | null = null;
+/**
+ * Approved public business mailing address (Phase 5C-3E-1 / D-10).
+ * Multiline for display in Terms, Privacy, and Billing policies.
+ */
+export const MAILING_ADDRESS: string | null =
+  "522 W Riverside Ave Ste N\nSpokane, WA 99201-0581\nUnited States";
 
+/**
+ * Governing state / venue.
+ * LEGAL REVIEW REQUIRED — do not infer from Washington business origin
+ * or the public mailing address (Phase 5C-3E-1 / D-11).
+ */
 export const GOVERNING_STATE: string | null = null;
+
+/**
+ * Application / business operations origin (tax readiness documentation).
+ * Not the same as governing law.
+ */
+export const BUSINESS_ORIGIN_STATE = "Washington";
 
 export const PUBLIC_SITE_HOST = "sanctuaryprotected.com";
 
@@ -49,7 +65,7 @@ export const LEGAL_NAV_ITEMS = [
 export const POLICY_VERSIONS = {
   terms: "1.3.0",
   privacy: "1.2.0",
-  billing: "1.0.1",
+  billing: "1.1.0",
 } as const;
 
 /** ISO calendar dates (UTC). */

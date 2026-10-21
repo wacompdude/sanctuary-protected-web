@@ -33,7 +33,7 @@ export function LegalDocumentView({ document }: { document: LegalDocument }) {
                 return (
                   <ul key={index} className="list-disc space-y-2 pl-5 text-foreground/90">
                     {block.items.map((item) => (
-                      <li key={item}>{item}</li>
+                      <li key={item}>{renderText(item)}</li>
                     ))}
                   </ul>
                 );

@@ -190,3 +190,56 @@ export function safeCardDisplay(
 export function persistedPaymentSetupIsChargeable(status: string): boolean {
   return status === "enabled";
 }
+
+/** Safe customer copy when Stripe Elements or setup fails. Never forward raw Stripe text. */
+export const SMS_PAYMENT_SETUP_CUSTOMER_ERRORS = {
+  generic:
+    "We couldn't update the payment method right now. Please try again.",
+  verify_and_retry:
+    "Your payment method could not be saved. Please verify the information and try again.",
+  authentication_required:
+    "Additional payment verification is required. Please complete verification and try again.",
+  incomplete:
+    "Payment method setup was not completed. Please try again.",
+} as const;
+
+export type SmsPaymentSetupCustomerErrorCode =
+  keyof typeof SMS_PAYMENT_SETUP_CUSTOMER_ERRORS;
+
+/**
+ * Maps Stripe.js / Elements setup errors to customer-safe copy.
+ * Does not return raw Stripe messages, request IDs, or internal identifiers.
+ */
+export function customerSafeSmsPaymentSetupError(input: {
+  message?: string | null;
+  code?: string | null;
+  type?: string | null;
+  declineCode?: string | null;
+}): string {
+  const code = (input.code ?? "").trim().toLowerCase();
+  const type = (input.type ?? "").trim().toLowerCase();
+  const decline = (input.declineCode ?? "").trim().toLowerCase();
+
+  if (
+    code === "authentication_required" ||
+    type === "authentication_required" ||
+    decline === "authentication_required"
+  ) {
+    return SMS_PAYMENT_SETUP_CUSTOMER_ERRORS.authentication_required;
+  }
+
+  if (
+    code === "incomplete" ||
+    code === "setup_intent_authentication_failure" ||
+    type === "validation_error" ||
+    type === "card_error"
+  ) {
+    return SMS_PAYMENT_SETUP_CUSTOMER_ERRORS.verify_and_retry;
+  }
+
+  if (code === "card_declined" || decline.length > 0) {
+    return SMS_PAYMENT_SETUP_CUSTOMER_ERRORS.verify_and_retry;
+  }
+
+  return SMS_PAYMENT_SETUP_CUSTOMER_ERRORS.generic;
+}

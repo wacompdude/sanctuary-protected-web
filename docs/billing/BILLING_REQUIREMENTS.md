@@ -233,31 +233,33 @@ Billing-disabled orgs must not generate Stripe charges. This is distinct from co
 
 ### Auto-replenishment
 
-Support:
+Shipped behavior (see also `docs/sms-auto-replenishment.md`):
 
-- Included monthly SMS allocation
-- Consumed / remaining
-- Low-balance threshold
-- Automatic replenishment (default on for eligible paid orgs)
-- Block size / price from catalog (not hard-coded in send path)
-- Billing obligation + failed-payment handling
-- Grace credits + max automatic blocks
+- Included monthly SMS allocation + purchased Application SMS credits
+- Consumed / remaining / reserved
+- Low-balance threshold (1 through package size − 1)
+- Automatic replenishment is **opt-in** (off until an owner/co-owner enables it)
+- Block size / price from commercial catalog (not hard-coded in the send path)
+- Off-session Stripe charge after successful Application SMS commit (`post_commit`)
+- Webhook-authoritative credit grant (`payment_intent.succeeded`)
+- Failed payment → `payment_attention_required` (no automatic retry until explicit resume)
+- Tax address issues → `tax_attention_required` (no charge / no grant)
+- Package price increase → `authorization_review_required`
+- Period spending cap (selectable up to $500; includes package + tax for automatic attempts)
 - Usage ledger + billing ledger
-- Monthly reset/allocation
-- Admin adjustments / refunds
-- Atomic / idempotent credit operations (no double block purchase under concurrency)
+- Auditable admin purchased-credit adjustment (service-role only; no customer UI)
+- Atomic / idempotent credit operations (no double grant under concurrency)
+- Reconciliation route exists and is authenticated; schedule may be inactive on plans that cannot provide the intended cadence
 
 ### Charge aggregation
 
-Prefer accumulating SMS block charges onto the organization’s Stripe subscription invoice / customer balance when appropriate, rather than a separate card charge for every small block. Remain flexible for immediate off-session charges if business rules later require them.
+Automatic Application SMS replenishment uses a dedicated off-session PaymentIntent (not subscription invoice aggregation). Manual package purchase remains Checkout/invoice-item based as implemented.
 
 ### Continuity vs risk
 
-Do **not** design: balance hits zero → hard stop all SMS → wait for manual purchase.
+Do **not** design: balance hits zero → hard stop all SMS → wait for manual purchase without notice.
 
-Do design: low threshold → auto-replenish → on payment failure notify + apply grace → preserve configured emergency capability → never unlimited unpaid usage.
-
-**Phase 1 note:** Today SMS uses **monthly segment quotas** (`messaging.sms.monthly_segment_limit`) with hard stop at limit. Credit-block auto-replenish is a Phase 9 deliverable that extends (does not discard) usage metering.
+Do design: low threshold → authorized auto-replenish → on payment failure notify owners/co-owners (in-app + email only) and pause automatic charging until payment method attention is resolved and replenishment is explicitly resumed → never unlimited unpaid usage.
 
 ---
 

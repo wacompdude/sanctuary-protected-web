@@ -7,12 +7,14 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { canManageSmsAutoReplenishment } from "@/lib/billing/sms-auto-replenishment";
 import {
+  customerSafeSmsPaymentSetupError,
   persistedPaymentSetupIsChargeable,
   readSetupIntentIdFromClient,
   safeCardDisplay,
   smsPaymentSetupCreateParams,
   smsPaymentSetupIdempotencyKey,
   SMS_PAYMENT_METHOD_SAVED_NOTICE,
+  SMS_PAYMENT_SETUP_CUSTOMER_ERRORS,
   SMS_PAYMENT_SETUP_PURPOSE,
   verifySmsPaymentSetup,
   type PaymentMethodVerificationSnapshot,
@@ -76,6 +78,13 @@ assert(panel.includes("does not enable Auto-Replenishment"), "setup copy");
 assert(panel.includes("Automatic replenishment is not enabled."), "disabled status remains separate");
 assert(panel.includes("SMS_PAYMENT_METHOD_SAVED_NOTICE"), "A saved notice is shared");
 assert(panel.includes("notePaymentMethodSaved"), "save uses the neutral notice");
+assert(panel.includes("customerSafeSmsPaymentSetupError"), "Stripe setup errors are sanitized");
+assert(!panel.includes("result.error.message ??"), "raw Stripe error.message is not shown");
+assert(
+  customerSafeSmsPaymentSetupError({ message: "raw Stripe pi_xxx" }) ===
+    SMS_PAYMENT_SETUP_CUSTOMER_ERRORS.generic,
+  "raw Stripe text is not returned to customers",
+);
 assert(
   SMS_PAYMENT_METHOD_SAVED_NOTICE ===
     "Payment method saved. Saving or changing this card does not change your automatic replenishment setting or charge the card.",

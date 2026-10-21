@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import {
   SMS_PAYMENT_METHOD_SAVED_NOTICE,
+  customerSafeSmsPaymentSetupError,
   type SafeCardDisplay,
 } from "@/lib/billing/stripe/sms-payment-setup";
 
@@ -51,12 +52,19 @@ function SetupForm({
         redirect: "if_required",
       });
       if (result.error) {
-        setError(result.error.message ?? "Payment method setup was not completed.");
+        setError(
+          customerSafeSmsPaymentSetupError({
+            message: result.error.message,
+            code: result.error.code,
+            type: result.error.type,
+            declineCode: result.error.decline_code,
+          }),
+        );
         return;
       }
       const setupIntentId = result.setupIntent?.id;
       if (!setupIntentId) {
-        setError("Payment method setup was not completed.");
+        setError(customerSafeSmsPaymentSetupError({ code: "incomplete" }));
         return;
       }
       const saved = await finalizeSmsPaymentSetupAction(setupIntentId);

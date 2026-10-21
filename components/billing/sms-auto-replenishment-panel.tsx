@@ -165,7 +165,9 @@ export function SmsAutoReplenishmentPanel({
       {canManage && current === "enabled" ? (
         <div className="space-y-2">
           <p className="text-sm text-muted-foreground">
-            Automatic purchases stop. The saved card remains available and is not charged.
+            Automatic SMS credit purchases are enabled. If you disable automatic
+            replenishment, automatic SMS credit purchases will stop. The saved
+            card remains available and is not charged when you turn this off.
           </p>
           <Button
             type="button"

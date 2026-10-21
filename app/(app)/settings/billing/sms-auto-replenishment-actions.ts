@@ -205,7 +205,7 @@ export async function reauthorizeSmsAutoReplenishmentAction(
 
 export async function resolveSmsAutoReplenishmentTaxAttentionAction(): Promise<SmsAutoReplenishmentActionResult> {
   try {
-    const { church } = await requireBillingManageAccess();
+    const { church, user } = await requireBillingManageAccess();
     if (!isServiceRoleConfigured()) {
       return { error: "Automatic replenishment was not resumed." };
     }
@@ -223,13 +223,19 @@ export async function resolveSmsAutoReplenishmentTaxAttentionAction(): Promise<S
     }
     const { data, error } = await admin.rpc(
       "resolve_application_sms_replenishment_tax_attention",
-      { p_organization_id: church.id },
+      {
+        p_organization_id: church.id,
+        p_actor_user_id: user.id,
+      },
     );
     const result =
       data && typeof data === "object" && !Array.isArray(data)
-        ? (data as { ok?: boolean })
+        ? (data as { ok?: boolean; outcome?: string })
         : null;
     if (error || result?.ok !== true) {
+      if (result?.outcome === "forbidden") {
+        return { error: configurationError("forbidden") };
+      }
       return { error: "Automatic replenishment was not resumed." };
     }
     revalidatePath("/settings/billing");

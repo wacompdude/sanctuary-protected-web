@@ -2,8 +2,9 @@
  * Application SMS auto-replenishment rules.
  *
  * These helpers do not enable a production organization, call Stripe, or
- * write configuration. Persistence is the service-role SQL in migration 110.
- * This module is not a Server Action and is not wired to the Billing page.
+ * write configuration. Persistence is the service-role SQL in migration 110+.
+ * Customer UI lives on Settings → Billing (`SmsAutoReplenishmentPanel`) and
+ * calls the billing server actions; this module only provides pure rules/copy.
  */
 
 import { commercialPlanByKey } from "@/lib/billing/commercial-catalog";

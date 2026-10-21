@@ -113,7 +113,7 @@ export const BILLING_DOCUMENT: LegalDocument = {
       blocks: [
         {
           type: "p",
-          text: "Moving to a higher plan takes effect when the change is applied in billing settings or when processor checkout completes. The product does not currently advertise automatic proration of unused time. If a processor later prorates charges, that amount will appear in the processor’s checkout or invoice. Do not assume a prorated credit unless it is shown to you at the time of the change.",
+          text: "Moving to a higher plan through Settings → Billing takes effect when the processor accepts the change. When a payment processor is connected, the product shows a prorated amount due today before you confirm. The processor applies credit for unused time on your current plan and invoices the prorated difference for the remainder of the current period. New plan entitlements apply after the processor reports the updated subscription. Do not assume a different amount than the preview you confirm.",
         },
       ],
     },
@@ -123,7 +123,7 @@ export const BILLING_DOCUMENT: LegalDocument = {
       blocks: [
         {
           type: "p",
-          text: "A downgrade may reduce modules, active-User limits, campus limits, photo limits, or Text/SMS allowances. The product is designed to keep existing records; some writes may be blocked if you exceed the new plan. Owners receive an in-app impact preview and must confirm a downgrade. Timing follows the in-app apply action (immediate entitlement change) unless a processor schedules the change for the next cycle and says so at checkout.",
+          text: "A downgrade may reduce modules, active-User limits, campus limits, photo limits, or Text/SMS allowances. The product is designed to keep existing records; some writes may be blocked if you exceed the new plan. Owners receive an in-app impact preview and must confirm. When a payment processor is connected, a confirmed downgrade is scheduled for the next renewal (period end). Your current plan and its entitlements continue until that renewal. The product does not issue a prorated refund for the unused portion of the higher plan when scheduling a downgrade.",
         },
       ],
     },
@@ -182,7 +182,7 @@ export const BILLING_DOCUMENT: LegalDocument = {
       blocks: [
         {
           type: "p",
-          text: "Text/SMS for operational notifications is plan-gated. Typical included monthly SMS recipient allowances in the current entitlement matrix are none on Servant Standard, 250 on Steward Pro, and 1,000 on Shepherd Plus and Omni Enterprise. Each recipient of a text counts as one SMS. When a limit is reached, additional sending is blocked rather than billed as an overage in the current product. Unused allowance is not described as rolling over.",
+          text: "Text/SMS for operational notifications is plan-gated. Included monthly Application SMS recipient allowances in the current commercial catalog and entitlement matrix are: none on Servant Standard, 250 on Steward Pro, 500 on Shepherd Plus, and 1,000 on Omni Enterprise. Each recipient of a text counts as one SMS toward that allowance. Organizations may also purchase additional Application SMS credit packages for their plan. When included and purchased credits are exhausted, additional Application SMS sending is blocked rather than billed as an automatic overage. Login verification texts, when used, follow Account security settings and are separate from Organization Application SMS allowances.",
         },
         {
           type: "placeholder",
@@ -190,7 +190,7 @@ export const BILLING_DOCUMENT: LegalDocument = {
         },
         {
           type: "p",
-          text: "Whether unused SMS allowance resets on a calendar month, whether overages will later be billed, and how carrier pass-through fees are handled have not been published as final business rules. Login verification texts, when used, follow Account security settings and are separate from Organization notification allowances.",
+          text: "Whether unused included SMS allowance resets each subscription period, how purchased SMS credits expire or survive cancellation, whether overages will later be billed, and how carrier pass-through fees are handled have not been published as final business rules beyond the product behavior described above.",
         },
       ],
     },

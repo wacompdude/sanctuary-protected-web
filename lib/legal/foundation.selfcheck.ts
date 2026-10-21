@@ -121,6 +121,17 @@ function main() {
     billingText.includes("[BUSINESS DECISION REQUIRED — SMS OVERAGES]"),
     "SMS overage decision is flagged",
   );
+  assert(
+    billingText.includes("500 on Shepherd Plus") &&
+      billingText.includes("1,000 on Omni Enterprise") &&
+      !billingText.includes("1,000 on Shepherd Plus"),
+    "billing policy Shepherd SMS matches commercial catalog (500), not Omni (1,000)",
+  );
+  assert(
+    billingText.includes("prorated amount due today") &&
+      billingText.includes("scheduled for the next renewal"),
+    "billing policy upgrade/downgrade wording matches Stripe always_invoice / period-end schedule",
+  );
 
   const forbiddenPublicFlags = [
     "[ATTORNEY REVIEW REQUIRED]",

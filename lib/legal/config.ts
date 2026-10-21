@@ -49,7 +49,7 @@ export const LEGAL_NAV_ITEMS = [
 export const POLICY_VERSIONS = {
   terms: "1.3.0",
   privacy: "1.2.0",
-  billing: "1.0.0",
+  billing: "1.0.1",
 } as const;
 
 /** ISO calendar dates (UTC). */
@@ -59,7 +59,7 @@ export const POLICY_DATES = {
   privacyEffective: "2026-09-07",
   privacyUpdated: "2026-09-19",
   billingEffective: "2026-09-07",
-  billingUpdated: "2026-09-08",
+  billingUpdated: "2026-10-21",
 } as const;
 
 export type PolicyDocumentKey = keyof typeof POLICY_VERSIONS;

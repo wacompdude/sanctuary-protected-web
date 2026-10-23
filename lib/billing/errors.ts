@@ -72,7 +72,7 @@ export class StripeLiveModeForbiddenError extends Error {
 
   constructor(context = "Phase 4B-2 catalog validation") {
     super(
-      `${context} refuses live Stripe secret keys. Use a sandbox (sk_test_) key only.`,
+      `${context} refuses live Stripe secret keys unless STRIPE_LIVE_CHECKOUT_ENABLED is exactly "true" (Checkout only). Catalog validation remains sandbox-only.`,
     );
     this.name = "StripeLiveModeForbiddenError";
   }

@@ -60,6 +60,22 @@ export function classifyStripeSecretMode(
   return "unknown";
 }
 
+/** Server-only operational authorization for Live Stripe Checkout. */
+export const STRIPE_LIVE_CHECKOUT_ENABLED_ENV = "STRIPE_LIVE_CHECKOUT_ENABLED";
+
+/**
+ * Fail-closed Live Checkout authorization.
+ * Only the exact string "true" enables Live Checkout. Missing, empty, "false",
+ * "TRUE", "1", and any other value remain blocked.
+ * Sandbox/test Checkout does not require this flag.
+ * Never expose via NEXT_PUBLIC_*.
+ */
+export function isStripeLiveCheckoutEnabled(
+  envValue: string | null | undefined = process.env.STRIPE_LIVE_CHECKOUT_ENABLED,
+): boolean {
+  return envValue === "true";
+}
+
 export function readStripeSecretKey(): string {
   return readEnv("STRIPE_SECRET_KEY");
 }

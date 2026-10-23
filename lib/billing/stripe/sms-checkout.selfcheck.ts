@@ -7,7 +7,11 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { canManageOrganizationBilling } from "@/lib/billing/access";
 import { commercialExpectationByLookupKey } from "@/lib/billing/commercial-catalog";
-import { BillingCheckoutPlanError } from "@/lib/billing/errors";
+import {
+  BillingCheckoutPlanError,
+  StripeLiveModeForbiddenError,
+} from "@/lib/billing/errors";
+import { ensureStripeCustomerForOrganization } from "@/lib/billing/stripe/customers";
 import { readOrganizationBillingAddress } from "@/lib/billing/organization-billing-address";
 import { SMS_PURCHASE_TAX_ADDRESS_REQUIRED } from "@/lib/billing/stripe/sms-purchase-tax";
 import { summarizeApplicationSmsCapacity } from "@/lib/billing/sms-capacity-summary";
@@ -470,6 +474,143 @@ async function main() {
     if (!(error instanceof BillingCheckoutPlanError)) throw error;
     assert(!error.message.includes("stripe customer update failed"), "stripe error is not exposed");
     assert(!syncFailedCreated, "sync failure does not create a session");
+  }
+
+  // Live Checkout blocked without STRIPE_LIVE_CHECKOUT_ENABLED === "true"
+  {
+    const prev = process.env.STRIPE_LIVE_CHECKOUT_ENABLED;
+    delete process.env.STRIPE_LIVE_CHECKOUT_ENABLED;
+    let createdCustomer = false;
+    let createdSession = false;
+    try {
+      await createSmsPackageCheckoutSession(
+        {
+          organizationId: ORG,
+          subscriptionStatus: "active",
+          planKey: PLAN_KEYS.SERVANT_STANDARD,
+          origin: "https://app.example.test",
+          successUrl:
+            "https://app.example.test/settings/billing?sms_purchase=success",
+          cancelUrl:
+            "https://app.example.test/settings/billing?sms_purchase=cancelled",
+          attemptToken: "live-blocked",
+          stripeSecretKey: "sk_live_sms_selfcheck_NOT_A_REAL_SECRET",
+        },
+        {
+          listPrices: async () => {
+            throw new Error("network must not run");
+          },
+          store: memoryStore(null),
+          stripeCustomers: {
+            async createCustomer() {
+              createdCustomer = true;
+              return { id: "cus_no" };
+            },
+          },
+          stripeCheckout: {
+            async createSmsPackageCheckoutSession() {
+              createdSession = true;
+              return { id: "cs_no", url: "https://checkout.stripe.test/no" };
+            },
+          },
+        },
+      );
+      assert(false, "expected live SMS checkout forbidden");
+    } catch (error) {
+      assert(error instanceof StripeLiveModeForbiddenError, "live SMS forbidden");
+      assert(!createdCustomer, "blocked live SMS creates no customer");
+      assert(!createdSession, "blocked live SMS creates no session");
+    } finally {
+      if (prev === undefined) delete process.env.STRIPE_LIVE_CHECKOUT_ENABLED;
+      else process.env.STRIPE_LIVE_CHECKOUT_ENABLED = prev;
+    }
+  }
+
+  // Live SMS Checkout allowed when flag is exact "true"
+  {
+    const prev = process.env.STRIPE_LIVE_CHECKOUT_ENABLED;
+    process.env.STRIPE_LIVE_CHECKOUT_ENABLED = "true";
+    try {
+      const live = await createSmsPackageCheckoutSession(
+        {
+          organizationId: ORG,
+          subscriptionStatus: "active",
+          planKey: PLAN_KEYS.SERVANT_STANDARD,
+          origin: "https://app.example.test",
+          successUrl:
+            "https://app.example.test/settings/billing?sms_purchase=success",
+          cancelUrl:
+            "https://app.example.test/settings/billing?sms_purchase=cancelled",
+          attemptToken: "live-ok",
+          stripeSecretKey: "sk_live_sms_selfcheck_NOT_A_REAL_SECRET",
+        },
+        {
+          listPrices: async (key) => [priceFor(key)],
+          store: memoryStore("cus_live_existing"),
+          stripeCustomers: {
+            async createCustomer() {
+              throw new Error("existing customer must be reused");
+            },
+          },
+          stripeCheckout: {
+            async createSmsPackageCheckoutSession() {
+              return {
+                id: "cs_live_sms",
+                url: "https://checkout.stripe.test/live-sms",
+              };
+            },
+          },
+        },
+      );
+      assert(live.sessionId === "cs_live_sms", "authorized live SMS session");
+    } finally {
+      if (prev === undefined) delete process.env.STRIPE_LIVE_CHECKOUT_ENABLED;
+      else process.env.STRIPE_LIVE_CHECKOUT_ENABLED = prev;
+    }
+  }
+
+  // Absent profile + absent billing_customers mirror → create + save mapping
+  {
+    let created = false;
+    let saved: string | null = null;
+    const store: BillingCustomerMappingStore = {
+      async getMappedCustomerId() {
+        return null;
+      },
+      async saveMappedCustomerId(input) {
+        saved = input.providerCustomerId;
+      },
+      async getBillingContact() {
+        return {
+          email: "owner@example.test",
+          name: "Owner",
+          organizationName: "Org",
+        };
+      },
+    };
+    const result = await ensureStripeCustomerForOrganization({
+      organizationId: ORG,
+      fallbackEmail: "fallback@example.test",
+      store,
+      stripeCustomers: {
+        async createCustomer(input) {
+          created = true;
+          assert(
+            input.idempotencyKey.includes(ORG),
+            "customer idempotency includes org",
+          );
+          assert(
+            input.metadata.organization_id === ORG,
+            "customer metadata org",
+          );
+          return { id: "cus_new_live" };
+        },
+      },
+    });
+    assert(created, "creates customer when mapping absent");
+    assert(result.created === true, "created flag true");
+    assert(result.providerCustomerId === "cus_new_live", "returns new id");
+    assert(saved === "cus_new_live", "persists mapping via upsert path");
   }
 
   console.log("sms package checkout self-check passed");

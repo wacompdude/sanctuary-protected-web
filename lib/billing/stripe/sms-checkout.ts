@@ -15,7 +15,7 @@ import {
 import { assertNoClientPriceOverrides } from "@/lib/billing/stripe/checkout";
 import { assertSafeBillingCheckoutUrls } from "@/lib/billing/stripe/checkout-urls";
 import {
-  assertSandboxCatalogValidationMode,
+  assertStripeCheckoutModeAllowed,
   resolveStripePriceByInternalKey,
   type ListPricesByLookupKey,
   type ResolvedStripePrice,
@@ -204,7 +204,7 @@ export async function createSmsPackageCheckoutSession(
   providerCustomerId: string;
   metadata: SmsPackageCheckoutMetadata;
 }> {
-  assertSandboxCatalogValidationMode(input.stripeSecretKey, "SMS package Checkout");
+  assertStripeCheckoutModeAllowed(input.stripeSecretKey, "SMS package Checkout");
   assertSmsPurchaseTaxCheckoutReady({
     authorized: input.smsTaxAuthorized === true,
     billingAddressComplete: input.billingAddressComplete === true,

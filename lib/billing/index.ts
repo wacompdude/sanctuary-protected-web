@@ -37,12 +37,15 @@ export {
 export {
   classifyStripeSecretMode,
   getStripeBillingConfigStatus,
+  isStripeLiveCheckoutEnabled,
   isStripeSecretConfigured,
   resolveBillingProviderIdFromEnv,
+  STRIPE_LIVE_CHECKOUT_ENABLED_ENV,
 } from "@/lib/billing/stripe/config";
 
 export {
   assertSandboxCatalogValidationMode,
+  assertStripeCheckoutModeAllowed,
   matchStripePriceToExpectation,
   resolveStripePriceByInternalKey,
   resolveStripePriceByLookupKey,

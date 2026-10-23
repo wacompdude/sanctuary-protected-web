@@ -25,11 +25,11 @@ import {
   type StripeCustomerCreateApi,
 } from "@/lib/billing/stripe/customers";
 import {
+  assertStripeCheckoutModeAllowed,
   resolveStripePriceByInternalKey,
   type ListPricesByLookupKey,
   type ResolvedStripePrice,
 } from "@/lib/billing/stripe/catalog";
-import { assertSandboxCatalogValidationMode } from "@/lib/billing/stripe/catalog";
 import { withStripeBillingErrorLog } from "@/lib/billing/stripe/safe-error-log";
 import type { BillingCheckoutSession } from "@/lib/billing/types";
 
@@ -170,7 +170,7 @@ export async function createSubscriptionCheckoutSession(
   input: CreateSubscriptionCheckoutInput,
   deps: CreateSubscriptionCheckoutDeps,
 ): Promise<BillingCheckoutSession & { providerCustomerId: string; planKey: PlanKey }> {
-  assertSandboxCatalogValidationMode(
+  assertStripeCheckoutModeAllowed(
     input.stripeSecretKey,
     "Phase 4B-3 Checkout",
   );

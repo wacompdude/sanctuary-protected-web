@@ -347,38 +347,91 @@ async function main() {
   assert(checkoutCalls === 1, "one checkout create");
   assert(entitlementMutations === 0, "no entitlement mutation on success path");
 
-  // Live mode refused before network
-  try {
-    await createSubscriptionCheckoutSession(
-      {
-        organizationId: "org_live",
-        planKey: PLAN_KEYS.SERVANT_STANDARD,
-        origin: "https://app.example.test",
-        successUrl: "https://app.example.test/settings/billing?checkout=success",
-        cancelUrl: "https://app.example.test/settings/billing?checkout=cancelled",
-        attemptToken: "tok",
-        stripeSecretKey: "sk_live_phase4b3_selfcheck_NOT_A_REAL_SECRET",
-      },
-      {
-        listPrices: async () => {
-          throw new Error("network must not run");
+  // Live mode refused before network when flag is absent
+  {
+    const prev = process.env.STRIPE_LIVE_CHECKOUT_ENABLED;
+    delete process.env.STRIPE_LIVE_CHECKOUT_ENABLED;
+    let createdCustomer = false;
+    let createdSession = false;
+    try {
+      await createSubscriptionCheckoutSession(
+        {
+          organizationId: "org_live",
+          planKey: PLAN_KEYS.SERVANT_STANDARD,
+          origin: "https://app.example.test",
+          successUrl: "https://app.example.test/settings/billing?checkout=success",
+          cancelUrl: "https://app.example.test/settings/billing?checkout=cancelled",
+          attemptToken: "tok",
+          stripeSecretKey: "sk_live_phase4b3_selfcheck_NOT_A_REAL_SECRET",
         },
-        store: memoryStore(),
-        stripeCustomers: {
-          async createCustomer() {
+        {
+          listPrices: async () => {
             throw new Error("network must not run");
           },
-        },
-        stripeCheckout: {
-          async createSubscriptionCheckoutSession() {
-            throw new Error("network must not run");
+          store: memoryStore(),
+          stripeCustomers: {
+            async createCustomer() {
+              createdCustomer = true;
+              throw new Error("network must not run");
+            },
+          },
+          stripeCheckout: {
+            async createSubscriptionCheckoutSession() {
+              createdSession = true;
+              throw new Error("network must not run");
+            },
           },
         },
-      },
-    );
-    throw new Error("expected live forbidden");
-  } catch (error) {
-    assert(error instanceof StripeLiveModeForbiddenError, "live forbidden");
+      );
+      throw new Error("expected live forbidden");
+    } catch (error) {
+      assert(error instanceof StripeLiveModeForbiddenError, "live forbidden");
+      assert(!createdCustomer, "blocked live creates no customer");
+      assert(!createdSession, "blocked live creates no session");
+    } finally {
+      if (prev === undefined) delete process.env.STRIPE_LIVE_CHECKOUT_ENABLED;
+      else process.env.STRIPE_LIVE_CHECKOUT_ENABLED = prev;
+    }
+  }
+
+  // Live mode permitted when STRIPE_LIVE_CHECKOUT_ENABLED === "true"
+  {
+    const prev = process.env.STRIPE_LIVE_CHECKOUT_ENABLED;
+    process.env.STRIPE_LIVE_CHECKOUT_ENABLED = "true";
+    try {
+      const liveSession = await createSubscriptionCheckoutSession(
+        {
+          organizationId: "org_live_ok",
+          planKey: PLAN_KEYS.SERVANT_STANDARD,
+          origin: "https://app.example.test",
+          successUrl: "https://app.example.test/settings/billing?checkout=success",
+          cancelUrl: "https://app.example.test/settings/billing?checkout=cancelled",
+          attemptToken: "tok-live",
+          stripeSecretKey: "sk_live_phase4b3_selfcheck_NOT_A_REAL_SECRET",
+        },
+        {
+          listPrices: listOk,
+          store: memoryStore({ customerId: "cus_live" }),
+          stripeCustomers: {
+            async createCustomer() {
+              throw new Error("existing customer must be reused");
+            },
+          },
+          stripeCheckout: {
+            async createSubscriptionCheckoutSession() {
+              return {
+                id: "cs_live",
+                url: "https://checkout.stripe.test/live",
+              };
+            },
+          },
+        },
+      );
+      assert(liveSession.sessionId === "cs_live", "live checkout session when authorized");
+    } finally {
+      if (prev === undefined) delete process.env.STRIPE_LIVE_CHECKOUT_ENABLED;
+      else process.env.STRIPE_LIVE_CHECKOUT_ENABLED = prev;
+    }
   }
 
   // Browser-controlled success URL rejected

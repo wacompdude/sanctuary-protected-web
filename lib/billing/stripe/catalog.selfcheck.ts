@@ -19,11 +19,16 @@ import {
 import { getBillingProvider, isBillingProviderReady } from "@/lib/billing/provider";
 import {
   assertSandboxCatalogValidationMode,
+  assertStripeCheckoutModeAllowed,
   matchStripePriceToExpectation,
   resolveStripePriceByInternalKey,
   type StripePriceSnapshot,
   validateStripeCommercialCatalog,
 } from "@/lib/billing/stripe/catalog";
+import {
+  isStripeLiveCheckoutEnabled,
+  STRIPE_LIVE_CHECKOUT_ENABLED_ENV,
+} from "@/lib/billing/stripe/config";
 import { PLAN_KEYS } from "@/lib/subscriptions/plan-keys";
 
 function assert(condition: unknown, message: string) {
@@ -313,7 +318,7 @@ async function main() {
   assert(!JSON.stringify(resolved).includes(probe), "resolved has no probe");
   assert(!JSON.stringify(resolved).includes("sk_"), "resolved has no sk_");
 
-  // 14. live-key mode rejected before network
+  // 14. live-key mode rejected before network (catalog validation always sandbox)
   try {
     assertSandboxCatalogValidationMode(
       "sk_live_phase4b2_selfcheck_NOT_A_REAL_SECRET",
@@ -322,6 +327,134 @@ async function main() {
   } catch (error) {
     assert(error instanceof StripeLiveModeForbiddenError, "live forbidden");
   }
+
+  // 14b. Checkout Live authorization matrix (fail-closed; exact "true" only)
+  const liveKey = "sk_live_phase4b2_selfcheck_NOT_A_REAL_SECRET";
+  const testKey = "sk_test_phase4b2_selfcheck_NOT_A_REAL_SECRET";
+  const rkLive = "rk_live_phase4b2_selfcheck_NOT_A_REAL_SECRET";
+
+  assert(isStripeLiveCheckoutEnabled(undefined) === false, "flag undefined blocked");
+  assert(isStripeLiveCheckoutEnabled(null) === false, "flag null blocked");
+  assert(isStripeLiveCheckoutEnabled("") === false, "flag empty blocked");
+  assert(isStripeLiveCheckoutEnabled("false") === false, "flag false blocked");
+  assert(isStripeLiveCheckoutEnabled("1") === false, "flag 1 blocked");
+  assert(isStripeLiveCheckoutEnabled("TRUE") === false, "flag TRUE blocked");
+  assert(isStripeLiveCheckoutEnabled(" true") === false, "flag padded blocked");
+  assert(isStripeLiveCheckoutEnabled("true") === true, "flag true allowed");
+
+  await withEnv({ [STRIPE_LIVE_CHECKOUT_ENABLED_ENV]: undefined }, () => {
+    assert(assertStripeCheckoutModeAllowed(testKey) === "test", "test + missing flag");
+  });
+  await withEnv({ [STRIPE_LIVE_CHECKOUT_ENABLED_ENV]: "false" }, () => {
+    assert(assertStripeCheckoutModeAllowed(testKey) === "test", "test + false flag");
+  });
+  await withEnv({ [STRIPE_LIVE_CHECKOUT_ENABLED_ENV]: "true" }, () => {
+    assert(assertStripeCheckoutModeAllowed(testKey) === "test", "test + true flag");
+  });
+
+  for (const [label, value] of [
+    ["missing", undefined],
+    ["empty", ""],
+    ["false", "false"],
+    ["1", "1"],
+    ["TRUE", "TRUE"],
+  ] as const) {
+    await withEnv({ [STRIPE_LIVE_CHECKOUT_ENABLED_ENV]: value }, () => {
+      try {
+        assertStripeCheckoutModeAllowed(liveKey, "matrix");
+        throw new Error(`expected live blocked for ${label}`);
+      } catch (error) {
+        assert(
+          error instanceof StripeLiveModeForbiddenError,
+          `live blocked for ${label}`,
+        );
+      }
+      try {
+        assertStripeCheckoutModeAllowed(rkLive, "matrix-rk");
+        throw new Error(`expected rk_live blocked for ${label}`);
+      } catch (error) {
+        assert(
+          error instanceof StripeLiveModeForbiddenError,
+          `rk_live blocked for ${label}`,
+        );
+      }
+    });
+  }
+
+  await withEnv({ [STRIPE_LIVE_CHECKOUT_ENABLED_ENV]: "true" }, () => {
+    assert(
+      assertStripeCheckoutModeAllowed(liveKey) === "live",
+      "live + true allowed",
+    );
+    assert(
+      assertStripeCheckoutModeAllowed(rkLive) === "live",
+      "rk_live + true allowed",
+    );
+  });
+
+  // Catalog validation remains refuse-live even when Checkout flag is true
+  await withEnv({ [STRIPE_LIVE_CHECKOUT_ENABLED_ENV]: "true" }, () => {
+    try {
+      assertSandboxCatalogValidationMode(liveKey);
+      throw new Error("catalog must still refuse live");
+    } catch (error) {
+      assert(
+        error instanceof StripeLiveModeForbiddenError,
+        "catalog refuses live with flag true",
+      );
+    }
+  });
+
+  const checkoutSource = readFileSync(
+    join(process.cwd(), "lib/billing/stripe/checkout.ts"),
+    "utf8",
+  );
+  const smsCheckoutSource = readFileSync(
+    join(process.cwd(), "lib/billing/stripe/sms-checkout.ts"),
+    "utf8",
+  );
+  assert(
+    checkoutSource.includes("assertStripeCheckoutModeAllowed"),
+    "subscription Checkout uses centralized gate",
+  );
+  assert(
+    smsCheckoutSource.includes("assertStripeCheckoutModeAllowed"),
+    "SMS Checkout uses centralized gate",
+  );
+  assert(
+    !checkoutSource.includes("assertSandboxCatalogValidationMode"),
+    "subscription Checkout does not use catalog-only gate",
+  );
+  assert(
+    !smsCheckoutSource.includes("assertSandboxCatalogValidationMode"),
+    "SMS Checkout does not use catalog-only gate",
+  );
+  const subFn = checkoutSource.slice(
+    checkoutSource.indexOf("export async function createSubscriptionCheckoutSession"),
+  );
+  const smsFn = smsCheckoutSource.slice(
+    smsCheckoutSource.indexOf("export async function createSmsPackageCheckoutSession"),
+  );
+  assert(
+    subFn.indexOf("assertStripeCheckoutModeAllowed") <
+      subFn.indexOf("ensureStripeCustomerForOrganization"),
+    "subscription gate before customer ensure",
+  );
+  assert(
+    smsFn.indexOf("assertStripeCheckoutModeAllowed") <
+      smsFn.indexOf("ensureStripeCustomerForOrganization"),
+    "SMS gate before customer ensure",
+  );
+  assert(
+    subFn.indexOf("assertStripeCheckoutModeAllowed") <
+      subFn.indexOf("createSubscriptionCheckoutSession({"),
+    "subscription gate before sessions.create deps call",
+  );
+  assert(
+    smsFn.indexOf("assertStripeCheckoutModeAllowed") <
+      smsFn.indexOf("createSmsPackageCheckoutSession({"),
+    "SMS gate before sessions.create deps call",
+  );
 
   let liveValidateCaught = false;
   try {

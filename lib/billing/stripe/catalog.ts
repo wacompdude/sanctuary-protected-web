@@ -24,6 +24,7 @@ import {
 } from "@/lib/billing/errors";
 import {
   classifyStripeSecretMode,
+  isStripeLiveCheckoutEnabled,
   type StripeSecretMode,
 } from "@/lib/billing/stripe/config";
 
@@ -224,8 +225,33 @@ export async function resolveStripePriceByInternalKey(
 }
 
 /**
- * Refuse live/unknown modes before any catalog network call.
- * Phase 4B-2 live validation is sandbox (test) only.
+ * Authoritative Checkout mode gate (subscription + SMS package).
+ * - test secrets: always allowed
+ * - live secrets: allowed only when STRIPE_LIVE_CHECKOUT_ENABLED === "true"
+ * - unknown secrets: always refused
+ * Call before customers.create / customers.update / checkout.sessions.create.
+ */
+export function assertStripeCheckoutModeAllowed(
+  secretKey: string | null | undefined,
+  context = "Stripe Checkout",
+): "test" | "live" {
+  const mode = classifyStripeSecretMode(secretKey);
+  if (mode === "live") {
+    if (!isStripeLiveCheckoutEnabled()) {
+      throw new StripeLiveModeForbiddenError(context);
+    }
+    return "live";
+  }
+  if (mode !== "test") {
+    throw new StripeUnknownModeForbiddenError(context);
+  }
+  return "test";
+}
+
+/**
+ * Refuse live/unknown modes before catalog validation network calls.
+ * Phase 4B-2 catalog validation remains sandbox (test) only — independent of
+ * STRIPE_LIVE_CHECKOUT_ENABLED (that flag authorizes Checkout only).
  */
 export function assertSandboxCatalogValidationMode(
   secretKey: string | null | undefined,

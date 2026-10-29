@@ -1374,9 +1374,9 @@ Protected Test `sub_…HboS` renewal **`2026-11-24T07:00:45Z`** · SMS Tax Test 
 
 ## PHASE 5D-2A.2 — Upgrade Idempotency & Fail-Closed Safety Hardening
 
-**Recorded:** 2026-10-28 (implementation + mocked selfchecks; **no** Live `createPreview` / `subscriptions.update` / charge / Checkout enable)
+**Recorded:** 2026-10-28 (implementation) · **Deployed:** 2026-10-29 (Production)
 
-**Verdict:** **PHASE 5D-2A.2 CODE COMPLETE — OPERATOR ENVIRONMENT CONFIGURATION REQUIRED BEFORE DEPLOYMENT**
+**Verdict:** **PHASE 5D-2A.2 COMPLETE — UPGRADE IDEMPOTENCY AND FAIL-CLOSED SAFETY HARDENING DEPLOYED AND VERIFIED**
 
 ### Prior P1 (closed by this phase)
 
@@ -1412,28 +1412,44 @@ BILLING_UPGRADE_PREVIEW_SIGNING_SECRET=<operator-generated ≥32 chars>
 - Absent signing secret → upgrade preview/confirm fail closed (configuration error).
 - Absent/false upgrade gate → Live `subscriptions.update` fail closed.
 
-### OPERATOR ACTION REQUIRED (before Production deploy)
+### Operator Production env (configured; values not recorded)
 
-1. Vercel → Production env: set `STRIPE_LIVE_SUBSCRIPTION_UPGRADES_ENABLED=false` (explicit).
-2. Vercel → Production env: set `BILLING_UPGRADE_PREVIEW_SIGNING_SECRET` to a new random ≥32-character secret (generate locally; do not commit).
-3. Redeploy the hardening commit **after** both vars are present.
-4. Confirm Checkout gate remains `STRIPE_LIVE_CHECKOUT_ENABLED=false`.
+| Variable | Production status |
+|----------|-------------------|
+| `STRIPE_LIVE_SUBSCRIPTION_UPGRADES_ENABLED` | **PRESENT** · operator-configured **`false`** · code requires exact `"true"` |
+| `STRIPE_LIVE_CHECKOUT_ENABLED` | **PRESENT** · remains **`false`** |
+| `BILLING_UPGRADE_PREVIEW_SIGNING_SECRET` | **PRESENT** · server-only · **VALUE NOT RECORDED** · not `NEXT_PUBLIC_*` |
 
-### Tests
+### Tests (pre-deploy)
 
-- `lib/billing/stripe/upgrade.selfcheck.ts` — gate matrix, idempotency identity, preview token reject paths, stale plan/schedule/cancel, concurrent same-op key collapse, Checkout independence, SMS isolation assertions
-- Related callers updated: webhook / downgrade / cancellation / subscription-tax selfchecks
 - `npm run selfcheck:billing` **PASS**
-- `npx tsc --noEmit` **PASS**
+- `npx tsc --noEmit -p tsconfig.json` **PASS**
 - `npm run build` **PASS**
 
 ### Migration
 
-**NONE** (no schema change; migration remains **115**).
+**NONE** (no schema change; migration remains **115**; **116 absent**).
 
 ### Deployment status
 
-**NOT DEPLOYED** — waiting on operator Production env configuration above. Baseline runtime remains `f4cfb61` until authorized deploy.
+| Field | Value |
+|-------|--------|
+| Commit | **`3ddb05dce65d7e5f2052ddda73a2142479fd1f0e`** (`3ddb05d`) |
+| Message | Harden Live subscription upgrade safety |
+| Prior runtime | `f4cfb61` |
+| Production host | `https://sanctuaryprotected.com` |
+| `/api/health` | `ok:true` · commit **`3ddb05d…`** |
+| Vercel Production project | `wacompdude-sanctuary-protected-web` |
+| Financial mutations | **NONE** (no Live `createPreview` / `subscriptions.update` / charge / Checkout) |
+
+### Post-deploy RO org state (2026-10-29)
+
+| Org | Result |
+|-----|--------|
+| Lifecycle Test | `servant_standard` · active/ok · cancel false · schedule NULL · period end `2026-11-24T07:51:44Z` · `sub_…ydeZ` · invoice **1** · txn **1** · latest `in_…n4yC` · SMS attempts **0** · auto PM NULL |
+| Protected Test | `servant_standard` · active/ok · cancel false · period end `2026-11-24T07:00:45Z` · `sub_…HboS` |
+| SMS Tax Test | available **100** · reserved **0** · auto **disabled** · attempts **6** |
+| Sandbox active linkage | Customer **0** · Subscription **0** · Schedule **0** · Latest invoice **0** · Auto PM **0** |
 
 ### Retained findings (unchanged)
 
@@ -1445,6 +1461,8 @@ BILLING_UPGRADE_PREVIEW_SIGNING_SECRET=<operator-generated ≥32 chars>
 - 3DS / `error_if_incomplete` needs controlled observation
 - Minor upgrade confirmation UX (tax line / PM last4) P2/P3
 
-### Next phase (do not start here)
+### Next phase
 
-**Phase 5D-2A.1** — one authorized non-mutating Live `invoices.createPreview` on Lifecycle Test only. Still **no** `subscriptions.update`. Upgrade gate stays **false**.
+**READY FOR PHASE 5D-2A.1 — LIVE UPGRADE PREVIEW RUNTIME VALIDATION — NON-MUTATING**
+
+One authorized non-mutating Live `invoices.createPreview` on Lifecycle Test only. Still **no** `subscriptions.update`. Upgrade gate stays **false**.

@@ -11,6 +11,7 @@ import {
   BillingNotImplementedError,
   BillingProviderNotConfiguredError,
   BillingUpgradeError,
+  StripeLiveSubscriptionUpgradeForbiddenError,
   buildDowngradeImpactReport,
   getBillingProvider,
   getConfiguredBillingProviderId,
@@ -565,7 +566,8 @@ function upgradeActionError(error: unknown): string {
     error instanceof ChurchAccessError ||
     error instanceof BillingConfigurationError ||
     error instanceof BillingUpgradeError ||
-    error instanceof BillingProviderNotConfiguredError
+    error instanceof BillingProviderNotConfiguredError ||
+    error instanceof StripeLiveSubscriptionUpgradeForbiddenError
   ) {
     return error.message;
   }
@@ -652,6 +654,7 @@ export async function previewSubscriptionUpgradeAction(
     const targetPlanKey = assertClientUpgradePayload({ plan_key: planKey });
     const local = await loadLocalUpgradeSubscription(church.id);
     const preview = await previewSubscriptionUpgrade({
+      organizationId: church.id,
       local,
       targetPlanKey,
       deps: createStripeUpgradeDeps(requireStripeSecretKey()),
@@ -665,6 +668,7 @@ export async function previewSubscriptionUpgradeAction(
 
 export async function confirmSubscriptionUpgradeAction(
   planKey: string,
+  previewAuthorization: string,
 ): Promise<BillingActionState> {
   try {
     const { church } = await requireBillingManageAccess();
@@ -678,8 +682,10 @@ export async function confirmSubscriptionUpgradeAction(
     const targetPlanKey = assertClientUpgradePayload({ plan_key: planKey });
     const local = await loadLocalUpgradeSubscription(church.id);
     await confirmSubscriptionUpgrade({
+      organizationId: church.id,
       local,
       targetPlanKey,
+      previewAuthorization,
       deps: createStripeUpgradeDeps(requireStripeSecretKey()),
     });
     revalidatePath("/settings/billing");

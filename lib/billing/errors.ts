@@ -78,6 +78,23 @@ export class StripeLiveModeForbiddenError extends Error {
   }
 }
 
+/**
+ * Live operator-initiated paid subscription upgrades only.
+ * Independent of STRIPE_LIVE_CHECKOUT_ENABLED. Does not apply to renewals/webhooks.
+ */
+export class StripeLiveSubscriptionUpgradeForbiddenError extends Error {
+  readonly code = "stripe_live_subscription_upgrade_forbidden";
+
+  constructor(
+    context = "Live Stripe subscription upgrades",
+  ) {
+    super(
+      `${context} refuse live Stripe secret keys unless STRIPE_LIVE_SUBSCRIPTION_UPGRADES_ENABLED is exactly "true". Recurring renewals and webhook processing are not controlled by this gate.`,
+    );
+    this.name = "StripeLiveSubscriptionUpgradeForbiddenError";
+  }
+}
+
 export class StripeUnknownModeForbiddenError extends Error {
   readonly code = "stripe_unknown_mode_forbidden";
 

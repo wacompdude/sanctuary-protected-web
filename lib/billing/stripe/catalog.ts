@@ -20,11 +20,13 @@ import {
   StripeCatalogMismatchError,
   StripeCatalogNotFoundError,
   StripeLiveModeForbiddenError,
+  StripeLiveSubscriptionUpgradeForbiddenError,
   StripeUnknownModeForbiddenError,
 } from "@/lib/billing/errors";
 import {
   classifyStripeSecretMode,
   isStripeLiveCheckoutEnabled,
+  isStripeLiveSubscriptionUpgradeEnabled,
   type StripeSecretMode,
 } from "@/lib/billing/stripe/config";
 
@@ -239,6 +241,31 @@ export function assertStripeCheckoutModeAllowed(
   if (mode === "live") {
     if (!isStripeLiveCheckoutEnabled()) {
       throw new StripeLiveModeForbiddenError(context);
+    }
+    return "live";
+  }
+  if (mode !== "test") {
+    throw new StripeUnknownModeForbiddenError(context);
+  }
+  return "test";
+}
+
+/**
+ * Authoritative Live paid-upgrade gate (operator-initiated subscriptions.update).
+ * - test secrets: always allowed
+ * - live secrets: allowed only when STRIPE_LIVE_SUBSCRIPTION_UPGRADES_ENABLED === "true"
+ * - unknown secrets: always refused
+ * Independent of Checkout. Does not gate renewals or webhooks.
+ * Call before subscriptions.update for paid upgrades only — not before createPreview.
+ */
+export function assertStripeSubscriptionUpgradeModeAllowed(
+  secretKey: string | null | undefined,
+  context = "Live Stripe subscription upgrades",
+): "test" | "live" {
+  const mode = classifyStripeSecretMode(secretKey);
+  if (mode === "live") {
+    if (!isStripeLiveSubscriptionUpgradeEnabled()) {
+      throw new StripeLiveSubscriptionUpgradeForbiddenError(context);
     }
     return "live";
   }

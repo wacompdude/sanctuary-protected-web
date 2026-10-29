@@ -76,6 +76,43 @@ export function isStripeLiveCheckoutEnabled(
   return envValue === "true";
 }
 
+/**
+ * Server-only operational authorization for Live paid subscription upgrades
+ * (operator-initiated subscriptions.update with immediate proration).
+ * Independent of STRIPE_LIVE_CHECKOUT_ENABLED.
+ * Does NOT gate renewals, invoice.paid, or other webhook processing.
+ */
+export const STRIPE_LIVE_SUBSCRIPTION_UPGRADES_ENABLED_ENV =
+  "STRIPE_LIVE_SUBSCRIPTION_UPGRADES_ENABLED";
+
+/**
+ * Fail-closed Live paid-upgrade authorization.
+ * Only the exact string "true" enables Live upgrades. Missing, empty, "false",
+ * "TRUE", "1", and any other value remain blocked.
+ * Sandbox/test upgrades do not require this flag.
+ * Never expose via NEXT_PUBLIC_*.
+ */
+export function isStripeLiveSubscriptionUpgradeEnabled(
+  envValue: string | null | undefined = process.env
+    .STRIPE_LIVE_SUBSCRIPTION_UPGRADES_ENABLED,
+): boolean {
+  return envValue === "true";
+}
+
+/**
+ * HMAC secret for opaque upgrade preview authorization tokens.
+ * Server-only. Never reuse Stripe secrets or NEXT_PUBLIC_* values.
+ */
+export const BILLING_UPGRADE_PREVIEW_SIGNING_SECRET_ENV =
+  "BILLING_UPGRADE_PREVIEW_SIGNING_SECRET";
+
+export function readBillingUpgradePreviewSigningSecret(
+  envValue: string | null | undefined = process.env
+    .BILLING_UPGRADE_PREVIEW_SIGNING_SECRET,
+): string {
+  return (envValue ?? "").trim();
+}
+
 export function readStripeSecretKey(): string {
   return readEnv("STRIPE_SECRET_KEY");
 }

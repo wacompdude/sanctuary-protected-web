@@ -281,6 +281,7 @@ async function main(): Promise<void> {
 
   const blockedUpgrade = await throwsAsync(() =>
     prepareSubscriptionUpgrade({
+      organizationId: "org_downgrade_selfcheck",
       local: {
         planKey: "steward_pro",
         billingProvider: "stripe",

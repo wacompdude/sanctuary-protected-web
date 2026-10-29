@@ -2285,6 +2285,7 @@ async function assertPostEffectiveScheduleRelease(): Promise<void> {
   let upgradeBlocked = false;
   try {
     await prepareSubscriptionUpgrade({
+      organizationId: "org_webhook_selfcheck",
       local: {
         planKey: "steward_pro",
         billingProvider: "stripe",
@@ -2316,6 +2317,7 @@ async function assertPostEffectiveScheduleRelease(): Promise<void> {
   assert(upgradeBlocked, "24 immediate upgrade stays blocked while scheduled");
 
   const upgradeReady = await prepareSubscriptionUpgrade({
+    organizationId: "org_webhook_selfcheck",
     local: {
       planKey: "servant_standard",
       billingProvider: "stripe",
@@ -2324,6 +2326,8 @@ async function assertPostEffectiveScheduleRelease(): Promise<void> {
       activeDowngradeSchedule: false,
     },
     targetPlanKey: "steward_pro",
+    // Fixed proration within the fixture period (independent of wall clock).
+    prorationDateUnix: 1762592000 + 86_400,
     stripeSubscription: {
       id: "sub_test",
       customerId: "cus_test",
@@ -2355,6 +2359,10 @@ async function assertPostEffectiveScheduleRelease(): Promise<void> {
   assert(
     upgradeReady.update.params.items[0]?.price === "price_steward_pro_monthly",
     "25 upgrade is available after completed cleanup",
+  );
+  assert(
+    upgradeReady.idempotencyKey.startsWith("upgrade_v1_"),
+    "25 upgrade idempotency key present after schedule cleanup",
   );
 
   const claim = createMemoryClaimStore();

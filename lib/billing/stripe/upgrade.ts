@@ -8,7 +8,10 @@ import {
   commercialExpectationByInternalKey,
   type CommercialPriceExpectation,
 } from "@/lib/billing/commercial-catalog";
-import { BillingUpgradeError } from "@/lib/billing/errors";
+import {
+  BillingConfigurationError,
+  BillingUpgradeError,
+} from "@/lib/billing/errors";
 import { subscriptionTaxCollectionAuthorized, subscriptionUpgradeAutomaticTax } from "@/lib/billing/stripe/subscription-tax";
 import { matchStripePriceToExpectation } from "@/lib/billing/stripe/catalog";
 import type { ListPricesByLookupKey } from "@/lib/billing/stripe/catalog";
@@ -20,6 +23,12 @@ import {
 import { isPlanDowngrade, isPlanUpgrade } from "@/lib/subscriptions/status";
 import { PENDING_CANCELLATION_PLAN_CHANGE_MESSAGE } from "@/lib/billing/stripe/cancellation";
 import { DOWNGRADE_UPGRADE_CONFLICT_MESSAGE } from "@/lib/billing/stripe/downgrade";
+import {
+  signUpgradePreviewAuthorization,
+  UPGRADE_PREVIEW_STALE_MESSAGE,
+  verifyUpgradePreviewAuthorization,
+  type UpgradePreviewAuthorizationClaims,
+} from "@/lib/billing/stripe/upgrade-preview-token";
 import {
   isPlanKey,
   PLAN_DISPLAY_NAMES,
@@ -95,6 +104,8 @@ export type SubscriptionUpgradePreview = {
   renewalAt: string;
   targetMonthlyPriceCents: number;
   creditStatement: string;
+  /** Opaque server-signed authorization required for confirmation. */
+  previewAuthorization: string;
 };
 
 export type SubscriptionUpgradeUpdate = {
@@ -104,6 +115,8 @@ export type SubscriptionUpgradeUpdate = {
     proration_behavior: typeof UPGRADE_PRORATION_BEHAVIOR;
     payment_behavior: typeof UPGRADE_PAYMENT_BEHAVIOR;
     billing_cycle_anchor: typeof UPGRADE_BILLING_CYCLE_ANCHOR;
+    /** Same unix second used for createPreview subscription_details.proration_date. */
+    proration_date: number;
     automatic_tax?: { enabled: true };
   };
 };
@@ -115,6 +128,7 @@ export type SubscriptionUpgradePreviewRequest = {
     items: [{ id: string; price: string; quantity: 1 }];
     proration_behavior: typeof UPGRADE_PRORATION_BEHAVIOR;
     billing_cycle_anchor: typeof UPGRADE_BILLING_CYCLE_ANCHOR;
+    proration_date: number;
     automatic_tax?: { enabled: true };
   };
 };
@@ -128,6 +142,10 @@ export type PreparedSubscriptionUpgrade = {
   targetMonthlyPriceCents: number;
   baseItemId: string;
   targetPriceId: string;
+  periodEndUnix: number;
+  prorationDateUnix: number;
+  automaticTax: boolean;
+  idempotencyKey: string;
 };
 
 export type UpgradeStripeDeps = {
@@ -140,8 +158,43 @@ export type UpgradeStripeDeps = {
   updateSubscription: (
     subscriptionId: string,
     params: SubscriptionUpgradeUpdate["params"],
+    options: { idempotencyKey: string },
   ) => Promise<{ id: string }>;
 };
+
+/**
+ * Deterministic Stripe idempotency key for one logical Servant→higher upgrade
+ * in a billing period. Retries of the same operation must reuse this key.
+ * A later period or different target plan produces a different key.
+ */
+export function buildSubscriptionUpgradeIdempotencyKey(input: {
+  organizationId: string;
+  subscriptionId: string;
+  fromPlan: string;
+  toPlan: string;
+  periodEndUnix: number;
+}): string {
+  const org = sanitizeIdempotencySegment(input.organizationId, 64);
+  const sub = sanitizeIdempotencySegment(input.subscriptionId, 64);
+  const from = sanitizeIdempotencySegment(input.fromPlan, 48);
+  const to = sanitizeIdempotencySegment(input.toPlan, 48);
+  const period = Number.isInteger(input.periodEndUnix)
+    ? String(input.periodEndUnix)
+    : "0";
+  const key = `upgrade_v1_${org}_${sub}_${from}_${to}_${period}`;
+  if (key.length > 255) {
+    throw new BillingUpgradeError("The upgrade could not be prepared safely.");
+  }
+  return key;
+}
+
+function sanitizeIdempotencySegment(value: string, max: number): string {
+  const cleaned = value.trim().replace(/[^A-Za-z0-9_-]/g, "");
+  if (!cleaned) {
+    throw new BillingUpgradeError("The upgrade could not be prepared safely.");
+  }
+  return cleaned.slice(0, max);
+}
 
 export function assertClientUpgradePayload(
   fields: Record<string, unknown>,
@@ -163,6 +216,7 @@ export function assertClientUpgradePayload(
 
 export function previewFailureMessage(error: unknown): string {
   if (error instanceof BillingUpgradeError) return error.message;
+  if (error instanceof BillingConfigurationError) return error.message;
   return UPGRADE_PREVIEW_FAILURE_MESSAGE;
 }
 
@@ -200,12 +254,19 @@ export function buildSubscriptionUpgradeUpdate(input: {
   subscriptionId: string;
   baseItemId: string;
   targetPriceId: string;
+  prorationDateUnix: number;
   automaticTax?: boolean;
 }): SubscriptionUpgradeUpdate {
   const subscriptionId = input.subscriptionId.trim();
   const baseItemId = input.baseItemId.trim();
   const targetPriceId = input.targetPriceId.trim();
   if (!subscriptionId || !baseItemId || !targetPriceId) {
+    throw new BillingUpgradeError("The existing subscription could not be prepared for upgrade.");
+  }
+  if (
+    !Number.isInteger(input.prorationDateUnix) ||
+    input.prorationDateUnix <= 0
+  ) {
     throw new BillingUpgradeError("The existing subscription could not be prepared for upgrade.");
   }
   return {
@@ -215,6 +276,7 @@ export function buildSubscriptionUpgradeUpdate(input: {
       proration_behavior: UPGRADE_PRORATION_BEHAVIOR,
       payment_behavior: UPGRADE_PAYMENT_BEHAVIOR,
       billing_cycle_anchor: UPGRADE_BILLING_CYCLE_ANCHOR,
+      proration_date: input.prorationDateUnix,
       ...(subscriptionUpgradeAutomaticTax(input.automaticTax === true) ?? {}),
     },
   };
@@ -270,12 +332,19 @@ export async function resolveExistingBasePlanItem(input: {
 }
 
 export async function prepareSubscriptionUpgrade(input: {
+  organizationId: string;
   local: LocalUpgradeSubscription;
   targetPlanKey: string;
   stripeSubscription: RetrievedUpgradeSubscription;
   listPrices: ListPricesByLookupKey;
   getPriceById?: GetStripePriceById;
+  /** Unix seconds captured at preview; reused on confirm for identical proration. */
+  prorationDateUnix?: number;
 }): Promise<PreparedSubscriptionUpgrade> {
+  const organizationId = input.organizationId.trim();
+  if (!organizationId) {
+    throw new BillingUpgradeError("The organization could not be verified for upgrade.");
+  }
   const provider = (input.local.billingProvider ?? "").trim().toLowerCase();
   if (provider !== "stripe") {
     throw new BillingUpgradeError("This organization is not billed through Stripe.");
@@ -327,7 +396,7 @@ export async function prepareSubscriptionUpgrade(input: {
       "The plan on file does not match the live Stripe subscription. Refresh billing and try again.",
     );
   }
-  if (base.periodEnd == null) {
+  if (base.periodEnd == null || base.periodStart == null) {
     throw new BillingUpgradeError(
       "The live subscription is missing its renewal date.",
     );
@@ -350,11 +419,21 @@ export async function prepareSubscriptionUpgrade(input: {
     );
   }
 
+  const prorationDateUnix =
+    input.prorationDateUnix ?? Math.floor(Date.now() / 1000);
+  if (
+    prorationDateUnix < base.periodStart ||
+    prorationDateUnix > base.periodEnd
+  ) {
+    throw new BillingUpgradeError(UPGRADE_PREVIEW_STALE_MESSAGE);
+  }
+
   const automaticTax = subscriptionTaxCollectionAuthorized();
   const update = buildSubscriptionUpgradeUpdate({
     subscriptionId: localSubscriptionId,
     baseItemId: base.itemId,
     targetPriceId: resolved.stripePriceId,
+    prorationDateUnix,
     automaticTax,
   });
 
@@ -367,6 +446,7 @@ export async function prepareSubscriptionUpgrade(input: {
         items: update.params.items,
         proration_behavior: UPGRADE_PRORATION_BEHAVIOR,
         billing_cycle_anchor: UPGRADE_BILLING_CYCLE_ANCHOR,
+        proration_date: prorationDateUnix,
         ...(update.params.automatic_tax
           ? { automatic_tax: update.params.automatic_tax }
           : {}),
@@ -378,12 +458,23 @@ export async function prepareSubscriptionUpgrade(input: {
     targetMonthlyPriceCents: expectation.unitAmountCents,
     baseItemId: base.itemId,
     targetPriceId: resolved.stripePriceId,
+    periodEndUnix: base.periodEnd,
+    prorationDateUnix,
+    automaticTax,
+    idempotencyKey: buildSubscriptionUpgradeIdempotencyKey({
+      organizationId,
+      subscriptionId: localSubscriptionId,
+      fromPlan: input.local.planKey,
+      toPlan: targetPlanKey,
+      periodEndUnix: base.periodEnd,
+    }),
   };
 }
 
 export function previewViewFromPrepared(
   prepared: PreparedSubscriptionUpgrade,
   amount: { amountDueCents: number | null; currency: string | null },
+  previewAuthorization: string,
 ): SubscriptionUpgradePreview {
   if (
     amount.amountDueCents == null ||
@@ -407,18 +498,23 @@ export function previewViewFromPrepared(
     renewalAt: prepared.renewalAt,
     targetMonthlyPriceCents: prepared.targetMonthlyPriceCents,
     creditStatement: UPGRADE_CREDIT_STATEMENT,
+    previewAuthorization,
   };
 }
 
 export async function previewSubscriptionUpgrade(input: {
+  organizationId: string;
   local: LocalUpgradeSubscription;
   targetPlanKey: string;
   deps: UpgradeStripeDeps;
+  /** Injected for tests only. */
+  signingSecret?: string | null;
 }): Promise<SubscriptionUpgradePreview> {
   const stripeSubscription = await input.deps.retrieveSubscription(
     input.local.billingSubscriptionId.trim(),
   );
   const prepared = await prepareSubscriptionUpgrade({
+    organizationId: input.organizationId,
     local: input.local,
     targetPlanKey: input.targetPlanKey,
     stripeSubscription,
@@ -426,29 +522,90 @@ export async function previewSubscriptionUpgrade(input: {
     getPriceById: input.deps.getPriceById,
   });
   const amount = await input.deps.createPreview(prepared.previewRequest);
-  return previewViewFromPrepared(prepared, amount);
+  const previewAuthorization = signUpgradePreviewAuthorization(
+    {
+      organizationId: input.organizationId.trim(),
+      subscriptionId: prepared.update.subscriptionId,
+      baseItemId: prepared.baseItemId,
+      fromPlan: prepared.currentPlanKey,
+      toPlan: prepared.targetPlanKey,
+      periodEndUnix: prepared.periodEndUnix,
+      prorationDateUnix: prepared.prorationDateUnix,
+      automaticTax: prepared.automaticTax,
+      targetPriceId: prepared.targetPriceId,
+    },
+    input.signingSecret,
+  );
+  return previewViewFromPrepared(prepared, amount, previewAuthorization);
+}
+
+export function assertPreparedMatchesPreviewAuthorization(
+  prepared: PreparedSubscriptionUpgrade,
+  claims: UpgradePreviewAuthorizationClaims,
+): void {
+  if (
+    prepared.update.subscriptionId !== claims.subscriptionId ||
+    prepared.baseItemId !== claims.baseItemId ||
+    prepared.currentPlanKey !== claims.fromPlan ||
+    prepared.targetPlanKey !== claims.toPlan ||
+    prepared.periodEndUnix !== claims.periodEndUnix ||
+    prepared.prorationDateUnix !== claims.prorationDateUnix ||
+    prepared.automaticTax !== claims.automaticTax ||
+    prepared.targetPriceId !== claims.targetPriceId
+  ) {
+    throw new BillingUpgradeError(UPGRADE_PREVIEW_STALE_MESSAGE);
+  }
 }
 
 export async function confirmSubscriptionUpgrade(input: {
+  organizationId: string;
   local: LocalUpgradeSubscription;
   targetPlanKey: string;
+  previewAuthorization: string;
   deps: UpgradeStripeDeps;
-}): Promise<{ subscriptionId: string }> {
+  /** Injected for tests only. */
+  signingSecret?: string | null;
+}): Promise<{ subscriptionId: string; idempotencyKey: string }> {
+  const claims = verifyUpgradePreviewAuthorization(
+    input.previewAuthorization,
+    { organizationId: input.organizationId.trim() },
+    input.signingSecret,
+  );
+  const requestedTarget = assertClientUpgradePayload({
+    plan_key: input.targetPlanKey,
+  });
+  if (requestedTarget !== claims.toPlan) {
+    throw new BillingUpgradeError(UPGRADE_PREVIEW_STALE_MESSAGE);
+  }
+  if (input.local.planKey !== claims.fromPlan) {
+    throw new BillingUpgradeError(UPGRADE_PREVIEW_STALE_MESSAGE);
+  }
+  if (input.local.billingSubscriptionId.trim() !== claims.subscriptionId) {
+    throw new BillingUpgradeError(UPGRADE_PREVIEW_STALE_MESSAGE);
+  }
+
   const stripeSubscription = await input.deps.retrieveSubscription(
     input.local.billingSubscriptionId.trim(),
   );
+  // Re-prepare from authoritative Live state using the preview's proration
+  // timestamp so retries remain financially identical.
   const prepared = await prepareSubscriptionUpgrade({
+    organizationId: input.organizationId,
     local: input.local,
-    targetPlanKey: input.targetPlanKey,
+    targetPlanKey: claims.toPlan,
     stripeSubscription,
     listPrices: input.deps.listPrices,
     getPriceById: input.deps.getPriceById,
+    prorationDateUnix: claims.prorationDateUnix,
   });
+  assertPreparedMatchesPreviewAuthorization(prepared, claims);
+
   let updated: { id: string };
   try {
     updated = await input.deps.updateSubscription(
       prepared.update.subscriptionId,
       prepared.update.params,
+      { idempotencyKey: prepared.idempotencyKey },
     );
   } catch (error) {
     throw new BillingUpgradeError(upgradeFailureMessage(error));
@@ -458,7 +615,10 @@ export async function confirmSubscriptionUpgrade(input: {
       "The subscription upgrade could not be completed. Your current plan was not changed.",
     );
   }
-  return { subscriptionId: updated.id };
+  return {
+    subscriptionId: updated.id,
+    idempotencyKey: prepared.idempotencyKey,
+  };
 }
 
 function assertUpgradeTarget(current: PlanKey, requested: string): PlanKey {

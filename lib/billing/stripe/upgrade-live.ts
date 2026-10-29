@@ -1,9 +1,14 @@
 /**
  * Live Stripe adapters for subscription upgrade preview and confirmation.
  * Self-checks must not import this module.
+ *
+ * Preview (createPreview) is non-mutating and is not gated by the Live upgrade
+ * flag. Execution (subscriptions.update) requires the Live upgrade gate when
+ * the secret is live — renewals/webhooks are unaffected.
  */
 
 import type Stripe from "stripe";
+import { assertStripeSubscriptionUpgradeModeAllowed } from "@/lib/billing/stripe/catalog";
 import { getStripeClient } from "@/lib/billing/stripe/sdk";
 import {
   createStripeCatalogPriceLister,
@@ -23,8 +28,8 @@ export function createStripeUpgradeDeps(secretKey: string): UpgradeStripeDeps {
     listPrices: createStripeCatalogPriceLister(secretKey),
     getPriceById: createStripePriceByIdRetriever(secretKey),
     createPreview: (request) => createUpgradePreview(stripe, request),
-    updateSubscription: (subscriptionId, params) =>
-      updateExistingSubscription(stripe, subscriptionId, params),
+    updateSubscription: (subscriptionId, params, options) =>
+      updateExistingSubscription(stripe, secretKey, subscriptionId, params, options),
   };
 }
 
@@ -70,9 +75,19 @@ async function createUpgradePreview(
 
 async function updateExistingSubscription(
   stripe: Stripe,
+  secretKey: string,
   subscriptionId: string,
   params: Stripe.SubscriptionUpdateParams,
+  options: { idempotencyKey: string },
 ): Promise<{ id: string }> {
-  const updated = await stripe.subscriptions.update(subscriptionId, params);
+  // Fail-closed Live paid upgrade: exact STRIPE_LIVE_SUBSCRIPTION_UPGRADES_ENABLED=true.
+  assertStripeSubscriptionUpgradeModeAllowed(secretKey);
+  const idempotencyKey = options.idempotencyKey.trim();
+  if (!idempotencyKey) {
+    throw new Error("Upgrade idempotency key is required.");
+  }
+  const updated = await stripe.subscriptions.update(subscriptionId, params, {
+    idempotencyKey,
+  });
   return { id: updated.id };
 }

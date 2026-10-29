@@ -398,6 +398,7 @@ async function main() {
 
   const upgradeBlocked = await throws(() =>
     prepareSubscriptionUpgrade({
+      organizationId: "org_cancellation_selfcheck",
       local: {
         planKey: "steward_pro",
         billingProvider: "stripe",

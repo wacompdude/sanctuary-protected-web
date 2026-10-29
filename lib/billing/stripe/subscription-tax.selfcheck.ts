@@ -241,18 +241,22 @@ const upgradeOff = buildSubscriptionUpgradeUpdate({
   subscriptionId: "sub_1",
   baseItemId: "si_1",
   targetPriceId: "price_1",
+  prorationDateUnix: 1_700_000_000,
 });
 assert(!("automatic_tax" in upgradeOff.params), "upgrade leaves tax untouched when gated off");
 assert(upgradeOff.params.proration_behavior === UPGRADE_PRORATION_BEHAVIOR, "upgrade proration unchanged");
 assert(upgradeOff.params.billing_cycle_anchor.type === UPGRADE_BILLING_CYCLE_ANCHOR.type, "billing cycle unchanged");
+assert(upgradeOff.params.proration_date === 1_700_000_000, "upgrade binds proration_date");
 const upgradeOn = buildSubscriptionUpgradeUpdate({
   subscriptionId: "sub_1",
   baseItemId: "si_1",
   targetPriceId: "price_1",
+  prorationDateUnix: 1_700_000_000,
   automaticTax: true,
 });
 assert(upgradeOn.params.automatic_tax?.enabled === true, "authorized upgrade keeps automatic tax");
 assert(upgradeOn.params.proration_behavior === "always_invoice", "proration remains always_invoice");
+assert(upgradeOn.params.proration_date === 1_700_000_000, "authorized upgrade reuses proration_date");
 
 const downgradeOff = buildDowngradeScheduleUpdate({
   currentBasePriceId: "price_high",

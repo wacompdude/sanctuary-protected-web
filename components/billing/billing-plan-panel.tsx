@@ -148,17 +148,29 @@ export function BillingPlanPanel({
       setError(PENDING_CANCELLATION_PLAN_CHANGE_MESSAGE);
       return;
     }
+    if (!upgradePreview?.previewAuthorization) {
+      setError(
+        "The subscription changed after the upgrade preview. Please review a new upgrade preview before continuing.",
+      );
+      setUpgradePreview(null);
+      return;
+    }
     setError(null);
     setMessage(null);
+    const authorization = upgradePreview.previewAuthorization;
     startTransition(async () => {
       const result = await confirmSubscriptionUpgradeAction(
         String(selectedPlanKey),
+        authorization,
       );
       if (result.error) {
         setError(result.error);
+        // Stale/expired preview authorization must not remain clickable.
+        setUpgradePreview(null);
         return;
       }
       setMessage(result.message ?? "Upgrade payment succeeded.");
+      setUpgradePreview(null);
       router.refresh();
     });
   }
@@ -510,7 +522,11 @@ export function BillingPlanPanel({
                 {planAction === "upgrade" ? (
                   <Button
                     type="button"
-                    disabled={pending || !upgradePreview || Boolean(scheduledDowngrade)}
+                    disabled={
+                      pending ||
+                      !upgradePreview?.previewAuthorization ||
+                      Boolean(scheduledDowngrade)
+                    }
                     onClick={confirmUpgrade}
                   >
                     {pending ? "Working…" : "Confirm Upgrade"}

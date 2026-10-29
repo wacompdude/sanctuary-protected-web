@@ -1515,6 +1515,15 @@ Lifecycle remained `servant_standard` · active/ok · cancel false · schedule N
 
 **Verdict:** **PHASE 5D-2A.1C COMPLETE — LIVE UPGRADE PREVIEW REQUEST SHAPE CORRECTED AND DEPLOYED**
 
+### Deployment
+
+| Field | Value |
+|-------|--------|
+| Commit | **`3ce944eec37331304e045cb6e9ac180fd018f003`** (`3ce944e`) |
+| Message | Fix Stripe upgrade preview tax request shape |
+| Prior runtime | `74f8ba3` |
+| Migration | **115** · **116 absent** |
+
 ### Code correction
 
 | Item | Change |

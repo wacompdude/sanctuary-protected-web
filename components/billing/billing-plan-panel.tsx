@@ -519,14 +519,12 @@ export function BillingPlanPanel({
           <div className="flex flex-wrap gap-2">
             {canManageBilling ? (
               <>
-                {planAction === "upgrade" ? (
+                {planAction === "upgrade" &&
+                upgradePreview?.previewAuthorization &&
+                !scheduledDowngrade ? (
                   <Button
                     type="button"
-                    disabled={
-                      pending ||
-                      !upgradePreview?.previewAuthorization ||
-                      Boolean(scheduledDowngrade)
-                    }
+                    disabled={pending}
                     onClick={confirmUpgrade}
                   >
                     {pending ? "Working…" : "Confirm Upgrade"}

@@ -436,11 +436,13 @@ async function main(): Promise<void> {
   assert(!JSON.stringify(previewPublic).includes("cus_"), "no customer id in preview");
   assert(!JSON.stringify(previewPublic).includes("si_"), "no item id in preview");
   const previewRequest = stripe.lastPreview as {
+    automatic_tax?: { enabled?: boolean };
     subscription_details: {
       items: { id: string; price: string; quantity: number }[];
       proration_behavior: string;
       billing_cycle_anchor: { type: string } | string;
       proration_date: number;
+      automatic_tax?: { enabled?: boolean };
     };
   };
   assert(
@@ -465,6 +467,14 @@ async function main(): Promise<void> {
     Number.isInteger(previewRequest.subscription_details.proration_date),
     "preview proration_date set",
   );
+  assert(
+    previewRequest.automatic_tax?.enabled === true,
+    "5D-2A.1C preview automatic_tax is top-level when authorized",
+  );
+  assert(
+    !("automatic_tax" in previewRequest.subscription_details),
+    "5D-2A.1C preview subscription_details must not contain automatic_tax",
+  );
 
   const confirmed = await confirmSubscriptionUpgrade({
     organizationId: ORG_ID,
@@ -483,6 +493,7 @@ async function main(): Promise<void> {
     payment_behavior: string;
     billing_cycle_anchor: { type: string } | string;
     proration_date: number;
+    automatic_tax?: { enabled?: boolean };
   };
   assert(stripe.lastUpdate?.id === "sub_existing", "H server subscription id");
   assert(params.items.length === 1, "K sms item omitted");
@@ -496,6 +507,10 @@ async function main(): Promise<void> {
   assert(
     params.proration_date === previewRequest.subscription_details.proration_date,
     "confirm reuses preview proration_date",
+  );
+  assert(
+    params.automatic_tax?.enabled === true,
+    "5D-2A.1C subscriptions.update retains top-level automatic_tax when authorized",
   );
   assert(
     typeof stripe.lastUpdate?.options?.idempotencyKey === "string" &&
@@ -779,6 +794,7 @@ async function main(): Promise<void> {
     code: "parameter_unknown",
     statusCode: 400,
     requestId: "req_preview",
+    param: "subscription_details[automatic_tax]",
     message: "sk_test_secret",
     raw: { number: "4242424242424242" },
   });
@@ -787,8 +803,17 @@ async function main(): Promise<void> {
   assert(logged.stripeErrorCode === "parameter_unknown", "safe log code");
   assert(logged.httpStatus === 400, "safe log status");
   assert(logged.stripeRequestId === "req_preview", "safe log request id");
+  assert(
+    logged.stripeParam === "subscription_details[automatic_tax]",
+    "safe log includes Stripe param path",
+  );
   assert(!JSON.stringify(logged).includes("sk_test"), "safe log omits secret");
   assert(!JSON.stringify(logged).includes("4242"), "safe log omits card");
+  const loggedUnsafeParam = safeStripePreviewErrorLog({
+    type: "invalid_request_error",
+    param: "card 4242 sk_test_secret",
+  });
+  assert(loggedUnsafeParam.stripeParam === null, "unsafe Stripe param omitted");
 
   const upgradeSource = readFileSync("lib/billing/stripe/upgrade.ts", "utf8");
   const liveSource = readFileSync(
@@ -1205,6 +1230,60 @@ async function main(): Promise<void> {
   assert(!upgradeSource.includes("sms_auto"), "upgrade omits SMS auto");
   assert(!panel.includes("sms_auto"), "panel upgrade confirm omits SMS auto");
   assert(panel.includes("previewAuthorization"), "panel carries opaque preview authorization");
+  assert(
+    panel.includes("upgradePreview?.previewAuthorization"),
+    "5D-2A.1C Confirm Upgrade requires successful preview authorization",
+  );
+  assert(
+    !upgradeSource.includes(
+      "proration_date: prorationDateUnix,\n        ...(update.params.automatic_tax",
+    ),
+    "5D-2A.1C removed nested automatic_tax after proration_date inside subscription_details",
+  );
+  const previewTaxSpreadIdx = upgradeSource.indexOf(
+    "...(update.params.automatic_tax",
+  );
+  const subscriptionDetailsIdx = upgradeSource.indexOf(
+    "subscription_details: {",
+    upgradeSource.indexOf("const previewRequest"),
+  );
+  assert(
+    previewTaxSpreadIdx > 0 &&
+      subscriptionDetailsIdx > previewTaxSpreadIdx,
+    "5D-2A.1C automatic_tax spread appears before subscription_details on previewRequest",
+  );
+
+  // --- Phase 5D-2A.1C: tax disabled → no automatic_tax on preview ---
+  const priorTax = process.env.STRIPE_SUBSCRIPTION_TAX_COLLECTION;
+  try {
+    delete process.env.STRIPE_SUBSCRIPTION_TAX_COLLECTION;
+    const taxOff = deps();
+    await previewSubscriptionUpgrade({
+      organizationId: ORG_ID,
+      local: local(),
+      targetPlanKey: "steward_pro",
+      deps: taxOff,
+      signingSecret: PREVIEW_SECRET,
+    });
+    const taxOffPreview = taxOff.lastPreview as {
+      automatic_tax?: { enabled?: boolean };
+      subscription_details: Record<string, unknown>;
+    };
+    assert(
+      !("automatic_tax" in taxOffPreview) || taxOffPreview.automatic_tax == null,
+      "5D-2A.1C tax unauthorized: preview omits automatic_tax",
+    );
+    assert(
+      !("automatic_tax" in taxOffPreview.subscription_details),
+      "5D-2A.1C tax unauthorized: subscription_details omits automatic_tax",
+    );
+  } finally {
+    if (priorTax === undefined) {
+      delete process.env.STRIPE_SUBSCRIPTION_TAX_COLLECTION;
+    } else {
+      process.env.STRIPE_SUBSCRIPTION_TAX_COLLECTION = priorTax;
+    }
+  }
 
   console.log("billing subscription upgrade self-check passed");
 }

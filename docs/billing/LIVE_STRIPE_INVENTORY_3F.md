@@ -1466,3 +1466,85 @@ BILLING_UPGRADE_PREVIEW_SIGNING_SECRET=<operator-generated ≥32 chars>
 **READY FOR PHASE 5D-2A.1 — LIVE UPGRADE PREVIEW RUNTIME VALIDATION — NON-MUTATING**
 
 One authorized non-mutating Live `invoices.createPreview` on Lifecycle Test only. Still **no** `subscriptions.update`. Upgrade gate stays **false**.
+
+---
+
+## PHASE 5D-2A.1 — Live Upgrade Preview Runtime Validation (initial attempt)
+
+**Recorded:** 2026-10-29 · Production runtime **`74f8ba3`** · migration **115**
+
+**Verdict:** **PHASE 5D-2A.1 NOT COMPLETE — ONE Live createPreview reached Stripe and failed**
+
+### Attempt
+
+ONE authorized Production UI Steward Pro card click on Lifecycle Test (`522a0d7e-…`).  
+**Not** performed: Confirm Upgrade · `subscriptions.update` · gate changes.
+
+| Field | Value |
+|-------|--------|
+| Timestamp | `2026-10-29T07:52:42.969Z` |
+| Route | `POST /settings/billing` → `previewSubscriptionUpgradeAction` |
+| Stripe method | `invoices.createPreview` (**reached**) |
+| Stripe error | `StripeInvalidRequestError` · code **`parameter_unknown`** · HTTP **400** |
+| Stripe request ID | `req_chUrGR0Sl1Aspq` |
+| UI | Generic *"Unable to calculate the prorated upgrade amount. Your subscription was not changed."* |
+
+### Root cause (Phase 5D-2A.1B diagnosis)
+
+**ROOT CAUSE VERIFIED — STRIPE REQUEST VALIDATION**
+
+- Defect: `automatic_tax: { enabled: true }` incorrectly nested under `subscription_details` on createPreview.
+- Installed stripe@23 / API `2026-09-30.endive`: `InvoiceCreatePreviewParams.automatic_tax` is **top-level**; `SubscriptionDetails` has **no** `automatic_tax`.
+- Restricted key / Invoice permission: **NOT implicated** (not 403 / permission error).
+- Permission change: **NOT required**.
+
+### Financial safety after failed preview (RO)
+
+Lifecycle remained `servant_standard` · active/ok · cancel false · schedule NULL · period end `2026-11-24T07:51:44Z` · invoices **1** · txns **1** · latest `in_…n4yC` · SMS attempts **0**. No charge / PaymentIntent / entitlement / SMS mutation.
+
+### Follow-on
+
+- **5D-2A.1C** — code/request-shape correction + deploy (below).
+- **5D-2A.1 retry** — ONE new explicitly authorized Live createPreview **after** 5D-2A.1C; not auto-executed here.
+
+---
+
+## PHASE 5D-2A.1C — Live Upgrade Preview Request-Shape Correction
+
+**Recorded:** 2026-10-29 · baseline runtime **`74f8ba3`** · migration **115** (unchanged; **116 absent**)
+
+**Verdict:** **PHASE 5D-2A.1C COMPLETE — LIVE UPGRADE PREVIEW REQUEST SHAPE CORRECTED AND DEPLOYED**
+
+### Code correction
+
+| Item | Change |
+|------|--------|
+| File | `lib/billing/stripe/upgrade.ts` |
+| createPreview | Move `automatic_tax` to **top level** of preview request |
+| `subscription_details` | items · `always_invoice` · `{ type: "unchanged" }` · `proration_date` only |
+| `subscriptions.update` tax | **Unchanged** (top-level `automatic_tax` remains valid) |
+| Types | Preview request no longer permits nested `subscription_details.automatic_tax` |
+| UI | Confirm Upgrade rendered only when `previewAuthorization` present |
+| Logging | Optional safe Stripe `param` path in `safeStripePreviewErrorLog` |
+
+### Tests
+
+- `npm run selfcheck:billing` **PASS** (top-level tax · no nested tax · tax-off · proration_date · anchor · update tax · idempotency · token · gates)
+- `npx tsc --noEmit -p tsconfig.json` **PASS**
+- `npm run build` **PASS**
+
+### Gates (unchanged)
+
+| Variable | Production |
+|----------|------------|
+| `STRIPE_LIVE_SUBSCRIPTION_UPGRADES_ENABLED` | **false** |
+| `STRIPE_LIVE_CHECKOUT_ENABLED` | **false** |
+| `BILLING_UPGRADE_PREVIEW_SIGNING_SECRET` | **PRESENT** (value not recorded) |
+
+### Financial mutations this phase
+
+**NONE** — no Live createPreview · no `subscriptions.update` · no charge · no Checkout · no migration.
+
+### Next
+
+**READY FOR ONE NEW PHASE 5D-2A.1 LIVE createPreview ATTEMPT — OPERATOR AUTHORIZATION REQUIRED**

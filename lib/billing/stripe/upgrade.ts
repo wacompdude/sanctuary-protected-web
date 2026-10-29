@@ -121,15 +121,19 @@ export type SubscriptionUpgradeUpdate = {
   };
 };
 
+/**
+ * Preview request aligned with stripe@23 InvoiceCreatePreviewParams.
+ * `automatic_tax` is top-level only — never under subscription_details.
+ */
 export type SubscriptionUpgradePreviewRequest = {
   customer: string;
   subscription: string;
+  automatic_tax?: Stripe.InvoiceCreatePreviewParams.AutomaticTax;
   subscription_details: {
     items: [{ id: string; price: string; quantity: 1 }];
     proration_behavior: typeof UPGRADE_PRORATION_BEHAVIOR;
     billing_cycle_anchor: typeof UPGRADE_BILLING_CYCLE_ANCHOR;
     proration_date: number;
-    automatic_tax?: { enabled: true };
   };
 };
 
@@ -226,15 +230,25 @@ export function safeStripePreviewErrorLog(error: unknown): {
   stripeErrorCode: string | null;
   httpStatus: number | null;
   stripeRequestId: string | null;
+  /** Stripe parameter path when present (e.g. subscription_details[automatic_tax]). */
+  stripeParam: string | null;
 } {
   const record =
     error && typeof error === "object" ? (error as Record<string, unknown>) : {};
+  const param =
+    typeof record.param === "string" &&
+    record.param.length > 0 &&
+    record.param.length <= 200 &&
+    !/[^\w.[\]]/.test(record.param)
+      ? record.param
+      : null;
   return {
     operation: "subscription_upgrade_preview",
     stripeErrorType: typeof record.type === "string" ? record.type : null,
     stripeErrorCode: typeof record.code === "string" ? record.code : null,
     httpStatus: typeof record.statusCode === "number" ? record.statusCode : null,
     stripeRequestId: typeof record.requestId === "string" ? record.requestId : null,
+    stripeParam: param,
   };
 }
 
@@ -437,21 +451,23 @@ export async function prepareSubscriptionUpgrade(input: {
     automaticTax,
   });
 
+  const previewRequest: SubscriptionUpgradePreviewRequest = {
+    customer: localCustomerId,
+    subscription: localSubscriptionId,
+    ...(update.params.automatic_tax
+      ? { automatic_tax: update.params.automatic_tax }
+      : {}),
+    subscription_details: {
+      items: update.params.items,
+      proration_behavior: UPGRADE_PRORATION_BEHAVIOR,
+      billing_cycle_anchor: UPGRADE_BILLING_CYCLE_ANCHOR,
+      proration_date: prorationDateUnix,
+    },
+  };
+
   return {
     update,
-    previewRequest: {
-      customer: localCustomerId,
-      subscription: localSubscriptionId,
-      subscription_details: {
-        items: update.params.items,
-        proration_behavior: UPGRADE_PRORATION_BEHAVIOR,
-        billing_cycle_anchor: UPGRADE_BILLING_CYCLE_ANCHOR,
-        proration_date: prorationDateUnix,
-        ...(update.params.automatic_tax
-          ? { automatic_tax: update.params.automatic_tax }
-          : {}),
-      },
-    },
+    previewRequest,
     currentPlanKey: input.local.planKey,
     targetPlanKey,
     renewalAt: new Date(base.periodEnd * 1000).toISOString(),

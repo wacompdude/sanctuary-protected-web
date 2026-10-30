@@ -1557,3 +1557,153 @@ Lifecycle remained `servant_standard` · active/ok · cancel false · schedule N
 ### Next
 
 **READY FOR ONE NEW PHASE 5D-2A.1 LIVE createPreview ATTEMPT — OPERATOR AUTHORIZATION REQUIRED**
+
+---
+
+## PHASE 5D-2A.1 — Successful Live Preview Post-Audit (5D-2A.1D)
+
+**Recorded:** 2026-10-29 · Production runtime **`e7f2567`** (includes fix **`3ce944e`**) · migration **115**
+
+**Verdict:** **PHASE 5D-2A.1 COMPLETE — LIVE UPGRADE PREVIEW AND RESTRICTED-KEY PERMISSION VERIFIED WITH NO FINANCIAL MUTATION**
+
+### Operator attempt (after 5D-2A.1C)
+
+ONE authorized Production UI Steward Pro preview on Lifecycle Test.  
+Confirm Upgrade was **visible** and **not clicked**.
+
+| UI field | Value |
+|----------|--------|
+| Amount due today | **$9.16** (PREVIEW ONLY — NOT CHARGED) |
+| Future monthly | **$39.95** / month (Steward Pro catalog) |
+| Renewal display | **11/23/2026** (local date of period end) |
+| Confirm Upgrade | Visible ⇒ `previewAuthorization` generated |
+
+### Permission
+
+**LIVE createPreview PERMISSION VERIFIED — CURRENT RESTRICTED KEY SUFFICIENT**  
+No Stripe permission change recommended.
+
+### Financial safety (RO DB)
+
+| Check | Result |
+|-------|--------|
+| Persistent invoices | **1** · latest `in_…n4yC` unchanged |
+| Successful internal txns | **1** unchanged |
+| Billing events | **4** unchanged (latest still `2026-10-24`) |
+| Plan | `servant_standard` · active/ok · cancel false · schedule NULL |
+| Period | `2026-10-24T07:51:44Z` → `2026-11-24T07:51:44Z` unchanged |
+| Seats / included SMS | **10** / **0** (plan_features; not Steward 20/250) |
+| SMS attempts | **0** · SMS auto PM **NULL** |
+
+**LIVE UPGRADE PREVIEW VERIFIED NON-MUTATING — $9.16 PREVIEWED, $0.00 CHARGED**
+
+### Renewal date reconciliation
+
+Authoritative `current_period_end` `2026-11-24T07:51:44Z` = **11/23/2026, 11:51:44 PM PST**.  
+UI uses `toLocaleDateString()` → local calendar date **11/23/2026**.  
+**RENEWAL DATE DISPLAY VERIFIED — SAME BILLING INSTANT, LOCAL DATE 11/23/2026**
+
+### Tax / breakdown retention
+
+createPreview adapter returns only `amount_due` + `currency` to the UI.  
+Line-item credit/tax/jurisdiction: **DETAILED TAX BREAKDOWN NOT RETAINED** (not re-previewed).  
+Deployed request shape places `automatic_tax.enabled=true` at **top level** when authorized.
+
+### Logging note
+
+Success path does not emit `safeStripePreviewErrorLog` (errors only). Hobby log retention limited (~30m); Stripe request ID for the successful attempt may be unavailable from Vercel after the fact. Success proven by UI amount + Confirm visibility + unchanged persistent financial state.
+
+### Gates
+
+Upgrade **false** · Checkout **false** · signing secret **PRESENT** (value not recorded).
+
+### Next
+
+**PHASE 5D-2B READY — OPERATOR APPROVAL REQUIRED**  
+Do **not** enable upgrade gate or Confirm Upgrade without explicit operator authorization.
+
+---
+
+## PHASE 5D-2B STAGE A — Controlled Live Upgrade Preflight (read-only)
+
+**Recorded:** 2026-10-29 · Production runtime **`e7f2567`** · migration **115** · **116 absent**
+
+**Verdict:** **PHASE 5D-2B STAGE A GO — CONTROLLED LIVE UPGRADE MAY PROCEED TO GATE-ENABLE/PREVIEW STAGE**
+
+**NO FINANCIAL MUTATION PERFORMED IN STAGE A**
+
+### Charge-critical PASS summary
+
+Lifecycle `522a0d7e-…`: `servant_standard` · active/ok · cancel false · schedule NULL · period `2026-10-24T07:51:44Z`→`2026-11-24T07:51:44Z` · `cus_…Bhn7` · `sub_…ydeZ` · invoices **1** (`in_…n4yC`) · successful txns **1** (3274¢) · billing events **4** · seats **10** · included SMS **0** · SMS attempts **0** · SMS PM **NULL**
+
+Gates PRESENT: upgrade operator-configured **false** · Checkout **false** · signing secret PRESENT · tax collection PRESENT (authorized per policy)
+
+Hardening present: exact `"true"` Live upgrade gate · Checkout independent · idempotency request options · preview token 15m · shared proration_date · `always_invoice` / `error_if_incomplete` / `{type:unchanged}` · webhook plan write (confirm does not write `plan_id`)
+
+Prior $9.16 preview: historical only — **must not reuse** for Stage B.
+
+### Stage B (operator only — not executed here)
+
+1. Set Production `STRIPE_LIVE_SUBSCRIPTION_UPGRADES_ENABLED=true` · redeploy  
+2. Verify upgrade **true** · Checkout **false**  
+3. Lifecycle Billing · click Steward Pro **once** · fresh createPreview  
+4. Record Amount Due Today · **STOP** · await separate Confirm authorization  
+
+Do **not** Confirm Upgrade in Stage B without a further explicit operator step.
+
+---
+
+## PHASE 5D-3A.2 — Live Downgrade / Subscription Schedule Safety Hardening
+
+**Recorded:** 2026-10-29 · source branch push · migration **115** · **116 absent**
+
+**Verdict:** **PHASE 5D-3A.2 COMPLETE — LIVE DOWNGRADE FAIL-CLOSED SAFETY HARDENING IMPLEMENTED AND PUSHED**
+
+**LIVE DOWNGRADE GATE DEFAULT — FALSE**  
+**NO LIVE DOWNGRADE PERFORMED**  
+**NO PRODUCTION DEPLOYMENT PERFORMED**  
+**SUBSCRIPTION SCHEDULE RESTRICTED-KEY RUNTIME PERMISSION — STILL UNVERIFIED**
+
+### Live downgrade gate
+
+| Item | Value |
+|------|--------|
+| Env | `STRIPE_LIVE_SUBSCRIPTION_DOWNGRADES_ENABLED` |
+| Semantics | exact `"true"` only (no trim/normalize/truthiness) |
+| Production intent | **false** (operator-created; do not flip in this phase) |
+| Scope | operator-initiated Live `subscriptionSchedules.create` / `update` that establish a future downgrade |
+| Not gated | renewals · webhooks · schedule release of an already-scheduled downgrade · non-mutating review/impact · Checkout · upgrade · SMS |
+| Assertion | `assertStripeSubscriptionDowngradeModeAllowed` in `downgrade-live.ts` **before** create/update |
+| User failure | `DOWNGRADE_CONFIGURATION_MESSAGE` (no env/secret leak) |
+| Test mode | Live gate not required for `sk_test_` / `rk_test_` |
+
+### Schedule release mirror cleanup (P2 DWN-MIRROR-1)
+
+Terminal statuses (`released` / `canceled` / `completed` / `aborted`):
+
+| Field | Behavior |
+|-------|----------|
+| `plan_id` | **unchanged** (active entitlements stay on live plan) |
+| `scheduled_plan_id` | **cleared (NULL)** |
+| `scheduled_effective_at` | **cleared (NULL)** |
+| `provider_schedule_id` | **retained** for audit/correlation |
+| `schedule_status` | terminal status (`released` on user cancel path) |
+
+Applied in: `saveReleasedDowngradeMirror` · `syncScheduleMirror` · `handleSubscriptionSchedule`.
+
+### Confirmation UX
+
+Schedule Downgrade review now states:
+
+- Effective at next renewal
+- **No charge today: $0.00**
+- No refund/credit when scheduling; current plan remains through period end
+
+### Tests
+
+`npm run selfcheck:billing` · `npx tsc --noEmit` · `npm run build` — required PASS before push.
+
+### Remaining
+
+- **P1** Subscription Schedule restricted-key runtime permission still unverified
+- Next: **Phase 5D-3A.3 — Production Deployment & Fail-Closed Verification** (operator-approved; not started here)

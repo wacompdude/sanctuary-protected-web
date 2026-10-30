@@ -528,19 +528,31 @@ export function createAdminWebhookSyncStore(): WebhookSyncStore {
     },
 
     async syncScheduleMirror(input) {
+      const terminal =
+        input.scheduleStatus === "released" ||
+        input.scheduleStatus === "canceled" ||
+        input.scheduleStatus === "completed" ||
+        input.scheduleStatus === "aborted";
       const patch: {
         provider_schedule_id: string;
         schedule_status: string;
-        scheduled_plan_id?: string;
-        scheduled_effective_at?: string;
-        schedule_released_at?: string;
+        scheduled_plan_id?: string | null;
+        scheduled_effective_at?: string | null;
+        schedule_released_at?: string | null;
       } = {
+        // Retain schedule id for audit/correlation; never write plan_id here.
         provider_schedule_id: input.providerScheduleId,
         schedule_status: input.scheduleStatus,
       };
-      if (input.scheduledPlanId) patch.scheduled_plan_id = input.scheduledPlanId;
-      if (input.scheduledEffectiveAt) {
-        patch.scheduled_effective_at = input.scheduledEffectiveAt;
+      if (terminal) {
+        // No actionable future downgrade remains — clear future-plan mirror.
+        patch.scheduled_plan_id = null;
+        patch.scheduled_effective_at = null;
+      } else if (input.scheduledPlanId) {
+        patch.scheduled_plan_id = input.scheduledPlanId;
+        if (input.scheduledEffectiveAt) {
+          patch.scheduled_effective_at = input.scheduledEffectiveAt;
+        }
       }
       if (input.scheduleReleasedAt) {
         patch.schedule_released_at = input.scheduleReleasedAt;

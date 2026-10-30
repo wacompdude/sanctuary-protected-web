@@ -7,8 +7,12 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { commercialPlanByKey } from "@/lib/billing/commercial-catalog";
 import {
+  StripeLiveSubscriptionDowngradeForbiddenError,
+} from "@/lib/billing/errors";
+import {
   DOWNGRADE_ALREADY_CANCELLING_MESSAGE,
   DOWNGRADE_CANCELLATION_CONFLICT_MESSAGE,
+  DOWNGRADE_CONFIGURATION_MESSAGE,
   DOWNGRADE_END_BEHAVIOR,
   DOWNGRADE_PRORATION_BEHAVIOR,
   DOWNGRADE_UPGRADE_CONFLICT_MESSAGE,
@@ -16,8 +20,10 @@ import {
   assertDowngradeTarget,
   buildDowngradeScheduleUpdate,
   classifyDowngradeItems,
+  downgradeFailureMessage,
   downgradeMayBeScheduled,
   interpretExistingDowngradeSchedule,
+  isTerminalDowngradeScheduleStatus,
   releaseScheduledDowngrade,
   scheduleSubscriptionDowngrade,
   type DowngradeStripeDeps,
@@ -26,7 +32,15 @@ import {
   type RetrievedDowngradeSubscription,
 } from "@/lib/billing/stripe/downgrade";
 import { prepareSubscriptionUpgrade } from "@/lib/billing/stripe/upgrade";
-import type { StripePriceSnapshot } from "@/lib/billing/stripe/catalog";
+import {
+  assertStripeSubscriptionDowngradeModeAllowed,
+  type StripePriceSnapshot,
+} from "@/lib/billing/stripe/catalog";
+import {
+  isStripeLiveCheckoutEnabled,
+  isStripeLiveSubscriptionDowngradeEnabled,
+  isStripeLiveSubscriptionUpgradeEnabled,
+} from "@/lib/billing/stripe/config";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -250,6 +264,7 @@ async function main(): Promise<void> {
 
   let released = 0;
   let scheduleStatus = "active";
+  let releasedMirrorCleared = false;
   const canceledDowngrade = await releaseScheduledDowngrade({
     local: local({ activeDowngradeSchedule: true }),
     deps: fakeDeps({
@@ -262,6 +277,7 @@ async function main(): Promise<void> {
       scheduleStatus: () => scheduleStatus,
       saveReleased: () => {
         planId = "plan_steward";
+        releasedMirrorCleared = true;
       },
     }),
   });
@@ -278,6 +294,7 @@ async function main(): Promise<void> {
   assert(released === 1, "22 second release does not release again");
   assert(canceledDowngrade.scheduleStatus === "released", "customer cancel stays released");
   assert(planId === "plan_steward", "21 release keeps the live plan");
+  assert(releasedMirrorCleared, "release mirror callback runs without changing plan_id");
 
   const blockedUpgrade = await throwsAsync(() =>
     prepareSubscriptionUpgrade({
@@ -350,7 +367,126 @@ async function main(): Promise<void> {
   assert(!src.includes("invoices.create"), "10 module does not create invoices");
   assert(!live.includes("subscriptionSchedules.cancel"), "release is used instead of cancel");
   assert(live.includes("subscriptionSchedules.release"), "release call exists");
+  assert(
+    live.includes("assertStripeSubscriptionDowngradeModeAllowed"),
+    "live adapter asserts downgrade gate before schedule create/update",
+  );
+  assert(
+    !live.includes("assertStripeCheckoutModeAllowed"),
+    "downgrade live path does not use Checkout gate",
+  );
+  assert(
+    !live.includes("assertStripeSubscriptionUpgradeModeAllowed"),
+    "downgrade live path does not use upgrade gate",
+  );
   assert(!self.includes('from "@/lib/billing/stripe/' + "downgrade-live"), "37 self-check does not import the live Stripe adapter");
+
+  // --- Phase 5D-3A.2: Live downgrade gate ---
+  const priorDowngradeGate = process.env.STRIPE_LIVE_SUBSCRIPTION_DOWNGRADES_ENABLED;
+  const priorUpgradeGate = process.env.STRIPE_LIVE_SUBSCRIPTION_UPGRADES_ENABLED;
+  const priorCheckoutGate = process.env.STRIPE_LIVE_CHECKOUT_ENABLED;
+  try {
+    for (const value of [undefined, "", "false", "FALSE", "TRUE", "1", "yes"]) {
+      if (value === undefined) {
+        delete process.env.STRIPE_LIVE_SUBSCRIPTION_DOWNGRADES_ENABLED;
+      } else {
+        process.env.STRIPE_LIVE_SUBSCRIPTION_DOWNGRADES_ENABLED = value;
+      }
+      assert(
+        isStripeLiveSubscriptionDowngradeEnabled(
+          value === undefined ? undefined : value,
+        ) === false,
+        `Live downgrade gate blocks ${String(value)}`,
+      );
+      let blocked = false;
+      try {
+        assertStripeSubscriptionDowngradeModeAllowed("sk_live_test_placeholder");
+      } catch (error) {
+        blocked = error instanceof StripeLiveSubscriptionDowngradeForbiddenError;
+      }
+      assert(blocked, `Live secret blocked for downgrade env=${String(value)}`);
+      assert(
+        downgradeFailureMessage(
+          new StripeLiveSubscriptionDowngradeForbiddenError(),
+        ) === DOWNGRADE_CONFIGURATION_MESSAGE,
+        "gate refusal maps to user-safe configuration message",
+      );
+    }
+    process.env.STRIPE_LIVE_SUBSCRIPTION_DOWNGRADES_ENABLED = "true";
+    assert(
+      isStripeLiveSubscriptionDowngradeEnabled("true") === true,
+      "Live downgrade gate allows exact true",
+    );
+    assert(
+      assertStripeSubscriptionDowngradeModeAllowed("sk_live_test_placeholder") ===
+        "live",
+      "Live secret allowed when downgrade gate is true",
+    );
+    assert(
+      assertStripeSubscriptionDowngradeModeAllowed("sk_test_test_placeholder") ===
+        "test",
+      "Test-mode downgrade allowed independent of Live gate",
+    );
+    delete process.env.STRIPE_LIVE_SUBSCRIPTION_DOWNGRADES_ENABLED;
+    assert(
+      assertStripeSubscriptionDowngradeModeAllowed("sk_test_test_placeholder") ===
+        "test",
+      "Test-mode downgrade allowed when Live gate missing",
+    );
+
+    // Independence from Checkout + upgrade gates
+    process.env.STRIPE_LIVE_CHECKOUT_ENABLED = "true";
+    process.env.STRIPE_LIVE_SUBSCRIPTION_UPGRADES_ENABLED = "true";
+    process.env.STRIPE_LIVE_SUBSCRIPTION_DOWNGRADES_ENABLED = "false";
+    assert(isStripeLiveCheckoutEnabled("true") === true, "Checkout gate still exact true");
+    assert(
+      isStripeLiveSubscriptionUpgradeEnabled("true") === true,
+      "Upgrade gate still exact true",
+    );
+    assert(
+      isStripeLiveSubscriptionDowngradeEnabled("false") === false,
+      "Checkout/upgrade true does not authorize Live downgrade",
+    );
+    process.env.STRIPE_LIVE_CHECKOUT_ENABLED = "false";
+    process.env.STRIPE_LIVE_SUBSCRIPTION_UPGRADES_ENABLED = "false";
+    process.env.STRIPE_LIVE_SUBSCRIPTION_DOWNGRADES_ENABLED = "true";
+    assert(isStripeLiveCheckoutEnabled("false") === false, "Downgrade true does not authorize Checkout");
+    assert(
+      isStripeLiveSubscriptionUpgradeEnabled("false") === false,
+      "Downgrade true does not authorize upgrade",
+    );
+  } finally {
+    if (priorDowngradeGate === undefined) {
+      delete process.env.STRIPE_LIVE_SUBSCRIPTION_DOWNGRADES_ENABLED;
+    } else {
+      process.env.STRIPE_LIVE_SUBSCRIPTION_DOWNGRADES_ENABLED = priorDowngradeGate;
+    }
+    if (priorUpgradeGate === undefined) {
+      delete process.env.STRIPE_LIVE_SUBSCRIPTION_UPGRADES_ENABLED;
+    } else {
+      process.env.STRIPE_LIVE_SUBSCRIPTION_UPGRADES_ENABLED = priorUpgradeGate;
+    }
+    if (priorCheckoutGate === undefined) {
+      delete process.env.STRIPE_LIVE_CHECKOUT_ENABLED;
+    } else {
+      process.env.STRIPE_LIVE_CHECKOUT_ENABLED = priorCheckoutGate;
+    }
+  }
+
+  for (const status of ["released", "canceled", "completed", "aborted"] as const) {
+    assert(
+      isTerminalDowngradeScheduleStatus(status),
+      `terminal schedule status recognized: ${status}`,
+    );
+  }
+  assert(
+    !isTerminalDowngradeScheduleStatus("scheduled"),
+    "scheduled is not a terminal schedule status",
+  );
+
+  // Gate blocked: create/update must not be reached when caller enforces early.
+  // Pure scheduleSubscriptionDowngrade uses injectable deps (no live gate);
+  // live adapter source must assert before create/update (verified above).
 
   console.log("billing scheduled downgrade self-check passed");
 }

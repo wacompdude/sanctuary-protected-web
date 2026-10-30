@@ -95,6 +95,25 @@ export class StripeLiveSubscriptionUpgradeForbiddenError extends Error {
   }
 }
 
+/**
+ * Live operator-initiated Subscription Schedule mutations that establish a
+ * future plan downgrade. Independent of Checkout and upgrade gates.
+ * Does not apply to renewals, webhooks, schedule release/cancel cleanup, or
+ * non-mutating downgrade review.
+ */
+export class StripeLiveSubscriptionDowngradeForbiddenError extends Error {
+  readonly code = "stripe_live_subscription_downgrade_forbidden";
+
+  constructor(
+    context = "Live Stripe subscription downgrades",
+  ) {
+    super(
+      `${context} refuse live Stripe secret keys unless STRIPE_LIVE_SUBSCRIPTION_DOWNGRADES_ENABLED is exactly "true". Recurring renewals, webhook processing, and canceling an already-scheduled downgrade are not controlled by this gate.`,
+    );
+    this.name = "StripeLiveSubscriptionDowngradeForbiddenError";
+  }
+}
+
 export class StripeUnknownModeForbiddenError extends Error {
   readonly code = "stripe_unknown_mode_forbidden";
 

@@ -20,12 +20,14 @@ import {
   StripeCatalogMismatchError,
   StripeCatalogNotFoundError,
   StripeLiveModeForbiddenError,
+  StripeLiveSubscriptionDowngradeForbiddenError,
   StripeLiveSubscriptionUpgradeForbiddenError,
   StripeUnknownModeForbiddenError,
 } from "@/lib/billing/errors";
 import {
   classifyStripeSecretMode,
   isStripeLiveCheckoutEnabled,
+  isStripeLiveSubscriptionDowngradeEnabled,
   isStripeLiveSubscriptionUpgradeEnabled,
   type StripeSecretMode,
 } from "@/lib/billing/stripe/config";
@@ -266,6 +268,34 @@ export function assertStripeSubscriptionUpgradeModeAllowed(
   if (mode === "live") {
     if (!isStripeLiveSubscriptionUpgradeEnabled()) {
       throw new StripeLiveSubscriptionUpgradeForbiddenError(context);
+    }
+    return "live";
+  }
+  if (mode !== "test") {
+    throw new StripeUnknownModeForbiddenError(context);
+  }
+  return "test";
+}
+
+/**
+ * Authoritative Live downgrade-schedule gate (operator-initiated
+ * subscriptionSchedules.create / update that establish a future plan change).
+ * - test secrets: always allowed
+ * - live secrets: allowed only when STRIPE_LIVE_SUBSCRIPTION_DOWNGRADES_ENABLED === "true"
+ * - unknown secrets: always refused
+ * Independent of Checkout and upgrade gates. Does not gate renewals, webhooks,
+ * or releasing an already-scheduled downgrade.
+ * Call before schedule create/update that establishes a downgrade — not before
+ * non-mutating review/impact calculation.
+ */
+export function assertStripeSubscriptionDowngradeModeAllowed(
+  secretKey: string | null | undefined,
+  context = "Live Stripe subscription downgrades",
+): "test" | "live" {
+  const mode = classifyStripeSecretMode(secretKey);
+  if (mode === "live") {
+    if (!isStripeLiveSubscriptionDowngradeEnabled()) {
+      throw new StripeLiveSubscriptionDowngradeForbiddenError(context);
     }
     return "live";
   }

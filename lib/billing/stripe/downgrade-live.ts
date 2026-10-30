@@ -1,9 +1,15 @@
 /**
  * Live Stripe adapters for scheduling a downgrade.
  * Self-checks must not import this module.
+ *
+ * Schedule create/update that establish a future downgrade require the Live
+ * downgrade gate when the secret is live. Release of an already-scheduled
+ * downgrade is intentionally ungated so operators can undo while the gate is
+ * fail-closed. Renewals/webhooks are unaffected.
  */
 
 import type Stripe from "stripe";
+import { assertStripeSubscriptionDowngradeModeAllowed } from "@/lib/billing/stripe/catalog";
 import { getStripeClient } from "@/lib/billing/stripe/sdk";
 import {
   createStripeCatalogPriceLister,
@@ -29,10 +35,10 @@ export function createStripeDowngradeDeps(
     listPrices: createStripeCatalogPriceLister(secretKey),
     getPriceById: createStripePriceByIdRetriever(secretKey),
     createScheduleFromSubscription: (subscriptionId, idempotencyKey) =>
-      createSchedule(stripe, subscriptionId, idempotencyKey),
+      createSchedule(stripe, secretKey, subscriptionId, idempotencyKey),
     retrieveSchedule: (scheduleId) => retrieveSchedule(stripe, scheduleId),
     updateSchedule: (scheduleId, params, idempotencyKey) =>
-      updateSchedule(stripe, scheduleId, params, idempotencyKey),
+      updateSchedule(stripe, secretKey, scheduleId, params, idempotencyKey),
     releaseSchedule: (scheduleId, idempotencyKey) =>
       releaseSchedule(stripe, scheduleId, idempotencyKey),
     saveScheduledMirror: mirror.saveScheduledMirror,
@@ -76,9 +82,12 @@ async function retrieveDowngradeSubscription(
 
 async function createSchedule(
   stripe: Stripe,
+  secretKey: string,
   subscriptionId: string,
   idempotencyKey: string,
 ): Promise<{ id: string }> {
+  // Fail-closed Live downgrade schedule: exact STRIPE_LIVE_SUBSCRIPTION_DOWNGRADES_ENABLED=true.
+  assertStripeSubscriptionDowngradeModeAllowed(secretKey);
   const schedule = await stripe.subscriptionSchedules.create(
     { from_subscription: subscriptionId },
     { idempotencyKey },
@@ -110,10 +119,13 @@ async function retrieveSchedule(
 
 async function updateSchedule(
   stripe: Stripe,
+  secretKey: string,
   scheduleId: string,
   params: DowngradeScheduleUpdate,
   idempotencyKey: string,
 ): Promise<{ id: string; subscriptionId: string | null }> {
+  // Fail-closed Live downgrade schedule: exact STRIPE_LIVE_SUBSCRIPTION_DOWNGRADES_ENABLED=true.
+  assertStripeSubscriptionDowngradeModeAllowed(secretKey);
   const schedule = await stripe.subscriptionSchedules.update(scheduleId, params, {
     idempotencyKey,
   });

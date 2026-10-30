@@ -1173,17 +1173,23 @@ export async function handleSubscriptionSchedule(
     });
   }
 
+  const terminal =
+    mirrorStatus === "released" ||
+    mirrorStatus === "canceled" ||
+    mirrorStatus === "completed" ||
+    mirrorStatus === "aborted";
+
   await store.syncScheduleMirror({
     organizationId: org.organizationId,
     billingSubscriptionId: object.subscriptionId,
     providerScheduleId: object.id,
     scheduleStatus: mirrorStatus,
-    scheduledPlanId,
-    scheduledEffectiveAt,
-    scheduleReleasedAt:
-      mirrorStatus === "released" || mirrorStatus === "completed"
-        ? (options.now ?? new Date()).toISOString()
-        : null,
+    // Future phases never become plan_id. Terminal statuses clear future fields.
+    scheduledPlanId: terminal ? null : scheduledPlanId,
+    scheduledEffectiveAt: terminal ? null : scheduledEffectiveAt,
+    scheduleReleasedAt: terminal
+      ? (options.now ?? new Date()).toISOString()
+      : null,
   });
 
   return {

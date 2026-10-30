@@ -31,6 +31,7 @@ export {
   StripeCatalogAmbiguousError,
   StripeCatalogMismatchError,
   StripeLiveModeForbiddenError,
+  StripeLiveSubscriptionDowngradeForbiddenError,
   StripeLiveSubscriptionUpgradeForbiddenError,
   StripeUnknownModeForbiddenError,
 } from "@/lib/billing/errors";
@@ -39,10 +40,12 @@ export {
   classifyStripeSecretMode,
   getStripeBillingConfigStatus,
   isStripeLiveCheckoutEnabled,
+  isStripeLiveSubscriptionDowngradeEnabled,
   isStripeLiveSubscriptionUpgradeEnabled,
   isStripeSecretConfigured,
   resolveBillingProviderIdFromEnv,
   STRIPE_LIVE_CHECKOUT_ENABLED_ENV,
+  STRIPE_LIVE_SUBSCRIPTION_DOWNGRADES_ENABLED_ENV,
   STRIPE_LIVE_SUBSCRIPTION_UPGRADES_ENABLED_ENV,
   BILLING_UPGRADE_PREVIEW_SIGNING_SECRET_ENV,
 } from "@/lib/billing/stripe/config";

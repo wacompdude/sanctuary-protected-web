@@ -459,9 +459,9 @@ export function BillingPlanPanel({
             <div className="space-y-1 text-sm">
               <p>Downgrade to {impact.toPlanDisplayName}</p>
               <p>
-                Effective:{" "}
+                Effective at next renewal
                 {scheduledDowngrade
-                  ? new Date(scheduledDowngrade.effectiveAt).toLocaleDateString(
+                  ? `: ${new Date(scheduledDowngrade.effectiveAt).toLocaleDateString(
                       "en-US",
                       {
                         month: "long",
@@ -469,13 +469,19 @@ export function BillingPlanPanel({
                         year: "numeric",
                         timeZone: "UTC",
                       },
-                    )
-                  : "the next renewal"}
+                    )}`
+                  : "."}
               </p>
               <p>Until then: {impact.fromPlanDisplayName} remains active.</p>
+              <p>No charge today: $0.00</p>
+              <p>
+                No refund or account credit is issued when scheduling this
+                downgrade. Your current {impact.fromPlanDisplayName} service
+                remains active through the end of the current billing period.
+              </p>
               {impact.targetMonthlyPriceCents != null ? (
                 <p>
-                  New monthly price:{" "}
+                  New monthly price after renewal:{" "}
                   {formatBillingPlanPrice(impact.targetMonthlyPriceCents, "usd")}
                 </p>
               ) : null}
@@ -497,7 +503,6 @@ export function BillingPlanPanel({
                   usage is within the plan limit.
                 </p>
               ) : null}
-              <p>No refund will be issued for the current paid period.</p>
             </div>
           ) : null}
 

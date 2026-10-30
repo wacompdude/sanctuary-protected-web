@@ -9,7 +9,10 @@ import {
   commercialExpectationByLookupKey,
   type CommercialPriceExpectation,
 } from "@/lib/billing/commercial-catalog";
-import { BillingDowngradeError } from "@/lib/billing/errors";
+import {
+  BillingDowngradeError,
+  StripeLiveSubscriptionDowngradeForbiddenError,
+} from "@/lib/billing/errors";
 import {
   subscriptionScheduleAutomaticTax,
   subscriptionTaxCollectionAuthorized,
@@ -284,17 +287,41 @@ export function scheduleMirrorStatusAfterStripeRelease(input: {
 
 export function downgradeFailureMessage(error: unknown): string {
   if (error instanceof BillingDowngradeError) return error.message;
+  // Live gate refusal: user-safe configuration message (do not leak env names/values).
+  if (error instanceof StripeLiveSubscriptionDowngradeForbiddenError) {
+    return DOWNGRADE_CONFIGURATION_MESSAGE;
+  }
   const record =
     error && typeof error === "object" ? (error as Record<string, unknown>) : {};
   const code = typeof record.code === "string" ? record.code : "";
   if (
     code === "more_permissions_needed" ||
     code === "api_key_expired" ||
-    code === "secret_key_required"
+    code === "secret_key_required" ||
+    code === "stripe_live_subscription_downgrade_forbidden"
   ) {
     return DOWNGRADE_CONFIGURATION_MESSAGE;
   }
   return DOWNGRADE_NOT_CHANGED_MESSAGE;
+}
+
+/** Terminal schedule statuses: no actionable future downgrade remains. */
+export const TERMINAL_DOWNGRADE_SCHEDULE_STATUSES = [
+  "released",
+  "canceled",
+  "completed",
+  "aborted",
+] as const;
+
+export type TerminalDowngradeScheduleStatus =
+  (typeof TERMINAL_DOWNGRADE_SCHEDULE_STATUSES)[number];
+
+export function isTerminalDowngradeScheduleStatus(
+  status: string | null | undefined,
+): status is TerminalDowngradeScheduleStatus {
+  return (TERMINAL_DOWNGRADE_SCHEDULE_STATUSES as readonly string[]).includes(
+    (status ?? "").trim(),
+  );
 }
 
 export function safeStripeDowngradeErrorLog(error: unknown): {

@@ -398,6 +398,11 @@ function createMemorySyncStore(seed?: {
         planKey: store.subscriptions[0]?.planKey ?? null,
         planName: store.organizationPlanName,
       };
+      const terminal =
+        input.scheduleStatus === "released" ||
+        input.scheduleStatus === "canceled" ||
+        input.scheduleStatus === "completed" ||
+        input.scheduleStatus === "aborted";
       for (const sub of subscriptions) {
         if (
           sub.organizationId === input.organizationId &&
@@ -405,9 +410,14 @@ function createMemorySyncStore(seed?: {
         ) {
           sub.scheduleStatus = input.scheduleStatus;
           sub.providerScheduleId = input.providerScheduleId;
-          if (input.scheduledPlanId) sub.scheduledPlanId = input.scheduledPlanId;
-          if (input.scheduledEffectiveAt) {
-            sub.scheduledEffectiveAt = input.scheduledEffectiveAt;
+          if (terminal) {
+            sub.scheduledPlanId = null;
+            sub.scheduledEffectiveAt = null;
+          } else if (input.scheduledPlanId) {
+            sub.scheduledPlanId = input.scheduledPlanId;
+            if (input.scheduledEffectiveAt) {
+              sub.scheduledEffectiveAt = input.scheduledEffectiveAt;
+            }
           }
         }
       }
@@ -2207,6 +2217,55 @@ async function assertPostEffectiveScheduleRelease(): Promise<void> {
   assert(scheduleReleaseCalls === 0, "18 schedule.released does not call release");
   assert(releasedOld.scheduleMirror?.scheduleStatus === "released", "19 live old plan stays released");
   assert(releasedOld.subscriptions[0]?.planKey === "steward_pro", "19 schedule event does not change the plan");
+  assert(
+    releasedOld.subscriptions[0]?.scheduledPlanId == null,
+    "19a released clears scheduled_plan_id mirror",
+  );
+  assert(
+    releasedOld.subscriptions[0]?.scheduledEffectiveAt == null,
+    "19a released clears scheduled_effective_at mirror",
+  );
+  assert(
+    releasedOld.scheduleMirror?.scheduledPlanId == null,
+    "19a released schedule mirror has no future plan",
+  );
+
+  for (const terminal of ["canceled", "completed", "aborted"] as const) {
+    const terminalStore = createMemorySyncStore();
+    terminalStore.subscriptions.push(scheduledStewardRow());
+    await handleSubscriptionSchedule(
+      terminalStore,
+      livePlanEvent("steward_pro", {
+        objectType: "subscription_schedule",
+        id: "sub_sched_1",
+        status: terminal,
+        scheduleId: null,
+        priceItems: [],
+      }),
+      {
+        now: before,
+        readLiveApprovedPlanKey: async () => "steward_pro",
+      },
+    );
+    assert(
+      terminalStore.subscriptions[0]?.planKey === "steward_pro",
+      `${terminal} schedule event does not change live plan`,
+    );
+    assert(
+      terminalStore.subscriptions[0]?.scheduledPlanId == null,
+      `${terminal} clears scheduled_plan_id`,
+    );
+    assert(
+      terminalStore.subscriptions[0]?.scheduledEffectiveAt == null,
+      `${terminal} clears scheduled_effective_at`,
+    );
+    assert(
+      terminalStore.subscriptions[0]?.scheduleStatus === terminal ||
+        (terminal === "completed" &&
+          terminalStore.scheduleMirror?.scheduleStatus === "completed"),
+      `${terminal} mirror status recorded`,
+    );
+  }
 
   const releasedNew = createMemorySyncStore();
   releasedNew.subscriptions.push(scheduledStewardRow({ planKey: "servant_standard", planId: "plan_servant" }));

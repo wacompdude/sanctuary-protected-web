@@ -863,11 +863,16 @@ async function saveReleasedDowngradeMirror(
   mirror: { providerScheduleId: string; scheduleReleasedAt: string },
 ): Promise<void> {
   const admin = createAdminClient();
+  // Clear future-plan mirror fields so UI no longer treats a downgrade as pending.
+  // Retain provider_schedule_id for audit/correlation when Stripe supplied one.
+  // Never change plan_id here — active entitlements stay on the live plan.
   const { error } = await admin
     .from("organization_subscriptions")
     .update({
       schedule_status: "released",
       schedule_released_at: mirror.scheduleReleasedAt,
+      scheduled_plan_id: null,
+      scheduled_effective_at: null,
       ...(mirror.providerScheduleId
         ? { provider_schedule_id: mirror.providerScheduleId }
         : {}),

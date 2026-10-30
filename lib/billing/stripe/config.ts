@@ -100,6 +100,32 @@ export function isStripeLiveSubscriptionUpgradeEnabled(
 }
 
 /**
+ * Server-only operational authorization for Live Subscription Schedule
+ * mutations that schedule a future plan downgrade
+ * (subscriptionSchedules.create / update of downgrade phases).
+ * Independent of STRIPE_LIVE_CHECKOUT_ENABLED and
+ * STRIPE_LIVE_SUBSCRIPTION_UPGRADES_ENABLED.
+ * Does NOT gate renewals, invoice.paid, schedule webhooks, or releasing an
+ * already-scheduled downgrade.
+ */
+export const STRIPE_LIVE_SUBSCRIPTION_DOWNGRADES_ENABLED_ENV =
+  "STRIPE_LIVE_SUBSCRIPTION_DOWNGRADES_ENABLED";
+
+/**
+ * Fail-closed Live downgrade-schedule authorization.
+ * Only the exact string "true" enables Live schedule mutations. Missing,
+ * empty, "false", "TRUE", "1", and any other value remain blocked.
+ * Sandbox/test downgrades do not require this flag.
+ * Never expose via NEXT_PUBLIC_*.
+ */
+export function isStripeLiveSubscriptionDowngradeEnabled(
+  envValue: string | null | undefined = process.env
+    .STRIPE_LIVE_SUBSCRIPTION_DOWNGRADES_ENABLED,
+): boolean {
+  return envValue === "true";
+}
+
+/**
  * HMAC secret for opaque upgrade preview authorization tokens.
  * Server-only. Never reuse Stripe secrets or NEXT_PUBLIC_* values.
  */

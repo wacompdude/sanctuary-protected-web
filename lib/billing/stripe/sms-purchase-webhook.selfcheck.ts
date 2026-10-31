@@ -125,6 +125,8 @@ type Harness = {
   hasMore: boolean;
   record: RecordPaidSmsPackage | null;
   getPrice: StripePriceSnapshot | null | "throw";
+  /** Webhook authority mode. Default "live"; override to prove Test never grants. */
+  providerMode?: string | null;
 };
 
 function harness(overrides: Partial<Harness> = {}): Harness {
@@ -171,6 +173,7 @@ async function run(state: Harness, object = paidObject()) {
       return { items: state.lines, hasMore: state.hasMore };
     },
     recordPaidSmsPackage: record,
+    providerMode: state.providerMode === undefined ? 'live' : state.providerMode,
     getPriceById: async () => {
       if (state.getPrice === "throw") throw new Error("price retrieve failed");
       return state.getPrice;
@@ -259,6 +262,14 @@ async function main() {
     paidObject({ metadataOrganizationId: null }),
   );
   await expectRejected("6 nonexistent organization", harness({ exists: false }));
+  await expectRejected("6a test mode never grants SMS", harness({ providerMode: "test" }));
+  await expectRejected("6b unclassified mode never grants SMS", harness({ providerMode: null }));
+  {
+    const live = harness();
+    const liveResult = await run(live);
+    assert(liveResult.outcome === "processed", "6c live evidence grants SMS");
+    assert(live.calls[0]?.providerMode === "live", "6d recorder receives provider_mode live");
+  }
   await expectRejected(
     "7 missing customer",
     harness(),

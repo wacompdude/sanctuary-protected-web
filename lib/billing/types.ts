@@ -76,6 +76,9 @@ export type BillingProvider = {
     providerEventId?: string | null;
     eventType: string;
     organizationId?: string | null;
+    /** Stripe event.livemode. Absent/null is treated as non-authoritative. */
+    livemode?: boolean | null;
+    stripeAccountId?: string | null;
     metadata?: Record<string, unknown>;
   }>;
 };

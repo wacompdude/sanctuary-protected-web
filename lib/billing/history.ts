@@ -60,9 +60,10 @@ export async function listBillingHistory(
     supabase
       .from("billing_events")
       .select(
-        "id, event_type, processing_status, created_at, billing_provider, error_message, metadata",
+        "id, event_type, processing_status, created_at, billing_provider, error_message, metadata, provider_mode",
       )
       .eq("organization_id", organizationId)
+      .eq("provider_mode", "live")
       .order("created_at", { ascending: false })
       .limit(take),
     supabase
@@ -71,6 +72,7 @@ export async function listBillingHistory(
       .eq("organization_id", organizationId)
       .eq("transaction_type", "sms_block")
       .eq("status", "succeeded")
+      .eq("provider_mode", "live")
       .order("created_at", { ascending: false })
       .limit(take),
   ]);

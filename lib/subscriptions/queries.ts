@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { isProductionSubscriptionAuthority } from "@/lib/billing/stripe/provider-mode";
 import { isFeatureKey } from "@/lib/subscriptions/feature-keys";
 import { isPlanKey } from "@/lib/subscriptions/plan-keys";
 import type {
@@ -231,6 +232,56 @@ export async function getLatestChurchSubscription(
   return loadChurchSubscriptionRow(organizationId, client, false);
 }
 
+function mapChurchSubscriptionRow(
+  row: Record<string, unknown>,
+): ChurchSubscriptionRecord {
+  const plan = row.subscription_plans as Record<string, unknown> | null;
+  const planKey = String(plan?.plan_key ?? "");
+  const providerSubId =
+    typeof row.billing_subscription_id === "string"
+      ? row.billing_subscription_id.trim()
+      : "";
+
+  const scheduled = row.scheduled_plan as Record<string, unknown> | null;
+  const scheduledPlanKey = String(scheduled?.plan_key ?? "");
+
+  return {
+    id: String(row.id),
+    organization_id: String(row.organization_id),
+    plan_id: String(row.plan_id),
+    status: row.status as ChurchSubscriptionRecord["status"],
+    billing_interval:
+      row.billing_interval as ChurchSubscriptionRecord["billing_interval"],
+    billing_provider: (row.billing_provider as string | null) ?? null,
+    billing_subscription_id: providerSubId || null,
+    provider_mode:
+      typeof row.provider_mode === "string" ? row.provider_mode : null,
+    stripe_account_id:
+      typeof row.stripe_account_id === "string" ? row.stripe_account_id : null,
+    current_period_start: (row.current_period_start as string | null) ?? null,
+    current_period_end: (row.current_period_end as string | null) ?? null,
+    cancel_at_period_end: Boolean(row.cancel_at_period_end),
+    cancelled_at: (row.cancelled_at as string | null) ?? null,
+    trial_start: (row.trial_start as string | null) ?? null,
+    trial_end: (row.trial_end as string | null) ?? null,
+    grace_period_end: (row.grace_period_end as string | null) ?? null,
+    started_at: String(row.started_at),
+    plan_key: isPlanKey(planKey) ? planKey : planKey,
+    plan_display_name: String(plan?.display_name ?? planKey),
+    provider_schedule_id:
+      typeof row.provider_schedule_id === "string"
+        ? row.provider_schedule_id
+        : null,
+    scheduled_effective_at:
+      (row.scheduled_effective_at as string | null) ?? null,
+    schedule_status:
+      typeof row.schedule_status === "string" ? row.schedule_status : null,
+    scheduled_plan_key: isPlanKey(scheduledPlanKey) ? scheduledPlanKey : null,
+    scheduled_plan_name:
+      typeof scheduled?.display_name === "string" ? scheduled.display_name : null,
+  };
+}
+
 async function loadChurchSubscriptionRow(
   organizationId: string,
   client: SupabaseClient | undefined,
@@ -248,6 +299,8 @@ async function loadChurchSubscriptionRow(
       billing_interval,
       billing_provider,
       billing_subscription_id,
+      provider_mode,
+      stripe_account_id,
       current_period_start,
       current_period_end,
       cancel_at_period_end,
@@ -271,60 +324,62 @@ async function loadChurchSubscriptionRow(
     )
     .eq("organization_id", organizationId)
     .order("started_at", { ascending: false })
-    .limit(1);
+    .limit(currentOnly ? 20 : 20);
   if (currentOnly) {
     query = query.in("status", [...CURRENT_SUBSCRIPTION_STATUSES]);
   }
-  const { data, error } = await query.maybeSingle();
+  const { data, error } = await query;
 
   if (error) {
     if (isMissingRelation(error.message)) return null;
     throw new Error("Unable to load church subscription.");
   }
-  if (!data) return null;
+  const rows = (data ?? []) as Record<string, unknown>[];
+  if (rows.length === 0) return null;
 
-  const row = data as Record<string, unknown>;
-  const plan = row.subscription_plans as Record<string, unknown> | null;
-  const planKey = String(plan?.plan_key ?? "");
-  const providerSubId =
-    typeof row.billing_subscription_id === "string"
-      ? row.billing_subscription_id.trim()
-      : "";
+  if (currentOnly) {
+    const authoritative = rows.find((row) =>
+      isProductionSubscriptionAuthority({
+        status: typeof row.status === "string" ? row.status : null,
+        billingProvider:
+          typeof row.billing_provider === "string" ? row.billing_provider : null,
+        billingSubscriptionId:
+          typeof row.billing_subscription_id === "string"
+            ? row.billing_subscription_id
+            : null,
+        providerMode:
+          typeof row.provider_mode === "string" ? row.provider_mode : null,
+      }),
+    );
+    return authoritative ? mapChurchSubscriptionRow(authoritative) : null;
+  }
 
-  const scheduled = row.scheduled_plan as Record<string, unknown> | null;
-  const scheduledPlanKey = String(scheduled?.plan_key ?? "");
-
-  return {
-    id: String(row.id),
-    organization_id: String(row.organization_id),
-    plan_id: String(row.plan_id),
-    status: row.status as ChurchSubscriptionRecord["status"],
-    billing_interval:
-      row.billing_interval as ChurchSubscriptionRecord["billing_interval"],
-    billing_provider: (row.billing_provider as string | null) ?? null,
-    billing_subscription_id: providerSubId || null,
-    current_period_start: (row.current_period_start as string | null) ?? null,
-    current_period_end: (row.current_period_end as string | null) ?? null,
-    cancel_at_period_end: Boolean(row.cancel_at_period_end),
-    cancelled_at: (row.cancelled_at as string | null) ?? null,
-    trial_start: (row.trial_start as string | null) ?? null,
-    trial_end: (row.trial_end as string | null) ?? null,
-    grace_period_end: (row.grace_period_end as string | null) ?? null,
-    started_at: String(row.started_at),
-    plan_key: isPlanKey(planKey) ? planKey : planKey,
-    plan_display_name: String(plan?.display_name ?? planKey),
-    provider_schedule_id:
-      typeof row.provider_schedule_id === "string"
-        ? row.provider_schedule_id
-        : null,
-    scheduled_effective_at:
-      (row.scheduled_effective_at as string | null) ?? null,
-    schedule_status:
-      typeof row.schedule_status === "string" ? row.schedule_status : null,
-    scheduled_plan_key: isPlanKey(scheduledPlanKey) ? scheduledPlanKey : null,
-    scheduled_plan_name:
-      typeof scheduled?.display_name === "string" ? scheduled.display_name : null,
-  };
+  // Latest row for status/history: prefer Live Stripe, else local trial, else first.
+  const preferred =
+    rows.find((row) => {
+      const mode =
+        typeof row.provider_mode === "string" ? row.provider_mode : null;
+      const subId =
+        typeof row.billing_subscription_id === "string"
+          ? row.billing_subscription_id.trim()
+          : "";
+      return mode === "live" && Boolean(subId);
+    }) ??
+    rows.find((row) =>
+      isProductionSubscriptionAuthority({
+        status: typeof row.status === "string" ? row.status : null,
+        billingProvider:
+          typeof row.billing_provider === "string" ? row.billing_provider : null,
+        billingSubscriptionId:
+          typeof row.billing_subscription_id === "string"
+            ? row.billing_subscription_id
+            : null,
+        providerMode:
+          typeof row.provider_mode === "string" ? row.provider_mode : null,
+      }),
+    ) ??
+    rows[0];
+  return mapChurchSubscriptionRow(preferred);
 }
 
 export async function listPlanFeatureMatrix(): Promise<{

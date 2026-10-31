@@ -347,8 +347,18 @@ export async function recordPaidApplicationSmsPackage(
     idempotencyKey: string;
     providerPaymentId?: string | null;
     metadata?: Record<string, unknown> | null;
+    /**
+     * Required: "live". Production SMS credit grants require Live Stripe
+     * payment evidence. Test/NULL/missing is refused before any write.
+     */
+    providerMode?: string | null;
   },
 ): Promise<SmsPaidPackageResult> {
+  if (params.providerMode !== "live") {
+    throw new SmsPaidPackageInputError(
+      "paid application SMS package requires Live Stripe payment evidence",
+    );
+  }
   const clean = assertPaidSmsPackageInput(params);
   const { data, error } = await admin.rpc("record_paid_application_sms_package", {
     p_organization_id: params.organizationId,
@@ -360,5 +370,37 @@ export async function recordPaidApplicationSmsPackage(
     p_metadata: clean.metadata,
   });
   if (error) throw new Error(error.message);
-  return parseSmsPaidPackageResult(data);
+  const result = parseSmsPaidPackageResult(data);
+  if (result.ok && (result.outcome === "recorded" || result.outcome === "duplicate")) {
+    await stampSmsPaymentOriginLive(admin, result);
+  }
+  return result;
+}
+
+/**
+ * Stamp provider_mode='live' on the payment-origin rows written by the RPC
+ * (billing_transactions + SMS credit ledger). Only fills NULL, never overwrites
+ * a classified row. Idempotent: webhook retries re-run this on duplicate.
+ * The SMS balance itself stays mode-agnostic.
+ */
+async function stampSmsPaymentOriginLive(
+  admin: SupabaseClient,
+  result: SmsPaidPackageResult,
+): Promise<void> {
+  if (result.transactionId) {
+    const { error } = await admin
+      .from("billing_transactions")
+      .update({ provider_mode: "live" })
+      .eq("id", result.transactionId)
+      .is("provider_mode", null);
+    if (error) throw new Error(error.message);
+  }
+  if (result.ledgerId) {
+    const { error } = await admin
+      .from("organization_sms_credit_ledger")
+      .update({ provider_mode: "live" })
+      .eq("id", result.ledgerId)
+      .is("provider_mode", null);
+    if (error) throw new Error(error.message);
+  }
 }

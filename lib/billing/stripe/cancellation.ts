@@ -12,6 +12,10 @@
 
 import { BillingDowngradeError } from "@/lib/billing/errors";
 import { DOWNGRADE_CANCELLATION_CONFLICT_MESSAGE } from "@/lib/billing/stripe/downgrade";
+import {
+  assertAuthoritativeLiveSubscription,
+  assertStripeObjectLivemode,
+} from "@/lib/billing/stripe/provider-mode";
 
 export class BillingCancellationError extends Error {
   readonly code = "billing_cancellation_error";
@@ -55,6 +59,8 @@ export type LocalCancellationSubscription = {
   billingProvider: string | null;
   billingCustomerId: string;
   billingSubscriptionId: string;
+  /** organization_subscriptions.provider_mode. Must be "live" to mutate. */
+  providerMode?: string | null;
   status: string;
   cancelAtPeriodEnd: boolean;
   activeDowngradeSchedule: boolean;
@@ -72,6 +78,8 @@ export type RetrievedCancellationSubscription = {
   /** Stripe canceled_at. Request time, not the paid-through date. */
   canceledAt: number | null;
   scheduleId: string | null;
+  /** Stripe subscription.livemode. false is rejected; absent is tolerated. */
+  livemode?: boolean | null;
 };
 
 export type CancellationUpdate = {
@@ -240,6 +248,11 @@ function assertLocalPaidSubscription(
   if (!subscriptionId || !customerId) {
     throw new BillingCancellationError(TRIAL_CANCELLATION_MESSAGE);
   }
+  // Test/UNKNOWN Stripe-backed rows can never trigger Live cancellation.
+  assertAuthoritativeLiveSubscription(
+    local,
+    (message) => new BillingCancellationError(message),
+  );
   if (!CANCELLABLE_STATUSES.has(local.status)) {
     throw new BillingCancellationError(
       "This subscription cannot be changed in its current status.",
@@ -255,6 +268,10 @@ function assertLiveMatches(
   local: LocalCancellationSubscription,
   live: RetrievedCancellationSubscription,
 ): void {
+  assertStripeObjectLivemode(
+    live.livemode,
+    (message) => new BillingCancellationError(message),
+  );
   if (live.id !== local.billingSubscriptionId.trim()) {
     throw new BillingCancellationError(
       "The live subscription does not match this organization.",

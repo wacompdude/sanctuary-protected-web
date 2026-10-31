@@ -76,6 +76,7 @@ async function retrieveDowngradeSubscription(
     cancelAtPeriodEnd: subscription.cancel_at_period_end === true,
     pendingUpdate: subscription.pending_update != null,
     scheduleId,
+    livemode: typeof subscription.livemode === "boolean" ? subscription.livemode : null,
     items,
   };
 }

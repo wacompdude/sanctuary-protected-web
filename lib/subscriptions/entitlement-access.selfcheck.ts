@@ -110,8 +110,14 @@ function subscriptionRow(input: {
   status: string;
   planKey: keyof typeof PLANS;
   cancelAtPeriodEnd?: boolean;
+  billingSubscriptionId?: string | null;
+  providerMode?: string | null;
 }) {
   const plan = PLANS[input.planKey];
+  const billingSubscriptionId =
+    input.billingSubscriptionId === undefined
+      ? "sub_live_fixture"
+      : input.billingSubscriptionId;
   return {
     id: "sub-row",
     organization_id: ORG,
@@ -119,7 +125,14 @@ function subscriptionRow(input: {
     status: input.status,
     billing_interval: "month",
     billing_provider: "stripe",
-    billing_subscription_id: "sub_test",
+    billing_subscription_id: billingSubscriptionId,
+    provider_mode:
+      input.providerMode === undefined
+        ? billingSubscriptionId
+          ? "live"
+          : null
+        : input.providerMode,
+    stripe_account_id: billingSubscriptionId ? "acct_1UGx3WRxaGtyRkAV" : null,
     current_period_start: "2026-10-08T00:00:00.000Z",
     current_period_end: "2026-11-08T00:00:00.000Z",
     cancel_at_period_end: input.cancelAtPeriodEnd ?? false,
@@ -194,6 +207,18 @@ function client(row: ReturnType<typeof subscriptionRow> | null) {
                 data: FEATURES[String(eqs.plan_id)] ?? [],
                 error: null,
               });
+              return;
+            }
+            if (table === "organization_subscriptions") {
+              if (!row) {
+                resolve({ data: [], error: null });
+                return;
+              }
+              if (statusFilter && !statusFilter.includes(row.status)) {
+                resolve({ data: [], error: null });
+                return;
+              }
+              resolve({ data: [row], error: null });
               return;
             }
             resolve({ data: [], error: null });

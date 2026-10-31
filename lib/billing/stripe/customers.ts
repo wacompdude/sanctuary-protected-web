@@ -52,7 +52,7 @@ export function createAdminBillingCustomerStore(): BillingCustomerMappingStore {
     async getMappedCustomerId(organizationId: string) {
       const { data: profile } = await admin
         .from("organization_billing_profiles")
-        .select("provider_customer_id")
+        .select("provider_customer_id, provider_mode")
         .eq("organization_id", organizationId)
         .eq("billing_provider", "stripe")
         .maybeSingle();
@@ -61,11 +61,12 @@ export function createAdminBillingCustomerStore(): BillingCustomerMappingStore {
         typeof profile?.provider_customer_id === "string"
           ? profile.provider_customer_id.trim()
           : "";
-      if (fromProfile) return fromProfile;
+      // Test Customer mapping is never Production authority.
+      if (fromProfile && profile?.provider_mode !== "test") return fromProfile;
 
       const { data: legacy } = await admin
         .from("billing_customers")
-        .select("provider_customer_id")
+        .select("provider_customer_id, provider_mode")
         .eq("organization_id", organizationId)
         .eq("billing_provider", "stripe")
         .maybeSingle();
@@ -74,11 +75,36 @@ export function createAdminBillingCustomerStore(): BillingCustomerMappingStore {
         typeof legacy?.provider_customer_id === "string"
           ? legacy.provider_customer_id.trim()
           : "";
-      return fromLegacy || null;
+      if (fromLegacy && legacy?.provider_mode !== "test") return fromLegacy;
+      return null;
     },
 
     async saveMappedCustomerId(input) {
       const email = input.email?.trim() || null;
+      const { EXPECTED_STRIPE_ACCOUNT_ID } = await import(
+        "@/lib/billing/stripe/connectivity-probe"
+      );
+
+      const { data: existingProfile } = await admin
+        .from("organization_billing_profiles")
+        .select("provider_customer_id, provider_mode")
+        .eq("organization_id", input.organizationId)
+        .eq("billing_provider", "stripe")
+        .maybeSingle();
+      const existingLiveId =
+        existingProfile?.provider_mode === "live" &&
+        typeof existingProfile.provider_customer_id === "string"
+          ? existingProfile.provider_customer_id.trim()
+          : "";
+      // Never let a Test/unknown Customer overwrite an authoritative Live mapping.
+      if (
+        existingLiveId &&
+        existingLiveId !== input.providerCustomerId.trim()
+      ) {
+        throw new BillingConfigurationError(
+          "Refusing to overwrite Live Stripe Customer mapping.",
+        );
+      }
 
       const { error: profileError } = await admin
         .from("organization_billing_profiles")
@@ -87,6 +113,8 @@ export function createAdminBillingCustomerStore(): BillingCustomerMappingStore {
             organization_id: input.organizationId,
             billing_provider: "stripe",
             provider_customer_id: input.providerCustomerId,
+            provider_mode: "live",
+            stripe_account_id: EXPECTED_STRIPE_ACCOUNT_ID,
             ...(email ? { billing_email: email } : {}),
           },
           { onConflict: "organization_id" },
@@ -104,6 +132,8 @@ export function createAdminBillingCustomerStore(): BillingCustomerMappingStore {
           billing_provider: "stripe",
           provider_customer_id: input.providerCustomerId,
           email,
+          provider_mode: "live",
+          stripe_account_id: EXPECTED_STRIPE_ACCOUNT_ID,
           metadata: { source: "phase_4b3_checkout" },
         },
         { onConflict: "organization_id,billing_provider" },

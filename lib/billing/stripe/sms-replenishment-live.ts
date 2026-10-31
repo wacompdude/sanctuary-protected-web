@@ -6,6 +6,7 @@
 import "server-only";
 
 import type Stripe from "stripe";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripeClient } from "@/lib/billing/stripe/client";
 import {
   classifySmsReplenishmentPaymentError,
@@ -81,6 +82,15 @@ async function persistProviderPayment(attemptId: string, providerPaymentId: stri
   })) as RpcRow;
   if (row.ok !== true && row.outcome !== "duplicate") {
     throw new Error("SMS replenishment PaymentIntent could not be correlated.");
+  }
+  // New payment-origin attempt rows from the Live Stripe key are Live evidence.
+  const { error } = await createAdminClient()
+    .from("organization_sms_replenishment_attempts")
+    .update({ provider_mode: "live" })
+    .eq("id", attemptId)
+    .is("provider_mode", null);
+  if (error) {
+    throw new Error("SMS replenishment payment origin could not be recorded.");
   }
 }
 
@@ -192,6 +202,11 @@ export async function executeAutomaticSmsReplenishmentAttempt(
     return applyClassification(attemptId, classified);
   }
 
+  // Live-only: a Test PaymentMethod can never fund a Production replenishment.
+  if (paymentMethod.livemode === false) {
+    await failAttempt(attemptId, "payment_method_not_live");
+    return { outcome: "failed", grantsCredits: false, providerPaymentId: null };
+  }
   const paymentMethodCustomer =
     typeof paymentMethod.customer === "string" ? paymentMethod.customer : null;
   if (paymentMethod.type !== "card" || paymentMethodCustomer !== customerId) {

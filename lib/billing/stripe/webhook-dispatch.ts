@@ -9,6 +9,7 @@ import {
   settleSmsReplenishmentPaymentEvent,
   type SmsReplenishmentSettlementStore,
 } from "@/lib/billing/stripe/sms-replenishment-webhook";
+import { isAuthoritativeLiveStripeMode } from "@/lib/billing/stripe/provider-mode";
 import type { StripeWebhookObjectSummary } from "@/lib/billing/stripe/webhook-verify";
 import {
   handleCheckoutSessionCompleted,
@@ -59,7 +60,21 @@ export async function dispatchStripeWebhookEvent(input: {
   confirmScheduleStatus?: SubscriptionLifecycleOptions["confirmScheduleStatus"];
   readLiveApprovedPlanKey?: SubscriptionLifecycleOptions["readLiveApprovedPlanKey"];
   settleSmsReplenishment?: SmsReplenishmentSettlementStore;
+  /**
+   * Provider mode from the webhook authority gate. When supplied it must be
+   * "live"; non-live events never reach handlers/notifications. SMS grant and
+   * replenishment settlement additionally require it explicitly.
+   */
+  providerMode?: string | null;
 }): Promise<WebhookHandlerResult> {
+  if (input.providerMode !== undefined && !isAuthoritativeLiveStripeMode(input.providerMode)) {
+    return {
+      outcome: "ignored",
+      detail: "Non-Live Stripe event ignored for Production billing authority.",
+      organizationId: null,
+      metadata: { provider_mode: input.providerMode ?? null },
+    };
+  }
   const lifecycleOptions = {
     providerEventId: input.providerEventId,
     getPriceById: input.getPriceById,
@@ -75,6 +90,7 @@ export async function dispatchStripeWebhookEvent(input: {
         listCheckoutLineItems: input.listCheckoutLineItems,
         recordPaidSmsPackage: input.recordPaidSmsPackage,
         getPriceById: input.getPriceById,
+        providerMode: input.providerMode ?? null,
       });
     case "customer.subscription.created":
       return handleSubscriptionLifecycle(
@@ -137,10 +153,20 @@ export async function dispatchStripeWebhookEvent(input: {
           metadata: { sms_auto_replenishment: true },
         };
       }
+      // Replenishment settlement credits SMS after payment: Live evidence only.
+      if (!isAuthoritativeLiveStripeMode(input.providerMode)) {
+        return {
+          outcome: "ignored",
+          detail: "Automatic SMS replenishment requires Live Stripe payment evidence.",
+          organizationId: null,
+          metadata: { sms_auto_replenishment: true },
+        };
+      }
       return settleSmsReplenishmentPaymentEvent({
         eventType: input.eventType,
         object: input.object,
         store: input.settleSmsReplenishment,
+        providerMode: input.providerMode,
       });
     default:
       return {

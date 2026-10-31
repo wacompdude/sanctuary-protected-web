@@ -42,6 +42,7 @@ function mapSubscription(
     priceId: item?.price?.id ?? null,
     canceledAt: subscription.canceled_at ?? null,
     scheduleId,
+    livemode: typeof subscription.livemode === "boolean" ? subscription.livemode : null,
   };
 }
 

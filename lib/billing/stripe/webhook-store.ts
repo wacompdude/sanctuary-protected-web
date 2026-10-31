@@ -138,7 +138,7 @@ export function createAdminWebhookSyncStore(): WebhookSyncStore {
     async getMappedStripeCustomerId(organizationId) {
       const { data: profile } = await admin
         .from("organization_billing_profiles")
-        .select("provider_customer_id")
+        .select("provider_customer_id, provider_mode")
         .eq("organization_id", organizationId)
         .eq("billing_provider", "stripe")
         .maybeSingle();
@@ -146,11 +146,12 @@ export function createAdminWebhookSyncStore(): WebhookSyncStore {
         typeof profile?.provider_customer_id === "string"
           ? profile.provider_customer_id.trim()
           : "";
-      if (fromProfile) return fromProfile;
+      // Prefer Live mapping; refuse Test as Production authority.
+      if (fromProfile && profile?.provider_mode !== "test") return fromProfile;
 
       const { data: legacy } = await admin
         .from("billing_customers")
-        .select("provider_customer_id")
+        .select("provider_customer_id, provider_mode")
         .eq("organization_id", organizationId)
         .eq("billing_provider", "stripe")
         .maybeSingle();
@@ -158,7 +159,8 @@ export function createAdminWebhookSyncStore(): WebhookSyncStore {
         typeof legacy?.provider_customer_id === "string"
           ? legacy.provider_customer_id.trim()
           : "";
-      return fromLegacy || null;
+      if (fromLegacy && legacy?.provider_mode !== "test") return fromLegacy;
+      return null;
     },
 
     async getPlanIdByKey(planKey: PlanKey) {
@@ -194,10 +196,10 @@ export function createAdminWebhookSyncStore(): WebhookSyncStore {
     },
 
     async getCurrentSubscription(organizationId) {
-      const { data } = await admin
+      const { data: rows } = await admin
         .from("organization_subscriptions")
         .select(
-          "id, organization_id, plan_id, status, billing_subscription_id, payment_status, cancel_at_period_end",
+          "id, organization_id, plan_id, status, billing_subscription_id, payment_status, cancel_at_period_end, billing_provider, provider_mode",
         )
         .eq("organization_id", organizationId)
         .in("status", [
@@ -208,8 +210,23 @@ export function createAdminWebhookSyncStore(): WebhookSyncStore {
           "incomplete",
         ])
         .order("updated_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(10);
+      const { isProductionSubscriptionAuthority } = await import(
+        "@/lib/billing/stripe/provider-mode"
+      );
+      const data = (rows ?? []).find((row) =>
+        isProductionSubscriptionAuthority({
+          status: typeof row.status === "string" ? row.status : null,
+          billingProvider:
+            typeof row.billing_provider === "string" ? row.billing_provider : null,
+          billingSubscriptionId:
+            typeof row.billing_subscription_id === "string"
+              ? row.billing_subscription_id
+              : null,
+          providerMode:
+            typeof row.provider_mode === "string" ? row.provider_mode : null,
+        }),
+      );
       if (!data) return null;
       const { data: plan } = await admin
         .from("subscription_plans")
@@ -248,6 +265,10 @@ export function createAdminWebhookSyncStore(): WebhookSyncStore {
             cancelled_at: input.cancelledAt,
             payment_status: input.paymentStatus ?? "unknown",
             provider_latest_invoice_id: input.providerLatestInvoiceId ?? null,
+            provider_mode: "live",
+            stripe_account_id: (
+              await import("@/lib/billing/stripe/connectivity-probe")
+            ).EXPECTED_STRIPE_ACCOUNT_ID,
           })
           .select(
             "id, organization_id, plan_id, status, billing_subscription_id, payment_status, cancel_at_period_end",
@@ -288,6 +309,10 @@ export function createAdminWebhookSyncStore(): WebhookSyncStore {
           ...periodPatch,
           cancel_at_period_end: input.cancelAtPeriodEnd,
           cancelled_at: input.cancelledAt,
+          provider_mode: "live",
+          stripe_account_id: (
+            await import("@/lib/billing/stripe/connectivity-probe")
+          ).EXPECTED_STRIPE_ACCOUNT_ID,
           ...(input.paymentStatus
             ? { payment_status: input.paymentStatus }
             : {}),
@@ -377,6 +402,10 @@ export function createAdminWebhookSyncStore(): WebhookSyncStore {
             total_cents: input.totalCents,
             amount_paid_cents: input.amountPaidCents,
             amount_due_cents: input.amountDueCents,
+            provider_mode: "live",
+            stripe_account_id: (
+              await import("@/lib/billing/stripe/connectivity-probe")
+            ).EXPECTED_STRIPE_ACCOUNT_ID,
             ...(input.taxDetermined
               ? {
                   subtotal_cents: input.subtotalCents,
@@ -408,6 +437,10 @@ export function createAdminWebhookSyncStore(): WebhookSyncStore {
           period_end: input.periodEnd,
           hosted_invoice_url: input.hostedInvoiceUrl,
           metadata: input.metadata,
+          provider_mode: "live",
+          stripe_account_id: (
+            await import("@/lib/billing/stripe/connectivity-probe")
+          ).EXPECTED_STRIPE_ACCOUNT_ID,
         })
         .select("id")
         .single();
@@ -454,6 +487,10 @@ export function createAdminWebhookSyncStore(): WebhookSyncStore {
           idempotency_key: input.idempotencyKey,
           description: input.description,
           metadata: input.metadata,
+          provider_mode: "live",
+          stripe_account_id: (
+            await import("@/lib/billing/stripe/connectivity-probe")
+          ).EXPECTED_STRIPE_ACCOUNT_ID,
         })
         .select("id")
         .single();

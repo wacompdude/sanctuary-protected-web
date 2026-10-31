@@ -25,6 +25,10 @@ import {
   verifySubscriptionPaymentMethodSetup,
   type SubscriptionPaymentMethodView,
 } from "@/lib/billing/stripe/subscription-payment-method";
+import {
+  isAuthoritativeLiveStripeMode,
+  normalizeProviderMode,
+} from "@/lib/billing/stripe/provider-mode";
 import { CURRENT_SUBSCRIPTION_STATUSES } from "@/lib/subscriptions/status";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -50,32 +54,72 @@ async function canonicalBillingTarget(organizationId: string): Promise<{
   customerId: string | null;
 }> {
   const admin = createAdminClient();
-  const { data: subscription } = await admin
+  const { data: subscriptions } = await admin
     .from("organization_subscriptions")
-    .select("billing_subscription_id")
+    .select("provider_mode, billing_provider, billing_subscription_id")
     .eq("organization_id", organizationId)
     .in("status", [...CURRENT_SUBSCRIPTION_STATUSES])
     .order("started_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(20);
   const { data: profile } = await admin
     .from("organization_billing_profiles")
-    .select("provider_customer_id")
+    .select("provider_customer_id, provider_mode")
     .eq("organization_id", organizationId)
     .eq("billing_provider", "stripe")
     .maybeSingle();
+  const { data: legacyCustomer } = await admin
+    .from("billing_customers")
+    .select("provider_customer_id, provider_mode")
+    .eq("organization_id", organizationId)
+    .eq("billing_provider", "stripe")
+    .maybeSingle();
+
+  // Subscription must be an authoritative Live Stripe row. Test/NULL rows are
+  // never a payment-method replacement target.
+  const liveSubscription = (subscriptions ?? []).find((row) => {
+    const id =
+      typeof row.billing_subscription_id === "string"
+        ? row.billing_subscription_id.trim()
+        : "";
+    return (
+      Boolean(id) &&
+      String(row.billing_provider ?? "").trim().toLowerCase() === "stripe" &&
+      isAuthoritativeLiveStripeMode(
+        typeof row.provider_mode === "string" ? row.provider_mode : null,
+      )
+    );
+  });
   const subscriptionId =
-    typeof subscription?.billing_subscription_id === "string"
-      ? subscription.billing_subscription_id.trim()
+    typeof liveSubscription?.billing_subscription_id === "string"
+      ? liveSubscription.billing_subscription_id.trim()
       : "";
+
+  // Customer mapping: never Test; prefer Live, then unclassified (NULL).
+  // The Stripe subscription/customer livemode + ownership checks below still apply.
+  const customerCandidates = [profile, legacyCustomer]
+    .map((row) => ({
+      id:
+        typeof row?.provider_customer_id === "string"
+          ? row.provider_customer_id.trim()
+          : "",
+      mode: normalizeProviderMode(row?.provider_mode),
+    }))
+    .filter((candidate) => candidate.id && candidate.mode !== "test");
   const customerId =
-    typeof profile?.provider_customer_id === "string"
-      ? profile.provider_customer_id.trim()
-      : "";
+    customerCandidates.find((candidate) => candidate.mode === "live")?.id ??
+    customerCandidates[0]?.id ??
+    "";
   return {
     subscriptionId: subscriptionId || null,
     customerId: customerId || null,
   };
+}
+
+/** Stripe subscription.livemode must be true when Stripe supplies it. */
+function isLiveStripeSubscriptionObject(
+  subscription: Stripe.Subscription,
+): boolean {
+  return (subscription as { livemode?: boolean }).livemode !== false;
 }
 
 function snapshotCard(paymentMethod: Stripe.PaymentMethod): SafeCardDisplay | null {
@@ -102,6 +146,9 @@ export async function readSubscriptionPaymentMethodView(
   try {
     const stripe = getStripeClient();
     const subscription = await stripe.subscriptions.retrieve(target.subscriptionId);
+    if (!isLiveStripeSubscriptionObject(subscription)) {
+      return { state: "unavailable" };
+    }
     if (customerIdOf(subscription.customer) !== target.customerId) {
       return { state: "unavailable" };
     }
@@ -136,7 +183,10 @@ export async function createSubscriptionPaymentMethodSetup(input: {
   }
   const stripe = getStripeClient();
   const subscription = await stripe.subscriptions.retrieve(target.subscriptionId);
-  if (customerIdOf(subscription.customer) !== target.customerId) {
+  if (
+    !isLiveStripeSubscriptionObject(subscription) ||
+    customerIdOf(subscription.customer) !== target.customerId
+  ) {
     throw new BillingConfigurationError(
       "The subscription payment method could not be verified.",
     );
@@ -213,7 +263,10 @@ export async function finalizeSubscriptionPaymentMethodSetup(input: {
     throw new BillingConfigurationError("The payment method could not be verified.");
   }
   const before = await stripe.subscriptions.retrieve(target.subscriptionId);
-  if (customerIdOf(before.customer) !== target.customerId) {
+  if (
+    !isLiveStripeSubscriptionObject(before) ||
+    customerIdOf(before.customer) !== target.customerId
+  ) {
     throw new BillingConfigurationError("The subscription payment method could not be verified.");
   }
   const automaticTaxEnabled = before.automatic_tax?.enabled === true;

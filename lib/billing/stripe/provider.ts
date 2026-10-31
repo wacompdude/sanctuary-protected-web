@@ -250,9 +250,13 @@ export class StripeBillingProvider implements BillingProvider {
       eventType: verified.eventType,
       providerEventId: verified.eventId,
       organizationId: verified.object.metadataOrganizationId,
+      livemode: verified.livemode,
+      stripeAccountId: verified.stripeAccountId,
       metadata: {
         stripe_api_version: verified.apiVersion,
         stripe_created: verified.created,
+        stripe_livemode: verified.livemode,
+        stripe_account_id: verified.stripeAccountId,
         stripe_object: verified.object,
       },
     };

@@ -20,6 +20,10 @@ import {
   type GetStripePriceById,
   type WebhookPriceItemRef,
 } from "@/lib/billing/stripe/plan-correlation";
+import {
+  assertAuthoritativeLiveSubscription,
+  assertStripeObjectLivemode,
+} from "@/lib/billing/stripe/provider-mode";
 import { isPlanDowngrade, isPlanUpgrade } from "@/lib/subscriptions/status";
 import { PENDING_CANCELLATION_PLAN_CHANGE_MESSAGE } from "@/lib/billing/stripe/cancellation";
 import { DOWNGRADE_UPGRADE_CONFLICT_MESSAGE } from "@/lib/billing/stripe/downgrade";
@@ -80,6 +84,8 @@ export type RetrievedUpgradeSubscription = {
   items: LiveSubscriptionItem[];
   scheduleId?: string | null;
   cancelAtPeriodEnd?: boolean;
+  /** Stripe subscription.livemode. false is rejected; absent is tolerated. */
+  livemode?: boolean | null;
 };
 
 export type LocalUpgradeSubscription = {
@@ -87,6 +93,8 @@ export type LocalUpgradeSubscription = {
   billingProvider: string | null;
   billingCustomerId: string;
   billingSubscriptionId: string;
+  /** organization_subscriptions.provider_mode. Must be "live" to mutate. */
+  providerMode?: string | null;
   /** True when a downgrade schedule is still pending. */
   activeDowngradeSchedule?: boolean;
   /** True when period-end cancellation is already scheduled. */
@@ -363,6 +371,15 @@ export async function prepareSubscriptionUpgrade(input: {
   if (provider !== "stripe") {
     throw new BillingUpgradeError("This organization is not billed through Stripe.");
   }
+  // Live mutation requires an authoritative Live local row (Test/NULL rejected).
+  assertAuthoritativeLiveSubscription(
+    input.local,
+    (message) => new BillingUpgradeError(message),
+  );
+  assertStripeObjectLivemode(
+    input.stripeSubscription.livemode,
+    (message) => new BillingUpgradeError(message),
+  );
   const localSubscriptionId = input.local.billingSubscriptionId.trim();
   const localCustomerId = input.local.billingCustomerId.trim();
   if (!localSubscriptionId || !localCustomerId) {

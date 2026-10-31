@@ -8,6 +8,7 @@
 import { COMMERCIAL_PLAN_CATALOG } from "@/lib/billing/commercial-catalog";
 import type { SmsPaidPackageResult } from "@/lib/billing/sms-paid-purchase";
 import type { GetStripePriceById } from "@/lib/billing/stripe/plan-correlation";
+import { isAuthoritativeLiveStripeMode } from "@/lib/billing/stripe/provider-mode";
 import type { StripePriceSnapshot } from "@/lib/billing/stripe/catalog";
 import type { StripeWebhookObjectSummary } from "@/lib/billing/stripe/webhook-verify";
 
@@ -66,6 +67,8 @@ export type RecordPaidSmsPackage = (input: {
   idempotencyKey: string;
   providerPaymentId: string | null;
   metadata: Record<string, unknown>;
+  /** Live Stripe payment evidence. Production SMS grants are Live-only. */
+  providerMode: "live";
 }) => Promise<SmsPaidPackageResult>;
 
 export type SmsPurchaseOrganizationStore = {
@@ -80,6 +83,11 @@ export type SmsPurchaseHandlerDeps = {
   listCheckoutLineItems?: ListSmsCheckoutLineItems;
   recordPaidSmsPackage?: RecordPaidSmsPackage;
   getPriceById?: GetStripePriceById;
+  /**
+   * Provider mode from the webhook authority gate (event.livemode === true on
+   * the expected account). Production SMS grants require exactly "live".
+   */
+  providerMode?: string | null;
 };
 
 export type SmsPurchaseHandlerResult = {
@@ -177,6 +185,15 @@ async function recordPaidSmsPackageCheckout(
   const sessionId = object.checkoutSessionId?.trim() ?? "";
   if (!sessionId) {
     reject("SMS Checkout is missing a session id.", "sms_checkout_session_missing", true);
+  }
+  // Production SMS grants require Live payment evidence (Test never grants).
+  if (!isAuthoritativeLiveStripeMode(deps.providerMode)) {
+    reject(
+      "SMS Checkout is not Live Stripe payment evidence.",
+      "sms_live_evidence_missing",
+      true,
+      object.metadataOrganizationId?.trim() || null,
+    );
   }
 
   const organizationId = object.metadataOrganizationId?.trim() ?? "";
@@ -439,6 +456,7 @@ async function recordPaidSmsPackageCheckout(
     idempotencyKey,
     providerPaymentId: object.paymentIntentId ?? null,
     metadata,
+    providerMode: "live",
   });
 
   if (result.outcome === "idempotency_mismatch") {

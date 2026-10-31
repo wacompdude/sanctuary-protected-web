@@ -22,6 +22,10 @@ import {
   type ListPricesByLookupKey,
 } from "@/lib/billing/stripe/catalog";
 import type { GetStripePriceById } from "@/lib/billing/stripe/plan-correlation";
+import {
+  assertAuthoritativeLiveSubscription,
+  assertStripeObjectLivemode,
+} from "@/lib/billing/stripe/provider-mode";
 import { isPlanDowngrade, isPlanUpgrade } from "@/lib/subscriptions/status";
 import {
   isPlanKey,
@@ -81,6 +85,8 @@ export type RetrievedDowngradeSubscription = {
   cancelAtPeriodEnd: boolean;
   pendingUpdate: boolean;
   scheduleId: string | null;
+  /** Stripe subscription.livemode. false is rejected; absent is tolerated. */
+  livemode?: boolean | null;
   items: DowngradeSubscriptionItem[];
 };
 
@@ -122,6 +128,8 @@ export type LocalDowngradeSubscription = {
   billingProvider: string | null;
   billingCustomerId: string;
   billingSubscriptionId: string;
+  /** organization_subscriptions.provider_mode. Must be "live" to mutate. */
+  providerMode?: string | null;
   cancelAtPeriodEnd: boolean;
   activeDowngradeSchedule: boolean;
 };
@@ -778,6 +786,11 @@ function assertLocalSubscription(
   if (provider !== "stripe") {
     throw new BillingDowngradeError("This organization is not billed through Stripe.");
   }
+  // Live schedule create/update/release requires an authoritative Live row.
+  assertAuthoritativeLiveSubscription(
+    local,
+    (message) => new BillingDowngradeError(message),
+  );
   const billingSubscriptionId = local.billingSubscriptionId.trim();
   const billingCustomerId = local.billingCustomerId.trim();
   if (!billingSubscriptionId || !billingCustomerId) {
@@ -792,6 +805,10 @@ function assertLiveSubscription(
   local: LocalDowngradeSubscription,
   stripeSubscription: RetrievedDowngradeSubscription,
 ): void {
+  assertStripeObjectLivemode(
+    stripeSubscription.livemode,
+    (message) => new BillingDowngradeError(message),
+  );
   if (stripeSubscription.id !== local.billingSubscriptionId.trim()) {
     throw new BillingDowngradeError("The live subscription does not match this organization.");
   }

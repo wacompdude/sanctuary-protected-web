@@ -12,6 +12,8 @@ import "server-only";
 
 import type Stripe from "stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isAuthoritativeLiveStripeMode } from "@/lib/billing/stripe/provider-mode";
+import { CURRENT_SUBSCRIPTION_STATUSES } from "@/lib/subscriptions/status";
 import { createStripeCatalogPriceLister } from "@/lib/billing/stripe/catalog-stripe";
 import { getStripeClient } from "@/lib/billing/stripe/client";
 import {
@@ -85,9 +87,43 @@ async function loadOpenAttempt(
   };
 }
 
+/**
+ * Automatic replenishment charges real money off-session. Only an
+ * organization with an authoritative Live Stripe subscription may reach the
+ * claim, Tax Calculation, or PaymentIntent steps. Test/UNKNOWN rows stop here.
+ */
+async function hasLiveStripeSubscription(organizationId: string): Promise<boolean> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("organization_subscriptions")
+    .select("provider_mode, billing_provider, billing_subscription_id")
+    .eq("organization_id", organizationId)
+    .in("status", [...CURRENT_SUBSCRIPTION_STATUSES])
+    .order("started_at", { ascending: false })
+    .limit(20);
+  if (error) return false;
+  return (data ?? []).some(
+    (row) =>
+      isAuthoritativeLiveStripeMode(
+        typeof row.provider_mode === "string" ? row.provider_mode : null,
+      ) &&
+      String(row.billing_provider ?? "").trim().toLowerCase() === "stripe" &&
+      typeof row.billing_subscription_id === "string" &&
+      row.billing_subscription_id.trim().length > 0,
+  );
+}
+
 export async function orchestrateAutomaticSmsReplenishment(
   organizationId: string,
 ): Promise<SmsReplenishmentOrchestrationResult> {
+  if (!(await hasLiveStripeSubscription(organizationId))) {
+    return {
+      outcome: "not_live_authority",
+      grantsCredits: false,
+      attemptId: null,
+      providerPaymentId: null,
+    };
+  }
   const stripe = getStripeClient();
   const store = createSmsReplenishmentSettlementStore();
   const listPackagePrices = createStripeCatalogPriceLister();

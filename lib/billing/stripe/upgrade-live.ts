@@ -58,6 +58,7 @@ async function retrieveUpgradeSubscription(
     status: subscription.status,
     scheduleId,
     cancelAtPeriodEnd: subscription.cancel_at_period_end === true,
+    livemode: typeof subscription.livemode === "boolean" ? subscription.livemode : null,
     items,
   };
 }

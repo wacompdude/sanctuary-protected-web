@@ -455,6 +455,7 @@ function fakeStripeEvent(input: {
   id: string;
   type: string;
   object: Record<string, unknown>;
+  livemode?: boolean;
 }): Stripe.Event {
   return {
     id: input.id,
@@ -463,7 +464,7 @@ function fakeStripeEvent(input: {
     created: 1_700_000_000,
     type: input.type as Stripe.Event.Type,
     data: { object: input.object as Stripe.Event.Data.Object },
-    livemode: false,
+    livemode: input.livemode ?? true,
     pending_webhooks: 1,
     request: null,
   } as Stripe.Event;
@@ -952,6 +953,8 @@ async function main() {
             eventType: verified.eventType,
             providerEventId: verified.eventId,
             organizationId: verified.object.metadataOrganizationId,
+            livemode: verified.livemode,
+            stripeAccountId: verified.stripeAccountId,
             metadata: { stripe_object: verified.object },
           };
         },
@@ -1014,6 +1017,7 @@ async function main() {
             eventType: "customer.subscription.updated",
             providerEventId: "evt_inflight",
             organizationId: "org_selfcheck",
+            livemode: true,
             metadata: {
               stripe_object: baseObject(),
             },
@@ -1056,6 +1060,7 @@ async function main() {
             eventType: "customer.subscription.updated",
             providerEventId: "evt_fail",
             organizationId: "org_selfcheck",
+            livemode: true,
             metadata: { stripe_object: baseObject() },
           };
         },
@@ -1098,6 +1103,7 @@ async function main() {
             eventType: "customer.subscription.updated",
             providerEventId: "evt_stale",
             organizationId: "org_selfcheck",
+            livemode: true,
             metadata: { stripe_object: baseObject() },
           };
         },
@@ -2332,6 +2338,7 @@ async function assertPostEffectiveScheduleRelease(): Promise<void> {
       subscriptionRowId: "row",
       planKey: "steward_pro",
       billingProvider: "stripe",
+      providerMode: "live",
       billingCustomerId: "cus_test",
       billingSubscriptionId: "sub_test",
       cancelAtPeriodEnd: false,
@@ -2348,6 +2355,7 @@ async function assertPostEffectiveScheduleRelease(): Promise<void> {
       local: {
         planKey: "steward_pro",
         billingProvider: "stripe",
+        providerMode: "live",
         billingCustomerId: "cus_test",
         billingSubscriptionId: "sub_test",
         activeDowngradeSchedule: true,
@@ -2380,6 +2388,7 @@ async function assertPostEffectiveScheduleRelease(): Promise<void> {
     local: {
       planKey: "servant_standard",
       billingProvider: "stripe",
+      providerMode: "live",
       billingCustomerId: "cus_test",
       billingSubscriptionId: "sub_test",
       activeDowngradeSchedule: false,
@@ -2440,6 +2449,7 @@ async function assertPostEffectiveScheduleRelease(): Promise<void> {
         eventType: "customer.subscription.updated",
         providerEventId: "evt_retryable_release",
         organizationId: "org_selfcheck",
+        livemode: true,
         metadata: { stripe_object: livePlanEvent("servant_standard") },
       };
     },

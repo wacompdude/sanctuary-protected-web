@@ -21,6 +21,10 @@ export type StripeWebhookVerifyResult =
       eventType: string;
       apiVersion: string | null;
       created: number | null;
+      /** Stripe event.livemode. Authority filters use this, not Checkout mode. */
+      livemode: boolean;
+      /** Stripe event.account when present; NULL is normal for direct-account webhooks. */
+      stripeAccountId: string | null;
       /** Sanitized object summary for handlers — not the raw Stripe payload. */
       object: StripeWebhookObjectSummary;
     }
@@ -440,12 +444,18 @@ export function verifyStripeWebhookSignature(input: {
       webhookSecret: secret,
     });
     const object = summarizeStripeEventObject(event);
+    const account =
+      typeof event.account === "string" && event.account.trim()
+        ? event.account.trim()
+        : null;
     return {
       ok: true,
       eventId: event.id,
       eventType: event.type,
       apiVersion: event.api_version ?? null,
       created: event.created ?? null,
+      livemode: event.livemode === true,
+      stripeAccountId: account,
       object,
     };
   } catch {

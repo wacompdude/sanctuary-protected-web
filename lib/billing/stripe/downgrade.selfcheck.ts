@@ -5,6 +5,7 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { NON_LIVE_SUBSCRIPTION_MUTATION_MESSAGE } from "@/lib/billing/stripe/provider-mode";
 import { commercialPlanByKey } from "@/lib/billing/commercial-catalog";
 import {
   StripeLiveSubscriptionDowngradeForbiddenError,
@@ -67,6 +68,7 @@ function local(overrides: Partial<LocalDowngradeSubscription> = {}): LocalDowngr
     subscriptionRowId: "row_1",
     planKey: "steward_pro",
     billingProvider: "stripe",
+    providerMode: "live",
     billingCustomerId: "cus_test",
     billingSubscriptionId: "sub_test",
     cancelAtPeriodEnd: false,
@@ -228,6 +230,31 @@ async function main(): Promise<void> {
   assert(second.providerScheduleId === "sub_sched_same", "18 duplicate request reuses the schedule");
   assert(mirror.effective === new Date(PERIOD_END * 1000).toISOString(), "11 stored effective timestamp");
 
+  // Stage 2B: Test/UNKNOWN Stripe-backed rows cannot create/update/release Live schedules.
+  for (const providerMode of ["test", null, undefined] as const) {
+    const createsBefore: number = creates;
+    const modeBlocked = await throwsAsync(() =>
+      scheduleSubscriptionDowngrade({
+        local: local({ providerMode }),
+        targetPlanKey: "servant_standard",
+        requestedBy: "user_1",
+        deps,
+      }),
+    );
+    assert(
+      modeBlocked?.message === NON_LIVE_SUBSCRIPTION_MUTATION_MESSAGE,
+      `2B downgrade rejects provider_mode=${String(providerMode)}`,
+    );
+    assert(creates === createsBefore, "2B no schedule created for non-live row");
+    const releaseBlocked = await throwsAsync(() =>
+      releaseScheduledDowngrade({ local: local({ providerMode }), deps }),
+    );
+    assert(
+      releaseBlocked?.message === NON_LIVE_SUBSCRIPTION_MUTATION_MESSAGE,
+      `2B release rejects provider_mode=${String(providerMode)}`,
+    );
+  }
+
   const conflict = await throwsAsync(() =>
     scheduleSubscriptionDowngrade({
       local: local(),
@@ -302,6 +329,7 @@ async function main(): Promise<void> {
       local: {
         planKey: "steward_pro",
         billingProvider: "stripe",
+        providerMode: "live",
         billingCustomerId: "cus_test",
         billingSubscriptionId: "sub_test",
         activeDowngradeSchedule: true,

@@ -108,6 +108,7 @@ function local(
   return {
     planKey: "servant_standard",
     billingProvider: "stripe",
+    providerMode: "live",
     billingCustomerId: "cus_local",
     billingSubscriptionId: "sub_existing",
     ...overrides,
@@ -576,6 +577,44 @@ async function main(): Promise<void> {
   }
   assert(aborted, "L two base plans abort");
   assert(twoBase.calls.update === 0, "L no stripe update");
+
+  // Stage 2B: Test/UNKNOWN Stripe-backed rows can never reach a Live upgrade.
+  for (const providerMode of ["test", null, undefined] as const) {
+    const modeDeps = deps();
+    let modeRejected = false;
+    try {
+      await previewSubscriptionUpgrade({
+        organizationId: ORG_ID,
+        local: local({ providerMode }),
+        targetPlanKey: "shepherd_plus",
+        deps: modeDeps,
+        signingSecret: PREVIEW_SECRET,
+      });
+    } catch (error) {
+      modeRejected = error instanceof BillingUpgradeError;
+    }
+    assert(modeRejected, `2B upgrade rejects provider_mode=${String(providerMode)}`);
+    assert(modeDeps.calls.update === 0, "2B no stripe update for non-live row");
+  }
+  const testLivemode = deps();
+  const originalRetrieve = testLivemode.retrieveSubscription;
+  testLivemode.retrieveSubscription = async (id) => ({
+    ...(await originalRetrieve(id)),
+    livemode: false,
+  });
+  let livemodeRejected = false;
+  try {
+    await previewSubscriptionUpgrade({
+      organizationId: ORG_ID,
+      local: local(),
+      targetPlanKey: "shepherd_plus",
+      deps: testLivemode,
+      signingSecret: PREVIEW_SECRET,
+    });
+  } catch (error) {
+    livemodeRejected = error instanceof BillingUpgradeError;
+  }
+  assert(livemodeRejected, "2B upgrade rejects Stripe livemode=false subscription");
 
   const byPriceId = deps();
   byPriceId.retrieveSubscription = async () =>

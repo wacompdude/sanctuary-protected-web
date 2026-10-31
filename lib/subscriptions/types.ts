@@ -75,6 +75,9 @@ export type ChurchSubscriptionRecord = {
   billing_provider: string | null;
   /** Stripe (or other provider) subscription id when payment is connected. */
   billing_subscription_id: string | null;
+  /** Stripe Live/Test mode. NULL = local trial or unclassified UNKNOWN. */
+  provider_mode?: string | null;
+  stripe_account_id?: string | null;
   current_period_start: string | null;
   current_period_end: string | null;
   cancel_at_period_end: boolean;

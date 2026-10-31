@@ -5,6 +5,7 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { NON_LIVE_SUBSCRIPTION_MUTATION_MESSAGE } from "@/lib/billing/stripe/provider-mode";
 import { canStartInitialSubscriptionCheckout } from "@/lib/billing/checkout-eligibility";
 import { PENDING_CANCELLATION_PLAN_CHANGE_MESSAGE } from "@/lib/billing/stripe/cancellation";
 import {
@@ -47,6 +48,7 @@ function local(
     planKey: "steward_pro",
     planDisplayName: "Steward Pro",
     billingProvider: "stripe",
+    providerMode: "live",
     billingCustomerId: "cus_trusted",
     billingSubscriptionId: "sub_trusted",
     status: "active",
@@ -340,12 +342,30 @@ async function main() {
   assert(!again.changed && again.history === null, "15 duplicate cancellation request is idempotent");
   assert(deps.updates.length === 1, "15 duplicate does not write Stripe again");
 
+  // Stage 2B: Test/UNKNOWN Stripe-backed rows cannot trigger Live cancellation.
+  for (const providerMode of ["test", null, undefined] as const) {
+    const before: number = deps.updates.length;
+    const modeBlocked = await throws(() =>
+      setSubscriptionCancelAtPeriodEnd({
+        local: local({ providerMode }),
+        cancelAtPeriodEnd: true,
+        deps,
+      }),
+    );
+    assert(
+      modeBlocked?.message === NON_LIVE_SUBSCRIPTION_MUTATION_MESSAGE,
+      `2B cancellation rejects provider_mode=${String(providerMode)}`,
+    );
+    assert(deps.updates.length === before, "2B no Stripe write for non-live row");
+  }
+
   const downgradeBlocked = await throws(() =>
     scheduleSubscriptionDowngrade({
       local: {
         subscriptionRowId: "row",
         planKey: "steward_pro",
         billingProvider: "stripe",
+        providerMode: "live",
         billingCustomerId: "cus_trusted",
         billingSubscriptionId: "sub_trusted",
         cancelAtPeriodEnd: true,
@@ -402,6 +422,7 @@ async function main() {
       local: {
         planKey: "steward_pro",
         billingProvider: "stripe",
+        providerMode: "live",
         billingCustomerId: "cus_trusted",
         billingSubscriptionId: "sub_trusted",
         cancelAtPeriodEnd: true,
@@ -485,6 +506,7 @@ async function main() {
         billingSubscriptionId: "",
         billingCustomerId: "",
         billingProvider: "stripe",
+        providerMode: "live",
         status: "trialing",
       }),
       cancelAtPeriodEnd: true,

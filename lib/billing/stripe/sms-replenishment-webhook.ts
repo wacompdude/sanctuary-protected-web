@@ -27,6 +27,8 @@ export type SmsReplenishmentSettlementStore = {
     providerPaymentId: string;
     amountCents: number;
     taxCents: number;
+    /** Live Stripe payment evidence from the webhook authority gate. */
+    providerMode?: string | null;
   }): Promise<{ ok: boolean; outcome: string }>;
   fail(input: {
     attemptId: string;
@@ -82,9 +84,14 @@ export async function settleSmsReplenishmentPaymentEvent(input: {
   eventType: string;
   object: StripeWebhookObjectSummary;
   store: SmsReplenishmentSettlementStore;
+  /** Webhook authority provider mode. When supplied it must be "live". */
+  providerMode?: string | null;
 }): Promise<WebhookHandlerResult> {
   if (!isSmsReplenishmentPaymentEvent(input.eventType, input.object)) {
     return ignored("PaymentIntent is not an automatic SMS replenishment.");
+  }
+  if (input.providerMode !== undefined && input.providerMode !== "live") {
+    return ignored("Non-Live automatic SMS replenishment event ignored.");
   }
 
   const attemptId = input.object.metadataReplenishmentAttemptId;
@@ -141,6 +148,7 @@ export async function settleSmsReplenishmentPaymentEvent(input: {
     providerPaymentId,
     amountCents: attempt.expectedAmountCents,
     taxCents: attempt.taxCents,
+    providerMode: input.providerMode,
   });
   if (!granted.ok) {
     if (granted.outcome === "invalid_state" || granted.outcome === "idempotency_mismatch" || granted.outcome === "reconciliation_required") {

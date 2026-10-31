@@ -25,6 +25,10 @@ import type { SmsReplenishmentSettlementStore } from "@/lib/billing/stripe/sms-r
 import { dispatchStripeWebhookEvent } from "@/lib/billing/stripe/webhook-dispatch";
 import { createAdminWebhookSyncStore } from "@/lib/billing/stripe/webhook-store";
 import type { GetStripePriceById } from "@/lib/billing/stripe/plan-correlation";
+import {
+  evaluateStripeWebhookAuthority,
+  type ProviderMode,
+} from "@/lib/billing/stripe/provider-mode";
 import type { StripeWebhookObjectSummary } from "@/lib/billing/stripe/webhook-verify";
 import type {
   ScheduleReleaseCall,
@@ -57,6 +61,8 @@ export type BillingEventClaimStore = {
     providerEventId: string | null;
     eventType: string;
     metadata: Record<string, unknown>;
+    providerMode?: ProviderMode | null;
+    stripeAccountId?: string | null;
   }): Promise<
     | { kind: "inserted"; id: string }
     | { kind: "duplicate" }
@@ -76,6 +82,8 @@ export type BillingEventClaimStore = {
     processingStatus: "processed" | "ignored" | "rejected" | "failed";
     detail: string | null;
     metadata: Record<string, unknown>;
+    providerMode?: ProviderMode | null;
+    stripeAccountId?: string | null;
   }): Promise<void>;
 };
 
@@ -125,6 +133,10 @@ function createAdminBillingEventClaimStore(): BillingEventClaimStore {
           event_type: input.eventType,
           processing_status: "received",
           metadata: input.metadata,
+          ...(input.providerMode ? { provider_mode: input.providerMode } : {}),
+          ...(input.stripeAccountId
+            ? { stripe_account_id: input.stripeAccountId }
+            : {}),
         })
         .select("id")
         .single();
@@ -167,6 +179,12 @@ function createAdminBillingEventClaimStore(): BillingEventClaimStore {
               : null,
           safe_error_summary: input.detail?.slice(0, 240) ?? null,
           metadata: input.metadata,
+          ...(input.providerMode !== undefined
+            ? { provider_mode: input.providerMode }
+            : {}),
+          ...(input.stripeAccountId !== undefined
+            ? { stripe_account_id: input.stripeAccountId }
+            : {}),
         })
         .eq("id", input.id);
     },
@@ -308,6 +326,21 @@ export async function processBillingWebhook(
     }
   }
 
+  const authority =
+    provider.id === "stripe"
+      ? evaluateStripeWebhookAuthority({
+          livemode:
+            typeof (parsed as { livemode?: unknown }).livemode === "boolean"
+              ? (parsed as { livemode: boolean }).livemode
+              : null,
+          stripeAccountId:
+            typeof (parsed as { stripeAccountId?: unknown }).stripeAccountId ===
+            "string"
+              ? (parsed as { stripeAccountId: string }).stripeAccountId
+              : null,
+        })
+      : null;
+
   if (!eventRowId) {
     try {
       const inserted = await claimStore.insertReceived({
@@ -316,6 +349,12 @@ export async function processBillingWebhook(
         providerEventId,
         eventType: parsed.eventType,
         metadata,
+        providerMode: authority
+          ? authority.ok
+            ? authority.providerMode
+            : authority.providerMode
+          : null,
+        stripeAccountId: authority?.stripeAccountId ?? null,
       });
       if (inserted.kind === "duplicate") {
         // Concurrent insert lost the race — re-read and follow claim rules.
@@ -427,6 +466,7 @@ export async function processBillingWebhook(
     eventRowId,
     parsed,
     metadata,
+    authority,
   });
 }
 
@@ -450,6 +490,7 @@ async function finalizeStripeOrGeneric(input: {
     metadata?: Record<string, unknown>;
   };
   metadata: Record<string, unknown>;
+  authority: ReturnType<typeof evaluateStripeWebhookAuthority> | null;
 }): Promise<BillingWebhookReceiveResult> {
   if (input.providerId !== "stripe") {
     await input.claimStore.finalize({
@@ -461,6 +502,33 @@ async function finalizeStripeOrGeneric(input: {
       metadata: input.metadata,
     });
 
+    return {
+      ok: true,
+      status: 200,
+      duplicate: false,
+      eventId: input.eventRowId,
+      normalizedType: input.parsed.eventType,
+    };
+  }
+
+  if (input.authority && !input.authority.ok) {
+    console.warn(
+      "[billing.webhook] ignored non-authoritative Stripe event:",
+      input.authority.detail.slice(0, 160),
+    );
+    await input.claimStore.finalize({
+      id: input.eventRowId,
+      organizationId: input.parsed.organizationId ?? null,
+      processingStatus: "ignored",
+      detail: input.authority.detail,
+      metadata: sanitizeAuditMetadata({
+        ...input.metadata,
+        ignore_reason: input.authority.reason,
+        handler_detail: input.authority.detail,
+      }),
+      providerMode: input.authority.providerMode,
+      stripeAccountId: input.authority.stripeAccountId,
+    });
     return {
       ok: true,
       status: 200,
@@ -502,6 +570,7 @@ async function finalizeStripeOrGeneric(input: {
       confirmScheduleStatus: input.confirmScheduleStatus,
       readLiveApprovedPlanKey: input.readLiveApprovedPlanKey,
       settleSmsReplenishment: input.settleSmsReplenishment,
+      providerMode: input.authority?.ok ? input.authority.providerMode : null,
     });
 
     const mergedMetadata = sanitizeAuditMetadata({
@@ -521,6 +590,10 @@ async function finalizeStripeOrGeneric(input: {
             : "ignored",
       detail: result.detail,
       metadata: mergedMetadata,
+      providerMode: input.authority?.ok ? input.authority.providerMode : undefined,
+      stripeAccountId: input.authority?.ok
+        ? input.authority.stripeAccountId
+        : undefined,
     });
 
     return {

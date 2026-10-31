@@ -74,6 +74,8 @@ export async function scanSubscriptionCardExpirations(options?: {
       .select("organization_id, billing_subscription_id, status")
       .in("status", [...SUBSCRIPTION_CARD_EXPIRATION_STATUSES])
       .not("billing_subscription_id", "is", null)
+      // Billing notifications are Live-only: Test/UNKNOWN subscriptions never warn.
+      .eq("provider_mode", "live")
       .order("organization_id", { ascending: true })
       .range(offset, offset + SUBSCRIPTION_CARD_EXPIRATION_PAGE_SIZE - 1);
     if (options?.organizationId) {
@@ -123,11 +125,12 @@ async function inspectOrganization(input: {
 }): Promise<"queued" | "duplicate" | "skipped"> {
   const { data: profile } = await input.admin
     .from("organization_billing_profiles")
-    .select("provider_customer_id")
+    .select("provider_customer_id, provider_mode")
     .eq("organization_id", input.organizationId)
     .eq("billing_provider", "stripe")
     .maybeSingle();
   const customerId =
+    profile?.provider_mode !== "test" &&
     typeof profile?.provider_customer_id === "string"
       ? profile.provider_customer_id.trim()
       : "";
@@ -135,6 +138,7 @@ async function inspectOrganization(input: {
 
   const stripe = getStripeClient();
   const subscription = await stripe.subscriptions.retrieve(input.subscriptionId);
+  if (subscription.livemode === false) return "skipped";
   if (customerIdOf(subscription.customer) !== customerId) return "skipped";
 
   const subscriptionDefault = paymentMethodIdOf(subscription.default_payment_method);

@@ -446,6 +446,7 @@ async function loadLocalCancellationSubscription(
       billing_provider,
       billing_customer_id,
       billing_subscription_id,
+      provider_mode,
       status,
       cancel_at_period_end,
       schedule_status,
@@ -459,10 +460,10 @@ async function loadLocalCancellationSubscription(
     .eq("organization_id", organizationId)
     .in("status", [...CURRENT_SUBSCRIPTION_STATUSES])
     .order("started_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (error || !data) return null;
-  const row = data as Record<string, unknown>;
+    .limit(20);
+  const picked = pickPreferredLiveStripeRow(data);
+  if (error || !picked) return null;
+  const row = picked;
   const plan = row.subscription_plans as Record<string, unknown> | null;
   const planKey = String(plan?.plan_key ?? "");
   const customerId =
@@ -481,6 +482,8 @@ async function loadLocalCancellationSubscription(
     billingProvider: "stripe",
     billingCustomerId: customerId,
     billingSubscriptionId: subscriptionId,
+    providerMode:
+      typeof row.provider_mode === "string" ? row.provider_mode : null,
     status: String(row.status ?? ""),
     cancelAtPeriodEnd: row.cancel_at_period_end === true,
     activeDowngradeSchedule: row.schedule_status === "scheduled",
@@ -553,6 +556,26 @@ async function mirrorCancelAtPeriodEnd(input: {
     .eq("billing_subscription_id", input.billingSubscriptionId);
 }
 
+/**
+ * Prefer an authoritative Live Stripe row over newer Test/UNKNOWN rows.
+ * If no Live row exists, return the newest row so the library-level
+ * assertAuthoritativeLiveSubscription rejects it with a clear message
+ * (never silently skips to a different mode for mutation).
+ */
+function pickPreferredLiveStripeRow(
+  rows: unknown,
+): Record<string, unknown> | null {
+  if (!Array.isArray(rows) || rows.length === 0) return null;
+  const list = rows as Record<string, unknown>[];
+  const live = list.find(
+    (row) =>
+      row.provider_mode === "live" &&
+      typeof row.billing_subscription_id === "string" &&
+      row.billing_subscription_id.trim().length > 0,
+  );
+  return live ?? list[0] ?? null;
+}
+
 const CURRENT_SUBSCRIPTION_STATUSES = [
   "trialing",
   "active",
@@ -585,6 +608,7 @@ async function loadLocalUpgradeSubscription(
       billing_provider,
       billing_customer_id,
       billing_subscription_id,
+      provider_mode,
       cancel_at_period_end,
       schedule_status,
       subscription_plans!church_subscriptions_plan_id_fkey!inner ( plan_key )
@@ -593,16 +617,16 @@ async function loadLocalUpgradeSubscription(
     .eq("organization_id", organizationId)
     .in("status", [...CURRENT_SUBSCRIPTION_STATUSES])
     .order("started_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(20);
 
-  if (error || !data) {
+  const picked = pickPreferredLiveStripeRow(data);
+  if (error || !picked) {
     throw new BillingUpgradeError(
       "A connected Stripe subscription is required before a plan can be upgraded.",
     );
   }
 
-  const row = data as Record<string, unknown>;
+  const row = picked;
   const plan = row.subscription_plans as Record<string, unknown> | null;
   const planKey = String(plan?.plan_key ?? "");
   const customerId =
@@ -622,6 +646,8 @@ async function loadLocalUpgradeSubscription(
       typeof row.billing_provider === "string" ? row.billing_provider : null,
     billingCustomerId: customerId,
     billingSubscriptionId: subscriptionId,
+    providerMode:
+      typeof row.provider_mode === "string" ? row.provider_mode : null,
     activeDowngradeSchedule: row.schedule_status === "scheduled",
     cancelAtPeriodEnd: row.cancel_at_period_end === true,
   };
@@ -775,6 +801,7 @@ async function loadLocalDowngradeSubscription(organizationId: string) {
       billing_provider,
       billing_customer_id,
       billing_subscription_id,
+      provider_mode,
       cancel_at_period_end,
       schedule_status,
       subscription_plans!church_subscriptions_plan_id_fkey!inner ( plan_key )
@@ -783,14 +810,14 @@ async function loadLocalDowngradeSubscription(organizationId: string) {
     .eq("organization_id", organizationId)
     .in("status", [...CURRENT_SUBSCRIPTION_STATUSES])
     .order("started_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (error || !data) {
+    .limit(20);
+  const picked = pickPreferredLiveStripeRow(data);
+  if (error || !picked) {
     throw new BillingDowngradeError(
       "A connected Stripe subscription is required before a downgrade can be scheduled.",
     );
   }
-  const row = data as Record<string, unknown>;
+  const row = picked;
   const plan = row.subscription_plans as Record<string, unknown> | null;
   const planKey = String(plan?.plan_key ?? "");
   const customerId =
@@ -811,6 +838,8 @@ async function loadLocalDowngradeSubscription(organizationId: string) {
       typeof row.billing_provider === "string" ? row.billing_provider : null,
     billingCustomerId: customerId,
     billingSubscriptionId: subscriptionId,
+    providerMode:
+      typeof row.provider_mode === "string" ? row.provider_mode : null,
     cancelAtPeriodEnd: row.cancel_at_period_end === true,
     activeDowngradeSchedule: row.schedule_status === "scheduled",
   };

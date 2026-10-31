@@ -144,8 +144,9 @@ async function BillingContent({
   const subscriptionPaymentView = await readSubscriptionPaymentMethodView(church.id);
   const { data: recentInvoices } = await supabase
     .from("billing_invoices")
-    .select("status, metadata")
+    .select("status, metadata, provider_mode")
     .eq("organization_id", church.id)
+    .eq("provider_mode", "live")
     .order("updated_at", { ascending: false })
     .limit(8);
   const latestFailure = (recentInvoices ?? []).find((row) => {
@@ -208,6 +209,7 @@ async function BillingContent({
     .from("billing_invoices")
     .select("id, status, subtotal_cents, tax_cents, total_cents, created_at, metadata")
     .eq("organization_id", church.id)
+    .eq("provider_mode", "live")
     .order("created_at", { ascending: false })
     .limit(8);
   const billingAddress = readOrganizationBillingAddress(billingProfile?.billing_address);

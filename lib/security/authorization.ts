@@ -34,6 +34,10 @@ import {
   isCampusInScope,
   mergeGroupPermissionScope,
 } from "@/lib/security/campus-scope";
+import {
+  isSecurityGroupMembershipInOrganization,
+  isSecurityGroupPermissionInOrganization,
+} from "@/lib/security/tenant-isolation";
 
 /**
  * Local helper: get a church by ID.
@@ -125,8 +129,8 @@ function getRolePermissions(roles: string[], permissionKey: string): PermissionG
 }
 
 /**
- * Get group-based permissions for a user.
- * Returns all permissions granted via security groups the user is a member of.
+ * Get group-based permissions for a user within one organization.
+ * Memberships and grants from other organizations never apply.
  */
 async function getGroupPermissions(
   admin: SupabaseClient,
@@ -135,26 +139,56 @@ async function getGroupPermissions(
   permissionKey: string,
   actionDate: Date,
 ): Promise<PermissionGrant[]> {
-  // Query: user's active security group memberships
+  const orgId = organizationId.trim();
+  if (!orgId || !userId.trim()) return [];
+
+  // Organization-scoped memberships only — never trust user_id alone.
   const { data: memberships, error: memberError } = await admin
     .from("security_group_members")
     .select(`
       security_group_id,
+      organization_id,
       effective_at,
       expires_at,
       status,
       campus_id,
-      scope_type
+      scope_type,
+      security_groups!inner (
+        id,
+        organization_id,
+        status
+      )
     `)
     .eq("user_id", userId)
-    .eq("status", "active");
+    .eq("organization_id", orgId)
+    .eq("status", "active")
+    .eq("security_groups.organization_id", orgId)
+    .eq("security_groups.status", "active");
 
   if (memberError || !memberships?.length) {
     return [];
   }
 
-  // Get permission definitions for those groups
-  const groupIds = memberships.map((m: any) => m.security_group_id);
+  const scopedMemberships = memberships.filter((m: any) =>
+    isSecurityGroupMembershipInOrganization({
+      userId,
+      organizationId: orgId,
+      membershipOrganizationId:
+        typeof m.organization_id === "string" ? m.organization_id : null,
+      groupOrganizationId:
+        typeof m.security_groups?.organization_id === "string"
+          ? m.security_groups.organization_id
+          : null,
+      groupStatus:
+        typeof m.security_groups?.status === "string"
+          ? m.security_groups.status
+          : null,
+      membershipStatus: typeof m.status === "string" ? m.status : null,
+    }),
+  );
+  if (!scopedMemberships.length) return [];
+
+  const groupIds = scopedMemberships.map((m: any) => m.security_group_id);
 
   const { data: groupPerms, error: permError } = await admin
     .from("security_group_permissions")
@@ -168,25 +202,53 @@ async function getGroupPermissions(
       scope_type,
       campus_id,
       effective_at,
-      expires_at
+      expires_at,
+      security_groups!inner (
+        id,
+        organization_id,
+        status
+      )
     `,
     )
     .in("security_group_id", groupIds)
-    .eq("permission_effect", "grant");
+    .eq("permission_effect", "grant")
+    .eq("security_groups.organization_id", orgId)
+    .eq("security_groups.status", "active");
 
   if (permError || !groupPerms?.length) {
     return [];
   }
 
+  const scopedPerms = groupPerms.filter((perm: any) =>
+    isSecurityGroupPermissionInOrganization({
+      evaluationOrganizationId: orgId,
+      groupOrganizationId:
+        typeof perm.security_groups?.organization_id === "string"
+          ? perm.security_groups.organization_id
+          : null,
+      groupStatus:
+        typeof perm.security_groups?.status === "string"
+          ? perm.security_groups.status
+          : null,
+      permissionEffect:
+        typeof perm.permission_effect === "string"
+          ? perm.permission_effect
+          : null,
+    }),
+  );
+  if (!scopedPerms.length) return [];
+
   // Match permissions to the requested key
   const grants: PermissionGrant[] = [];
 
-  for (const perm of groupPerms) {
+  for (const perm of scopedPerms) {
     const permDef = (perm as any).permissions_definition;
     if (permDef?.permission_key !== permissionKey) continue;
 
     // Check if this group membership is active at actionDate
-    const membership = memberships.find((m: any) => m.security_group_id === perm.security_group_id);
+    const membership = scopedMemberships.find(
+      (m: any) => m.security_group_id === perm.security_group_id,
+    );
     if (membership) {
       if (membership.effective_at) {
         const effectiveDate = new Date(membership.effective_at);

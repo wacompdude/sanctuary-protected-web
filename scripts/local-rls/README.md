@@ -15,8 +15,9 @@ so this does not block applying migration 117 to Production after Stage 3A close
 3. `npx supabase start` (local only — no `--linked`).
 4. Apply `01_minimal_schema_pre_117.sql` then `supabase/migrations/117_security_group_tenant_isolation.sql` via local `psql` to port **54322**.
 5. `node scripts/local-rls/write-status.mjs` then `node scripts/local-rls/02_seed_and_rls_tests.mjs`.
-6. Restore `[db.migrations] enabled = true` immediately after.
-7. Delete `_local_status.json` if present (contains local demo keys).
+6. Optional Stage 3B: `node scripts/local-rls/03_password_recovery_smoke.mjs` (synthetic user only).
+7. Restore `[db.migrations] enabled = true` immediately after.
+8. Delete `_local_status.json` if present (contains local demo keys).
 
 ## Safety
 

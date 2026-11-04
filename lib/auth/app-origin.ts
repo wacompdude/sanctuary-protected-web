@@ -25,5 +25,11 @@ export function getPublicAppOrigin(): string {
 export function buildAuthConfirmUrl(nextPath = "/home"): string {
   const origin = getPublicAppOrigin();
   const next = nextPath.startsWith("/") ? nextPath : `/${nextPath}`;
+  // Confirm route resolves recovery to /auth/update-password regardless of next.
   return `${origin}/auth/confirm?next=${encodeURIComponent(next)}`;
+}
+
+/** Canonical Production-safe redirect target for password recovery emails. */
+export function buildPasswordRecoveryRedirectUrl(): string {
+  return buildAuthConfirmUrl("/auth/update-password");
 }

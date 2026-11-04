@@ -68,6 +68,8 @@ export const PROTECTED_PATH_PREFIXES = [
   "/invitations",
   "/protected",
   "/platform",
+  // Known individuals / safety concern profiles (Stage 3B MFA gap closure)
+  "/safety-concerns",
 ];
 
 export function isLegalPublicPath(pathname: string): boolean {

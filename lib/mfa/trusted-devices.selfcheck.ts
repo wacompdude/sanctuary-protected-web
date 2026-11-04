@@ -77,8 +77,10 @@ function main() {
   assert(hash !== token, "plaintext token is not stored");
   assert(hash.length === 64, "sha256 hex hash");
   assert(trustedDeviceHashesMatch(hash, hashTrustedDeviceToken(deviceId, token)), "hash match");
+  const alteredToken = `${token.slice(0, 63)}${token.endsWith("0") ? "1" : "0"}`;
+  assert(alteredToken !== token, "altered token differs");
   assert(
-    !trustedDeviceHashesMatch(hash, hashTrustedDeviceToken(deviceId, `${token.slice(0, 63)}a`)),
+    !trustedDeviceHashesMatch(hash, hashTrustedDeviceToken(deviceId, alteredToken)),
     "modified token fails",
   );
   assert(

@@ -39,6 +39,7 @@ export function LoginForm({
   const [showPassword, setShowPassword] = useState(false);
   const searchParams = useSearchParams();
   const nextPath = searchParams.get("next");
+  const passwordResetComplete = searchParams.get("reset") === "1";
   const switchAccount =
     searchParams.get("switch") === "1" || searchParams.get("switch") === "true";
 
@@ -118,6 +119,12 @@ export function LoginForm({
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {passwordResetComplete ? (
+            <div className="mb-6 rounded-md border border-green-500/30 bg-green-500/10 p-3 text-sm text-green-700 dark:text-green-400">
+              Your password was updated. Sign in with your new password.
+              Verification may be required.
+            </div>
+          ) : null}
           {switchAccount ? (
             <div className="mb-6 space-y-3 rounded-md border border-amber-700/30 bg-amber-50/70 p-3 text-sm dark:bg-amber-950/20">
               <p className="text-muted-foreground">

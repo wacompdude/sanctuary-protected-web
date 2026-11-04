@@ -18,6 +18,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BrandLogo } from "@/components/brand-logo";
+import { MIN_PASSWORD_LENGTH } from "@/lib/auth/validation";
+import Link from "next/link";
 
 const initialState: UpdatePasswordActionState = {};
 
@@ -33,8 +35,36 @@ export function UpdatePasswordForm({
 
   useEffect(() => {
     if (!state.success) return;
-    router.push("/home");
+    router.replace("/login?reset=1");
   }, [state.success, router]);
+
+  if (state.success) {
+    return (
+      <div className={cn("flex flex-col gap-6", className)} {...props}>
+        <Card>
+          <CardHeader className="space-y-4 text-center">
+            <BrandLogo
+              href="/"
+              size={36}
+              className="mx-auto justify-center"
+              wordmarkClassName="text-xl font-semibold"
+            />
+            <div className="space-y-1.5">
+              <CardTitle className="text-2xl">Password updated</CardTitle>
+              <CardDescription>
+                Sign in with your new password. Verification may be required.
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Button asChild className="w-full">
+              <Link href="/login?reset=1">Continue to sign in</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
@@ -49,8 +79,8 @@ export function UpdatePasswordForm({
           <div className="space-y-1.5">
             <CardTitle className="text-2xl">Reset Your Password</CardTitle>
             <CardDescription>
-              Please enter your new password below. This signs you out of other
-              trusted browsers.
+              Choose a new password (at least {MIN_PASSWORD_LENGTH} characters).
+              This ends other trusted browser sessions.
             </CardDescription>
           </div>
         </CardHeader>
@@ -63,9 +93,33 @@ export function UpdatePasswordForm({
                   id="password"
                   name="password"
                   type="password"
-                  placeholder="New password"
+                  autoComplete="new-password"
+                  minLength={MIN_PASSWORD_LENGTH}
                   required
+                  aria-invalid={!!state.fieldErrors?.password}
                 />
+                {state.fieldErrors?.password ? (
+                  <p className="text-sm text-destructive">
+                    {state.fieldErrors.password}
+                  </p>
+                ) : null}
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="confirmPassword">Confirm new password</Label>
+                <Input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type="password"
+                  autoComplete="new-password"
+                  minLength={MIN_PASSWORD_LENGTH}
+                  required
+                  aria-invalid={!!state.fieldErrors?.confirmPassword}
+                />
+                {state.fieldErrors?.confirmPassword ? (
+                  <p className="text-sm text-destructive">
+                    {state.fieldErrors.confirmPassword}
+                  </p>
+                ) : null}
               </div>
               {state.error ? (
                 <p className="text-sm text-destructive">{state.error}</p>

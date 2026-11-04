@@ -1,6 +1,11 @@
 "use client";
 
+import { useActionState } from "react";
 import { cn } from "@/lib/utils";
+import {
+  requestPasswordResetAction,
+  type ForgotPasswordActionState,
+} from "@/app/auth/forgot-password/actions";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -12,54 +17,22 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
-import { useState } from "react";
 import { BrandLogo } from "@/components/brand-logo";
-import { validateEmail } from "@/lib/auth/validation";
 
-/**
- * Password reset placeholder.
- * Full email delivery depends on Supabase Auth email settings.
- * The form captures intent and shows a confirmation message without
- * requiring the service-role key.
- */
+const initialState: ForgotPasswordActionState = {};
+
 export function ForgotPasswordForm({
   className,
   ...props
 }: React.ComponentPropsWithoutRef<"div">) {
-  const [email, setEmail] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [fieldError, setFieldError] = useState<string | null>(null);
-  const [submitted, setSubmitted] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleForgotPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-
-    const emailError = validateEmail(email);
-    setFieldError(emailError);
-    if (emailError) return;
-
-    setIsLoading(true);
-    try {
-      // Placeholder: request is acknowledged in-app.
-      // Wire to supabase.auth.resetPasswordForEmail when email templates are configured.
-      await new Promise((resolve) => setTimeout(resolve, 400));
-      setSubmitted(true);
-    } catch (err: unknown) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Unable to start password reset right now.",
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const [state, action, isLoading] = useActionState(
+    requestPasswordResetAction,
+    initialState,
+  );
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      {submitted ? (
+      {state.submitted ? (
         <Card>
           <CardHeader className="space-y-4 text-center">
             <BrandLogo
@@ -71,16 +44,14 @@ export function ForgotPasswordForm({
             <div className="space-y-1.5">
               <CardTitle className="text-2xl">Check your email</CardTitle>
               <CardDescription>
-                Password reset instructions (placeholder)
+                Password reset instructions
               </CardDescription>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              If an account exists for{" "}
-              <span className="font-medium text-foreground">{email.trim()}</span>
-              , reset instructions will be sent when email delivery is enabled
-              for this project.
+              If an account exists for that email address, password-reset
+              instructions will be sent.
             </p>
             <Button asChild className="w-full" variant="outline">
               <Link href="/login">Back to sign in</Link>
@@ -99,32 +70,34 @@ export function ForgotPasswordForm({
             <div className="space-y-1.5">
               <CardTitle className="text-2xl">Reset your password</CardTitle>
               <CardDescription>
-                Enter your email. Full reset email delivery will be enabled in a
-                later step.
+                Enter your email and we will send reset instructions if an
+                account exists.
               </CardDescription>
             </div>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleForgotPassword} noValidate>
+            <form action={action} noValidate>
               <div className="flex flex-col gap-6">
                 <div className="grid gap-2">
                   <Label htmlFor="email">Email</Label>
                   <Input
                     id="email"
+                    name="email"
                     type="email"
                     autoComplete="email"
                     placeholder="you@church.org"
-                    value={email}
-                    aria-invalid={!!fieldError}
-                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    aria-invalid={!!state.fieldError}
                   />
-                  {fieldError && (
-                    <p className="text-sm text-destructive">{fieldError}</p>
-                  )}
+                  {state.fieldError ? (
+                    <p className="text-sm text-destructive">{state.fieldError}</p>
+                  ) : null}
                 </div>
-                {error && <p className="text-sm text-destructive">{error}</p>}
+                {state.error ? (
+                  <p className="text-sm text-destructive">{state.error}</p>
+                ) : null}
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Submitting..." : "Continue"}
+                  {isLoading ? "Submitting..." : "Send reset link"}
                 </Button>
               </div>
               <div className="mt-4 text-center text-sm">

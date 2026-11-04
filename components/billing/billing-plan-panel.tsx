@@ -35,6 +35,7 @@ export function BillingPlanPanel({
   hasProviderSubscription,
   providerReady,
   providerMessage,
+  allowManualPlanAssignment = true,
   cancelAtPeriodEnd,
   paidThroughIso = null,
   currentPlanName = null,
@@ -48,6 +49,11 @@ export function BillingPlanPanel({
   hasProviderSubscription: boolean;
   providerReady: boolean;
   providerMessage: string;
+  /**
+   * When false (Stripe configured), never offer owner self-serve manual paid
+   * plan activation as a Checkout workaround.
+   */
+  allowManualPlanAssignment?: boolean;
   cancelAtPeriodEnd: boolean;
   paidThroughIso?: string | null;
   currentPlanName?: string | null;
@@ -122,6 +128,14 @@ export function BillingPlanPanel({
         }
         setError(result.error ?? "Unable to start checkout.");
         if (result.impact) setImpact(result.impact);
+        return;
+      }
+
+      if (!allowManualPlanAssignment) {
+        setError(
+          providerMessage ||
+            "Checkout is not available yet. Manual plan activation is disabled while Stripe billing is configured.",
+        );
         return;
       }
 
@@ -282,7 +296,8 @@ export function BillingPlanPanel({
     !impact ||
     hasProviderSubscription ||
     (impact.isSamePlan && !allowInitialSamePlanCheckout) ||
-    (impact.isDowngrade && !impact.isSamePlan && !confirmDowngrade);
+    (impact.isDowngrade && !impact.isSamePlan && !confirmDowngrade) ||
+    (!providerReady && !allowManualPlanAssignment);
 
   const reviewSummary =
     planAction === "upgrade" && upgradePreview
@@ -552,9 +567,11 @@ export function BillingPlanPanel({
                       ? "Working…"
                       : providerReady
                         ? "Continue to checkout"
-                        : impact.isDowngrade
-                          ? "Apply downgrade"
-                          : "Apply plan"}
+                        : !allowManualPlanAssignment
+                          ? "Checkout unavailable"
+                          : impact.isDowngrade
+                            ? "Apply downgrade"
+                            : "Apply plan"}
                   </Button>
                 )}
                 {providerReady && !hasProviderSubscription ? (

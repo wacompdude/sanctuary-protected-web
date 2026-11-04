@@ -77,6 +77,8 @@ export {
   ACCESS_GRANTING_STATUSES,
   isCurrentSubscriptionStatus,
   subscriptionGrantsAccess,
+  subscriptionRecordGrantsAccess,
+  isLocalNoCardTrialExpired,
   planRank,
   isPlanDowngrade,
   isPlanUpgrade,
@@ -84,7 +86,10 @@ export {
   isWithinPeriod,
   isTrialActive,
 } from "@/lib/subscriptions/status";
-export type { PeriodWindow } from "@/lib/subscriptions/status";
+export type {
+  PeriodWindow,
+  SubscriptionAccessRecord,
+} from "@/lib/subscriptions/status";
 
 export {
   recommendPlanFromSignals,

@@ -33,7 +33,7 @@ import {
   listPlanFeatureAssignments,
 } from "@/lib/subscriptions/queries";
 import { resolveChurchEntitlementSource } from "@/lib/subscriptions/entitlement-resolution";
-import { subscriptionGrantsAccess } from "@/lib/subscriptions/status";
+import { subscriptionRecordGrantsAccess } from "@/lib/subscriptions/status";
 import type {
   ChurchEntitlements,
   FeatureAccessResult,
@@ -111,7 +111,17 @@ export async function loadChurchEntitlements(
   }
 
   const subscription = await getChurchSubscription(trimmed, client);
-  if (subscription && subscriptionGrantsAccess(subscription.status)) {
+  const currentGrantsAccess = subscription
+    ? subscriptionRecordGrantsAccess({
+        status: subscription.status,
+        trialEnd: subscription.trial_end,
+        billingProvider: subscription.billing_provider,
+        billingSubscriptionId: subscription.billing_subscription_id,
+        providerMode: subscription.provider_mode,
+      })
+    : false;
+
+  if (subscription && currentGrantsAccess) {
     const plan = await getSubscriptionPlanByKey(
       String(subscription.plan_key),
       client,
@@ -146,11 +156,23 @@ export async function loadChurchEntitlements(
   }
 
   const latest = await getLatestChurchSubscription(trimmed, client);
+  const latestGrantsAccess = latest
+    ? subscriptionRecordGrantsAccess({
+        status: latest.status,
+        trialEnd: latest.trial_end,
+        billingProvider: latest.billing_provider,
+        billingSubscriptionId: latest.billing_subscription_id,
+        providerMode: latest.provider_mode,
+      })
+    : undefined;
+
   if (
     resolveChurchEntitlementSource({
       hasCurrentSubscription: Boolean(subscription),
       currentStatus: subscription?.status ?? null,
+      currentGrantsAccess: subscription ? currentGrantsAccess : undefined,
       latestStatus: latest?.status ?? null,
+      latestGrantsAccess,
     }) === "none"
   ) {
     return {

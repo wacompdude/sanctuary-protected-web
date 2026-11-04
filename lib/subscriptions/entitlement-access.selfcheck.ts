@@ -12,7 +12,10 @@ import {
 import { resolveChurchEntitlementSource } from "@/lib/subscriptions/entitlement-resolution";
 import { loadChurchEntitlements } from "@/lib/subscriptions/resolver";
 import { getChurchSubscription } from "@/lib/subscriptions/queries";
-import { ACCESS_GRANTING_STATUSES } from "@/lib/subscriptions/status";
+import {
+  ACCESS_GRANTING_STATUSES,
+  subscriptionRecordGrantsAccess,
+} from "@/lib/subscriptions/status";
 
 function assert(condition: unknown, message: string) {
   if (!condition) throw new Error(message);
@@ -112,19 +115,27 @@ function subscriptionRow(input: {
   cancelAtPeriodEnd?: boolean;
   billingSubscriptionId?: string | null;
   providerMode?: string | null;
+  billingProvider?: string | null;
+  trialEnd?: string | null;
 }) {
   const plan = PLANS[input.planKey];
   const billingSubscriptionId =
     input.billingSubscriptionId === undefined
       ? "sub_live_fixture"
       : input.billingSubscriptionId;
+  const billingProvider =
+    input.billingProvider === undefined
+      ? billingSubscriptionId
+        ? "stripe"
+        : null
+      : input.billingProvider;
   return {
     id: "sub-row",
     organization_id: ORG,
     plan_id: plan.id,
     status: input.status,
     billing_interval: "month",
-    billing_provider: "stripe",
+    billing_provider: billingProvider,
     billing_subscription_id: billingSubscriptionId,
     provider_mode:
       input.providerMode === undefined
@@ -141,7 +152,7 @@ function subscriptionRow(input: {
     scheduled_effective_at: null,
     schedule_status: null,
     trial_start: null,
-    trial_end: null,
+    trial_end: input.trialEnd ?? null,
     grace_period_end: null,
     started_at: "2026-10-08T00:00:00.000Z",
     subscription_plans: {
@@ -261,8 +272,61 @@ async function main() {
   const trialing = await load(
     subscriptionRow({ status: "trialing", planKey: "steward_pro" }),
   );
-  assert(trialing.plan?.plan_key === "steward_pro", "3 trial plan");
-  assert(smsLimit(trialing.values) === 250, "3 trial allowance");
+  assert(trialing.plan?.plan_key === "steward_pro", "3 stripe-backed trial plan");
+  assert(smsLimit(trialing.values) === 250, "3 stripe-backed trial allowance");
+
+  const localActive = await load(
+    subscriptionRow({
+      status: "trialing",
+      planKey: "steward_pro",
+      billingSubscriptionId: null,
+      providerMode: null,
+      billingProvider: null,
+      trialEnd: "2026-12-31T00:00:00.000Z",
+    }),
+  );
+  assert(localActive.plan?.plan_key === "steward_pro", "3b local trial active plan");
+  assert(smsLimit(localActive.values) === 250, "3b local trial active allowance");
+
+  const localExpired = await load(
+    subscriptionRow({
+      status: "trialing",
+      planKey: "steward_pro",
+      billingSubscriptionId: null,
+      providerMode: null,
+      billingProvider: null,
+      trialEnd: "2020-01-01T00:00:00.000Z",
+    }),
+  );
+  assert(localExpired.plan === null, "3c expired local trial grants no plan");
+  assert(
+    localExpired.usedDefaultPlanFallback === false,
+    "3c expired local trial no default fallback",
+  );
+  assert(Object.keys(localExpired.values).length === 0, "3c expired local trial no values");
+  assert(
+    !subscriptionRecordGrantsAccess({
+      status: "trialing",
+      trialEnd: "2020-01-01T00:00:00.000Z",
+      billingProvider: null,
+      billingSubscriptionId: null,
+      providerMode: null,
+    }),
+    "3c record helper denies expired local trial",
+  );
+
+  const localMissingEnd = await load(
+    subscriptionRow({
+      status: "trialing",
+      planKey: "steward_pro",
+      billingSubscriptionId: null,
+      providerMode: null,
+      billingProvider: null,
+      trialEnd: null,
+    }),
+  );
+  assert(localMissingEnd.plan === null, "3d missing trial_end fails closed");
+  assert(Object.keys(localMissingEnd.values).length === 0, "3d missing end no values");
 
   for (const status of ["past_due", "grace_period"] as const) {
     const entitled = await load(

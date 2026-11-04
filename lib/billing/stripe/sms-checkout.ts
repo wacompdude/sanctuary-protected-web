@@ -30,7 +30,7 @@ import {
   assertSmsPurchaseTaxCheckoutReady,
   SMS_PURCHASE_TAX_SYNC_FAILED,
 } from "@/lib/billing/stripe/sms-purchase-tax";
-import { subscriptionGrantsAccess } from "@/lib/subscriptions/status";
+import { subscriptionRecordGrantsAccess } from "@/lib/subscriptions/status";
 import type { PlanKey } from "@/lib/subscriptions/plan-keys";
 
 /**
@@ -53,6 +53,10 @@ export type CreateSmsPackageCheckoutInput = {
   organizationId: string;
   subscriptionStatus: string | null | undefined;
   planKey: string | null | undefined;
+  trialEnd?: string | Date | null;
+  billingProvider?: string | null;
+  billingSubscriptionId?: string | null;
+  providerMode?: string | null;
   origin: string;
   successUrl: string;
   cancelUrl: string;
@@ -119,8 +123,21 @@ export function assertNoSmsCheckoutClientOverrides(input: {
 export function resolveTrustedSmsPackage(input: {
   subscriptionStatus: string | null | undefined;
   planKey: string | null | undefined;
+  trialEnd?: string | Date | null;
+  billingProvider?: string | null;
+  billingSubscriptionId?: string | null;
+  providerMode?: string | null;
 }): CommercialPlanCatalogEntry {
-  if (!input.subscriptionStatus || !subscriptionGrantsAccess(input.subscriptionStatus)) {
+  if (
+    !input.subscriptionStatus ||
+    !subscriptionRecordGrantsAccess({
+      status: input.subscriptionStatus,
+      trialEnd: input.trialEnd,
+      billingProvider: input.billingProvider,
+      billingSubscriptionId: input.billingSubscriptionId,
+      providerMode: input.providerMode,
+    })
+  ) {
     throw new BillingCheckoutPlanError(
       "An active subscription is required before purchasing SMS credits.",
     );
@@ -212,6 +229,10 @@ export async function createSmsPackageCheckoutSession(
   const entry = resolveTrustedSmsPackage({
     subscriptionStatus: input.subscriptionStatus,
     planKey: input.planKey,
+    trialEnd: input.trialEnd,
+    billingProvider: input.billingProvider,
+    billingSubscriptionId: input.billingSubscriptionId,
+    providerMode: input.providerMode,
   });
   assertSafeBillingCheckoutUrls({
     successUrl: input.successUrl,

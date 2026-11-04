@@ -19,6 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import {
   billingProviderStatusMessage,
+  getBillingProvider,
   isBillingProviderReady,
   listBillingHistory,
   requireBillingViewAccess,
@@ -27,14 +28,20 @@ import {
 import { summarizeApplicationSmsCapacity } from "@/lib/billing/sms-capacity-summary";
 import { smsPurchaseReturnMessage } from "@/lib/billing/stripe/checkout-urls";
 import {
+  isStripeLiveCheckoutEnabled,
   isStripeSecretConfigured,
   readStripePublishableKey,
+  readStripeSecretKey,
 } from "@/lib/billing/stripe/config";
 import { readSetupIntentIdFromClient } from "@/lib/billing/stripe/sms-payment-setup";
 import { readSafeCardDisplay } from "@/lib/billing/stripe/sms-payment-setup-live";
 import { readSubscriptionPaymentMethodView } from "@/lib/billing/stripe/subscription-payment-method-live";
 import { subscriptionPaymentAttention } from "@/lib/billing/stripe/subscription-dunning";
-import { shouldDisplayTrialEnd, subscriptionGrantsAccess } from "@/lib/subscriptions/status";
+import {
+  isLocalNoCardTrialExpired,
+  shouldDisplayTrialEnd,
+  subscriptionRecordGrantsAccess,
+} from "@/lib/subscriptions/status";
 import { organizationHasProviderSubscription } from "@/lib/billing/checkout-eligibility";
 import { rethrowOrRedirectForChurchAccess } from "@/lib/organization/access-guard";
 import { ChurchAccessError } from "@/lib/organization/errors";
@@ -183,10 +190,33 @@ async function BillingContent({
     (plan) => plan.is_public && plan.status === "active",
   );
   const smsReturnMessage = smsPurchaseReturnMessage(smsPurchase);
-  const grantingPlanKey =
-    subscription && subscriptionGrantsAccess(subscription.status)
-      ? String(subscription.plan_key)
-      : null;
+  const subscriptionGrants =
+    subscription != null &&
+    subscriptionRecordGrantsAccess({
+      status: subscription.status,
+      trialEnd: subscription.trial_end,
+      billingProvider: subscription.billing_provider,
+      billingSubscriptionId: subscription.billing_subscription_id,
+      providerMode: subscription.provider_mode,
+    });
+  const localTrialExpired =
+    subscription != null &&
+    isLocalNoCardTrialExpired({
+      status: subscription.status,
+      trialEnd: subscription.trial_end,
+      billingProvider: subscription.billing_provider,
+      billingSubscriptionId: subscription.billing_subscription_id,
+      providerMode: subscription.provider_mode,
+    });
+  const liveCheckoutEnabled = isStripeLiveCheckoutEnabled();
+  const stripeSecret = readStripeSecretKey();
+  const stripeConfigured = getBillingProvider().isConfigured();
+  const checkoutUiAvailable =
+    isBillingProviderReady() &&
+    (stripeSecret.startsWith("sk_test_") || liveCheckoutEnabled);
+  const grantingPlanKey = subscriptionGrants
+    ? String(subscription!.plan_key)
+    : null;
   const smsPackage = grantingPlanKey ? smsPackageForPlan(grantingPlanKey) : undefined;
   const { data: purchasedCredits } = await supabase
     .from("organization_sms_credit_balances")
@@ -249,6 +279,23 @@ async function BillingContent({
           Plans, usage, and subscription controls for {church.name}.
         </p>
       </div>
+
+      {localTrialExpired ? (
+        <div
+          className="rounded-md border border-border bg-muted/40 px-4 py-3 text-sm"
+          role="status"
+        >
+          <p className="font-medium">Your trial has ended</p>
+          <p className="mt-1 text-muted-foreground">
+            Paid features are paused. Your organization data has not been
+            deleted. A paid subscription is required to continue using paid
+            features.
+            {liveCheckoutEnabled
+              ? " Choose a plan below to subscribe."
+              : " Checkout is not available yet for this environment; contact support if you need help activating a subscription."}
+          </p>
+        </div>
+      ) : null}
 
       <Card>
         <CardHeader>
@@ -524,8 +571,9 @@ async function BillingContent({
               subscription ? String(subscription.plan_key) : null
             }
             hasProviderSubscription={hasProviderSubscription}
-            providerReady={isBillingProviderReady()}
+            providerReady={checkoutUiAvailable}
             providerMessage={billingProviderStatusMessage()}
+            allowManualPlanAssignment={!stripeConfigured}
             cancelAtPeriodEnd={Boolean(subscription?.cancel_at_period_end)}
             paidThroughIso={subscription?.current_period_end ?? null}
             currentPlanName={subscription?.plan_display_name ?? null}

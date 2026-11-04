@@ -218,6 +218,10 @@ export async function startSmsPackageCheckoutAction(
       organizationId: church.id,
       subscriptionStatus: subscription?.status,
       planKey: subscription?.plan_key,
+      trialEnd: subscription?.trial_end,
+      billingProvider: subscription?.billing_provider,
+      billingSubscriptionId: subscription?.billing_subscription_id,
+      providerMode: subscription?.provider_mode,
       origin,
       successUrl,
       cancelUrl,
@@ -285,8 +289,9 @@ export async function openCustomerPortalAction(): Promise<BillingActionState> {
 }
 
 /**
- * Manual plan assignment for owners while no payment provider is connected.
- * When a provider is live, prefer checkout / portal instead.
+ * Manual plan assignment for owners only while no payment provider is connected.
+ * When Stripe (or another provider) is configured, owners cannot activate paid
+ * entitlements through this path — use Checkout/portal or platform admin.
  */
 export async function applyPlanWithoutProviderAction(
   _prev: BillingActionState,
@@ -294,6 +299,15 @@ export async function applyPlanWithoutProviderAction(
 ): Promise<BillingActionState> {
   try {
     const { church, user } = await requireBillingManageAccess();
+
+    const provider = getBillingProvider();
+    if (provider.isConfigured()) {
+      return {
+        error:
+          "Manual plan assignment is not available while Stripe billing is configured. Use Checkout when it is enabled, or contact support for help.",
+      };
+    }
+
     if (!isServiceRoleConfigured()) {
       return {
         error:

@@ -1,3 +1,4 @@
+import { isLocalNoCardTrialSubscription } from "@/lib/billing/stripe/provider-mode";
 import { PLAN_KEYS, type PlanKey } from "@/lib/subscriptions/plan-keys";
 import type { ChurchSubscriptionStatus } from "@/lib/subscriptions/types";
 
@@ -13,6 +14,8 @@ export const CURRENT_SUBSCRIPTION_STATUSES = [
 /**
  * Statuses that still grant product entitlements (Phase 5+ enforcement).
  * `incomplete` is excluded until checkout/activation finishes.
+ * Local no-card trials also require an unexpired `trial_end` — see
+ * {@link subscriptionRecordGrantsAccess}.
  */
 export const ACCESS_GRANTING_STATUSES = [
   "trialing",
@@ -36,6 +39,66 @@ export function isCurrentSubscriptionStatus(
 
 export function subscriptionGrantsAccess(status: string): boolean {
   return (ACCESS_GRANTING_STATUSES as readonly string[]).includes(status);
+}
+
+export type SubscriptionAccessRecord = {
+  status: string;
+  trialEnd?: string | Date | null;
+  billingProvider?: string | null;
+  billingSubscriptionId?: string | null;
+  providerMode?: string | null;
+};
+
+/**
+ * Entitlement gate for a subscription row.
+ * Status alone is not enough for local no-card trials: those also need a
+ * valid, unexpired `trial_end` (server clock). Provider-backed Live rows keep
+ * status-based access; Stripe remains authoritative for paid lifecycle.
+ */
+export function subscriptionRecordGrantsAccess(
+  input: SubscriptionAccessRecord,
+  now: Date = new Date(),
+): boolean {
+  if (!subscriptionGrantsAccess(input.status)) return false;
+
+  if (
+    isLocalNoCardTrialSubscription({
+      status: input.status,
+      billingProvider: input.billingProvider,
+      billingSubscriptionId: input.billingSubscriptionId,
+      providerMode: input.providerMode,
+    })
+  ) {
+    return isTrialActive({
+      status: input.status,
+      trialEnd: input.trialEnd,
+      now,
+    });
+  }
+
+  return true;
+}
+
+/** True when a local no-card trial row is past its authoritative trial_end. */
+export function isLocalNoCardTrialExpired(
+  input: SubscriptionAccessRecord,
+  now: Date = new Date(),
+): boolean {
+  if (
+    !isLocalNoCardTrialSubscription({
+      status: input.status,
+      billingProvider: input.billingProvider,
+      billingSubscriptionId: input.billingSubscriptionId,
+      providerMode: input.providerMode,
+    })
+  ) {
+    return false;
+  }
+  return !isTrialActive({
+    status: input.status,
+    trialEnd: input.trialEnd,
+    now,
+  });
 }
 
 export function planRank(planKey: string): number {
@@ -105,17 +168,22 @@ export function shouldDisplayTrialEnd(input: {
   return input.organizationStatus === "trial";
 }
 
+/**
+ * Local / display trial window check.
+ * Fail closed: missing or invalid `trialEnd` never counts as active.
+ * Compare against server-supplied `now` (default: server clock).
+ */
 export function isTrialActive(params: {
   status: string;
   trialEnd?: string | Date | null;
   now?: Date;
 }): boolean {
   if (params.status !== "trialing") return false;
-  if (!params.trialEnd) return true;
+  if (params.trialEnd == null || params.trialEnd === "") return false;
   const end =
     params.trialEnd instanceof Date
       ? params.trialEnd
       : new Date(params.trialEnd);
-  if (Number.isNaN(end.getTime())) return true;
+  if (Number.isNaN(end.getTime())) return false;
   return (params.now ?? new Date()) <= end;
 }

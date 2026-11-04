@@ -77,6 +77,30 @@ assert(
   }),
   "active status is not trialing",
 );
+assert(
+  !isTrialActive({
+    status: "trialing",
+    trialEnd: null,
+    now: new Date("2026-06-01T00:00:00.000Z"),
+  }),
+  "missing trial_end fails closed",
+);
+assert(
+  !isTrialActive({
+    status: "trialing",
+    trialEnd: "bad",
+    now: new Date("2026-06-01T00:00:00.000Z"),
+  }),
+  "invalid trial_end fails closed",
+);
+assert(
+  !isTrialActive({
+    status: "trialing",
+    trialEnd: "2026-01-01T00:00:00.000Z",
+    now: new Date("2026-06-01T00:00:00.000Z"),
+  }),
+  "past trial_end is inactive",
+);
 
 assert(
   recommendPlanFromSignals({

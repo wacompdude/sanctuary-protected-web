@@ -38,6 +38,13 @@ import { readSafeCardDisplay } from "@/lib/billing/stripe/sms-payment-setup-live
 import { readSubscriptionPaymentMethodView } from "@/lib/billing/stripe/subscription-payment-method-live";
 import { subscriptionPaymentAttention } from "@/lib/billing/stripe/subscription-dunning";
 import {
+  CHECKOUT_PILOT_GATE_DISABLED_MESSAGE,
+  CHECKOUT_PILOT_UNAVAILABLE_MESSAGE,
+  evaluateCheckoutApproval,
+  isLiveCheckoutUiAvailable,
+  loadOrganizationCheckoutApproval,
+} from "@/lib/billing/stripe/checkout-allowlist";
+import {
   isLocalNoCardTrialExpired,
   shouldDisplayTrialEnd,
   subscriptionRecordGrantsAccess,
@@ -211,9 +218,23 @@ async function BillingContent({
   const liveCheckoutEnabled = isStripeLiveCheckoutEnabled();
   const stripeSecret = readStripeSecretKey();
   const stripeConfigured = getBillingProvider().isConfigured();
-  const checkoutUiAvailable =
-    isBillingProviderReady() &&
-    (stripeSecret.startsWith("sk_test_") || liveCheckoutEnabled);
+  const checkoutApproval = await loadOrganizationCheckoutApproval(church.id);
+  const organizationCheckoutApproved = evaluateCheckoutApproval(checkoutApproval).ok;
+  const checkoutUiAvailable = isLiveCheckoutUiAvailable({
+    stripeConfigured: isBillingProviderReady(),
+    liveCheckoutGateEnabled: liveCheckoutEnabled,
+    organizationApproved: organizationCheckoutApproved,
+    secretIsTest: stripeSecret.startsWith("sk_test_"),
+  });
+  const checkoutAvailabilityMessage = !stripeConfigured
+    ? billingProviderStatusMessage()
+    : stripeSecret.startsWith("sk_test_")
+      ? billingProviderStatusMessage()
+      : !liveCheckoutEnabled
+        ? CHECKOUT_PILOT_GATE_DISABLED_MESSAGE
+        : !organizationCheckoutApproved
+          ? CHECKOUT_PILOT_UNAVAILABLE_MESSAGE
+          : billingProviderStatusMessage();
   const grantingPlanKey = subscriptionGrants
     ? String(subscription!.plan_key)
     : null;
@@ -572,7 +593,7 @@ async function BillingContent({
             }
             hasProviderSubscription={hasProviderSubscription}
             providerReady={checkoutUiAvailable}
-            providerMessage={billingProviderStatusMessage()}
+            providerMessage={checkoutAvailabilityMessage}
             allowManualPlanAssignment={!stripeConfigured}
             cancelAtPeriodEnd={Boolean(subscription?.cancel_at_period_end)}
             paidThroughIso={subscription?.current_period_end ?? null}

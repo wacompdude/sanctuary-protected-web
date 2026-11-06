@@ -25,11 +25,14 @@ import {
   type StripeCustomerCreateApi,
 } from "@/lib/billing/stripe/customers";
 import {
-  assertStripeCheckoutModeAllowed,
   resolveStripePriceByInternalKey,
   type ListPricesByLookupKey,
   type ResolvedStripePrice,
 } from "@/lib/billing/stripe/catalog";
+import {
+  assertLiveSubscriptionCheckoutAllowed,
+  type LoadCheckoutApprovalFn,
+} from "@/lib/billing/stripe/checkout-allowlist";
 import { withStripeBillingErrorLog } from "@/lib/billing/stripe/safe-error-log";
 import type { BillingCheckoutSession } from "@/lib/billing/types";
 
@@ -67,6 +70,8 @@ export type CreateSubscriptionCheckoutDeps = {
   stripeCustomers: StripeCustomerCreateApi;
   stripeCheckout: StripeCheckoutSessionCreateApi;
   syncCustomerAddress?: (customerId: string) => Promise<void>;
+  /** Injectable Checkout allowlist loader (self-checks / tests). */
+  loadCheckoutApproval?: LoadCheckoutApprovalFn;
 };
 
 /**
@@ -170,10 +175,14 @@ export async function createSubscriptionCheckoutSession(
   input: CreateSubscriptionCheckoutInput,
   deps: CreateSubscriptionCheckoutDeps,
 ): Promise<BillingCheckoutSession & { providerCustomerId: string; planKey: PlanKey }> {
-  assertStripeCheckoutModeAllowed(
-    input.stripeSecretKey,
-    "Phase 4B-3 Checkout",
-  );
+  // Global Live gate + org allowlist (re-evaluated at Session create).
+  // Test secrets skip the allowlist; Live requires both gate and approval.
+  await assertLiveSubscriptionCheckoutAllowed({
+    organizationId: input.organizationId,
+    secretKey: input.stripeSecretKey,
+    loadApproval: deps.loadCheckoutApproval,
+    context: "Phase 4B-3 Checkout",
+  });
 
   const planKey = assertSubscriptionCheckoutPlanKey(input.planKey);
   assertSubscriptionTaxCheckoutReady({

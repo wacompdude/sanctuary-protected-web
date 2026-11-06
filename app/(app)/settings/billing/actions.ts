@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import {
+  BillingAuthorizationError,
   BillingCheckoutPlanError,
   BillingCheckoutUrlError,
   BillingConfigurationError,
@@ -17,6 +18,10 @@ import {
   getConfiguredBillingProviderId,
   requireBillingManageAccess,
 } from "@/lib/billing";
+import {
+  evaluateLiveSubscriptionCheckoutAuthorization,
+  loadOrganizationCheckoutApproval,
+} from "@/lib/billing/stripe/checkout-allowlist";
 import { assertNoExistingProviderSubscriptionForInitialCheckout } from "@/lib/billing/checkout-eligibility";
 import {
   assertNoClientPriceOverrides,
@@ -150,6 +155,21 @@ export async function startCheckoutAction(
       currentSubscription?.billing_subscription_id,
     );
 
+    // Re-evaluate Live gate + org allowlist at initiation (not page-render cache).
+    // Ignore any client-supplied approval flags on the form.
+    void formData.get("checkout_approved");
+    void formData.get("pilot_approved");
+    const approval = await loadOrganizationCheckoutApproval(church.id);
+    const authz = evaluateLiveSubscriptionCheckoutAuthorization({
+      organizationId: church.id,
+      secretKey: readStripeSecretKey(),
+      approval,
+      clientClaimsApproved: formData.get("checkout_approved"),
+    });
+    if (!authz.ok) {
+      return { error: authz.message };
+    }
+
     const session = await provider.createCheckoutSession({
       organizationId: church.id,
       planKey,
@@ -165,7 +185,8 @@ export async function startCheckoutAction(
       error instanceof BillingProviderNotConfiguredError ||
       error instanceof BillingNotImplementedError ||
       error instanceof BillingCheckoutPlanError ||
-      error instanceof BillingCheckoutUrlError
+      error instanceof BillingCheckoutUrlError ||
+      error instanceof BillingAuthorizationError
     ) {
       return { error: error.message };
     }

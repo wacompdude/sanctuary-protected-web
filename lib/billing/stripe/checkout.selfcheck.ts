@@ -394,7 +394,7 @@ async function main() {
     }
   }
 
-  // Live mode permitted when STRIPE_LIVE_CHECKOUT_ENABLED === "true"
+  // Live mode permitted when STRIPE_LIVE_CHECKOUT_ENABLED === "true" AND org approved
   {
     const prev = process.env.STRIPE_LIVE_CHECKOUT_ENABLED;
     process.env.STRIPE_LIVE_CHECKOUT_ENABLED = "true";
@@ -424,6 +424,19 @@ async function main() {
                 url: "https://checkout.stripe.test/live",
               };
             },
+          },
+          async loadCheckoutApproval(organizationId) {
+            return {
+              organizationId,
+              status: "active",
+              approvedAt: "2026-01-01T00:00:00.000Z",
+              approvedByPlatformAccountId: "plat_selfcheck",
+              expiresAt: null,
+              notes: null,
+              revokedAt: null,
+              revokedByPlatformAccountId: null,
+              updatedAt: "2026-01-01T00:00:00.000Z",
+            };
           },
         },
       );

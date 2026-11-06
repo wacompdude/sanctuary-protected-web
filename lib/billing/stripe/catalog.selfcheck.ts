@@ -414,8 +414,9 @@ async function main() {
     "utf8",
   );
   assert(
-    checkoutSource.includes("assertStripeCheckoutModeAllowed"),
-    "subscription Checkout uses centralized gate",
+    checkoutSource.includes("assertLiveSubscriptionCheckoutAllowed") ||
+      checkoutSource.includes("assertStripeCheckoutModeAllowed"),
+    "subscription Checkout uses centralized gate (+ Stage 3D allowlist)",
   );
   assert(
     smsCheckoutSource.includes("assertStripeCheckoutModeAllowed"),

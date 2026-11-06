@@ -1,9 +1,15 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { PlatformCheckoutPilotPanel } from "@/components/platform/platform-checkout-pilot-panel";
 import { PlatformStatusBadge } from "@/components/platform/platform-status-badge";
 import { PlatformSubscriptionAdminPanel } from "@/components/platform/platform-subscription-admin-panel";
 import { billingProviderStatusMessage } from "@/lib/billing";
+import {
+  getOrganizationCheckoutApproval,
+  listCheckoutApprovalEvents,
+} from "@/lib/billing/checkout-pilot-admin";
+import { evaluateCheckoutApproval } from "@/lib/billing/stripe/checkout-allowlist";
 import {
   getPlatformPermissions,
   requirePlatformPermission,
@@ -28,13 +34,24 @@ async function SubscriptionContent({
   const canChangePlan = permissions.has("subscriptions.change_plan");
   const canCancel = permissions.has("subscriptions.cancel");
   const canRestore = permissions.has("subscriptions.restore");
+  const canReadCheckoutPilot = permissions.has("billing.checkout_pilot.read");
+  const canManageCheckoutPilot = permissions.has(
+    "billing.checkout_pilot.manage",
+  );
 
-  const [plans, history] = await Promise.all([
+  const [plans, history, checkoutApproval, checkoutEvents] = await Promise.all([
     canChangePlan || canCancel || canRestore
       ? listActivePlansForPlatformAdmin()
       : Promise.resolve([]),
     listPlatformSubscriptionHistory(church.id),
+    canReadCheckoutPilot || canManageCheckoutPilot
+      ? getOrganizationCheckoutApproval(church.id)
+      : Promise.resolve(null),
+    canReadCheckoutPilot || canManageCheckoutPilot
+      ? listCheckoutApprovalEvents(church.id)
+      : Promise.resolve([]),
   ]);
+  const checkoutDecision = evaluateCheckoutApproval(checkoutApproval);
 
   return (
     <div className="space-y-6">
@@ -114,6 +131,25 @@ async function SubscriptionContent({
           canChangePlan={canChangePlan}
           canCancel={canCancel}
           canRestore={canRestore}
+        />
+      ) : null}
+
+      {canReadCheckoutPilot || canManageCheckoutPilot ? (
+        <PlatformCheckoutPilotPanel
+          organizationId={church.id}
+          churchName={church.name}
+          canManage={canManageCheckoutPilot}
+          approvalStatus={
+            checkoutApproval
+              ? checkoutDecision.ok
+                ? "active"
+                : checkoutApproval.status
+              : null
+          }
+          approvedAt={checkoutApproval?.approvedAt ?? null}
+          expiresAt={checkoutApproval?.expiresAt ?? null}
+          notes={checkoutApproval?.notes ?? null}
+          events={checkoutEvents}
         />
       ) : null}
 

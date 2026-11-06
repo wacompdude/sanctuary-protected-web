@@ -721,3 +721,83 @@ export async function lookupChurchesForSupportAction(
     };
   }
 }
+
+export type PlatformCheckoutPilotActionState = {
+  error?: string;
+  success?: boolean;
+  message?: string;
+};
+
+export async function approveCheckoutPilotAction(
+  _prev: PlatformCheckoutPilotActionState,
+  formData: FormData,
+): Promise<PlatformCheckoutPilotActionState> {
+  try {
+    await requireRecentPlatformAuthentication();
+    const context = await requirePlatformPermission(
+      "billing.checkout_pilot.manage",
+    );
+    const organizationId = String(formData.get("organization_id") ?? "").trim();
+    const reason = String(formData.get("reason") ?? "").trim();
+    const expiresAtRaw = String(formData.get("expires_at") ?? "").trim();
+    const notes = String(formData.get("notes") ?? "").trim();
+    if (!organizationId) return { error: "Organization is required." };
+
+    const {
+      approveOrganizationCheckoutPilot,
+    } = await import("@/lib/billing/checkout-pilot-admin");
+    const result = await approveOrganizationCheckoutPilot({
+      context,
+      organizationId,
+      reason,
+      expiresAt: expiresAtRaw || null,
+      notes: notes || null,
+    });
+
+    revalidatePath(`/platform/churches/${organizationId}/subscription`);
+    revalidatePath("/platform/audit");
+    return { success: true, message: result.message };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unable to approve Checkout pilot access.",
+    };
+  }
+}
+
+export async function revokeCheckoutPilotAction(
+  _prev: PlatformCheckoutPilotActionState,
+  formData: FormData,
+): Promise<PlatformCheckoutPilotActionState> {
+  try {
+    await requireRecentPlatformAuthentication();
+    const context = await requirePlatformPermission(
+      "billing.checkout_pilot.manage",
+    );
+    const organizationId = String(formData.get("organization_id") ?? "").trim();
+    const reason = String(formData.get("reason") ?? "").trim();
+    if (!organizationId) return { error: "Organization is required." };
+
+    const {
+      revokeOrganizationCheckoutPilot,
+    } = await import("@/lib/billing/checkout-pilot-admin");
+    const result = await revokeOrganizationCheckoutPilot({
+      context,
+      organizationId,
+      reason,
+    });
+
+    revalidatePath(`/platform/churches/${organizationId}/subscription`);
+    revalidatePath("/platform/audit");
+    return { success: true, message: result.message };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unable to revoke Checkout pilot access.",
+    };
+  }
+}

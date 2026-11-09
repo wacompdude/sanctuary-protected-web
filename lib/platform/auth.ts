@@ -185,23 +185,29 @@ export async function requirePlatformSetupComplete(): Promise<PlatformContext> {
   return context;
 }
 
+/**
+ * Stage 3H-1: fail closed when MFA is required.
+ * Stale `mfa_verified_at` is not evidence of current AAL2.
+ * AAL retrieval errors / missing data deny privileged access.
+ * MFA_LOGIN_ENABLED=false only affects login MFA policy (lib/mfa); it does
+ * NOT satisfy or bypass this platform AAL2 check. Recovery when locked out
+ * requires completing AAL2 or an out-of-band ops change to mfa_required
+ * (dual-control SQL / service role) — not an in-app env bypass.
+ */
 export async function isPlatformMfaSatisfied(
   context?: PlatformContext,
 ): Promise<boolean> {
   const ctx = context ?? (await buildPlatformContext());
   if (!ctx.account.mfa_required) return true;
-  if (ctx.account.mfa_verified_at) {
-    // Still verify current session AAL when Supabase MFA is enrolled.
-  }
 
   try {
     const { data, error } = await ctx.supabase.auth.mfa.getAuthenticatorAssuranceLevel();
     if (error || !data) {
-      return Boolean(ctx.account.mfa_verified_at);
+      return false;
     }
     return data.currentLevel === "aal2";
   } catch {
-    return Boolean(ctx.account.mfa_verified_at);
+    return false;
   }
 }
 

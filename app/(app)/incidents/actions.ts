@@ -25,6 +25,15 @@ import {
 import { AuditAction, AuditEntityType } from "@/lib/audit/actions";
 import { getRequestIpAddress, writeAuditLog } from "@/lib/audit/log";
 import { hasMinRole } from "@/lib/organization/navigation";
+import {
+  canChangeIncidentStatus,
+  canCreateIncident,
+  canDeleteIncidentMedia,
+  canUpdateIncident,
+  incidentCloseDeniedMessage,
+  incidentCreateDeniedMessage,
+  type IncidentOrgPolicyFlags,
+} from "@/lib/incidents/authorization";
 import { canRecordMedicalSupplyUsage } from "@/lib/medical-supplies/types";
 import { createNotification } from "@/lib/notifications/create-notification";
 import { mapIncidentSeverityToNotification, OPERATIONAL_ALERT_CHANNELS } from "@/lib/notifications/constants";
@@ -184,6 +193,16 @@ async function loadIncidentPolicy(organizationId: string) {
   };
 }
 
+function incidentPolicyFlags(policy: {
+  allowMembersCreate: boolean;
+  allowMembersClose: boolean;
+}): IncidentOrgPolicyFlags {
+  return {
+    allowSecurityMembersCreate: policy.allowMembersCreate,
+    allowSecurityMembersClose: policy.allowMembersClose,
+  };
+}
+
 function canMutateIncidentPhotos(role: string): boolean {
   return role !== "viewer";
 }
@@ -336,19 +355,12 @@ export async function createIncident(
   try {
     const context = await getOperationalChurchContext();
     const policy = await loadIncidentPolicy(context.church.id);
-
-    if (
-      context.membership.role === "security_member" &&
-      !policy.allowMembersCreate
-    ) {
-      return {
-        error:
-          "Security members are not allowed to create incidents for this church.",
-      };
-    }
-
-    if (context.membership.role === "viewer") {
-      return { error: "Viewers cannot create incidents." };
+    const authCtx = {
+      role: context.membership.role,
+      policy: incidentPolicyFlags(policy),
+    };
+    if (!canCreateIncident(authCtx)) {
+      return { error: incidentCreateDeniedMessage(authCtx) };
     }
 
     await requireFeature({
@@ -712,31 +724,21 @@ export async function addIncidentUpdate(
       (input.status as IncidentStatus | null) ?? previousStatus;
     const statusChanged =
       input.status !== null && input.status !== previousStatus;
-    const isClosing =
-      statusChanged &&
-      (nextStatus === "closed" || nextStatus === "resolved");
 
-    if (
-      isClosing &&
-      membership.role === "security_member" &&
-      !policy.allowMembersClose
-    ) {
-      return {
-        error:
-          "Security members are not allowed to close or resolve incidents for this church.",
-      };
+    const authCtx = {
+      role: membership.role,
+      policy: incidentPolicyFlags(policy),
+    };
+    if (!canUpdateIncident(authCtx)) {
+      return { error: "Viewers cannot update incidents." };
     }
-
-    if (membership.role === "viewer" && statusChanged) {
-      return { error: "Viewers cannot change incident status." };
-    }
-
     if (
-      statusChanged &&
-      !hasMinRole(membership.role, "security_member") &&
-      membership.role !== "viewer"
+      !canChangeIncidentStatus(authCtx, nextStatus, previousStatus)
     ) {
-      // no-op — all ranked roles already filtered above
+      if (membership.role === "viewer") {
+        return { error: "Viewers cannot change incident status." };
+      }
+      return { error: incidentCloseDeniedMessage() };
     }
 
     if (statusChanged) {
@@ -1015,10 +1017,6 @@ export async function deleteIncidentPhoto(
     const context = await getOperationalChurchContext();
     const { supabase, user, church, membership } = context;
 
-    if (!canMutateIncidentPhotos(membership.role)) {
-      return { error: "Viewers cannot remove incident photos." };
-    }
-
     const { data: attachment, error } = await supabase
       .from("incident_attachments")
       .select("*")
@@ -1030,8 +1028,13 @@ export async function deleteIncidentPhoto(
       return { error: error?.message || "Photo not found." };
     }
 
-    const isLeader = hasMinRole(membership.role, "security_leader");
-    if (attachment.uploaded_by !== user.id && !isLeader) {
+    if (
+      !canDeleteIncidentMedia({
+        role: membership.role,
+        uploadedBy: attachment.uploaded_by,
+        actorUserId: user.id,
+      })
+    ) {
       return { error: "You can only remove photos you uploaded." };
     }
 

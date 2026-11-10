@@ -27,6 +27,7 @@
     "selfcheck:campuses": "npx --yes tsx lib/campuses/authorization.selfcheck.ts",
     "selfcheck:compat": "npx --yes tsx lib/organization/brand-theme.selfcheck.ts",
     "selfcheck:onboarding": "npx --yes tsx lib/organization/slug.selfcheck.ts && npx --yes tsx lib/organization/onboarding.selfcheck.ts",
+    "selfcheck:provision-account-takeover": "npx --yes tsx lib/organization/provision-account-takeover.selfcheck.ts",
     "selfcheck:timezones": "npx --yes tsx lib/datetime/timezones.selfcheck.ts",
     "selfcheck:mfa": "npx --yes tsx lib/mfa/foundation.selfcheck.ts && npx --yes tsx lib/mfa/trusted-devices.selfcheck.ts && npx --yes tsx lib/mfa/effective-policy.selfcheck.ts && npx --yes tsx lib/mfa/mobile-gate.selfcheck.ts",
     "selfcheck:legal": "npx --yes tsx lib/legal/foundation.selfcheck.ts",

@@ -12,7 +12,7 @@ import {
 import type { ActionState, MembershipRole } from "@/lib/organization/types";
 
 export type ProvisionMemberActionState = ActionState & {
-  /** Shown once after a new (or password-reset) account is provisioned. */
+  /** Shown once after a newly created account is provisioned. */
   credentials?: {
     email: string;
     password: string;
@@ -28,7 +28,6 @@ export type ProvisionMemberInput = {
   lastName: string;
   role: InvitableRole;
   password: string;
-  resetExistingPassword: boolean;
 };
 
 export function generateTemporaryPassword(length = 16): string {
@@ -55,9 +54,8 @@ export function validateProvisionMemberForm(
   const roleRaw = String(formData.get("role") ?? "").trim();
   const passwordMode = String(formData.get("password_mode") ?? "generate").trim();
   const passwordRaw = String(formData.get("password") ?? "");
-  const resetExistingPassword =
-    String(formData.get("reset_existing_password") ?? "") === "on" ||
-    String(formData.get("reset_existing_password") ?? "") === "true";
+  // Intentionally ignore reset_existing_password / resetExistingPassword.
+  // Existing Auth accounts must use invitation acceptance (EML-05).
 
   const fieldErrors: Record<string, string> = {};
 
@@ -90,7 +88,6 @@ export function validateProvisionMemberForm(
       lastName,
       role: roleRaw as InvitableRole,
       password,
-      resetExistingPassword,
     },
   };
 }

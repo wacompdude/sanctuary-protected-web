@@ -17,6 +17,7 @@ import {
   generateTemporaryPassword,
   type ProvisionMemberInput,
 } from "@/lib/organization/provision-member";
+import { resolveProvisionCreateUserResult } from "@/lib/organization/provision-existing-user";
 import { sendChurchInvitationEmail } from "@/lib/organization/send-invitation-email";
 import {
   canChangeRole,
@@ -484,6 +485,7 @@ export async function provisionMobileMember(
     role?: string | null;
     passwordMode?: string | null;
     password?: string | null;
+    /** Ignored. Existing Auth accounts must use invitation (EML-05). */
     resetExistingPassword?: boolean | null;
   },
 ): Promise<{ body: MobileTeamResponse; status: number }> {
@@ -515,7 +517,7 @@ export async function provisionMobileMember(
   const lastName = String(input.lastName ?? "").trim();
   const role = String(input.role ?? "").trim();
   const passwordMode = String(input.passwordMode ?? "generate").trim();
-  const resetExistingPassword = Boolean(input.resetExistingPassword);
+  // Intentionally ignore resetExistingPassword (EML-05).
   const fieldErrors: Record<string, string> = {};
   const emailError = validateEmail(emailRaw);
   if (emailError) fieldErrors.email = emailError;
@@ -546,7 +548,6 @@ export async function provisionMobileMember(
     lastName,
     role: role as ProvisionMemberInput["role"],
     password,
-    resetExistingPassword,
   };
 
   const admin = createAdminClient();
@@ -585,8 +586,7 @@ export async function provisionMobileMember(
 
   let targetUserId: string | null = null;
   let accountCreated = false;
-  let passwordReset = false;
-  let provisionalPassword: string | null = provisionInput.password;
+  const provisionalPassword: string | null = provisionInput.password;
   const fullName = `${firstName} ${lastName}`.trim();
   const userMetadata = {
     first_name: firstName,
@@ -602,68 +602,37 @@ export async function provisionMobileMember(
       user_metadata: userMetadata,
     });
 
-  if (createError || !created.user) {
-    const message = (createError?.message ?? "").toLowerCase();
-    const already =
-      message.includes("already been registered") ||
-      message.includes("already registered") ||
-      message.includes("user already exists") ||
-      message.includes("email_exists");
-    if (!already) {
-      return {
-        status: 400,
-        body: {
-          status: "error",
-          error:
-            createError?.message ||
-            "Unable to create the login account for this member.",
-        },
-      };
-    }
+  const createResolution = resolveProvisionCreateUserResult({
+    createdUserId: created?.user?.id ?? null,
+    createErrorMessage: createError?.message ?? null,
+    resetExistingPassword: Boolean(input.resetExistingPassword),
+  });
 
-    const { data: existingUserId, error: lookupError } = await admin.rpc(
-      "get_auth_user_id_by_email",
-      { p_email: email },
-    );
-    if (lookupError || !existingUserId) {
-      return {
-        status: 400,
-        body: {
-          status: "error",
-          error:
-            lookupError?.message ||
-            "That email is already registered, but the account could not be looked up.",
-        },
-      };
-    }
-    targetUserId = String(existingUserId);
-    provisionalPassword = null;
-    if (resetExistingPassword) {
-      const { error: updateError } = await admin.auth.admin.updateUserById(
-        targetUserId,
-        {
-          password: provisionInput.password,
-          email_confirm: true,
-          user_metadata: userMetadata,
-        },
-      );
-      if (updateError) {
-        return {
-          status: 400,
-          body: { status: "error", error: updateError.message },
-        };
-      }
-      provisionalPassword = provisionInput.password;
-      passwordReset = true;
-    } else {
-      await admin.auth.admin.updateUserById(targetUserId, {
-        user_metadata: userMetadata,
-      });
-    }
-  } else {
-    targetUserId = created.user.id;
-    accountCreated = true;
+  if (createResolution.kind === "create_failed") {
+    return {
+      status: 400,
+      body: {
+        status: "error",
+        error: createResolution.error,
+      },
+    };
   }
+
+  if (createResolution.kind === "existing_user_refused") {
+    // EML-05: never reset passwords, overwrite Auth metadata, attach
+    // membership, or return credentials for an existing global identity.
+    return {
+      status: 409,
+      body: {
+        status: "error",
+        error: createResolution.decision.error,
+        fieldErrors: { email: createResolution.decision.fieldError },
+      },
+    };
+  }
+
+  targetUserId = createResolution.userId;
+  accountCreated = true;
 
   await admin.from("profiles").upsert(
     {
@@ -708,7 +677,7 @@ export async function provisionMobileMember(
       email,
       role,
       account_created: accountCreated,
-      password_reset: passwordReset,
+      password_reset: false,
       source: "mobile",
     },
   });
@@ -724,7 +693,7 @@ export async function provisionMobileMember(
               email,
               password: provisionalPassword,
               accountCreated,
-              passwordReset,
+              passwordReset: false,
             }
           : null,
     },

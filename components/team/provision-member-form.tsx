@@ -42,8 +42,9 @@ export function ProvisionMemberForm({
         <CardTitle>Member details</CardTitle>
         <CardDescription>
           Create a Sanctuary Protected login for someone who does not already
-          have one, then add them to this church. Share the credentials
-          securely — they are shown only once.
+          have one, then add them to this church. If they already have an
+          account, use Invite instead. Share new-member credentials securely —
+          they are shown only once.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -57,12 +58,7 @@ export function ProvisionMemberForm({
           {state.success && state.credentials && (
             <div className="space-y-3 rounded-md border border-green-500/30 bg-green-500/10 px-3 py-3 text-sm">
               <p className="font-medium text-green-800 dark:text-green-300">
-                {state.credentials.accountCreated
-                  ? "Member created"
-                  : state.credentials.passwordReset
-                    ? "Member added and password reset"
-                    : "Member added"}
-                . Copy these credentials now.
+                Member created. Copy these credentials now.
               </p>
               <div className="space-y-2">
                 <Label htmlFor="credential_email">Email / username</Label>
@@ -87,19 +83,6 @@ export function ProvisionMemberForm({
               <p className="text-muted-foreground">
                 They can sign in at the login page immediately. Ask them to change
                 their password after first login.
-              </p>
-            </div>
-          )}
-
-          {state.success && !state.credentials && (
-            <div className="space-y-2 rounded-md border border-green-500/30 bg-green-500/10 px-3 py-3 text-sm">
-              <p className="font-medium text-green-800 dark:text-green-300">
-                Member added with church access.
-              </p>
-              <p className="text-muted-foreground">
-                This email already had a Sanctuary login. Their existing password
-                still works — check “Reset password…” next time if you need to
-                issue new credentials.
               </p>
             </div>
           )}
@@ -224,18 +207,10 @@ export function ProvisionMemberForm({
                 </p>
               </div>
             )}
-            <label className="flex items-start gap-2 text-sm">
-              <input
-                type="checkbox"
-                name="reset_existing_password"
-                value="on"
-                className="mt-1"
-              />
-              <span>
-                If this email already has a Sanctuary login, reset their password
-                to the one above so you can share new credentials.
-              </span>
-            </label>
+            <p className="text-xs text-muted-foreground">
+              Existing Sanctuary accounts cannot have their password changed
+              here. Use Invite so they can sign in and accept access themselves.
+            </p>
           </div>
 
           <Button type="submit" disabled={pending || allowedRoles.length === 0}>

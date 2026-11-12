@@ -28,6 +28,7 @@ export async function POST(request: Request) {
       role?: string;
       passwordMode?: string;
       password?: string;
+      /** Ignored server-side (EML-05). Kept for older mobile clients. */
       resetExistingPassword?: boolean;
     };
     const result = await provisionMobileMember(request, body);

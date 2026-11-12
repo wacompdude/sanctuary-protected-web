@@ -7,6 +7,7 @@ import {
   validateProvisionMemberForm,
   type ProvisionMemberActionState,
 } from "@/lib/organization/provision-member";
+import { resolveProvisionCreateUserResult } from "@/lib/organization/provision-existing-user";
 import {
   createAdminClient,
   isServiceRoleConfigured,
@@ -17,17 +18,6 @@ import {
   entitlementErrorMessage,
   requireActiveSeatCapacity,
 } from "@/lib/subscriptions/enforcement";
-
-function isAlreadyRegisteredError(message: string | undefined): boolean {
-  if (!message) return false;
-  const lower = message.toLowerCase();
-  return (
-    lower.includes("already been registered") ||
-    lower.includes("already registered") ||
-    lower.includes("user already exists") ||
-    lower.includes("email_exists")
-  );
-}
 
 export async function provisionChurchMember(
   _prev: ProvisionMemberActionState,
@@ -84,8 +74,7 @@ export async function provisionChurchMember(
     const admin = createAdminClient();
     let targetUserId: string | null = null;
     let accountCreated = false;
-    let passwordReset = false;
-    let provisionalPassword: string | null = input.password;
+    const provisionalPassword: string | null = input.password;
 
     const fullName = `${input.firstName} ${input.lastName}`.trim();
     const userMetadata = {
@@ -102,58 +91,30 @@ export async function provisionChurchMember(
         user_metadata: userMetadata,
       });
 
-    if (createError || !created.user) {
-      if (!isAlreadyRegisteredError(createError?.message)) {
-        return {
-          error:
-            createError?.message ||
-            "Unable to create the login account for this member.",
-        };
-      }
+    const forgedFlag =
+      String(formData.get("reset_existing_password") ?? "") === "on" ||
+      String(formData.get("reset_existing_password") ?? "") === "true";
+    const createResolution = resolveProvisionCreateUserResult({
+      createdUserId: created?.user?.id ?? null,
+      createErrorMessage: createError?.message ?? null,
+      resetExistingPassword: forgedFlag,
+    });
 
-      const { data: existingUserId, error: lookupError } = await admin.rpc(
-        "get_auth_user_id_by_email",
-        { p_email: input.email },
-      );
-
-      if (lookupError || !existingUserId) {
-        return {
-          error:
-            lookupError?.message ||
-            "That email is already registered, but the account could not be looked up. Run migration 020_provision_church_member.sql, then try again.",
-        };
-      }
-
-      targetUserId = existingUserId as string;
-      provisionalPassword = null;
-
-      if (input.resetExistingPassword) {
-        const { error: updateError } = await admin.auth.admin.updateUserById(
-          targetUserId,
-          {
-            password: input.password,
-            email_confirm: true,
-            user_metadata: userMetadata,
-          },
-        );
-        if (updateError) {
-          return {
-            error:
-              updateError.message ||
-              "Unable to reset the password for the existing account.",
-          };
-        }
-        provisionalPassword = input.password;
-        passwordReset = true;
-      } else {
-        await admin.auth.admin.updateUserById(targetUserId, {
-          user_metadata: userMetadata,
-        });
-      }
-    } else {
-      targetUserId = created.user.id;
-      accountCreated = true;
+    if (createResolution.kind === "create_failed") {
+      return { error: createResolution.error };
     }
+
+    if (createResolution.kind === "existing_user_refused") {
+      // EML-05: never reset passwords, overwrite Auth metadata, attach
+      // membership, or return credentials for an existing global identity.
+      return {
+        error: createResolution.decision.error,
+        fieldErrors: { email: createResolution.decision.fieldError },
+      };
+    }
+
+    targetUserId = createResolution.userId;
+    accountCreated = true;
 
     await admin
       .from("profiles")
@@ -219,7 +180,7 @@ export async function provisionChurchMember(
         role: input.role,
         provisional_user_id: targetUserId,
         account_created: accountCreated,
-        password_reset: passwordReset,
+        password_reset: false,
         provisioned_by: user.id,
       },
       ipAddress: await getRequestIpAddress(),
@@ -238,7 +199,7 @@ export async function provisionChurchMember(
         email: input.email,
         password: provisionalPassword,
         accountCreated,
-        passwordReset,
+        passwordReset: false,
       };
     }
 

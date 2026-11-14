@@ -297,7 +297,8 @@ async function BillingContent({
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Billing</h1>
         <p className="mt-1 text-muted-foreground">
-          Plans, usage, and subscription controls for {church.name}.
+          Subscription billing for {church.name}, with Application SMS managed
+          separately below.
         </p>
       </div>
 
@@ -391,21 +392,68 @@ async function BillingContent({
           </dl>
 
           <div className="space-y-2">
-            <h2 className="text-sm font-medium">Usage this period</h2>
+            <h2 className="text-sm font-medium">Seat usage this period</h2>
             <dl className="grid gap-3 sm:grid-cols-2">
               <UsageMeterRow
                 label="Active seats"
                 meter={seatMeter}
                 note="Pending invitations do not count until accepted."
               />
-              <UsageMeterRow
-                label="Monthly SMS segments"
-                meter={smsMeter}
-                consumedOnly
-                note="Application SMS usage is measured in carrier SMS segments. Long messages may use more than one segment per recipient. MFA/security texts do not use this allowance."
-              />
             </dl>
+            <p className="text-xs text-muted-foreground">
+              Application SMS usage and credits are managed in the Application
+              SMS section below.
+            </p>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Plans</CardTitle>
+          <CardDescription>
+            Choose a plan to start billing, upgrade immediately, or review a
+            future downgrade. Checkout is used for the first subscription.
+            Existing paid subscriptions upgrade in place.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <BillingPlanPanel
+            key={`${subscription ? String(subscription.plan_key) : cancelledSubscription ? "cancelled" : "none"}-${subscription?.schedule_status ?? "none"}-${subscription?.cancel_at_period_end ? "canceling" : "renewing"}`}
+            plans={publicPlans}
+            currentPlanKey={
+              subscription ? String(subscription.plan_key) : null
+            }
+            hasProviderSubscription={hasProviderSubscription}
+            providerReady={checkoutUiAvailable}
+            providerMessage={checkoutAvailabilityMessage}
+            allowManualPlanAssignment={!stripeConfigured}
+            cancelAtPeriodEnd={Boolean(subscription?.cancel_at_period_end)}
+            paidThroughIso={subscription?.current_period_end ?? null}
+            currentPlanName={subscription?.plan_display_name ?? null}
+            cancellationMode={
+              hasProviderSubscription
+                ? "paid"
+                : cancelledSubscription
+                  ? "cancelled"
+                  : "trial"
+            }
+            canManageBilling={canManageBilling}
+            scheduledDowngrade={
+              subscription?.schedule_status === "scheduled" &&
+              subscription.scheduled_plan_key &&
+              subscription.scheduled_effective_at
+                ? {
+                    currentPlanName: subscription.plan_display_name,
+                    targetPlanKey: String(subscription.scheduled_plan_key),
+                    targetPlanName:
+                      subscription.scheduled_plan_name ??
+                      String(subscription.scheduled_plan_key),
+                    effectiveAt: subscription.scheduled_effective_at,
+                  }
+                : null
+            }
+          />
         </CardContent>
       </Card>
 
@@ -460,167 +508,6 @@ async function BillingContent({
         </CardHeader>
         <CardContent>
           <BillingAddressForm canManage={canManageBilling} address={billingAddress} />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Application SMS</CardTitle>
-          <CardDescription>
-            Application text messages use included monthly SMS first, then
-            purchased SMS credits. MFA and security texts do not use this
-            allowance.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <dl className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <dt className="text-xs uppercase tracking-wide text-muted-foreground">
-                Included this month
-              </dt>
-              <dd className="mt-1 text-sm">{smsCapacity.includedLimit}</dd>
-            </div>
-            <div>
-              <dt className="text-xs uppercase tracking-wide text-muted-foreground">
-                Used this month
-              </dt>
-              <dd className="mt-1 text-sm">{smsCapacity.includedUsed}</dd>
-            </div>
-            <div>
-              <dt className="text-xs uppercase tracking-wide text-muted-foreground">
-                Remaining included
-              </dt>
-              <dd className="mt-1 text-sm">{smsCapacity.remainingIncluded}</dd>
-            </div>
-            <div>
-              <dt className="text-xs uppercase tracking-wide text-muted-foreground">
-                Purchased balance
-              </dt>
-              <dd className="mt-1 text-sm">{smsCapacity.purchasedBalance}</dd>
-            </div>
-            <div>
-              <dt className="text-xs uppercase tracking-wide text-muted-foreground">
-                Purchased reserved
-              </dt>
-              <dd className="mt-1 text-sm">{smsCapacity.purchasedReserved}</dd>
-            </div>
-            <div>
-              <dt className="text-xs uppercase tracking-wide text-muted-foreground">
-                Purchased available
-              </dt>
-              <dd className="mt-1 text-sm">{smsCapacity.purchasedAvailable}</dd>
-            </div>
-            <div>
-              <dt className="text-xs uppercase tracking-wide text-muted-foreground">
-                Total available
-              </dt>
-              <dd className="mt-1 text-sm">{smsCapacity.totalAvailable}</dd>
-            </div>
-          </dl>
-          {smsPackage?.monthlySmsSegmentLimit === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Servant Standard does not include monthly application SMS credits.
-              You can purchase SMS credit blocks whenever your organization
-              needs to send application text messages.
-            </p>
-          ) : null}
-          {smsPackage && canManageBilling ? (
-            <SmsPackagePurchaseButton
-              credits={smsPackage.smsPackageCredits}
-              priceCents={smsPackage.smsPackagePriceCents}
-              providerReady={isBillingProviderReady()}
-              providerMessage={billingProviderStatusMessage()}
-            />
-          ) : null}
-          {smsPackage && !canManageBilling ? (
-            <p className="text-sm text-muted-foreground">
-              Only an owner or co-owner can purchase SMS credits.
-            </p>
-          ) : null}
-          {!smsPackage ? (
-            <p className="text-sm text-muted-foreground">
-              SMS credit purchases are available while the organization has an
-              active subscription.
-            </p>
-          ) : null}
-          <SmsAutoReplenishmentPanel
-            canManage={canManageBilling}
-            status={
-              typeof replenishment?.status === "string" ? replenishment.status : null
-            }
-            threshold={
-              typeof replenishment?.low_balance_threshold_segments === "number"
-                ? replenishment.low_balance_threshold_segments
-                : null
-            }
-            capCents={
-              typeof replenishment?.max_auto_spend_cents === "number"
-                ? replenishment.max_auto_spend_cents
-                : null
-            }
-            packageCredits={smsPackage?.smsPackageCredits ?? null}
-            packagePriceCents={smsPackage?.smsPackagePriceCents ?? null}
-            suggestedThreshold={smsPackage?.suggestedLowBalanceThreshold ?? null}
-          />
-          <SmsPaymentSetupPanel
-            canManage={canManageBilling}
-            status={
-              typeof replenishment?.status === "string" ? replenishment.status : null
-            }
-            hasPaymentMethod={Boolean(replenishmentPaymentMethodId)}
-            display={paymentMethodDisplay}
-            publishableKey={canManageBilling ? safePublishableKey : null}
-            returnedSetupIntentId={canManageBilling ? returnedSetupIntentId : null}
-          />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Plans</CardTitle>
-          <CardDescription>
-            Choose a plan to start billing, upgrade immediately, or review a
-            future downgrade. Checkout is used for the first subscription.
-            Existing paid subscriptions upgrade in place.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <BillingPlanPanel
-            key={`${subscription ? String(subscription.plan_key) : cancelledSubscription ? "cancelled" : "none"}-${subscription?.schedule_status ?? "none"}-${subscription?.cancel_at_period_end ? "canceling" : "renewing"}`}
-            plans={publicPlans}
-            currentPlanKey={
-              subscription ? String(subscription.plan_key) : null
-            }
-            hasProviderSubscription={hasProviderSubscription}
-            providerReady={checkoutUiAvailable}
-            providerMessage={checkoutAvailabilityMessage}
-            allowManualPlanAssignment={!stripeConfigured}
-            cancelAtPeriodEnd={Boolean(subscription?.cancel_at_period_end)}
-            paidThroughIso={subscription?.current_period_end ?? null}
-            currentPlanName={subscription?.plan_display_name ?? null}
-            cancellationMode={
-              hasProviderSubscription
-                ? "paid"
-                : cancelledSubscription
-                  ? "cancelled"
-                  : "trial"
-            }
-            canManageBilling={canManageBilling}
-            scheduledDowngrade={
-              subscription?.schedule_status === "scheduled" &&
-              subscription.scheduled_plan_key &&
-              subscription.scheduled_effective_at
-                ? {
-                    currentPlanName: subscription.plan_display_name,
-                    targetPlanKey: String(subscription.scheduled_plan_key),
-                    targetPlanName:
-                      subscription.scheduled_plan_name ??
-                      String(subscription.scheduled_plan_key),
-                    effectiveAt: subscription.scheduled_effective_at,
-                  }
-                : null
-            }
-          />
         </CardContent>
       </Card>
 
@@ -698,6 +585,137 @@ async function BillingContent({
           </div>
         </CardContent>
       </Card>
+
+      <div className="space-y-2 pt-2">
+        <h2 className="text-xl font-semibold tracking-tight">Application SMS</h2>
+        <p className="text-sm text-muted-foreground">
+          Included monthly allowance, purchased credits, auto-replenishment, and
+          the card used for SMS purchases.
+        </p>
+      </div>
+
+      <Card id="application-sms">
+        <CardHeader>
+          <CardTitle>SMS capacity &amp; purchases</CardTitle>
+          <CardDescription>
+            Application text messages use included monthly SMS first, then
+            purchased SMS credits. MFA and security texts do not use this
+            allowance.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <UsageMeterRow
+            label="Monthly SMS segments"
+            meter={smsMeter}
+            consumedOnly
+            note="Application SMS usage is measured in carrier SMS segments. Long messages may use more than one segment per recipient. MFA/security texts do not use this allowance."
+          />
+          <dl className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+                Included this month
+              </dt>
+              <dd className="mt-1 text-sm">{smsCapacity.includedLimit}</dd>
+            </div>
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+                Used this month
+              </dt>
+              <dd className="mt-1 text-sm">{smsCapacity.includedUsed}</dd>
+            </div>
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+                Remaining included
+              </dt>
+              <dd className="mt-1 text-sm">{smsCapacity.remainingIncluded}</dd>
+            </div>
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+                Purchased balance
+              </dt>
+              <dd className="mt-1 text-sm">{smsCapacity.purchasedBalance}</dd>
+            </div>
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+                Purchased reserved
+              </dt>
+              <dd className="mt-1 text-sm">{smsCapacity.purchasedReserved}</dd>
+            </div>
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+                Purchased available
+              </dt>
+              <dd className="mt-1 text-sm">{smsCapacity.purchasedAvailable}</dd>
+            </div>
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+                Total available
+              </dt>
+              <dd className="mt-1 text-sm">{smsCapacity.totalAvailable}</dd>
+            </div>
+          </dl>
+          {smsPackage?.monthlySmsSegmentLimit === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Servant Standard does not include monthly application SMS credits.
+              You can purchase SMS credit blocks whenever your organization
+              needs to send application text messages.
+            </p>
+          ) : null}
+          {smsPackage && canManageBilling ? (
+            <SmsPackagePurchaseButton
+              credits={smsPackage.smsPackageCredits}
+              priceCents={smsPackage.smsPackagePriceCents}
+              providerReady={isBillingProviderReady()}
+              providerMessage={billingProviderStatusMessage()}
+            />
+          ) : null}
+          {smsPackage && !canManageBilling ? (
+            <p className="text-sm text-muted-foreground">
+              Only an owner or co-owner can purchase SMS credits.
+            </p>
+          ) : null}
+          {!smsPackage ? (
+            <p className="text-sm text-muted-foreground">
+              SMS credit purchases are available while the organization has an
+              active subscription.
+            </p>
+          ) : null}
+        </CardContent>
+      </Card>
+
+      <div id="sms-auto-replenishment" className="space-y-4">
+        <SmsAutoReplenishmentPanel
+          canManage={canManageBilling}
+          status={
+            typeof replenishment?.status === "string" ? replenishment.status : null
+          }
+          threshold={
+            typeof replenishment?.low_balance_threshold_segments === "number"
+              ? replenishment.low_balance_threshold_segments
+              : null
+          }
+          capCents={
+            typeof replenishment?.max_auto_spend_cents === "number"
+              ? replenishment.max_auto_spend_cents
+              : null
+          }
+          packageCredits={smsPackage?.smsPackageCredits ?? null}
+          packagePriceCents={smsPackage?.smsPackagePriceCents ?? null}
+          suggestedThreshold={smsPackage?.suggestedLowBalanceThreshold ?? null}
+        />
+        <div id="sms-payment-method">
+          <SmsPaymentSetupPanel
+            canManage={canManageBilling}
+            status={
+              typeof replenishment?.status === "string" ? replenishment.status : null
+            }
+            hasPaymentMethod={Boolean(replenishmentPaymentMethodId)}
+            display={paymentMethodDisplay}
+            publishableKey={canManageBilling ? safePublishableKey : null}
+            returnedSetupIntentId={canManageBilling ? returnedSetupIntentId : null}
+          />
+        </div>
+      </div>
     </>
   );
 }
